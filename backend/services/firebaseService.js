@@ -29,11 +29,14 @@ try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       storageBucket:
-        process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`,
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        `${serviceAccount.project_id}.appspot.com`,
     });
     console.log("Firebase Admin initialized successfully");
   } else {
-    console.log("Firebase Admin not initialized - no service account configured");
+    console.log(
+      "Firebase Admin not initialized - no service account configured"
+    );
   }
 } catch (error) {
   console.log("Firebase Admin initialization error", error);

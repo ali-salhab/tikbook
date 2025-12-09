@@ -57,7 +57,9 @@ const RewardsManagement = ({ onLogout }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const usersData = response.data;
-      const usersArray = Array.isArray(usersData) ? usersData : usersData?.users || [];
+      const usersArray = Array.isArray(usersData)
+        ? usersData
+        : usersData?.users || [];
 
       // Fetch wallet data for each user
       const usersWithWallets = await Promise.all(
