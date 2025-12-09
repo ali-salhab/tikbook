@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "777654232286",
+    "project_id": "tikbook-1f7bf",
+    "storage_bucket": "tikbook-1f7bf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:777654232286:android:5fa2a884fbc5712def4e4f",
+        "android_client_info": {
+          "package_name": "com.tikbook.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2rvClld7pn-jM7HoAWKyD-9FEyGaTcWU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

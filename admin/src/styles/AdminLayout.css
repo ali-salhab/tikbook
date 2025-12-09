@@ -1,0 +1,42 @@
+/* Admin Layout */
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.admin-main-content {
+  flex: 1;
+  margin-left: 280px;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+  padding: 20px;
+}
+
+/* When sidebar is collapsed */
+.sidebar.collapsed ~ .admin-main-content {
+  margin-left: 80px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+
+  .admin-main-content {
+    margin-left: 0;
+    margin-top: 60px;
+    padding: 16px;
+  }
+
+  .sidebar.mobile-open ~ .admin-main-content {
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-main-content {
+    padding: 12px;
+  }
+}
