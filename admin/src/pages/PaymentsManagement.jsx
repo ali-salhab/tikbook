@@ -63,8 +63,12 @@ const PaymentsManagement = ({ onLogout }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setTransactions(response.data);
-      calculateStats(response.data);
+      const data = response.data;
+      const transactionsArray = Array.isArray(data)
+        ? data
+        : data?.transactions || [];
+      setTransactions(transactionsArray);
+      calculateStats(transactionsArray);
     } catch (error) {
       console.error("Error fetching transactions:", error);
     } finally {
@@ -86,19 +90,16 @@ const PaymentsManagement = ({ onLogout }) => {
   };
 
   const calculateStats = (transactionsData) => {
-    const totalRevenue = transactionsData
+    const txData = Array.isArray(transactionsData) ? transactionsData : [];
+    const totalRevenue = txData
       .filter((t) => t.status === "completed")
       .reduce((sum, t) => sum + (t.amount || 0), 0);
 
     setStats({
       totalRevenue: totalRevenue.toFixed(2),
-      successfulPayments: transactionsData.filter(
-        (t) => t.status === "completed"
-      ).length,
-      pendingPayments: transactionsData.filter((t) => t.status === "pending")
-        .length,
-      failedPayments: transactionsData.filter((t) => t.status === "failed")
-        .length,
+      successfulPayments: txData.filter((t) => t.status === "completed").length,
+      pendingPayments: txData.filter((t) => t.status === "pending").length,
+      failedPayments: txData.filter((t) => t.status === "failed").length,
     });
   };
 

@@ -29,7 +29,9 @@ const AppVersionManagementPage = () => {
       const response = await axios.get(`${api}/versions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setVersions(response.data);
+      const data = response.data;
+      const versionsArray = Array.isArray(data) ? data : data?.versions || [];
+      setVersions(versionsArray);
     } catch (error) {
       console.error("Error fetching versions:", error);
       alert("Failed to fetch versions");

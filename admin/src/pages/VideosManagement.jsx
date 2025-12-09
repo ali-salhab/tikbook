@@ -45,7 +45,9 @@ const VideosManagement = () => {
       const response = await axios.get(`${api}/videos`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setVideos(response.data);
+      const data = response.data;
+      const videosArray = Array.isArray(data) ? data : data?.videos || [];
+      setVideos(videosArray);
     } catch (error) {
       console.error("Error fetching videos:", error);
       alert("فشل تحميل الفيديوهات");

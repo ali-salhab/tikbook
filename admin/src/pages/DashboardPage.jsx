@@ -63,11 +63,20 @@ const DashboardPage = () => {
       setStats(statsRes.data);
 
       const usersRes = await axios.get(`${api.admin}/users`, config);
-      setUsers(usersRes.data);
+      const usersData = usersRes.data;
+      // Backend may return { users: [...] } or an array; normalize to array
+      const usersArray = Array.isArray(usersData)
+        ? usersData
+        : usersData?.users || [];
+      setUsers(usersArray);
 
       // Fetch videos (admin scoped)
       const videosRes = await axios.get(`${api.admin}/videos`, config);
-      setVideos(videosRes.data);
+      const videosData = videosRes.data;
+      const videosArray = Array.isArray(videosData)
+        ? videosData
+        : videosData?.videos || [];
+      setVideos(videosArray);
     } catch (error) {
       console.error(error);
       if (error.response && error.response.status === 401) {

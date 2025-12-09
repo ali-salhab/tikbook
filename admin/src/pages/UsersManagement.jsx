@@ -49,7 +49,9 @@ const UsersManagement = () => {
       const response = await axios.get(`${api}/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUsers(response.data);
+      const data = response.data;
+      const usersArray = Array.isArray(data) ? data : data?.users || [];
+      setUsers(usersArray);
     } catch (error) {
       console.error("Error fetching users:", error);
       alert("فشل تحميل المستخدمين");
@@ -82,7 +84,8 @@ const UsersManagement = () => {
   };
 
   const applyFilters = () => {
-    let result = users.filter((user) => {
+    const baseUsers = Array.isArray(users) ? users : [];
+    let result = baseUsers.filter((user) => {
       // Search filter
       if (
         filters.search &&
