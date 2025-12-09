@@ -4,21 +4,39 @@ const admin = require("firebase-admin");
 // You'll need to download your service account key from Firebase Console
 // and place it in backend/config/firebase-service-account.json
 try {
-  const serviceAccount = require("../config/firebase-service-account.json");
+  // Support service account provided via ENV (as JSON string) or local JSON file
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  let serviceAccount;
+  if (serviceAccountJson) {
+    try {
+      serviceAccount = JSON.parse(serviceAccountJson);
+    } catch (err) {
+      console.error("Invalid JSON in FIREBASE_SERVICE_ACCOUNT env var", err);
+    }
+  }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket:
-      process.env.FIREBASE_STORAGE_BUCKET ||
-      `${serviceAccount.project_id}.appspot.com`,
-  });
+  if (!serviceAccount) {
+    try {
+      // Attempt to require local file if present
+      serviceAccount = require("../config/firebase-service-account.json");
+    } catch (err) {
+      // No file found - initialize skipped intentionally
+      serviceAccount = null;
+    }
+  }
 
-  console.log("Firebase Admin initialized successfully");
+  if (serviceAccount) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      storageBucket:
+        process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`,
+    });
+    console.log("Firebase Admin initialized successfully");
+  } else {
+    console.log("Firebase Admin not initialized - no service account configured");
+  }
 } catch (error) {
-  console.log("Firebase Admin not initialized - service account file missing");
-  console.log(
-    "Download from: Firebase Console > Project Settings > Service Accounts"
-  );
+  console.log("Firebase Admin initialization error", error);
 }
 
 const sendPushNotification = async (token, title, body, data = {}) => {

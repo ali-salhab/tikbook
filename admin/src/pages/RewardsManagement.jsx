@@ -56,10 +56,12 @@ const RewardsManagement = ({ onLogout }) => {
       const response = await axios.get(`${API_URL}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      const usersData = response.data;
+      const usersArray = Array.isArray(usersData) ? usersData : usersData?.users || [];
 
       // Fetch wallet data for each user
       const usersWithWallets = await Promise.all(
-        response.data.map(async (user) => {
+        usersArray.map(async (user) => {
           try {
             const walletResponse = await axios.get(
               `${API_URL}/api/wallet/${user._id}`,
