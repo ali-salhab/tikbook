@@ -20,6 +20,12 @@ export const AuthProvider = ({ children }) => {
       console.log("🚀 Starting app initialization...");
       console.log("📡 API URL:", BASE_URL);
 
+      // Global safety timeout to ensure isLoading is always set to false
+      const safetyTimeout = setTimeout(() => {
+        console.log("⚠️ Auth initialization taking too long, clearing loading state...");
+        setIsLoading(false);
+      }, 10000);
+
       try {
         // Check version with timeout (skip if network error)
         const versionCheckPromise = versionService.checkVersion(BASE_URL);
@@ -53,10 +59,19 @@ export const AuthProvider = ({ children }) => {
           setUserToken(token);
           setUserInfo(JSON.parse(info));
 
-          // Register for push notifications
-          const fcmToken = await getFCMToken();
-          if (fcmToken) {
-            await saveTokenToBackend(token, fcmToken, BASE_URL);
+          // Register for push notifications with a timeout
+          try {
+            const tokenPromise = getFCMToken();
+            const tokenTimeout = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("FCM token timeout")), 3000)
+            );
+
+            const fcmToken = await Promise.race([tokenPromise, tokenTimeout]);
+            if (fcmToken) {
+              await saveTokenToBackend(token, fcmToken, BASE_URL);
+            }
+          } catch (fcmError) {
+            console.log("⚠️ FCM registration skipped:", fcmError.message);
           }
         } else {
           console.log("ℹ️ No stored user data found");
@@ -65,6 +80,7 @@ export const AuthProvider = ({ children }) => {
         console.error("❌ Initialization error:", error);
       } finally {
         console.log("✅ Initialization complete, hiding splash...");
+        clearTimeout(safetyTimeout);
         setIsLoading(false);
       }
     };
@@ -107,12 +123,12 @@ export const AuthProvider = ({ children }) => {
       } else if (e.message === "Network Error") {
         alert(
           "خطأ في الاتصال. تأكد من:\n1. تشغيل الخادم على المنفذ 5000\n2. اتصال الهاتف والكمبيوتر بنفس الشبكة\n3. عنوان IP صحيح: " +
-            BASE_URL
+          BASE_URL
         );
       } else {
         alert(
           e.response?.data?.message ||
-            "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور"
+          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور"
         );
       }
     } finally {

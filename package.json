@@ -1,5 +1,24 @@
 {
+  "name": "tikbook-monorepo",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd admin && npm install && npm run build"
+  },
   "dependencies": {
-    "agora-access-token": "^2.0.4"
+    "agora-access-token": "^2.0.4",
+    "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "eventemitter3": "^4.0.7",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.0.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.11",
+    "nodemon": "^3.1.11",
+    "socket.io": "^4.8.1",
+    "stripe": "^20.0.0"
   }
 }

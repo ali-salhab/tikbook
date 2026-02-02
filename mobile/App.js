@@ -17,15 +17,22 @@ export default function App() {
 
   useEffect(() => {
     async function prepare() {
+      // Set a hard timeout of 8 seconds to ensure the app always becomes ready
+      const timeoutId = setTimeout(() => {
+        console.log("⚠️ App preparation timed out, forcing ready state...");
+        setAppIsReady(true);
+      }, 8000);
+
       try {
-        // Request Notification Permission
-        await requestUserPermission();
+        // Request Notification Permission (Don't await it if it hangs)
+        requestUserPermission().catch(e => console.warn("Permission request failed:", e));
 
         // Pre-load fonts, make any API calls you need to do here
         // No async operations needed at this time.
       } catch (e) {
         console.warn("Failed to initialize app resources:", e);
       } finally {
+        clearTimeout(timeoutId);
         setAppIsReady(true);
       }
     }
