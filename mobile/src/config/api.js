@@ -14,7 +14,7 @@ const API_CONFIGS = {
   PHYSICAL_DEVICE: "http://10.228.255.240:5000/api",
 
   // For Production
-  PRODUCTION: "https://your-production-api.com/api",
+  PRODUCTION: "https://tikbook-1cdb.onrender.com/api",
 };
 
 // Agora Configuration

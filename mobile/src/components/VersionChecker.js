@@ -40,6 +40,7 @@ export default function VersionChecker({ children }) {
         params: {
           platform: platform,
         },
+        timeout: 5000, // 5 second timeout
       });
 
       const latestVersion = response.data;

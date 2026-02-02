@@ -21,6 +21,7 @@ import WalletScreen from "../screens/WalletScreen";
 import NewFollowersScreen from "../screens/NewFollowersScreen";
 import ActivityScreen from "../screens/ActivityScreen";
 import SystemNotificationsScreen from "../screens/SystemNotificationsScreen";
+import MapScreen from "../screens/MapScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -241,6 +242,17 @@ const AppNavigator = () => {
     }
   };
 
+  // Safety fallback for showOnboarding
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (showOnboarding === null) {
+        console.log("⚠️ Onboarding check timed out, defaulting to false");
+        setShowOnboarding(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [showOnboarding]);
+
   if (isLoading || showOnboarding === null) {
     return (
       <View
@@ -286,6 +298,7 @@ const AppNavigator = () => {
                 name="SystemNotifications"
                 component={SystemNotificationsScreen}
               />
+              <Stack.Screen name="Map" component={MapScreen} />
             </>
           ) : (
             <>
