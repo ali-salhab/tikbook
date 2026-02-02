@@ -372,6 +372,10 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+              <Ionicons name="log-out-outline" size={20} color="#FE2C55" />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.editProfileButton}>
               <Feather name="edit-2" size={20} color="#000" />
             </TouchableOpacity>
@@ -407,6 +411,7 @@ const ProfileScreen = ({ navigation }) => {
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         navigation={navigation}
+        logout={logout}
       />
     </SafeAreaView>
   );
@@ -591,6 +596,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginBottom: 10,
+  },
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#f1f1f1",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 44,
   },
   editProfileButton: {
     paddingHorizontal: 12,

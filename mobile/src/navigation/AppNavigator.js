@@ -7,6 +7,7 @@ import VersionChecker from "../components/VersionChecker";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
+import OTPScreen from "../screens/OTPScreen";
 import HomeScreen from "../screens/HomeScreen";
 import UploadScreen from "../screens/UploadScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -314,6 +315,7 @@ const AppNavigator = () => {
               </Stack.Screen>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="OTP" component={OTPScreen} />
             </>
           )}
         </Stack.Navigator>

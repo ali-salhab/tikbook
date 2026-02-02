@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height } = Dimensions.get("window");
 
-const ProfileMenuModal = ({ visible, onClose, navigation }) => {
+const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(height)).current;
 
@@ -86,6 +86,16 @@ const ProfileMenuModal = ({ visible, onClose, navigation }) => {
             // For now just close
           },
         },
+        {
+          id: "logout",
+          label: "تسجيل الخروج",
+          icon: "log-out-outline",
+          iconType: "Ionicons",
+          color: "#FE2C55",
+          onPress: () => {
+            if (logout) logout();
+          },
+        },
       ],
     },
   ];
@@ -101,8 +111,8 @@ const ProfileMenuModal = ({ visible, onClose, navigation }) => {
     >
       <Ionicons name="chevron-back" size={20} color="#ccc" />
       <View style={styles.itemContent}>
-        <Text style={styles.itemLabel}>{item.label}</Text>
-        <Ionicons name={item.icon} size={24} color="#000" />
+        <Text style={[styles.itemLabel, item.color && { color: item.color }]}>{item.label}</Text>
+        <Ionicons name={item.icon} size={24} color={item.color || "#000"} />
       </View>
     </TouchableOpacity>
   );

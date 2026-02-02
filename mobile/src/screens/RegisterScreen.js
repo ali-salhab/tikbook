@@ -56,17 +56,22 @@ const RegisterScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${BASE_URL}/auth/register`, {
+      console.log("📤 Sending OTP to:", email);
+      // Check if user exists first/send otp
+      const response = await axios.post(`${BASE_URL}/auth/send-otp`, {
+        email,
+      });
+
+      console.log("✅ OTP Sent:", response.data);
+      navigation.navigate("OTP", {
         username,
         email,
         password,
       });
 
-      Alert.alert("نجح", "تم إنشاء الحساب بنجاح!", [
-        { text: "تسجيل الدخول", onPress: () => navigation.navigate("Login") },
-      ]);
     } catch (error) {
-      Alert.alert("خطأ", error.response?.data?.message || "فشل إنشاء الحساب");
+      console.log("❌ OTP Send Error:", error.response?.data);
+      Alert.alert("خطأ", error.response?.data?.message || "فشل إرسال رمز التحقق");
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,8 @@ const API_CONFIGS = {
   // For iOS Simulator
   IOS_SIMULATOR: "http://localhost:5000/api",
 
-  // For Physical Device (Live Render Backend)
+  // For Physical Device (Using ADB Reverse with VPN)
+  // PHYSICAL_DEVICE: "http://12.0.0.168:5000/api",
   PHYSICAL_DEVICE: "https://tikbook-1cdb.onrender.com/api",
 
   // For Production
