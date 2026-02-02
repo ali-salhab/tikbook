@@ -254,19 +254,26 @@ const AppNavigator = () => {
   }, [showOnboarding]);
 
   if (isLoading || showOnboarding === null) {
+    console.log("⏳ AppNavigator is in loading state...", {
+      isLoading,
+      showOnboarding,
+    });
     return (
       <View
         style={{
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#000",
+          backgroundColor: "#121212", // Changed from #000 to #121212 to see difference from splash
         }}
       >
         <ActivityIndicator size="large" color="#FE2C55" />
+        <Text style={{ color: "#FFF", marginTop: 20 }}>جاري التحميل...</Text>
       </View>
     );
   }
+
+  console.log("🗺️ Rendering main navigation Stack", { userToken: !!userToken });
 
   return (
     <VersionChecker>
