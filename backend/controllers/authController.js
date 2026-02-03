@@ -32,7 +32,13 @@ const sendOTP = async (req, res) => {
     if (emailSent) {
       res.json({ message: "تم إرسال رمز التحقق إلى بريدك الإلكتروني" });
     } else {
-      res.status(500).json({ message: "فشل إرسال البريد الإلكتروني" });
+      // Fallback for Render/Gmail blocking: Return OTP in response for testing
+      console.log("⚠️ Email failed, returning OTP in response for testing:", otp);
+      res.json({
+        message: "فشل إرسال البريد (Test Mode)",
+        dev_otp: otp, // OTP included for testing purposes
+        success: true
+      });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -61,7 +61,7 @@ const RegisterScreen = ({ navigation }) => {
       const response = await axios.post(
         `${BASE_URL}/auth/send-otp`,
         { email },
-        { timeout: 10000 } // 10 second timeout
+        { timeout: 20000 } // 20 second timeout
       );
 
       console.log("✅ OTP Sent:", response.data);
@@ -72,8 +72,15 @@ const RegisterScreen = ({ navigation }) => {
       });
 
     } catch (error) {
-      console.log("❌ OTP Send Error:", error.response?.data);
-      Alert.alert("خطأ", error.response?.data?.message || "فشل إرسال رمز التحقق");
+      console.log("❌ OTP Send Request Failed:", error.message);
+      if (error.response) {
+        console.log("❌ Server Error Data:", error.response.data);
+        console.log("❌ Server Status:", error.response.status);
+      } else if (error.request) {
+        console.log("❌ No Response Received (Network/Timeout)");
+      }
+
+      Alert.alert("خطأ", error.response?.data?.message || error.message || "فشل إرسال رمز التحقق");
     } finally {
       setLoading(false);
     }
