@@ -58,9 +58,11 @@ const RegisterScreen = ({ navigation }) => {
     try {
       console.log("📤 Sending OTP to:", email);
       // Check if user exists first/send otp
-      const response = await axios.post(`${BASE_URL}/auth/send-otp`, {
-        email,
-      });
+      const response = await axios.post(
+        `${BASE_URL}/auth/send-otp`,
+        { email },
+        { timeout: 10000 } // 10 second timeout
+      );
 
       console.log("✅ OTP Sent:", response.data);
       navigation.navigate("OTP", {

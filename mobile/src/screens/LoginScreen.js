@@ -147,8 +147,9 @@ const LoginScreen = ({ navigation }) => {
       </View>
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, (!email || !password) && styles.buttonDisabled]}
         onPress={() => login(email, password)}
+        disabled={!email || !password}
       >
         <Text style={styles.buttonText}>{i18n.t("logIn")}</Text>
       </TouchableOpacity>
@@ -303,6 +304,9 @@ const styles = StyleSheet.create({
     color: "#FE2C55",
     fontWeight: "bold",
     marginLeft: 5,
+  },
+  buttonDisabled: {
+    backgroundColor: "rgba(254, 44, 85, 0.5)",
   },
 });
 
