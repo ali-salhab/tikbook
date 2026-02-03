@@ -11,13 +11,6 @@ import {
   FlatList,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
-  StatusBar,
-  I18nManager,
-  Animated,
-  Share,
-  Alert,
-  RefreshControl,
   Image,
 } from "react-native";
 import axios from "axios";
@@ -62,9 +55,9 @@ const HomeScreen = ({ navigation }) => {
         videoUrl: video.videoUrl.startsWith("http")
           ? video.videoUrl
           : `${BASE_URL.replace("/api", "")}/${video.videoUrl.replace(
-              /\\/g,
-              "/"
-            )}`,
+            /\\/g,
+            "/"
+          )}`,
       }));
 
       console.log("📹 First video URL:", mappedVideos[0]?.videoUrl);

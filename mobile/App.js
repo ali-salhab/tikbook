@@ -8,12 +8,15 @@ import {
   notificationListener,
 } from "./src/services/notificationService";
 import messaging from "@react-native-firebase/messaging";
+import { useNetInfo } from "@react-native-community/netinfo";
+import { View, Text, StyleSheet, Platform, StatusBar } from "react-native";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [appIsReady, setAppIsReady] = React.useState(false);
+  const netInfo = useNetInfo();
 
   useEffect(() => {
     async function prepare() {
@@ -65,8 +68,33 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </SafeAreaProvider>
+        {netInfo.isConnected === false && (
+          <View style={styles.offlineBanner}
+
+            const styles= StyleSheet.create({
+              offlineBanner: {
+                backgroundColor: "#FE2C55",
+                paddingVertical: 10,
+                paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
+                alignItems: "center",
+                justifyContent: "center",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 99999,
+              },
+              offlineText: {
+                color: "#FFF",
+                fontSize: 14,
+                fontWeight: "bold",
+              },
+            });>
+        <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
+      </View>
+        )}
+      <AppNavigator />
+    </AuthProvider>
+    </SafeAreaProvider >
   );
 }
