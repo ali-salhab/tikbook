@@ -69,32 +69,32 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         {netInfo.isConnected === false && (
-          <View style={styles.offlineBanner}
-
-            const styles= StyleSheet.create({
-              offlineBanner: {
-                backgroundColor: "#FE2C55",
-                paddingVertical: 10,
-                paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
-                alignItems: "center",
-                justifyContent: "center",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 99999,
-              },
-              offlineText: {
-                color: "#FFF",
-                fontSize: 14,
-                fontWeight: "bold",
-              },
-            });>
-        <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
-      </View>
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
+          </View>
         )}
-      <AppNavigator />
-    </AuthProvider>
-    </SafeAreaProvider >
+        <AppNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  offlineBanner: {
+    backgroundColor: "#FE2C55",
+    paddingVertical: 10,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 99999,
+  },
+  offlineText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+});
