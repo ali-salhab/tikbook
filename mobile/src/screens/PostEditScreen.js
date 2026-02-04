@@ -113,6 +113,10 @@ const PostEditScreen = ({ navigation, route }) => {
             );
         } catch (error) {
             console.error("❌ Upload error:", error);
+            if (error.response) {
+                console.log("❌ Server Error Data:", error.response.data);
+                console.log("❌ Server Error Status:", error.response.status);
+            }
 
             let errorMessage = "فشل رفع المنشور. الرجاء المحاولة مرة أخرى.";
 
