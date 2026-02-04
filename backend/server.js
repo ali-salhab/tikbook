@@ -34,6 +34,7 @@ const pushNotificationRoutes = require("./routes/pushNotificationRoutes");
 const liveRoutes = require("./routes/liveRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const appVersionRoutes = require("./routes/appVersionRoutes");
+const healthRoutes = require("./routes/healthRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/videos", videoRoutes);
@@ -45,6 +46,7 @@ app.use("/api/push", pushNotificationRoutes);
 app.use("/api/live", liveRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/versions", appVersionRoutes);
+app.use("/api/health", healthRoutes);
 
 app.get("/", (req, res) => {
   res.send("TikBook API is running...");
