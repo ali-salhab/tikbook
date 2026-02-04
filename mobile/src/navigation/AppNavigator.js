@@ -25,6 +25,7 @@ import NewFollowersScreen from "../screens/NewFollowersScreen";
 import ActivityScreen from "../screens/ActivityScreen";
 import SystemNotificationsScreen from "../screens/SystemNotificationsScreen";
 import MapScreen from "../screens/MapScreen";
+import SplashScreen from "../screens/SplashScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -252,26 +253,20 @@ const AppNavigator = () => {
         console.log("⚠️ Onboarding check timed out, defaulting to false");
         setShowOnboarding(false);
       }
-    }, 1500);
+    }, 3000); // Increased timeout slightly to allow for splash animation
     return () => clearTimeout(timer);
   }, [showOnboarding]);
 
-  if (isLoading || showOnboarding === null) {
-    console.log("⏳ AppNavigator is in loading state...", {
-      isLoading,
-      showOnboarding,
-    });
+  const [isSplashAnimationFinished, setIsSplashAnimationFinished] = useState(false);
+
+  // While checking auth state or onboarding status, or if splash animation isn't done
+  if (isLoading || showOnboarding === null || !isSplashAnimationFinished) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#121212",
-        }}
-      >
-        <ActivityIndicator size="large" color="#FE2C55" />
-        <Text style={{ color: "#FFF", marginTop: 20 }}>جاري التحميل...</Text>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        {/* Show SplashScreen and wait for it to signal completion */}
+        <SplashScreen
+          onFinish={() => setIsSplashAnimationFinished(true)}
+        />
       </View>
     );
   }

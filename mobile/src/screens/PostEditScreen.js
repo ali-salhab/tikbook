@@ -61,8 +61,8 @@ const PostEditScreen = ({ navigation, route }) => {
             const fileExtension = uriParts[uriParts.length - 1];
             const fileName = `${mediaType}-${Date.now()}.${fileExtension}`;
 
-            // Add file to FormData
-            formData.append(mediaType, {
+            // Add file to FormData (backend expects 'video' field for both videos and images)
+            formData.append("video", {
                 uri: mediaUri,
                 type: mediaType === "video" ? `video/${fileExtension}` : `image/${fileExtension}`,
                 name: fileName,
