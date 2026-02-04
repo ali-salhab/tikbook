@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "afe19ad5-3c72-456f-9530-3abb802bbad7"
+      }
+    },
+    "android": {
+      "package": "com.ali.salhab.tikbookmonorepo"
+    }
+  }
+}

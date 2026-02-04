@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
       const safetyTimeout = setTimeout(() => {
         console.log("⚠️ Auth initialization taking too long, clearing loading state...");
         setIsLoading(false);
-      }, 10000);
+      }, 5000); // Reduced to 5 seconds
 
       try {
         // Check version with timeout (skip if network error)

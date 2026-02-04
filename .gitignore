@@ -6,6 +6,7 @@ build/
 .expo/
 *.log
 coverage/
+mobile/android
 mobile/.expo/
 mobile/android/app/build/
 mobile/android/.gradle/

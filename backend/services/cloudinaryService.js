@@ -32,6 +32,42 @@ const uploadToCloudinary = async (filePath, folder, resourceType = "auto") => {
     }
 };
 
+/**
+ * Uploads an image to Cloudinary with optimization
+ * @param {string} filePath - Local path to the image
+ * @param {string} folder - Folder name in Cloudinary
+ * @param {object} options - Optimization options (width, height, quality)
+ * @returns {Promise<string>} - The secure URL of the uploaded image
+ */
+const uploadImageToCloudinary = async (filePath, folder, options = {}) => {
+    try {
+        const uploadOptions = {
+            folder: folder,
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: true,
+            transformation: [
+                {
+                    width: options.width || 500,
+                    height: options.height || 500,
+                    crop: "fill",
+                    gravity: "face",
+                    quality: options.quality || "auto:good",
+                    fetch_format: "auto",
+                },
+            ],
+        };
+
+        const result = await cloudinary.uploader.upload(filePath, uploadOptions);
+        console.log(`✅ Uploaded optimized image to Cloudinary: ${result.secure_url}`);
+        return result.secure_url;
+    } catch (error) {
+        console.error("❌ Cloudinary Image Upload Error:", error);
+        throw error;
+    }
+};
+
 module.exports = {
     uploadToCloudinary,
+    uploadImageToCloudinary,
 };

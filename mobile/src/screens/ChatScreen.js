@@ -25,8 +25,7 @@ import i18n from "../i18n";
 import { BASE_URL } from "../config/api";
 
 // Enable RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// Enable RTL logic moved to index.js
 
 const ChatScreen = ({ route, navigation }) => {
   const { userId, username } = route?.params || {
@@ -329,8 +328,8 @@ const ChatScreen = ({ route, navigation }) => {
               keyboardHeight > 0
                 ? keyboardHeight
                 : showEmojiPicker
-                ? EMOJI_PICKER_HEIGHT
-                : insets.bottom,
+                  ? EMOJI_PICKER_HEIGHT
+                  : insets.bottom,
             paddingBottom: insets.bottom ? insets.bottom + 8 : 12,
           },
         ]}

@@ -7,9 +7,9 @@ import {
   Dimensions,
   TouchableOpacity,
   Image,
-  StatusBar,
   SafeAreaView,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { Video } from "expo-av";
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

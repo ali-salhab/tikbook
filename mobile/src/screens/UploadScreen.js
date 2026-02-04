@@ -7,10 +7,10 @@ import {
   ScrollView,
   Image,
   Platform,
-  StatusBar,
   Dimensions,
   Alert,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import {
   CameraView,
   useCameraPermissions,

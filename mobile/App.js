@@ -9,7 +9,8 @@ import {
 } from "./src/services/notificationService";
 import messaging from "@react-native-firebase/messaging";
 import { useNetInfo } from "@react-native-community/netinfo";
-import { View, Text, StyleSheet, Platform, StatusBar } from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
+import Constants from "expo-constants";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   offlineBanner: {
     backgroundColor: "#FE2C55",
     paddingVertical: 10,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 40,
+    paddingTop: Platform.OS === "android" ? (Constants.statusBarHeight || 0) + 10 : 40,
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",

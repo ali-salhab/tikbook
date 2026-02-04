@@ -138,6 +138,69 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// @desc    Upload profile image
+// @route   PUT /api/users/profile/image
+// @access  Private
+const uploadProfileImage = async (req, res) => {
+  try {
+    const { uploadImageToCloudinary } = require("../services/cloudinaryService");
+    const fs = require("fs");
+
+    if (!req.file) {
+      return res.status(400).json({ message: "لم يتم رفع أي صورة" });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Upload to Cloudinary with optimization
+    let profileImageUrl;
+    try {
+      if (process.env.CLOUDINARY_CLOUD_NAME) {
+        console.log("📤 Uploading profile image to Cloudinary...");
+        profileImageUrl = await uploadImageToCloudinary(
+          req.file.path,
+          "profile_images",
+          { width: 500, height: 500, quality: "auto:good" }
+        );
+        console.log("✅ Uploaded to Cloudinary:", profileImageUrl);
+      } else {
+        console.warn("⚠️ Cloudinary Config Missing! Using local file path.");
+        profileImageUrl = req.file.path;
+      }
+
+      // Cleanup local file
+      try {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      } catch (e) {
+        console.error("Error deleting local image:", e);
+      }
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      return res.status(500).json({ message: "فشل رفع الصورة" });
+    }
+
+    // Update user profile image
+    user.profileImage = profileImageUrl;
+    const updatedUser = await user.save();
+
+    res.json({
+      _id: updatedUser._id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      profileImage: updatedUser.profileImage,
+      bio: updatedUser.bio,
+      socialLinks: updatedUser.socialLinks,
+    });
+  } catch (error) {
+    console.error("❌ Profile image upload error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Update FCM Token
 // @route   PUT /api/users/fcm-token
 // @access  Private
@@ -169,6 +232,7 @@ module.exports = {
   followUser,
   unfollowUser,
   updateUserProfile,
+  uploadProfileImage,
   getAllUsers,
   updateFcmToken,
 };

@@ -16,8 +16,7 @@ import i18n from "../i18n";
 import axios from "axios";
 
 // Enable RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// Enable RTL logic moved to index.js
 
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");

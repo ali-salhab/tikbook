@@ -12,7 +12,12 @@ import {
   StyleSheet,
   Dimensions,
   Image,
+  TouchableOpacity,
+  Animated,
+  RefreshControl,
+  Share,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import axios from "axios";
 import { Video } from "expo-av";
 import { AuthContext } from "../context/AuthContext";
@@ -23,8 +28,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import CommentsModal from "../components/CommentsModal";
 
 // Enable RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// Enable RTL logic moved to index.js
 
 const HomeScreen = ({ navigation }) => {
   const [videos, setVideos] = useState([]);
@@ -47,11 +51,12 @@ const HomeScreen = ({ navigation }) => {
       const res = await axios.get(`${BASE_URL}/videos`);
       console.log("✅ Videos fetched:", res.data.length);
 
-      // Map videos and add full URL for videoUrl
+      // Map videos and ensure Cloudinary URLs are used as-is
       const mappedVideos = res.data.map((video) => ({
         ...video,
         isLiked: false,
-        // Create full URL for video if it's a relative path
+        // Cloudinary URLs start with http/https, use them directly
+        // Only construct URL for local file paths (legacy support)
         videoUrl: video.videoUrl.startsWith("http")
           ? video.videoUrl
           : `${BASE_URL.replace("/api", "")}/${video.videoUrl.replace(

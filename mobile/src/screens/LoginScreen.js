@@ -19,8 +19,7 @@ import * as Facebook from "expo-auth-session/providers/facebook";
 WebBrowser.maybeCompleteAuthSession();
 
 // Enable RTL
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// Enable RTL logic moved to index.js
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");

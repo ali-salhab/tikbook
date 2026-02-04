@@ -250,7 +250,7 @@ const AppNavigator = () => {
         console.log("⚠️ Onboarding check timed out, defaulting to false");
         setShowOnboarding(false);
       }
-    }, 5000);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [showOnboarding]);
 

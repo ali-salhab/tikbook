@@ -1,5 +1,16 @@
 import { registerRootComponent } from "expo";
 import { setBackgroundMessageHandler } from "./src/services/notificationService";
+import { I18nManager } from "react-native";
+
+// Force RTL
+try {
+    if (!I18nManager.isRTL) {
+        I18nManager.allowRTL(true);
+        I18nManager.forceRTL(true);
+    }
+} catch (e) {
+    console.warn("RTL Error", e);
+}
 
 import App from "./App";
 
