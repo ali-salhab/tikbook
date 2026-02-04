@@ -587,6 +587,7 @@ const HomeScreen = ({ navigation }) => {
             tintColor="#FFF"
             title="سحب للتحديث"
             titleColor="#FFF"
+            progressViewOffset={insets.top + 60} // Push loader below the top bar
           />
         }
       />
