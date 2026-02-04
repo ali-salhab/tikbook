@@ -1,16 +1,18 @@
 const nodemailer = require('nodemailer');
 
 // Create transporter
+// Create transporter
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: process.env.EMAIL_PORT || 587,
     secure: false, // true for 465, false for other ports
-    connectionTimeout: 5000, // Fail after 5 seconds if blocked
-    socketTimeout: 5000,
     auth: {
-        user: process.env.EMAIL_USER || 'your-email@gmail.com',
-        pass: process.env.EMAIL_PASSWORD || 'your-app-password',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
     },
+    tls: {
+        rejectUnauthorized: false // Helps avoid some self-signed cert issues on free tiers
+    }
 });
 
 // Generate 6-digit OTP
