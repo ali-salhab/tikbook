@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tikbook.com"
@@ -60,6 +62,7 @@
       "eas": {
         "projectId": "344bf77b-6b91-4396-9869-66d6238c83cc"
       }
-    }
+    },
+    "owner": "ali.salhab"
   }
 }

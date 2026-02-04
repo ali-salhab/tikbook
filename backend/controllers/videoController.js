@@ -1,7 +1,8 @@
 const Video = require("../models/Video");
 const Notification = require("../models/Notification");
 const { sendNotificationToUser } = require("./pushNotificationController");
-const { uploadFileToStorage } = require("../services/firebaseService");
+// const { uploadFileToStorage } = require("../services/firebaseService"); // Sending to Cloudinary now
+const { uploadToCloudinary } = require("../services/cloudinaryService");
 const fs = require("fs");
 const path = require("path");
 
@@ -43,23 +44,28 @@ const createVideo = async (req, res) => {
       return res.status(400).json({ message: "الوصف مطلوب" });
     }
 
-    // Upload video to Firebase
+    // Upload video
     let videoUrl = videoFile.path;
     try {
-      const videoDest = `videos/${req.user._id}/${Date.now()}_${path.basename(
-        videoFile.originalname
-      )}`;
-      const uploadedUrl = await uploadFileToStorage(videoFile.path, videoDest);
-      if (uploadedUrl) {
-        videoUrl = uploadedUrl;
-        try {
-          fs.unlinkSync(videoFile.path);
-        } catch (e) {
-          console.error("Error deleting local video:", e);
-        }
+      if (process.env.CLOUDINARY_CLOUD_NAME) {
+        // Upload to Cloudinary
+        console.log("📤 Uploading video to Cloudinary...");
+        videoUrl = await uploadToCloudinary(videoFile.path, "videos", "video");
+        console.log("✅ Uploaded to Cloudinary:", videoUrl);
+      } else {
+        console.warn("⚠️ Cloudinary Config Missing! Using local file path.");
       }
+
+      // Cleanup local file
+      try {
+        if (fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+      } catch (e) {
+        console.error("Error deleting local video:", e);
+      }
+
     } catch (error) {
-      console.error("Video upload to Firebase failed:", error);
+      console.error("Video upload failed:", error);
+      return res.status(500).json({ message: "فشل رفع الفيديو" });
     }
 
     const videoData = {
@@ -76,23 +82,22 @@ const createVideo = async (req, res) => {
     if (soundFile) {
       let soundUrl = soundFile.path;
       try {
-        const soundDest = `sounds/${req.user._id}/${Date.now()}_${path.basename(
-          soundFile.originalname
-        )}`;
-        const uploadedSoundUrl = await uploadFileToStorage(
-          soundFile.path,
-          soundDest
-        );
-        if (uploadedSoundUrl) {
-          soundUrl = uploadedSoundUrl;
-          try {
-            fs.unlinkSync(soundFile.path);
-          } catch (e) {
-            console.error("Error deleting local sound:", e);
-          }
+        if (process.env.CLOUDINARY_CLOUD_NAME) {
+          // Upload to Cloudinary
+          console.log("📤 Uploading sound to Cloudinary...");
+          soundUrl = await uploadToCloudinary(soundFile.path, "sounds", "auto");
+        } else {
+          console.warn("⚠️ Cloudinary Config Missing for Sound!");
+        }
+
+        // Cleanup local file
+        try {
+          if (fs.existsSync(soundFile.path)) fs.unlinkSync(soundFile.path);
+        } catch (e) {
+          console.error("Error deleting local sound:", e);
         }
       } catch (error) {
-        console.error("Sound upload to Firebase failed:", error);
+        console.error("Sound upload failed:", error);
       }
 
       videoData.sound = {
