@@ -41,14 +41,17 @@ const videoUpload = multer({
         fileSize: 100 * 1024 * 1024, // 100MB limit for videos
     },
     fileFilter: function (req, file, cb) {
+        // Accept both video and image files in the "video" field
         if (file.fieldname === "video") {
-            const filetypes = /mp4|mov|avi|mkv|3gp/;
+            const filetypes = /mp4|mov|avi|mkv|3gp|jpeg|jpg|png|gif|webp/;
             const extname = filetypes.test(
                 path.extname(file.originalname).toLowerCase()
             );
-            const mimetype = file.mimetype.startsWith("video/");
-            if (extname || mimetype) return cb(null, true);
-            return cb(new Error("الملف يجب أن يكون فيديو!"));
+            const isVideo = file.mimetype.startsWith("video/");
+            const isImage = file.mimetype.startsWith("image/");
+
+            if (extname || isVideo || isImage) return cb(null, true);
+            return cb(new Error("الملف يجب أن يكون فيديو أو صورة!"));
         }
 
         if (file.fieldname === "sound") {

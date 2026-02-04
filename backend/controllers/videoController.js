@@ -74,7 +74,7 @@ const createVideo = async (req, res) => {
       console.log("   File path:", videoFile.path);
       console.log("   File size:", (videoFile.size / 1024 / 1024).toFixed(2), "MB");
 
-      videoUrl = await uploadToCloudinary(videoFile.path, "videos", "video");
+      videoUrl = await uploadToCloudinary(videoFile.path, "videos", "auto");
       console.log("✅ Uploaded to Cloudinary:", videoUrl);
 
       // Cleanup local file
