@@ -374,6 +374,16 @@ const HomeScreen = ({ navigation }) => {
       }
     };
 
+    const isImage = (url) => {
+      if (!url) return false;
+      const lowerUrl = url.toLowerCase();
+      // Check for common image extensions or Cloudinary resource type
+      return (
+        lowerUrl.match(/\.(jpeg|jpg|png|gif|webp)$/) ||
+        lowerUrl.includes("/image/upload/")
+      );
+    };
+
     return (
       <View style={styles.videoContainer}>
         <TouchableOpacity
@@ -381,18 +391,26 @@ const HomeScreen = ({ navigation }) => {
           onPress={handleDoubleTap}
           style={styles.videoTouchable}
         >
-          <Video
-            ref={videoRef}
-            source={
-              item.localSource ? item.localSource : { uri: item.videoUrl }
-            }
-            style={styles.video}
-            resizeMode="cover"
-            shouldPlay={isActive}
-            isLooping
-            isMuted={false}
-            useNativeControls={false}
-          />
+          {isImage(item.videoUrl) ? (
+            <Image
+              source={{ uri: item.videoUrl }}
+              style={styles.video}
+              resizeMode="cover"
+            />
+          ) : (
+            <Video
+              ref={videoRef}
+              source={
+                item.localSource ? item.localSource : { uri: item.videoUrl }
+              }
+              style={styles.video}
+              resizeMode="cover"
+              shouldPlay={isActive}
+              isLooping
+              isMuted={false}
+              useNativeControls={false}
+            />
+          )}
 
           {/* Double-tap heart animation */}
           <Animated.View
