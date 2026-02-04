@@ -9,7 +9,7 @@ import {
   Animated,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, {
@@ -30,6 +30,7 @@ const OnboardingScreen = ({ navigation }) => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const { userToken } = useContext(AuthContext);
   const slidesRef = useRef(null);
+  const insets = useSafeAreaInsets();
 
   const slides = [
     {
@@ -136,7 +137,10 @@ const OnboardingScreen = ({ navigation }) => {
 
       {/* Skip Button */}
       {currentIndex < slides.length - 1 && (
-        <TouchableOpacity style={styles.skipButton} onPress={skip}>
+        <TouchableOpacity
+          style={[styles.skipButton, { top: insets.top + 20 }]}
+          onPress={skip}
+        >
           <Text style={styles.skipText}>تخطي</Text>
         </TouchableOpacity>
       )}
@@ -163,7 +167,7 @@ const OnboardingScreen = ({ navigation }) => {
       />
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         {/* Pagination */}
         <View style={styles.pagination}>
           {slides.map((_, i) => {

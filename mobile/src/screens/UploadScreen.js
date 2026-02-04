@@ -71,14 +71,21 @@ export default function UploadScreen() {
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsEditing: false,
       quality: 1,
     });
 
     if (!result.canceled) {
-      // Handle selection
-      console.log(result.assets[0].uri);
+      const asset = result.assets[0];
+      const mediaType = asset.type === "video" ? "video" : "image";
+
+      console.log("Selected from gallery:", asset.uri, "Type:", mediaType);
+
+      // Navigate to PostEditScreen
+      navigation.navigate("PostEdit", {
+        mediaUri: asset.uri,
+        mediaType: mediaType,
+      });
     }
   };
 
@@ -87,10 +94,15 @@ export default function UploadScreen() {
       if (selectedMode === "photo") {
         try {
           const photo = await cameraRef.current.takePictureAsync();
-          console.log(photo.uri);
-          // Navigate to preview/edit screen
+          console.log("Photo captured:", photo.uri);
+
+          // Navigate to PostEditScreen
+          navigation.navigate("PostEdit", {
+            mediaUri: photo.uri,
+            mediaType: "image",
+          });
         } catch (e) {
-          console.error(e);
+          console.error("Photo capture error:", e);
         }
       } else {
         if (isRecording) {
@@ -100,15 +112,25 @@ export default function UploadScreen() {
           setIsRecording(true);
           try {
             const video = await cameraRef.current.recordAsync();
-            console.log(video.uri);
-            // Navigate to preview/edit screen
+            console.log("Video recorded:", video.uri);
+            setIsRecording(false);
+
+            // Navigate to PostEditScreen
+            navigation.navigate("PostEdit", {
+              mediaUri: video.uri,
+              mediaType: "video",
+            });
           } catch (e) {
-            console.error(e);
+            console.error("Video recording error:", e);
             setIsRecording(false);
           }
         }
       }
     }
+  };
+
+  const handleGoLive = () => {
+    navigation.navigate("Live", { isBroadcaster: true });
   };
 
   if (!permission || !micPermission) {
@@ -293,7 +315,9 @@ export default function UploadScreen() {
                 <Text style={[styles.bottomTabText, styles.activeBottomTab]}>
                   منشور
                 </Text>
-                <Text style={styles.bottomTabText}>LIVE</Text>
+                <TouchableOpacity onPress={handleGoLive}>
+                  <Text style={styles.bottomTabText}>LIVE</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

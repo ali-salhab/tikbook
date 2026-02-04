@@ -67,7 +67,53 @@ const uploadImageToCloudinary = async (filePath, folder, options = {}) => {
     }
 };
 
+/**
+ * Deletes a file from Cloudinary
+ * @param {string} publicId - Public ID of the file to delete
+ * @param {string} resourceType - 'video', 'image', or 'raw'
+ * @returns {Promise<object>} - Deletion result
+ */
+const deleteFromCloudinary = async (publicId, resourceType = "image") => {
+    try {
+        const result = await cloudinary.uploader.destroy(publicId, {
+            resource_type: resourceType,
+        });
+        console.log(`✅ Deleted from Cloudinary: ${publicId}`);
+        return result;
+    } catch (error) {
+        console.error("❌ Cloudinary Delete Error:", error);
+        throw error;
+    }
+};
+
+/**
+ * Extracts public ID from Cloudinary URL
+ * @param {string} url - Cloudinary URL
+ * @returns {string} - Public ID
+ */
+const getPublicIdFromUrl = (url) => {
+    try {
+        // Extract public ID from URL
+        // Example: https://res.cloudinary.com/cloud/video/upload/v123/folder/file.mp4
+        const parts = url.split("/");
+        const uploadIndex = parts.indexOf("upload");
+        if (uploadIndex === -1) return null;
+
+        // Get everything after "upload/v{version}/"
+        const pathParts = parts.slice(uploadIndex + 2);
+        const fullPath = pathParts.join("/");
+
+        // Remove file extension
+        return fullPath.replace(/\.[^/.]+$/, "");
+    } catch (error) {
+        console.error("Error extracting public ID:", error);
+        return null;
+    }
+};
+
 module.exports = {
     uploadToCloudinary,
     uploadImageToCloudinary,
+    deleteFromCloudinary,
+    getPublicIdFromUrl,
 };

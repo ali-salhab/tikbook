@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (e) {
       console.log("❌ Register error:", e.response?.data || e.message);
-      alert(e.response?.data?.message || "فشل إنشاء الحساب");
+      throw new Error(e.response?.data?.message || "فشل إنشاء الحساب");
     } finally {
       setIsLoading(false);
     }

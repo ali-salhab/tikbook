@@ -38,35 +38,52 @@ const HomeScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchVideos();
-    setRefreshing(false);
-  }, [fetchVideos]);
+  const [loading, setLoading] = useState(true);
 
   const fetchVideos = useCallback(async () => {
     try {
       console.log("📹 Fetching videos from:", `${BASE_URL}/videos`);
-      const res = await axios.get(`${BASE_URL}/videos`);
+      const res = await axios.get(`${BASE_URL}/videos`, { timeout: 10000 });
       console.log("✅ Videos fetched:", res.data.length);
 
+      if (!res.data || res.data.length === 0) {
+        console.log("⚠️ No videos found, using dummy data");
+        throw new Error("No videos available");
+      }
+
       // Map videos and ensure Cloudinary URLs are used as-is
-      const mappedVideos = res.data.map((video) => ({
-        ...video,
-        isLiked: false,
-        // Cloudinary URLs start with http/https, use them directly
-        // Only construct URL for local file paths (legacy support)
-        videoUrl: video.videoUrl.startsWith("http")
-          ? video.videoUrl
-          : `${BASE_URL.replace("/api", "")}/${video.videoUrl.replace(
-            /\\/g,
-            "/"
-          )}`,
-      }));
+      const mappedVideos = res.data
+        .map((video) => ({
+          ...video,
+          isLiked: false,
+          // Cloudinary URLs start with http/https, use them directly
+          // Only construct URL for local file paths (legacy support)
+          videoUrl: video.videoUrl.startsWith("http")
+            ? video.videoUrl
+            : `${BASE_URL.replace("/api", "")}/${video.videoUrl.replace(
+              /\\/g,
+              "/"
+            )}`,
+        }))
+        // Filter out videos that don't have valid Cloudinary URLs
+        .filter((video) => {
+          const isCloudinary = video.videoUrl.includes("cloudinary.com");
+          if (!isCloudinary) {
+            console.warn("⚠️ Skipping non-Cloudinary video:", video.videoUrl);
+          }
+          return isCloudinary;
+        });
+
+      console.log("📹 Valid Cloudinary videos:", mappedVideos.length);
+
+      if (mappedVideos.length === 0) {
+        console.log("⚠️ No Cloudinary videos found, using dummy data");
+        throw new Error("No valid Cloudinary videos");
+      }
 
       console.log("📹 First video URL:", mappedVideos[0]?.videoUrl);
       setVideos(mappedVideos);
+      setLoading(false);
     } catch (e) {
       console.error("❌ Error fetching videos:", e.message);
       console.log("Using local dummy videos");
@@ -178,8 +195,15 @@ const HomeScreen = ({ navigation }) => {
           isLiked: false,
         },
       ]);
+      setLoading(false);
     }
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchVideos();
+    setRefreshing(false);
+  }, [fetchVideos]);
 
   // Refresh videos when screen comes into focus
   useFocusEffect(
@@ -475,6 +499,19 @@ const HomeScreen = ({ navigation }) => {
     }
   }).current;
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <StatusBar
+          barStyle="light-content"
+          translucent
+          backgroundColor="transparent"
+        />
+        <Text style={styles.loadingText}>جاري التحميل...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -502,7 +539,7 @@ const HomeScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => navigation.navigate("Live")}
+          onPress={() => navigation.navigate("LiveStreamsList")}
         >
           <Ionicons name="tv-outline" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -726,6 +763,15 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
 

@@ -10,6 +10,7 @@ import RegisterScreen from "../screens/RegisterScreen";
 import OTPScreen from "../screens/OTPScreen";
 import HomeScreen from "../screens/HomeScreen";
 import UploadScreen from "../screens/UploadScreen";
+import PostEditScreen from "../screens/PostEditScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
@@ -18,6 +19,7 @@ import FriendsScreen from "../screens/FriendsScreen";
 import InboxScreen from "../screens/InboxScreen";
 import ChatScreen from "../screens/ChatScreen";
 import LiveScreen from "../screens/LiveScreen";
+import LiveStreamsListScreen from "../screens/LiveStreamsListScreen";
 import WalletScreen from "../screens/WalletScreen";
 import NewFollowersScreen from "../screens/NewFollowersScreen";
 import ActivityScreen from "../screens/ActivityScreen";
@@ -289,13 +291,15 @@ const AppNavigator = () => {
           ) : null}
           {userToken ? (
             <>
-              <Stack.Screen name="HomeTabs" component={HomeTabs} />
+              <Stack.Screen name="MainTabs" component={HomeTabs} />
               <Stack.Screen name="Chat" component={ChatScreen} />
               <Stack.Screen name="UserProfile" component={UserProfileScreen} />
               <Stack.Screen name="EditProfile" component={EditProfileScreen} />
               <Stack.Screen name="Users" component={UsersScreen} />
               <Stack.Screen name="Upload" component={UploadScreen} />
+              <Stack.Screen name="PostEdit" component={PostEditScreen} />
               <Stack.Screen name="Live" component={LiveScreen} />
+              <Stack.Screen name="LiveStreamsList" component={LiveStreamsListScreen} />
               <Stack.Screen name="Wallet" component={WalletScreen} />
               <Stack.Screen
                 name="NewFollowers"

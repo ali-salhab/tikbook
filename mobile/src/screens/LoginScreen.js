@@ -9,6 +9,7 @@ import {
   I18nManager,
   Alert,
 } from "react-native";
+import ErrorModal from "../components/ErrorModal";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import i18n from "../i18n";
@@ -25,6 +26,7 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState(null);
   const { login } = useContext(AuthContext);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -147,7 +149,13 @@ const LoginScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={[styles.button, (!email || !password) && styles.buttonDisabled]}
-        onPress={() => login(email, password)}
+        onPress={async () => {
+          try {
+            await login(email, password);
+          } catch (err) {
+            setError(err.message);
+          }
+        }}
         disabled={!email || !password}
       >
         <Text style={styles.buttonText}>{i18n.t("logIn")}</Text>
@@ -178,6 +186,12 @@ const LoginScreen = ({ navigation }) => {
           <Text style={styles.link}>{i18n.t("signUp")}</Text>
         </TouchableOpacity>
       </View>
+
+      <ErrorModal
+        visible={!!error}
+        message={error}
+        onClose={() => setError(null)}
+      />
     </View>
   );
 };

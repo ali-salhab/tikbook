@@ -44,28 +44,78 @@ const createVideo = async (req, res) => {
       return res.status(400).json({ message: "الوصف مطلوب" });
     }
 
+    // Validate file size (100MB limit)
+    const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+    if (videoFile.size > maxSize) {
+      return res.status(400).json({
+        message: "حجم الفيديو كبير جداً. الحد الأقصى 100 ميجابايت"
+      });
+    }
+
     // Upload video
-    let videoUrl = videoFile.path;
+    let videoUrl = null;
     try {
-      if (process.env.CLOUDINARY_CLOUD_NAME) {
-        // Upload to Cloudinary
-        console.log("📤 Uploading video to Cloudinary...");
-        videoUrl = await uploadToCloudinary(videoFile.path, "videos", "video");
-        console.log("✅ Uploaded to Cloudinary:", videoUrl);
-      } else {
-        console.warn("⚠️ Cloudinary Config Missing! Using local file path.");
+      // Check Cloudinary configuration
+      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        console.error("❌ Cloudinary credentials missing!");
+        throw new Error("Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.");
       }
+
+      // Check if credentials are still placeholders
+      if (process.env.CLOUDINARY_CLOUD_NAME.includes("your_") ||
+        process.env.CLOUDINARY_API_KEY.includes("your_") ||
+        process.env.CLOUDINARY_API_SECRET.includes("your_")) {
+        console.error("❌ Cloudinary credentials are placeholders!");
+        throw new Error("Cloudinary credentials are still placeholder values. Please update them with actual values from Cloudinary dashboard.");
+      }
+
+      // Upload to Cloudinary
+      console.log("📤 Uploading video to Cloudinary...");
+      console.log("   File path:", videoFile.path);
+      console.log("   File size:", (videoFile.size / 1024 / 1024).toFixed(2), "MB");
+
+      videoUrl = await uploadToCloudinary(videoFile.path, "videos", "video");
+      console.log("✅ Uploaded to Cloudinary:", videoUrl);
 
       // Cleanup local file
       try {
-        if (fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+        if (fs.existsSync(videoFile.path)) {
+          fs.unlinkSync(videoFile.path);
+          console.log("🗑️  Deleted local file:", videoFile.path);
+        }
       } catch (e) {
-        console.error("Error deleting local video:", e);
+        console.error("⚠️  Error deleting local video:", e.message);
       }
 
     } catch (error) {
-      console.error("Video upload failed:", error);
-      return res.status(500).json({ message: "فشل رفع الفيديو" });
+      console.error("❌ Video upload failed:", error);
+
+      // Cleanup local file on error
+      try {
+        if (videoFile.path && fs.existsSync(videoFile.path)) {
+          fs.unlinkSync(videoFile.path);
+        }
+      } catch (e) {
+        console.error("⚠️  Error cleaning up file:", e.message);
+      }
+
+      // Return specific error message
+      let errorMessage = "فشل رفع الفيديو";
+
+      if (error.message.includes("not configured")) {
+        errorMessage = "Cloudinary غير مكون. تحقق من إعدادات الخادم";
+      } else if (error.message.includes("placeholder")) {
+        errorMessage = "Cloudinary يحتاج إلى بيانات اعتماد حقيقية";
+      } else if (error.http_code === 401) {
+        errorMessage = "بيانات اعتماد Cloudinary غير صحيحة";
+      } else if (error.message.includes("timeout")) {
+        errorMessage = "انتهت مهلة الرفع. حاول مرة أخرى";
+      }
+
+      return res.status(500).json({
+        message: errorMessage,
+        error: error.message
+      });
     }
 
     const videoData = {
@@ -80,15 +130,16 @@ const createVideo = async (req, res) => {
 
     // Attach sound info if provided
     if (soundFile) {
-      let soundUrl = soundFile.path;
+      let soundUrl = null;
       try {
-        if (process.env.CLOUDINARY_CLOUD_NAME) {
-          // Upload to Cloudinary
-          console.log("📤 Uploading sound to Cloudinary...");
-          soundUrl = await uploadToCloudinary(soundFile.path, "sounds", "auto");
-        } else {
-          console.warn("⚠️ Cloudinary Config Missing for Sound!");
+        if (!process.env.CLOUDINARY_CLOUD_NAME) {
+          throw new Error("Cloudinary is not configured for sound upload.");
         }
+
+        // Upload to Cloudinary
+        console.log("📤 Uploading sound to Cloudinary...");
+        soundUrl = await uploadToCloudinary(soundFile.path, "sounds", "auto");
+        console.log("✅ Uploaded sound to Cloudinary:", soundUrl);
 
         // Cleanup local file
         try {
@@ -98,13 +149,16 @@ const createVideo = async (req, res) => {
         }
       } catch (error) {
         console.error("Sound upload failed:", error);
+        // Sound is optional, so we continue without it
       }
 
-      videoData.sound = {
-        name: soundFile.originalname || soundFile.filename,
-        url: soundUrl,
-        path: soundUrl, // Keep path same as url for consistency
-      };
+      if (soundUrl) {
+        videoData.sound = {
+          name: soundFile.originalname || soundFile.filename,
+          url: soundUrl,
+          path: soundUrl, // Keep path same as url for consistency
+        };
+      }
     }
 
     // Parse tags: accept JSON array or comma-separated string

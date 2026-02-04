@@ -10,6 +10,7 @@ import {
     Platform,
     ActivityIndicator,
 } from "react-native";
+import ErrorModal from "../components/ErrorModal";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
@@ -21,6 +22,7 @@ const OTPScreen = ({ route, navigation }) => {
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(60);
+    const [error, setError] = useState(null);
     const inputs = useRef([]);
 
     useEffect(() => {
@@ -49,7 +51,7 @@ const OTPScreen = ({ route, navigation }) => {
     const verifyOtp = async () => {
         const code = otp.join("");
         if (code.length < 6) {
-            Alert.alert("خطأ", "يرجى إدخال الرمز كاملاً");
+            setError("يرجى إدخال الرمز كاملاً");
             return;
         }
 
@@ -69,7 +71,7 @@ const OTPScreen = ({ route, navigation }) => {
             }
         } catch (e) {
             console.log("❌ Verification error:", e.response?.data || e.message);
-            Alert.alert("خطأ", "رمز التحقق غير صحيح أو منتهي الصلاحية");
+            setError(e.response?.data?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية");
         } finally {
             setLoading(false);
         }
