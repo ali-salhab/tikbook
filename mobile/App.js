@@ -7,7 +7,6 @@ import {
   requestUserPermission,
   notificationListener,
 } from "./src/services/notificationService";
-import messaging from "@react-native-firebase/messaging";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import Constants from "expo-constants";
@@ -57,11 +56,7 @@ export default function App() {
     }
   }, [appIsReady]);
 
-  useEffect(() => {
-    messaging()
-      .getToken()
-      .then((token) => console.log("MY FCM TOKEN:", token));
-  }, []);
+
 
   if (!appIsReady) {
     return null;

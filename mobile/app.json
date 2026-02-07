@@ -19,33 +19,22 @@
       "bundleIdentifier": "com.tikbook.com"
     },
     "android": {
-      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
       "package": "com.tikbook.com",
       "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
         "READ_MEDIA_AUDIO",
         "READ_MEDIA_VIDEO",
         "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO",
-        "READ_MEDIA_AUDIO",
-        "READ_MEDIA_VIDEO",
-        "READ_MEDIA_IMAGES",
-        "READ_EXTERNAL_STORAGE",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO"
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -60,14 +49,10 @@
           "icon": "./assets/icon.png",
           "color": "#FE2C55"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
-    "notification": {
-      "icon": "./assets/icon.png",
-      "color": "#FE2C55",
-      "androidMode": "default",
-      "androidCollapsedTitle": "TikBook"
-    },
     "extra": {
       "eas": {
         "projectId": "344bf77b-6b91-4396-9869-66d6238c83cc"

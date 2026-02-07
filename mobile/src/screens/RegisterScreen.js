@@ -56,14 +56,29 @@ const RegisterScreen = ({ navigation }) => {
     setLoading(true);
     try {
       console.log("📤 Sending OTP to:", email);
-      // Check if user exists first/send otp
-      const response = await axios.post(
-        `${BASE_URL}/auth/send-otp`,
-        { email },
-        { timeout: 20000 } // 20 second timeout
-      );
+      const sendRequest = async (base) =>
+        axios.post(
+          `${base}/auth/send-otp`,
+          { email },
+          { timeout: 20000 } // 20 second timeout
+        );
+
+      let response;
+      try {
+        response = await sendRequest(BASE_URL);
+      } catch (primaryErr) {
+        // Fallback to public Render URL if the computed BASE_URL isn't reachable (common on emulators / network issues)
+        console.log("⚠️ Primary OTP request failed, retrying with Render URL...", primaryErr.message);
+        response = await sendRequest("https://tikbook-1cdb.onrender.com/api");
+      }
 
       console.log("✅ OTP Sent:", response.data);
+      if (response.data.dev_otp) {
+        Alert.alert(
+          "وضع الاختبار",
+          `لم يتمكن الخادم من إرسال البريد عبر SMTP. رمز الاختبار: ${response.data.dev_otp}`
+        );
+      }
       navigation.navigate("OTP", {
         username,
         email,

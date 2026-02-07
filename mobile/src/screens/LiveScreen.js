@@ -12,16 +12,9 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  createAgoraRtcEngine,
-  ChannelProfileType,
-  ClientRoleType,
-  RtcSurfaceView,
-  VideoCanvas,
-} from "react-native-agora";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
-import { BASE_URL, AGORA_APP_ID } from "../config/api";
+import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { Camera } from "expo-camera";
 import { Audio } from "expo-av";
@@ -32,9 +25,7 @@ const LiveScreen = ({ navigation, route }) => {
   const { isBroadcaster, channelId: paramChannelId } = route.params || {};
   const { userToken, userInfo } = useContext(AuthContext);
 
-  const agoraEngineRef = useRef(null);
   const [isJoined, setIsJoined] = useState(false);
-  const [remoteUid, setRemoteUid] = useState(0);
   const [channelName, setChannelName] = useState(
     paramChannelId || userInfo?._id || "test_channel"
   );
@@ -60,158 +51,23 @@ const LiveScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    (async () => {
-      const success = await setupVideoSDKEngine();
-      if (success && !isBroadcaster) {
-        join();
-      }
-    })();
-    return () => {
-      leave();
-    };
+    // LiveKit migration stub: do nothing on mount for now
+    return () => {};
   }, []);
 
-  const setupVideoSDKEngine = async () => {
-    try {
-      console.log("Initializing Agora Engine...");
-      if (!AGORA_APP_ID) {
-        Alert.alert("Error", "Agora App ID is missing in config");
-        return;
-      }
-
-      const hasPermission = await getPermission();
-      if (!hasPermission) {
-        console.log("Permissions denied");
-        return false;
-      }
-
-      // Create the engine
-      agoraEngineRef.current = createAgoraRtcEngine();
-      const agoraEngine = agoraEngineRef.current;
-
-      agoraEngine.initialize({
-        appId: AGORA_APP_ID,
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
-      });
-
-      agoraEngine.enableVideo();
-      console.log("Agora Engine Initialized");
-
-      // Register event handlers
-      agoraEngine.registerEventHandler({
-        onJoinChannelSuccess: (_connection, uid) => {
-          console.log("Successfully joined channel:", uid);
-          setIsJoined(true);
-        },
-        onUserJoined: (_connection, uid) => {
-          console.log("Remote user joined:", uid);
-          setRemoteUid(uid);
-          setViewerCount((prev) => prev + 1);
-        },
-        onUserOffline: (_connection, uid) => {
-          console.log("Remote user left:", uid);
-          setRemoteUid(0);
-          setViewerCount((prev) => Math.max(0, prev - 1));
-        },
-        onError: (err, msg) => {
-          console.error("Agora Error:", err, msg);
-        },
-        onLocalVideoStateChanged: (source, state, error) => {
-          console.log("Local Video State:", state, "Error:", error);
-          // State 1: Stopped, 2: Capturing, 3: Encoding, 4: Failed
-        },
-        onConnectionStateChanged: (state, reason) => {
-          console.log("Connection State:", state, "Reason:", reason);
-          // State 3: Connected
-        },
-      });
-      return true;
-    } catch (e) {
-      console.error("Error setting up Agora:", e);
-      Alert.alert("Error", "Failed to setup video engine: " + e.message);
-      return false;
-    }
-  };
-
   const join = async () => {
-    console.log("Join button pressed");
-    if (isBroadcaster && !liveTitle.trim()) {
-      Alert.alert("Required", "Please enter a title for your live stream");
-      return;
-    }
-
-    try {
-      console.log("Fetching token...");
-      const role = isBroadcaster
-        ? ClientRoleType.ClientRoleBroadcaster
-        : ClientRoleType.ClientRoleAudience;
-
-      // Get Token from Backend
-      const response = await axios.post(
-        `${BASE_URL}/live/token`,
-        {
-          channelName: channelName,
-          role: isBroadcaster ? "publisher" : "subscriber",
-          title: liveTitle, // Send title to backend
-        },
-        { headers: { Authorization: `Bearer ${userToken}` } }
-      );
-
-      const { token } = response.data;
-      console.log("Token received:", token);
-
-      if (!agoraEngineRef.current) {
-        console.error("Agora engine not initialized");
-        Alert.alert("Error", "Video engine not ready");
-        return;
-      }
-
-      if (isBroadcaster) {
-        agoraEngineRef.current?.setClientRole(role);
-        agoraEngineRef.current?.startPreview();
-      }
-
-      const result = agoraEngineRef.current?.joinChannel(
-        token,
-        channelName,
-        0, // uid (0 = allow any)
-        {
-          clientRoleType: role,
-        }
-      );
-
-      console.log("Join Channel Result:", result);
-      if (result !== 0) {
-        Alert.alert("Error", "Failed to join channel, error code: " + result);
-      }
-    } catch (e) {
-      console.error("Error joining channel:", e);
-      Alert.alert("Error", "Failed to join live stream: " + e.message);
-    }
+    Alert.alert(
+      "Live streaming unavailable",
+      "The app has been switched to LiveKit. Streaming UI will return once LiveKit integration is completed."
+    );
   };
 
   const leave = async () => {
-    try {
-      agoraEngineRef.current?.leaveChannel();
-      if (isBroadcaster) {
-        agoraEngineRef.current?.stopPreview();
-        // Notify backend to end stream
-        await axios.post(
-          `${BASE_URL}/live/end`,
-          { channelName },
-          { headers: { Authorization: `Bearer ${userToken}` } }
-        );
-      }
-      setIsJoined(false);
-      setRemoteUid(0);
-      navigation.goBack();
-    } catch (e) {
-      console.error("Error leaving:", e);
-    }
+    navigation.goBack();
   };
 
   const switchCamera = () => {
-    agoraEngineRef.current?.switchCamera();
+    // No-op while LiveKit migration is pending
   };
 
   // --- UI RENDER ---
@@ -252,26 +108,17 @@ const LiveScreen = ({ navigation, route }) => {
   return (
     <View style={styles.container}>
       {/* Video Surface */}
-      {isBroadcaster ? (
-        <RtcSurfaceView
-          style={styles.fullScreenVideo}
-          canvas={{ uid: 0 }} // 0 = local user
-        />
-      ) : remoteUid !== 0 ? (
-        <RtcSurfaceView
-          style={styles.fullScreenVideo}
-          canvas={{ uid: remoteUid }}
-        />
-      ) : (
-        <View
-          style={[
-            styles.fullScreenVideo,
-            { justifyContent: "center", alignItems: "center" },
-          ]}
-        >
-          <Text style={{ color: "#FFF" }}>Waiting for host...</Text>
-        </View>
-      )}
+      <View
+        style={[
+          styles.fullScreenVideo,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ color: "#FFF", textAlign: "center", padding: 16 }}>
+          Live streaming UI is temporarily disabled while we migrate from Agora
+          to LiveKit. You can still edit titles and leave this screen.
+        </Text>
+      </View>
 
       {/* Overlay UI */}
       <SafeAreaView style={styles.overlayContainer}>

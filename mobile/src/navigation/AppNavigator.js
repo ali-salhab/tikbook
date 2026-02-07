@@ -277,7 +277,7 @@ const AppNavigator = () => {
     <VersionChecker>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {showOnboarding ? (
+          {showOnboarding && !userToken ? (
             <Stack.Screen
               name="Onboarding"
               component={OnboardingScreen}

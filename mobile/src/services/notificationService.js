@@ -1,7 +1,7 @@
-import messaging from "@react-native-firebase/messaging";
-import { PermissionsAndroid, Platform, Alert } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 import axios from "axios";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 
 // Configure Expo Notifications to show alerts in foreground
 Notifications.setNotificationHandler({
@@ -16,10 +16,13 @@ Notifications.setNotificationHandler({
 export const requestUserPermission = async () => {
   if (Platform.OS === "android") {
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus === "granted") {
         console.log("Notification permission granted");
         return true;
       } else {
@@ -32,98 +35,73 @@ export const requestUserPermission = async () => {
     }
   }
 
-  const authStatus = await messaging().requestPermission();
-  const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-  if (enabled) {
-    console.log("Authorization status:", authStatus);
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  if (existingStatus !== "granted") {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
   }
-  return enabled;
+  return finalStatus === "granted";
 };
 
-// Get FCM Token
-export const getFCMToken = async () => {
+// Get Push Token (Expo)
+export const getPushToken = async () => {
   try {
-    const token = await messaging().getToken();
-    console.log("FCM Token:", token);
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.easConfig?.projectId;
+    if (!projectId) {
+      console.error("Project ID not found in Constants");
+      return null;
+    }
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    console.log("Expo Push Token:", token);
     return token;
   } catch (error) {
-    console.error("Error getting FCM token:", error);
+    console.error("Error getting Expo Push token:", error);
     return null;
   }
 };
 
+// Legacy alias to avoid breaking other files immediately
+export const getFCMToken = getPushToken;
+
 // Save Token to Backend
-export const saveTokenToBackend = async (userToken, fcmToken, baseUrl) => {
-  if (!fcmToken || !userToken) return;
+export const saveTokenToBackend = async (userToken, pushToken, baseUrl) => {
+  if (!pushToken || !userToken) return;
   try {
     await axios.put(
-      `${baseUrl}/users/fcm-token`,
-      { token: fcmToken },
+      `${baseUrl}/users/fcm-token`, // Keeping endpoint name for now to avoid breaking backend
+      { token: pushToken },
       { headers: { Authorization: `Bearer ${userToken}` } }
     );
-    console.log("FCM Token saved to backend");
+    console.log("Push Token saved to backend");
   } catch (error) {
-    console.error("Error saving FCM token to backend:", error);
+    console.error("Error saving Push token to backend:", error);
   }
 };
 
 // Notification Listeners
 export const notificationListener = () => {
-  // Assume a message-notification contains a "type" property in the data payload of the screen to open
+  // Listener for foreground notifications
+  const foregroundSubscription = Notifications.addNotificationReceivedListener(notification => {
+    console.log("Foreground notification received:", notification);
+  });
 
-  try {
-    messaging().onNotificationOpenedApp((remoteMessage) => {
-      console.log(
-        "Notification caused app to open from background state:",
-        remoteMessage.notification
-      );
-      // navigation.navigate(remoteMessage.data.type);
-    });
+  // Listener for when a user taps on a notification
+  const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+    console.log("Notification tapped:", response);
+    // const data = response.notification.request.content.data;
+    // navigation.navigate(data.type);
+  });
 
-    // Check whether an initial notification is available
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage) => {
-        if (remoteMessage) {
-          console.log(
-            "Notification caused app to open from quit state:",
-            remoteMessage.notification
-          );
-          // setInitialRoute(remoteMessage.data.type); // e.g. "Settings"
-        }
-      });
-
-    // Foreground Message Handler
-    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
-      console.log("A new FCM message arrived!", JSON.stringify(remoteMessage));
-
-      const { title, body } = remoteMessage.notification || {};
-
-      if (title || body) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: title || "New Notification",
-            body: body || "",
-            data: remoteMessage.data,
-          },
-          trigger: null, // Show immediately
-        });
-      }
-    });
-
-    return unsubscribe;
-  } catch (error) {
-    console.log("Notification listener error:", error);
-    return () => {};
-  }
+  return () => {
+    foregroundSubscription.remove();
+    responseSubscription.remove();
+  };
 };
 
-// Background Message Handler
+// Background Message Handler (Expo handles this internally when configured)
 export const setBackgroundMessageHandler = () => {
-  messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log("Message handled in the background!", remoteMessage);
-  });
+  console.log("Background message handler setup (managed by expo-notifications)");
 };

@@ -4,13 +4,13 @@
 
 const API_CONFIGS = {
   // For Android Emulator
-  ANDROID_EMULATOR: "http://10.0.2.2:5000/api",
+  // Use remote API even on emulator to avoid localhost issues
+  ANDROID_EMULATOR: "https://tikbook-1cdb.onrender.com/api",
 
   // For iOS Simulator
   IOS_SIMULATOR: "http://localhost:5000/api",
 
   // For Physical Device (Using ADB Reverse with VPN)
-  // PHYSICAL_DEVICE: "http://12.0.0.168:5000/api",
   PHYSICAL_DEVICE: "https://tikbook-1cdb.onrender.com/api",
 
   // For Production

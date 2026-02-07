@@ -1,7 +1,5 @@
 const nodemailer = require('nodemailer');
 
-// Create transporter
-// Create transporter
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
@@ -14,7 +12,8 @@ const transporter = nodemailer.createTransport({
     },
     tls: {
         rejectUnauthorized: false // Helps avoid some self-signed cert issues on free tiers
-    }
+    },
+    pool: true,
 });
 
 // Generate 6-digit OTP
@@ -26,7 +25,7 @@ const generateOTP = () => {
 const sendOTPEmail = async (email, otp) => {
     try {
         const mailOptions = {
-            from: process.env.EMAIL_USER || 'TikBook <noreply@tikbook.com>',
+            from: process.env.EMAIL_USER, // Gmail requires the from to match the authenticated user
             to: email,
             subject: 'رمز التحقق - TikBook',
             html: `
@@ -53,11 +52,19 @@ const sendOTPEmail = async (email, otp) => {
             `,
         };
 
+        // Optional: verify connection once before sending (helps surface auth errors clearly)
+        await transporter.verify();
+
         const info = await transporter.sendMail(mailOptions);
         console.log('OTP email sent:', info.messageId);
         return true;
     } catch (error) {
-        console.error('Error sending OTP email:', error);
+        console.error('Error sending OTP email:', {
+            message: error.message,
+            code: error.code,
+            command: error.command,
+            response: error.response,
+        });
         return false;
     }
 };
