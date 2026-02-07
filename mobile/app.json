@@ -19,7 +19,7 @@
       "bundleIdentifier": "com.tikbook.com"
     },
     "android": {
-      "newArchEnabled": false,
+      "newArchEnabled": true,
 
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
