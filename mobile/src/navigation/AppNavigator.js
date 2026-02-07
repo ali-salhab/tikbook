@@ -121,7 +121,7 @@ const HomeTabs = () => {
               name={focused ? "people" : "people-outline"}
               size={26}
               color={color}
-              badgeCount={13}
+              badgeCount={0}
             />
           ),
         }}
@@ -193,7 +193,7 @@ const HomeTabs = () => {
               }
               size={24}
               color={color}
-              badgeCount={92}
+              badgeCount={0}
             />
           ),
         }}

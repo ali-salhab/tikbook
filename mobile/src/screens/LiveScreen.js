@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useContext } from "react";
+import React, { useRef, useState, useEffect, useContext, useMemo } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { Camera } from "expo-camera";
 import { Audio } from "expo-av";
+import { Room, Track, createLocalTracks } from "livekit-client";
+import { useRoom, VideoView } from "livekit-react-native";
 
 const { width, height } = Dimensions.get("window");
 
@@ -26,13 +28,22 @@ const LiveScreen = ({ navigation, route }) => {
   const { userToken, userInfo } = useContext(AuthContext);
 
   const [isJoined, setIsJoined] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [channelName, setChannelName] = useState(
     paramChannelId || userInfo?._id || "test_channel"
   );
   const [liveTitle, setLiveTitle] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [messageText, setMessageText] = useState("");
   const [viewerCount, setViewerCount] = useState(0);
+  const [roomUrl, setRoomUrl] = useState("");
+  const [roomToken, setRoomToken] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const roomRef = useRef(null);
+  if (!roomRef.current) {
+    roomRef.current = new Room();
+  }
+  const room = roomRef.current;
+  const { participants } = useRoom(room);
 
   // Permissions
   const getPermission = async () => {
@@ -51,24 +62,114 @@ const LiveScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    // LiveKit migration stub: do nothing on mount for now
-    return () => {};
+    return () => {
+      leave();
+    };
   }, []);
 
   const join = async () => {
-    Alert.alert(
-      "Live streaming unavailable",
-      "The app has been switched to LiveKit. Streaming UI will return once LiveKit integration is completed."
-    );
+    if (isConnecting || isJoined) return;
+    if (isBroadcaster && !liveTitle.trim()) {
+      Alert.alert("Required", "Please enter a title for your live stream");
+      return;
+    }
+
+    try {
+      const hasPermission = await getPermission();
+      if (!hasPermission) {
+        return;
+      }
+
+      setIsConnecting(true);
+      setErrorMessage("");
+
+      const response = await axios.post(
+        `${BASE_URL}/livekit/token`,
+        {
+          channelName,
+          role: isBroadcaster ? "publisher" : "subscriber",
+          title: liveTitle,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+
+      const { token, url } = response.data;
+      setRoomToken(token);
+      setRoomUrl(url);
+
+      await room.connect(url, token, { autoSubscribe: true });
+
+      if (isBroadcaster) {
+        const tracks = await createLocalTracks({ audio: true, video: true });
+        for (const track of tracks) {
+          await room.localParticipant.publishTrack(track);
+        }
+      }
+
+      setIsJoined(true);
+    } catch (e) {
+      console.error("Error joining LiveKit:", e);
+      setErrorMessage(e.response?.data?.message || e.message);
+      Alert.alert("Error", "Failed to join live stream: " + (e.message || ""));
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const leave = async () => {
-    navigation.goBack();
+    try {
+      if (room) {
+        room.disconnect();
+      }
+      if (isBroadcaster) {
+        await axios.post(
+          `${BASE_URL}/livekit/end`,
+          { channelName },
+          { headers: { Authorization: `Bearer ${userToken}` } }
+        );
+      }
+    } catch (e) {
+      console.error("Error leaving LiveKit:", e);
+    } finally {
+      setIsJoined(false);
+      navigation.goBack();
+    }
   };
 
   const switchCamera = () => {
-    // No-op while LiveKit migration is pending
+    try {
+      const trackPub = room.localParticipant
+        ?.getTrack(Track.Source.Camera);
+      const videoTrack = trackPub?.videoTrack;
+      if (videoTrack?.switchCamera) {
+        videoTrack.switchCamera();
+      }
+    } catch (e) {
+      console.error("Error switching camera:", e);
+    }
   };
+
+  const remoteParticipant = useMemo(() => {
+    if (!participants || participants.length === 0) return null;
+    // Prefer a participant with a camera track
+    return (
+      participants.find((p) =>
+        p.getTrack(Track.Source.Camera)?.videoTrack
+      ) || participants[0]
+    );
+  }, [participants]);
+
+  const remoteVideoTrack =
+    remoteParticipant?.getTrack(Track.Source.Camera)?.videoTrack || null;
+
+  const localVideoTrack =
+    room?.localParticipant?.getTrack(Track.Source.Camera)?.videoTrack || null;
+
+  useEffect(() => {
+    const count =
+      (room?.localParticipant ? 1 : 0) + (participants?.length || 0);
+    setViewerCount(count);
+  }, [participants, room?.localParticipant]);
 
   // --- UI RENDER ---
 
@@ -97,7 +198,9 @@ const LiveScreen = ({ navigation, route }) => {
           <View style={{ flex: 1 }} />
 
           <TouchableOpacity style={styles.goLiveButton} onPress={join}>
-            <Text style={styles.goLiveText}>Go LIVE</Text>
+            <Text style={styles.goLiveText}>
+              {isConnecting ? "Connecting..." : "Go LIVE"}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -108,17 +211,37 @@ const LiveScreen = ({ navigation, route }) => {
   return (
     <View style={styles.container}>
       {/* Video Surface */}
-      <View
-        style={[
-          styles.fullScreenVideo,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <Text style={{ color: "#FFF", textAlign: "center", padding: 16 }}>
-          Live streaming UI is temporarily disabled while we migrate from Agora
-          to LiveKit. You can still edit titles and leave this screen.
-        </Text>
-      </View>
+      {isBroadcaster ? (
+        localVideoTrack ? (
+          <VideoView
+            style={styles.fullScreenVideo}
+            videoTrack={localVideoTrack}
+          />
+        ) : (
+          <View
+            style={[
+              styles.fullScreenVideo,
+              { justifyContent: "center", alignItems: "center" },
+            ]}
+          >
+            <Text style={{ color: "#FFF" }}>Starting camera...</Text>
+          </View>
+        )
+      ) : remoteVideoTrack ? (
+        <VideoView
+          style={styles.fullScreenVideo}
+          videoTrack={remoteVideoTrack}
+        />
+      ) : (
+        <View
+          style={[
+            styles.fullScreenVideo,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <Text style={{ color: "#FFF" }}>Waiting for host...</Text>
+        </View>
+      )}
 
       {/* Overlay UI */}
       <SafeAreaView style={styles.overlayContainer}>
@@ -141,14 +264,7 @@ const LiveScreen = ({ navigation, route }) => {
         {/* Bottom Area */}
         <View style={styles.bottomArea}>
           {/* Comments Area (Mock) */}
-          <ScrollView style={styles.commentsList}>
-            <Text style={styles.comment}>
-              <Text style={styles.commentUser}>User1:</Text> Hello!
-            </Text>
-            <Text style={styles.comment}>
-              <Text style={styles.commentUser}>User2:</Text> Cool stream 🔥
-            </Text>
-          </ScrollView>
+          <ScrollView style={styles.commentsList} />
 
           {/* Controls */}
           <View style={styles.controlsRow}>

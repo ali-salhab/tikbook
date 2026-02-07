@@ -18,7 +18,7 @@ import Constants from "expo-constants";
 
 const OTPScreen = ({ route, navigation }) => {
     const { username, email, password } = route.params;
-    const { BASE_URL, register } = useContext(AuthContext);
+    const { BASE_URL, register, login } = useContext(AuthContext);
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(60);
@@ -66,8 +66,19 @@ const OTPScreen = ({ route, navigation }) => {
             if (res.data.verified) {
                 console.log("✅ OTP Verified, creating account...");
                 // Call register from context to complete sign up and login
-                await register(username, email, password, code);
-                // Note: register function in AuthContext handles navigation/state update
+                try {
+                    await register(username, email, password, code);
+                    // Note: register function in AuthContext handles navigation/state update
+                } catch (registerError) {
+                    const msg = registerError?.message || "";
+                    if (msg.includes("المستخدم موجود بالفعل")) {
+                        // If user already exists, fall back to login
+                        console.log("ℹ️ User exists, attempting login instead...");
+                        await login(email, password);
+                    } else {
+                        throw registerError;
+                    }
+                }
             }
         } catch (e) {
             console.log("❌ Verification error:", e.response?.data || e.message);

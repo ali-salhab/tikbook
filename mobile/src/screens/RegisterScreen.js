@@ -60,7 +60,7 @@ const RegisterScreen = ({ navigation }) => {
         axios.post(
           `${base}/auth/send-otp`,
           { email },
-          { timeout: 20000 } // 20 second timeout
+          { timeout: 60000 } // 60 second timeout for cold starts
         );
 
       let response;
@@ -87,6 +87,8 @@ const RegisterScreen = ({ navigation }) => {
 
     } catch (error) {
       console.log("❌ OTP Send Request Failed:", error.message);
+      console.log("❌ OTP Error code:", error.code);
+      console.log("❌ OTP Error details:", error.toJSON?.());
       if (error.response) {
         console.log("❌ Server Error Data:", error.response.data);
         console.log("❌ Server Status:", error.response.status);

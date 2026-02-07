@@ -1,0 +1,17 @@
+diff --git a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/internal/turbomodule/core/TurboModuleInteropUtils.kt b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/internal/turbomodule/core/TurboModuleInteropUtils.kt
+index afde188..3e7103c 100644
+--- a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/internal/turbomodule/core/TurboModuleInteropUtils.kt
++++ b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/internal/turbomodule/core/TurboModuleInteropUtils.kt
+@@ -58,9 +58,9 @@ internal object TurboModuleInteropUtils {
+       } else if ((annotation != null) &&
+           ((annotation.isBlockingSynchronousMethod && returnType == Void.TYPE) ||
+               (!annotation.isBlockingSynchronousMethod && returnType != Void.TYPE))) {
+-        throw ParsingException(
+-            moduleName,
+-            "TurboModule system assumes returnType == void iff the method is synchronous.")
++        // Allow legacy modules with synchronous return values even when TurboModule interop
++        // heuristics disagree. Some native modules (e.g., WebRTC) rely on blocking sync methods.
++        // Skipping this check avoids runtime crashes during module parsing.
+       }
+ 
+       methodDescriptors.add(

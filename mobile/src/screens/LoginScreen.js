@@ -16,6 +16,7 @@ import i18n from "../i18n";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import * as Facebook from "expo-auth-session/providers/facebook";
+import axios from "axios";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,7 +28,8 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
-  const { login } = useContext(AuthContext);
+  const { login, BASE_URL } = useContext(AuthContext);
+  const [isTesting, setIsTesting] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Google OAuth
@@ -70,7 +72,7 @@ const LoginScreen = ({ navigation }) => {
     if (!isOAuthConfigured) {
       Alert.alert(
         "قريباً",
-        "تسجيل الدخول عبر Google سيكون متاحاً قريباً.\n\nللاستخدام الآن:\nEmail: ahmed@tikbook.com\nPassword: 123456"
+        "تسجيل الدخول عبر Google سيكون متاحاً قريباً."
       );
       return;
     }
@@ -85,7 +87,7 @@ const LoginScreen = ({ navigation }) => {
     if (!isOAuthConfigured) {
       Alert.alert(
         "قريباً",
-        "تسجيل الدخول عبر Facebook سيكون متاحاً قريباً.\n\nللاستخدام الآن:\nEmail: ahmed@tikbook.com\nPassword: 123456"
+        "تسجيل الدخول عبر Facebook سيكون متاحاً قريباً."
       );
       return;
     }
@@ -103,6 +105,27 @@ const LoginScreen = ({ navigation }) => {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  const testBackendConnection = async () => {
+    setIsTesting(true);
+    try {
+      const url = `${BASE_URL}/version`;
+      const res = await axios.get(url, { timeout: 10000 });
+      Alert.alert("نجح", `تم الاتصال بالخادم (${res.status})`);
+    } catch (err) {
+      if (err.response) {
+        // Any HTTP response means the backend is reachable
+        Alert.alert(
+          "تم الاتصال",
+          `الخادم متاح (الحالة: ${err.response.status})`
+        );
+      } else {
+        Alert.alert("خطأ", "تعذر الاتصال بالخادم. تحقق من الشبكة.");
+      }
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -159,6 +182,16 @@ const LoginScreen = ({ navigation }) => {
         disabled={!email || !password}
       >
         <Text style={styles.buttonText}>{i18n.t("logIn")}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.testButton, isTesting && styles.buttonDisabled]}
+        onPress={testBackendConnection}
+        disabled={isTesting}
+      >
+        <Text style={styles.testButtonText}>
+          {isTesting ? "جاري الاختبار..." : "اختبار الاتصال بالخادم"}
+        </Text>
       </TouchableOpacity>
 
       {/* Social Login */}
@@ -302,6 +335,21 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 17,
     fontWeight: "bold",
+  },
+  testButton: {
+    backgroundColor: "#1a1a1a",
+    height: 46,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  testButtonText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   footer: {
     flexDirection: "row",

@@ -5,7 +5,7 @@ import { Alert } from "react-native";
 class VersionService {
   async checkVersion(baseUrl) {
     try {
-      const response = await axios.get(`${baseUrl}/version`);
+      const response = await axios.get(`${baseUrl}/version`, { timeout: 10000 });
       const { currentVersion, minVersion, updateRequired, updateUrl, message } =
         response.data;
 

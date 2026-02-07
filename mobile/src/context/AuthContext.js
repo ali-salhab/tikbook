@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
           password,
         },
         {
-          timeout: 10000, // 10 second timeout
+          timeout: 60000, // 60 second timeout for cold starts
         }
       );
       console.log("✅ Login successful:", res.data);
@@ -140,12 +140,18 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     try {
       console.log("📝 Attempting registration...", { username, email });
-      const res = await axios.post(`${BASE_URL}/auth/register`, {
-        username,
-        email,
-        password,
-        otp,
-      });
+      const res = await axios.post(
+        `${BASE_URL}/auth/register`,
+        {
+          username,
+          email,
+          password,
+          otp,
+        },
+        {
+          timeout: 60000, // 60 second timeout for cold starts
+        }
+      );
       console.log("✅ Registration successful:", res.data);
       setUserInfo(res.data);
       setUserToken(res.data.token);
@@ -165,20 +171,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const dummyLogin = async () => {
-    setIsLoading(true);
-    const dummyUser = {
-      _id: "guest123",
-      username: "ضيف",
-      email: "guest@tikbook.com",
-      token: "dummy-token-for-testing",
-    };
-    setUserInfo(dummyUser);
-    setUserToken(dummyUser.token);
-    await AsyncStorage.setItem("userToken", dummyUser.token);
-    await AsyncStorage.setItem("userInfo", JSON.stringify(dummyUser));
-    setIsLoading(false);
-  };
 
   const logout = async () => {
     setIsLoading(true);
@@ -195,7 +187,6 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         register,
-        dummyLogin,
         isLoading,
         userToken,
         userInfo,

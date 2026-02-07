@@ -34,12 +34,20 @@ const LiveStreamsListScreen = ({ navigation }) => {
     const fetchActiveStreams = async () => {
         try {
             console.log("📡 Fetching active streams...");
-            const response = await axios.get(`${BASE_URL}/live/active`, {
+            const response = await axios.get(`${BASE_URL}/livekit/rooms`, {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
 
             console.log("✅ Active streams:", response.data.length);
-            setStreams(response.data);
+            // Normalize LiveKit rooms into the expected UI shape
+            const normalized = (response.data || []).map((room) => ({
+                _id: room.sid || room.name,
+                channelName: room.name,
+                title: room.metadata || "Live Stream",
+                viewers: room.numParticipants || 0,
+                user: room?.metadata?.user || null,
+            }));
+            setStreams(normalized);
         } catch (error) {
             console.error("❌ Error fetching streams:", error);
             // Show empty state instead of error
