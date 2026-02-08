@@ -135,11 +135,15 @@ const LoginScreen = ({ navigation }) => {
     }
     setIsSendingTestEmail(true);
     try {
-      await axios.post(`${BASE_URL}/auth/send-otp`, { email });
-      Alert.alert("تم الإرسال", "تم إرسال بريد تجريبي إلى هذا البريد.");
+      const res = await axios.post(`${BASE_URL}/auth/send-otp`, { email });
+      const message = res?.data?.message || "تم إرسال بريد تجريبي إلى هذا البريد.";
+      if (res?.data?.dev_otp) {
+        setError(`${message}\nOTP: ${res.data.dev_otp}`);
+        return;
+      }
+      Alert.alert("تم الإرسال", message);
     } catch (err) {
-      Alert.alert(
-        "خطأ",
+      setError(
         err.response?.data?.message || "تعذر إرسال البريد التجريبي."
       );
     } finally {

@@ -27,11 +27,20 @@ const sendOTP = async (req, res) => {
     await OTP.create({ email, otp });
 
     // Send OTP email
-    const emailSent = await sendOTPEmail(email, otp);
+    const emailResult = await sendOTPEmail(email, otp);
 
-    if (emailSent) {
+    if (emailResult.ok) {
       res.json({ message: "تم إرسال رمز التحقق إلى بريدك الإلكتروني" });
     } else {
+      if (emailResult.error) {
+        console.error("SMTP failure details:", {
+          message: emailResult.error.message,
+          code: emailResult.error.code,
+          command: emailResult.error.command,
+          response: emailResult.error.response,
+          responseCode: emailResult.error.responseCode,
+        });
+      }
       // Fallback for Render/Gmail blocking: Return OTP in response for testing
       console.log("⚠️ Email failed, returning OTP in response for testing:", otp);
       res.json({
