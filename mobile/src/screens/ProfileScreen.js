@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useCallback } from "react";
+import React, { useContext, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -20,71 +20,35 @@ const { width } = Dimensions.get("window");
 const COLUMN_WIDTH = width / 3;
 
 const ProfileScreen = ({ navigation }) => {
-  const { logout, userInfo, userToken, BASE_URL } = useContext(AuthContext);
+  const { logout, userInfo, BASE_URL } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
-  const [repostVideos, setRepostVideos] = useState([]);
-  const [savedVideos, setSavedVideos] = useState([]);
-  const [likedVideos, setLikedVideos] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     try {
       const res = await axios.get(`${BASE_URL}/users/${userInfo._id}`);
-      setProfile(res.data);
 
       // Fetch user's videos
       const videosRes = await axios.get(
-        `${BASE_URL}/videos?userId=${userInfo._id}`
+        `${BASE_URL}/videos/user/${userInfo._id}`
       );
-      setVideos(videosRes.data);
+      const userVideos = videosRes.data || [];
+      const likesCount = userVideos.reduce(
+        (sum, v) => sum + (v.likes?.length || 0),
+        0
+      );
+
+      setProfile({
+        ...res.data,
+        likesCount,
+      });
+      setVideos(userVideos);
     } catch (e) {
       console.log("❌ Error fetching profile:", e.message);
-      // Use enhanced dummy data if fetch fails
-      setProfile({
-        _id: userInfo?._id || "1",
-        username: "abu_adam337",
-        displayName: "ابو ادم",
-        email: userInfo?.email || "user@tikbook.com",
-        followers: Array(2420).fill(1),
-        following: Array(34).fill(1),
-        bio: "صلو على خير خلق الله ❤️",
-        profileImage: null,
-        videosCount: 12,
-        likesCount: 3176,
-      });
-
-      // Mock videos to match screenshot
-      setVideos([
-        { _id: "1", views: "16 ألف", pinned: true, image: null },
-        { _id: "2", views: "15.5 ألف", pinned: true, image: null },
-        { _id: "3", views: "18.9 ألف", pinned: true, image: null },
-        { _id: "4", views: "13.7 ألف", pinned: false, image: null },
-        { _id: "5", views: "19.6 ألف", pinned: false, image: null },
-        { _id: "6", views: "12.4 ألف", pinned: false, image: null },
-      ]);
-
-      setRepostVideos([
-        { _id: "r1", date: "26 يونيو", image: null },
-        { _id: "r2", date: "16 أغسطس", image: null },
-        { _id: "r3", date: "28 أغسطس", image: null },
-        { _id: "r4", date: "22 يونيو", image: null },
-        { _id: "r5", date: "22 يونيو", image: null },
-        { _id: "r6", date: "22 يونيو", image: null },
-      ]);
-
-      setSavedVideos([
-        { _id: "s1", views: "18.7 ألف", image: null },
-        { _id: "s2", views: "0", image: null },
-        { _id: "s3", views: "0", image: null },
-      ]);
-
-      setLikedVideos([
-        { _id: "l1", views: "9.4 مليون", image: null },
-        { _id: "l2", views: "172", image: null },
-        { _id: "l3", views: "91.4 ألف", image: null },
-      ]);
+      setProfile(null);
+      setVideos([]);
     }
   }, [userInfo, BASE_URL]);
 
@@ -96,7 +60,6 @@ const ProfileScreen = ({ navigation }) => {
         // Default profile when not logged in
         setProfile({
           username: "guest",
-          displayName: "ضيف",
           email: "guest@tikbook.com",
           followers: [],
           following: [],
@@ -126,34 +89,48 @@ const ProfileScreen = ({ navigation }) => {
     switch (activeTab) {
       case "videos":
         return (
-          <View style={styles.gridContainer}>
-            {videos.map((video, index) => (
-              <TouchableOpacity
-                key={video._id}
-                style={styles.gridItem}
-                onPress={() =>
-                  navigation.navigate("Home", { videoId: video._id })
-                }
-              >
-                <Image
-                  source={{
-                    uri: `https://picsum.photos/200/300?random=${index}`,
-                  }}
-                  style={styles.gridImage}
-                  resizeMode="cover"
-                />
-                {video.pinned && (
-                  <View style={styles.pinnedBadge}>
-                    <Text style={styles.pinnedText}>مثبت</Text>
+          videos.length ? (
+            <View style={styles.gridContainer}>
+              {videos.map((video) => (
+                <TouchableOpacity
+                  key={video._id}
+                  style={styles.gridItem}
+                  onPress={() =>
+                    navigation.navigate("Home", { videoId: video._id })
+                  }
+                >
+                  {video.thumbnailUrl || video.thumbnail || video.coverUrl ? (
+                    <Image
+                      source={{
+                        uri:
+                          video.thumbnailUrl ||
+                          video.thumbnail ||
+                          video.coverUrl,
+                      }}
+                      style={styles.gridImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.gridPlaceholder} />
+                  )}
+                  <View style={styles.viewsContainer}>
+                    <Ionicons name="play-outline" size={14} color="#FFF" />
+                    <Text style={styles.viewsText}>
+                      {video.views?.toString() || "0"}
+                    </Text>
                   </View>
-                )}
-                <View style={styles.viewsContainer}>
-                  <Ionicons name="play-outline" size={14} color="#FFF" />
-                  <Text style={styles.viewsText}>{video.views || "10k"}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <Ionicons name="videocam-off-outline" size={64} color="#ccc" />
+              <Text style={styles.emptyStateTitle}>لا توجد فيديوهات</Text>
+              <Text style={styles.emptyStateSubtitle}>
+                ابدأ بنشر أول فيديو لعرضه هنا.
+              </Text>
+            </View>
+          )
         );
       case "private":
         return (
@@ -167,103 +144,32 @@ const ProfileScreen = ({ navigation }) => {
         );
       case "repost":
         return (
-          <View style={styles.gridContainer}>
-            {repostVideos.map((video, index) => (
-              <TouchableOpacity key={video._id} style={styles.gridItem}>
-                <Image
-                  source={{
-                    uri: `https://picsum.photos/200/300?random=${index + 10}`,
-                  }}
-                  style={styles.gridImage}
-                  resizeMode="cover"
-                />
-                {video.date && (
-                  <View style={styles.dateOverlay}>
-                    <Text style={styles.dateText}>{video.date}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="repeat" size={64} color="#ccc" />
+            <Text style={styles.emptyStateTitle}>لا توجد إعادة نشر</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              أي فيديو تعيد نشره سيظهر هنا.
+            </Text>
           </View>
         );
       case "saved":
         return (
-          <View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.subTabsContainer}
-            >
-              {[
-                "المنشورات",
-                "المجموعات",
-                "الأصوات",
-                "المؤثرات",
-                "المنتجات",
-                "الأماكن",
-              ].map((tab, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.subTab, index === 0 && styles.activeSubTab]}
-                >
-                  <Text
-                    style={[
-                      styles.subTabText,
-                      index === 0 && styles.activeSubTabText,
-                    ]}
-                  >
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <View style={styles.gridContainer}>
-              {savedVideos.map((video, index) => (
-                <TouchableOpacity key={video._id} style={styles.gridItem}>
-                  <Image
-                    source={{
-                      uri: `https://picsum.photos/200/300?random=${index + 20}`,
-                    }}
-                    style={styles.gridImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.viewsContainer}>
-                    <Ionicons name="play-outline" size={14} color="#FFF" />
-                    <Text style={styles.viewsText}>{video.views || "0"}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="bookmark-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyStateTitle}>لا توجد محفوظات</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              احفظ فيديوهاتك المفضلة لتظهر هنا.
+            </Text>
           </View>
         );
       case "liked":
         return (
-          <View>
-            <View style={styles.privacyBanner}>
-              <Text style={styles.privacyBannerText}>
-                يمكنك جعل مقاطع الفيديو التي أعجبت بها عامة من إعدادات الخصوصية
-              </Text>
-              <TouchableOpacity>
-                <Ionicons name="close" size={18} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.gridContainer}>
-              {likedVideos.map((video, index) => (
-                <TouchableOpacity key={video._id} style={styles.gridItem}>
-                  <Image
-                    source={{
-                      uri: `https://picsum.photos/200/300?random=${index + 30}`,
-                    }}
-                    style={styles.gridImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.viewsContainer}>
-                    <Ionicons name="play-outline" size={14} color="#FFF" />
-                    <Text style={styles.viewsText}>{video.views || "0"}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="heart-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyStateTitle}>لا توجد إعجابات</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              الفيديوهات التي تعجبك ستظهر هنا.
+            </Text>
           </View>
         );
       default:
@@ -291,16 +197,8 @@ const ProfileScreen = ({ navigation }) => {
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
-            {profile?.displayName || "User"}
+            {profile?.username || "User"}
           </Text>
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>4</Text>
-          </View>
-          {/* Tooltip Bubble */}
-          <View style={styles.tooltipBubble}>
-            <Text style={styles.tooltipText}>أخبرنا ماذا حدث</Text>
-            <View style={styles.tooltipArrow} />
-          </View>
         </View>
 
         <View style={styles.headerRight}>
@@ -316,12 +214,16 @@ const ProfileScreen = ({ navigation }) => {
           {/* Avatar */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Image
-                source={{
-                  uri: "https://ui-avatars.com/api/?name=Abu+Adam&background=random&size=200",
-                }}
-                style={styles.avatarImage}
-              />
+              {profile?.profileImage ? (
+                <Image
+                  source={{ uri: profile.profileImage }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Ionicons name="person" size={40} color="#999" />
+                </View>
+              )}
             </View>
             <TouchableOpacity style={styles.addStoryButton}>
               <Ionicons name="add" size={20} color="#FFF" />
@@ -331,35 +233,32 @@ const ProfileScreen = ({ navigation }) => {
           {/* Name & Username */}
           <View style={styles.nameContainer}>
             <Text style={styles.displayName}>
-              {profile?.displayName || "ابو ادم"}
+              {profile?.username || "User"}
             </Text>
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedText}>+9</Text>
-            </View>
           </View>
           <Text style={styles.username}>
-            @{profile?.username || "abu_adam337"}
+            @{profile?.username || "user"}
           </Text>
 
           {/* Stats */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {profile?.likesCount || 3176}
+                {profile?.likesCount || 0}
               </Text>
               <Text style={styles.statLabel}>تسجيلات الإعجاب</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {profile?.followers?.length || 2420}
+                {profile?.followersCount || profile?.followers?.length || 0}
               </Text>
               <Text style={styles.statLabel}>متابعين</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {profile?.following?.length || 34}
+                {profile?.followingCount || profile?.following?.length || 0}
               </Text>
               <Text style={styles.statLabel}>أتابعه</Text>
             </View>
@@ -367,7 +266,7 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Bio */}
           <Text style={styles.bio}>
-            {profile?.bio || "صلو على خير خلق الله ❤️"}
+            {profile?.bio || "لا توجد نبذة بعد"}
           </Text>
 
           {/* Action Buttons */}
@@ -376,7 +275,10 @@ const ProfileScreen = ({ navigation }) => {
               <Ionicons name="log-out-outline" size={20} color="#FE2C55" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.editProfileButton}>
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={() => navigation.navigate("EditProfile", { profile })}
+            >
               <Feather name="edit-2" size={20} color="#000" />
             </TouchableOpacity>
 
@@ -446,59 +348,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
   },
-  headerBadge: {
-    position: "absolute",
-    top: -5,
-    right: -15,
-    backgroundColor: "#FE2C55",
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    height: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerBadgeText: {
-    color: "#FFF",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  tooltipBubble: {
-    position: "absolute",
-    top: 30,
-    backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-    width: 120,
-    alignItems: "center",
-  },
-  tooltipText: {
-    fontSize: 12,
-    color: "#333",
-    textAlign: "center",
-  },
-  tooltipArrow: {
-    position: "absolute",
-    top: -6,
-    left: "50%",
-    marginLeft: -6,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 6,
-    borderStyle: "solid",
-    backgroundColor: "transparent",
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: "#FFF",
-  },
   iconButton: {
     padding: 4,
   },
@@ -521,6 +370,12 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: "100%",
     height: "100%",
+  },
+  avatarFallback: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   addStoryButton: {
     position: "absolute",
@@ -545,17 +400,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#000",
-  },
-  verifiedBadge: {
-    backgroundColor: "#FE2C55",
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-  },
-  verifiedText: {
-    color: "#FFF",
-    fontSize: 10,
-    fontWeight: "bold",
   },
   username: {
     fontSize: 14,
@@ -660,24 +504,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#333",
     position: "relative",
   },
-  gridImage: {
+  gridPlaceholder: {
     width: "100%",
     height: "100%",
     backgroundColor: "#555",
-  },
-  pinnedBadge: {
-    position: "absolute",
-    top: 6,
-    left: 6,
-    backgroundColor: "#FE2C55",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 2,
-  },
-  pinnedText: {
-    color: "#FFF",
-    fontSize: 10,
-    fontWeight: "bold",
   },
   viewsContainer: {
     position: "absolute",
@@ -710,59 +540,6 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     lineHeight: 20,
-  },
-  dateOverlay: {
-    position: "absolute",
-    bottom: 6,
-    left: 6,
-  },
-  dateText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "600",
-    textShadowColor: "rgba(0, 0, 0, 0.5)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  subTabsContainer: {
-    flexDirection: "row",
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  subTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    marginRight: 8,
-    borderRadius: 16,
-    backgroundColor: "#f1f1f1",
-  },
-  activeSubTab: {
-    backgroundColor: "#333",
-  },
-  subTabText: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
-  },
-  activeSubTabText: {
-    color: "#FFF",
-  },
-  privacyBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    backgroundColor: "#f8f8f8",
-    margin: 1,
-  },
-  privacyBannerText: {
-    fontSize: 12,
-    color: "#666",
-    flex: 1,
-    textAlign: "right",
-    marginRight: 10,
   },
 });
 

@@ -93,7 +93,10 @@ const HomeTabs = () => {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: "600",
-          marginTop: -4,
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginBottom: 4,
         },
       }}
     >

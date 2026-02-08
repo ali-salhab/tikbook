@@ -119,18 +119,17 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.log("❌ Login error:", e.response?.data || e.message);
       if (e.code === "ECONNABORTED" || e.message.includes("timeout")) {
-        alert("انتهت المهلة. تحقق من اتصال الشبكة والتأكد من تشغيل الخادم.");
+        throw new Error("انتهت المهلة. تحقق من اتصال الشبكة والتأكد من تشغيل الخادم.");
       } else if (e.message === "Network Error") {
-        alert(
+        throw new Error(
           "خطأ في الاتصال. تأكد من:\n1. تشغيل الخادم على المنفذ 5000\n2. اتصال الهاتف والكمبيوتر بنفس الشبكة\n3. عنوان IP صحيح: " +
           BASE_URL
         );
-      } else {
-        alert(
-          e.response?.data?.message ||
-          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور"
-        );
       }
+      throw new Error(
+        e.response?.data?.message ||
+          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور"
+      );
     } finally {
       setIsLoading(false);
     }

@@ -41,6 +41,28 @@ const EditProfileScreen = ({ navigation, route }) => {
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
   const [showTwitterInput, setShowTwitterInput] = useState(false);
 
+  const uploadProfileImage = async (imageUri) => {
+    const formData = new FormData();
+    const filename = imageUri.split("/").pop() || `profile_${Date.now()}.jpg`;
+    const ext = filename.split(".").pop() || "jpg";
+    const mimeType = `image/${ext === "jpg" ? "jpeg" : ext}`;
+
+    formData.append("image", {
+      uri: imageUri,
+      name: filename,
+      type: mimeType,
+    });
+
+    const res = await axios.put(`${BASE_URL}/users/profile/image`, formData, {
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return res.data?.profileImage || null;
+  };
+
   const pickImage = async () => {
     try {
       const { status } =
@@ -52,14 +74,24 @@ const EditProfileScreen = ({ navigation, route }) => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.IMAGE,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
 
       if (!result.canceled) {
-        setProfileImage(result.assets[0].uri);
+        const localUri = result.assets[0].uri;
+        setProfileImage(localUri);
+        try {
+          const uploadedUrl = await uploadProfileImage(localUri);
+          if (uploadedUrl) {
+            setProfileImage(uploadedUrl);
+          }
+        } catch (err) {
+          console.log("Error uploading profile image:", err);
+          Alert.alert("خطأ", "فشل رفع الصورة. حاول مرة أخرى.");
+        }
       }
     } catch (error) {
       console.log("Error picking image:", error);

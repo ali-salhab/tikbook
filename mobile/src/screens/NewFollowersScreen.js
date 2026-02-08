@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  FlatList as RNFlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NewFollowersScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+
   // Mock data based on screenshot
   const [followers, setFollowers] = useState([
     {
@@ -63,6 +67,13 @@ const NewFollowersScreen = ({ navigation }) => {
     },
   ]);
 
+  const suggested = [
+    { id: "s1", username: "user_a", reason: "مقترح لك" },
+    { id: "s2", username: "user_b", reason: "مشتركين" },
+    { id: "s3", username: "user_c", reason: "نشط الآن" },
+    { id: "s4", username: "user_d", reason: "الأصدقاء" },
+  ];
+
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
       <View style={styles.userInfo}>
@@ -102,7 +113,7 @@ const NewFollowersScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-forward" size={24} color="#000" />
@@ -115,12 +126,27 @@ const NewFollowersScreen = ({ navigation }) => {
         data={followers}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
       />
 
       <View style={styles.suggestedSection}>
         <Text style={styles.suggestedTitle}>حسابات مقترحة ⓘ</Text>
-        {/* Horizontal list of suggested accounts would go here */}
+        <RNFlatList
+          data={suggested}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.suggestedList}
+          renderItem={({ item }) => (
+            <View style={styles.suggestedCard}>
+              <View style={styles.suggestedAvatar}>
+                <Ionicons name="person" size={20} color="#CCC" />
+              </View>
+              <Text style={styles.suggestedName}>{item.username}</Text>
+              <Text style={styles.suggestedReason}>{item.reason}</Text>
+            </View>
+          )}
+        />
       </View>
     </SafeAreaView>
   );
@@ -130,6 +156,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFF",
+    paddingTop: 0,
   },
   header: {
     flexDirection: "row",
@@ -138,10 +165,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 0.5,
     borderBottomColor: "#E5E5E5",
+    paddingTop: 12,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "bold",
+    textAlign: "center",
+    flex: 1,
   },
   listContent: {
     padding: 16,
@@ -151,11 +181,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 20,
+    gap: 12,
   },
   userInfo: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginRight: 8,
   },
   avatarContainer: {
     position: "relative",
@@ -192,22 +224,22 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 15,
     marginBottom: 4,
-    textAlign: "left",
+    textAlign: "right",
   },
   actionText: {
     color: "#666",
     fontSize: 13,
-    textAlign: "left",
+    textAlign: "right",
   },
   time: {
     color: "#999",
   },
   followButton: {
     backgroundColor: "#FE2C55",
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 4,
-    minWidth: 100,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 110,
     alignItems: "center",
   },
   followingButton: {
@@ -222,13 +254,46 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   suggestedSection: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    paddingTop: 8,
   },
   suggestedTitle: {
     fontSize: 15,
     fontWeight: "bold",
     color: "#666",
-    textAlign: "left",
+    textAlign: "right",
+  },
+  suggestedList: {
+    paddingVertical: 12,
+    gap: 12,
+  },
+  suggestedCard: {
+    width: 110,
+    backgroundColor: "#F7F7F7",
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+  },
+  suggestedAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#EAEAEA",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  suggestedName: {
+    fontWeight: "700",
+    fontSize: 13,
+    color: "#111",
+  },
+  suggestedReason: {
+    fontSize: 11,
+    color: "#777",
+    marginTop: 4,
+    textAlign: "center",
   },
 });
 

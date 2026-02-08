@@ -6,19 +6,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  I18nManager,
-  Alert,
 } from "react-native";
 import ErrorModal from "../components/ErrorModal";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import i18n from "../i18n";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import * as Facebook from "expo-auth-session/providers/facebook";
-import axios from "axios";
-
-WebBrowser.maybeCompleteAuthSession();
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -28,76 +20,8 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
-  const { login, BASE_URL } = useContext(AuthContext);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const { login } = useContext(AuthContext);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Google OAuth
-  const [googleRequest, googleResponse, googlePromptAsync] =
-    Google.useAuthRequest({
-      expoClientId: "YOUR_EXPO_CLIENT_ID",
-      iosClientId: "YOUR_IOS_CLIENT_ID",
-      androidClientId: "YOUR_ANDROID_CLIENT_ID",
-      webClientId: "YOUR_WEB_CLIENT_ID",
-    });
-
-  // Facebook OAuth
-  const [facebookRequest, facebookResponse, facebookPromptAsync] =
-    Facebook.useAuthRequest({
-      clientId: "YOUR_FACEBOOK_APP_ID",
-    });
-
-  // Temporary test handlers until OAuth is configured
-  const isOAuthConfigured = false; // Set to true when you add real credentials
-
-  useEffect(() => {
-    if (googleResponse?.type === "success") {
-      const { authentication } = googleResponse;
-      Alert.alert("نجح", "تم تسجيل الدخول عبر Google بنجاح!");
-      // Here you would send the token to your backend
-      // await login(authentication.accessToken, 'google');
-    }
-  }, [googleResponse]);
-
-  useEffect(() => {
-    if (facebookResponse?.type === "success") {
-      const { authentication } = facebookResponse;
-      Alert.alert("نجح", "تم تسجيل الدخول عبر Facebook بنجاح!");
-      // Here you would send the token to your backend
-      // await login(authentication.accessToken, 'facebook');
-    }
-  }, [facebookResponse]);
-
-  const handleGoogleLogin = async () => {
-    if (!isOAuthConfigured) {
-      Alert.alert(
-        "قريباً",
-        "تسجيل الدخول عبر Google سيكون متاحاً قريباً."
-      );
-      return;
-    }
-    try {
-      await googlePromptAsync();
-    } catch (error) {
-      Alert.alert("خطأ", "فشل تسجيل الدخول عبر Google");
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    if (!isOAuthConfigured) {
-      Alert.alert(
-        "قريباً",
-        "تسجيل الدخول عبر Facebook سيكون متاحاً قريباً."
-      );
-      return;
-    }
-    try {
-      await facebookPromptAsync();
-    } catch (error) {
-      Alert.alert("خطأ", "فشل تسجيل الدخول عبر Facebook");
-    }
-  };
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -106,50 +30,6 @@ const LoginScreen = ({ navigation }) => {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
-
-  const testBackendConnection = async () => {
-    setIsTesting(true);
-    try {
-      const url = `${BASE_URL}/version`;
-      const res = await axios.get(url, { timeout: 10000 });
-      Alert.alert("نجح", `تم الاتصال بالخادم (${res.status})`);
-    } catch (err) {
-      if (err.response) {
-        // Any HTTP response means the backend is reachable
-        Alert.alert(
-          "تم الاتصال",
-          `الخادم متاح (الحالة: ${err.response.status})`
-        );
-      } else {
-        Alert.alert("خطأ", "تعذر الاتصال بالخادم. تحقق من الشبكة.");
-      }
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const sendTestEmail = async () => {
-    if (!email) {
-      Alert.alert("مطلوب", "الرجاء إدخال البريد الإلكتروني أولاً");
-      return;
-    }
-    setIsSendingTestEmail(true);
-    try {
-      const res = await axios.post(`${BASE_URL}/auth/send-otp`, { email });
-      const message = res?.data?.message || "تم إرسال بريد تجريبي إلى هذا البريد.";
-      if (res?.data?.dev_otp) {
-        setError(`${message}\nOTP: ${res.data.dev_otp}`);
-        return;
-      }
-      Alert.alert("تم الإرسال", message);
-    } catch (err) {
-      setError(
-        err.response?.data?.message || "تعذر إرسال البريد التجريبي."
-      );
-    } finally {
-      setIsSendingTestEmail(false);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -209,43 +89,11 @@ const LoginScreen = ({ navigation }) => {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.testButton, isTesting && styles.buttonDisabled]}
-        onPress={testBackendConnection}
-        disabled={isTesting}
+        style={styles.forgotButton}
+        onPress={() => setError("ميزة استعادة كلمة المرور قيد الإعداد.")}
       >
-        <Text style={styles.testButtonText}>
-          {isTesting ? "جاري الاختبار..." : "اختبار الاتصال بالخادم"}
-        </Text>
+        <Text style={styles.forgotText}>نسيت كلمة المرور؟</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.testButton, (isSendingTestEmail || !email) && styles.buttonDisabled]}
-        onPress={sendTestEmail}
-        disabled={isSendingTestEmail || !email}
-      >
-        <Text style={styles.testButtonText}>
-          {isSendingTestEmail ? "جارٍ الإرسال..." : "إرسال بريد تجريبي"}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Social Login */}
-      <View style={styles.socialContainer}>
-        <Text style={styles.socialTitle}>أو سجل الدخول عبر</Text>
-        <View style={styles.oauthContainer}>
-          <TouchableOpacity
-            style={styles.oauthButton}
-            onPress={handleGoogleLogin}
-          >
-            <Ionicons name="logo-google" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.oauthButton}
-            onPress={handleFacebookLogin}
-          >
-            <Ionicons name="logo-facebook" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>{i18n.t("dontHaveAccount")}</Text>
@@ -295,30 +143,6 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 16,
     position: "relative",
-  },
-  socialContainer: {
-    marginTop: 30,
-    alignItems: "center",
-  },
-  socialTitle: {
-    color: "#999",
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  oauthContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 16,
-  },
-  oauthButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1.5,
-    borderColor: "#333",
-    justifyContent: "center",
-    alignItems: "center",
   },
   divider: {
     flexDirection: "row",
@@ -370,20 +194,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "bold",
   },
-  testButton: {
-    backgroundColor: "#1a1a1a",
-    height: 46,
-    borderRadius: 8,
-    justifyContent: "center",
+  forgotButton: {
+    marginTop: 12,
     alignItems: "center",
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#333",
   },
-  testButtonText: {
-    color: "#FFF",
+  forgotText: {
+    color: "#999",
     fontSize: 14,
-    fontWeight: "600",
   },
   footer: {
     flexDirection: "row",

@@ -20,6 +20,7 @@
     },
     "android": {
       "newArchEnabled": true,
+      "googleServicesFile": "./google-services.json",
 
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

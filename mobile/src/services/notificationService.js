@@ -54,9 +54,20 @@ export const getPushToken = async () => {
       console.error("Project ID not found in Constants");
       return null;
     }
-    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    console.log("Expo Push Token:", token);
-    return token;
+    // Retry a few times in case of transient network failure
+    let lastError = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        console.log("Expo Push Token:", token);
+        return token;
+      } catch (err) {
+        lastError = err;
+        console.warn(`Expo token fetch failed (attempt ${i + 1}/3):`, err?.message || err);
+        await new Promise((res) => setTimeout(res, 800 * (i + 1)));
+      }
+    }
+    throw lastError || new Error("Expo token fetch failed after retries");
   } catch (error) {
     console.error("Error getting Expo Push token:", error);
     return null;
