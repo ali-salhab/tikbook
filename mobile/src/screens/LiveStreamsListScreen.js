@@ -34,18 +34,19 @@ const LiveStreamsListScreen = ({ navigation }) => {
     const fetchActiveStreams = async () => {
         try {
             console.log("📡 Fetching active streams...");
-            const response = await axios.get(`${BASE_URL}/livekit/rooms`, {
+            const response = await axios.get(`${BASE_URL}/live/active`, {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
 
-            console.log("✅ Active streams:", response.data.length);
-            // Normalize LiveKit rooms into the expected UI shape
-            const normalized = (response.data || []).map((room) => ({
-                _id: room.sid || room.name,
-                channelName: room.name,
-                title: room.metadata || "Live Stream",
-                viewers: room.numParticipants || 0,
-                user: room?.metadata?.user || null,
+            const data = response.data || [];
+            console.log("✅ Active streams:", data.length);
+            // Normalize Agora live records into UI shape
+            const normalized = data.map((stream) => ({
+                _id: stream._id || stream.channelName,
+                channelName: stream.channelName,
+                title: stream.title || "Live Stream",
+                viewers: stream.viewers || 0,
+                user: stream.user || null,
             }));
             setStreams(normalized);
         } catch (error) {

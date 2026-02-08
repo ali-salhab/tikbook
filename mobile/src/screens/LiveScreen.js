@@ -9,17 +9,21 @@ import {
   Platform,
   ScrollView,
   Dimensions,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  createAgoraRtcEngine,
+  ChannelProfileType,
+  ClientRoleType,
+  RtcSurfaceView,
+  VideoEncoderConfiguration,
+} from "react-native-agora";
 import { AuthContext } from "../context/AuthContext";
-import { BASE_URL } from "../config/api";
+import { BASE_URL, AGORA_APP_ID } from "../config/api";
 import axios from "axios";
 import { Camera } from "expo-camera";
 import { Audio } from "expo-av";
-import { Room, Track, createLocalTracks } from "livekit-client";
-import { useRoom, VideoView } from "livekit-react-native";
 
 const { width, height } = Dimensions.get("window");
 
@@ -34,22 +38,61 @@ const LiveScreen = ({ navigation, route }) => {
   );
   const [liveTitle, setLiveTitle] = useState("");
   const [viewerCount, setViewerCount] = useState(0);
-  const [roomUrl, setRoomUrl] = useState("");
-  const [roomToken, setRoomToken] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [remoteUsers, setRemoteUsers] = useState([]);
+  const [localUid, setLocalUid] = useState(null);
 
-  const roomRef = useRef(null);
-  if (!roomRef.current) {
-    roomRef.current = new Room();
-  }
-  const room = roomRef.current;
-  const { participants } = useRoom(room);
+  const engineRef = useRef(null);
+
+  const ensureEngine = () => {
+    if (engineRef.current) return engineRef.current;
+
+    const engine = createAgoraRtcEngine();
+    engine.initialize({
+      appId: AGORA_APP_ID,
+      channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+    });
+    engine.enableVideo();
+    engine.enableAudio();
+    engine.setVideoEncoderConfiguration(
+      new VideoEncoderConfiguration({
+        dimensions: { width: 720, height: 1280 },
+        frameRate: 24,
+      })
+    );
+
+    engine.registerEventHandler({
+      onJoinChannelSuccess: (_, uid) => {
+        setLocalUid(uid);
+        setIsJoined(true);
+      },
+      onUserJoined: (_, uid) => {
+        setRemoteUsers((prev) => {
+          if (prev.includes(uid)) return prev;
+          return [...prev, uid];
+        });
+      },
+      onUserOffline: (_, uid) => {
+        setRemoteUsers((prev) => prev.filter((id) => id !== uid));
+      },
+      onLeaveChannel: () => {
+        setRemoteUsers([]);
+        setLocalUid(null);
+        setIsJoined(false);
+      },
+      onError: (err) => {
+        console.error("Agora error", err);
+      },
+    });
+
+    engineRef.current = engine;
+    return engine;
+  };
 
   // Permissions
   const getPermission = async () => {
     if (Platform.OS === "android") {
-      const { status: cameraStatus } =
-        await Camera.requestCameraPermissionsAsync();
+      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
       const { status: audioStatus } = await Audio.requestPermissionsAsync();
 
       if (cameraStatus !== "granted" || audioStatus !== "granted") {
@@ -62,10 +105,24 @@ const LiveScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
+    ensureEngine();
     return () => {
-      leave();
+      leave(true);
+      const engine = engineRef.current;
+      if (engine) {
+        engine.stopPreview();
+        engine.unregisterEventHandler();
+        engine.release();
+        engineRef.current = null;
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const count = (isBroadcaster ? 1 : 0) + (isBroadcaster ? remoteUsers.length : remoteUsers.length + 1);
+    setViewerCount(count);
+  }, [remoteUsers, isBroadcaster]);
 
   const join = async () => {
     if (isConnecting || isJoined) return;
@@ -76,15 +133,13 @@ const LiveScreen = ({ navigation, route }) => {
 
     try {
       const hasPermission = await getPermission();
-      if (!hasPermission) {
-        return;
-      }
+      if (!hasPermission) return;
 
       setIsConnecting(true);
       setErrorMessage("");
 
       const response = await axios.post(
-        `${BASE_URL}/livekit/token`,
+        `${BASE_URL}/live/token`,
         {
           channelName,
           role: isBroadcaster ? "publisher" : "subscriber",
@@ -93,83 +148,80 @@ const LiveScreen = ({ navigation, route }) => {
         { headers: { Authorization: `Bearer ${userToken}` } }
       );
 
-      const { token, url } = response.data;
-      setRoomToken(token);
-      setRoomUrl(url);
+      const { token, channelName: serverChannelName } = response.data;
+      const finalChannel = serverChannelName || channelName;
+      setChannelName(finalChannel);
 
-      await room.connect(url, token, { autoSubscribe: true });
+      const engine = ensureEngine();
+      engine.setChannelProfile(ChannelProfileType.ChannelProfileLiveBroadcasting);
+      engine.setClientRole(
+        isBroadcaster
+          ? ClientRoleType.ClientRoleBroadcaster
+          : ClientRoleType.ClientRoleAudience
+      );
 
       if (isBroadcaster) {
-        const tracks = await createLocalTracks({ audio: true, video: true });
-        for (const track of tracks) {
-          await room.localParticipant.publishTrack(track);
-        }
+        engine.startPreview();
       }
 
-      setIsJoined(true);
+      engine.joinChannel(
+        token,
+        finalChannel,
+        0,
+        {
+          channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+          clientRoleType: isBroadcaster
+            ? ClientRoleType.ClientRoleBroadcaster
+            : ClientRoleType.ClientRoleAudience,
+        }
+      );
     } catch (e) {
-      console.error("Error joining LiveKit:", e);
+      console.error("Error joining Agora:", e);
       setErrorMessage(e.response?.data?.message || e.message);
       Alert.alert("Error", "Failed to join live stream: " + (e.message || ""));
+      setIsJoined(false);
     } finally {
       setIsConnecting(false);
     }
   };
 
-  const leave = async () => {
+  const leave = async (skipApi = false) => {
     try {
-      if (room) {
-        room.disconnect();
+      const engine = engineRef.current;
+      if (engine) {
+        engine.leaveChannel();
+        engine.stopPreview();
       }
-      if (isBroadcaster) {
+      if (isBroadcaster && !skipApi) {
         await axios.post(
-          `${BASE_URL}/livekit/end`,
+          `${BASE_URL}/live/end`,
           { channelName },
           { headers: { Authorization: `Bearer ${userToken}` } }
         );
       }
     } catch (e) {
-      console.error("Error leaving LiveKit:", e);
+      console.error("Error leaving Agora:", e);
     } finally {
+      setRemoteUsers([]);
       setIsJoined(false);
-      navigation.goBack();
+      if (!skipApi) {
+        navigation.goBack();
+      }
     }
   };
 
   const switchCamera = () => {
     try {
-      const trackPub = room.localParticipant
-        ?.getTrack(Track.Source.Camera);
-      const videoTrack = trackPub?.videoTrack;
-      if (videoTrack?.switchCamera) {
-        videoTrack.switchCamera();
+      const engine = engineRef.current;
+      if (engine) {
+        engine.switchCamera();
       }
     } catch (e) {
       console.error("Error switching camera:", e);
     }
   };
 
-  const remoteParticipant = useMemo(() => {
-    if (!participants || participants.length === 0) return null;
-    // Prefer a participant with a camera track
-    return (
-      participants.find((p) =>
-        p.getTrack(Track.Source.Camera)?.videoTrack
-      ) || participants[0]
-    );
-  }, [participants]);
-
-  const remoteVideoTrack =
-    remoteParticipant?.getTrack(Track.Source.Camera)?.videoTrack || null;
-
-  const localVideoTrack =
-    room?.localParticipant?.getTrack(Track.Source.Camera)?.videoTrack || null;
-
-  useEffect(() => {
-    const count =
-      (room?.localParticipant ? 1 : 0) + (participants?.length || 0);
-    setViewerCount(count);
-  }, [participants, room?.localParticipant]);
+  const remoteUid = useMemo(() => remoteUsers[0] ?? null, [remoteUsers]);
 
   // --- UI RENDER ---
 
@@ -212,10 +264,10 @@ const LiveScreen = ({ navigation, route }) => {
     <View style={styles.container}>
       {/* Video Surface */}
       {isBroadcaster ? (
-        localVideoTrack ? (
-          <VideoView
+        isJoined ? (
+          <RtcSurfaceView
             style={styles.fullScreenVideo}
-            videoTrack={localVideoTrack}
+            canvas={{ uid: localUid ?? 0 }}
           />
         ) : (
           <View
@@ -227,10 +279,10 @@ const LiveScreen = ({ navigation, route }) => {
             <Text style={{ color: "#FFF" }}>Starting camera...</Text>
           </View>
         )
-      ) : remoteVideoTrack ? (
-        <VideoView
+      ) : remoteUid ? (
+        <RtcSurfaceView
           style={styles.fullScreenVideo}
-          videoTrack={remoteVideoTrack}
+          canvas={{ uid: remoteUid }}
         />
       ) : (
         <View

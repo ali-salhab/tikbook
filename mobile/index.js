@@ -1,7 +1,6 @@
 import { registerRootComponent } from "expo";
 import { setBackgroundMessageHandler } from "./src/services/notificationService";
 import { I18nManager } from "react-native";
-import { registerGlobals } from "livekit-react-native";
 
 // Force RTL
 try {
@@ -14,9 +13,6 @@ try {
 }
 
 import App from "./App";
-
-// LiveKit WebRTC globals
-registerGlobals();
 
 // Register background handler
 setBackgroundMessageHandler();
