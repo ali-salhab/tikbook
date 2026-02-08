@@ -30,6 +30,7 @@ const LoginScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const { login, BASE_URL } = useContext(AuthContext);
   const [isTesting, setIsTesting] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Google OAuth
@@ -127,6 +128,25 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
+  const sendTestEmail = async () => {
+    if (!email) {
+      Alert.alert("مطلوب", "الرجاء إدخال البريد الإلكتروني أولاً");
+      return;
+    }
+    setIsSendingTestEmail(true);
+    try {
+      await axios.post(`${BASE_URL}/auth/send-otp`, { email });
+      Alert.alert("تم الإرسال", "تم إرسال بريد تجريبي إلى هذا البريد.");
+    } catch (err) {
+      Alert.alert(
+        "خطأ",
+        err.response?.data?.message || "تعذر إرسال البريد التجريبي."
+      );
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Animated.View style={{ opacity: fadeAnim, alignItems: "center" }}>
@@ -191,6 +211,16 @@ const LoginScreen = ({ navigation }) => {
       >
         <Text style={styles.testButtonText}>
           {isTesting ? "جاري الاختبار..." : "اختبار الاتصال بالخادم"}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.testButton, (isSendingTestEmail || !email) && styles.buttonDisabled]}
+        onPress={sendTestEmail}
+        disabled={isSendingTestEmail || !email}
+      >
+        <Text style={styles.testButtonText}>
+          {isSendingTestEmail ? "جارٍ الإرسال..." : "إرسال بريد تجريبي"}
         </Text>
       </TouchableOpacity>
 
