@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   createAgoraRtcEngine,
@@ -31,6 +32,7 @@ const { width, height } = Dimensions.get("window");
 const LiveScreen = ({ navigation, route }) => {
   const { isBroadcaster, channelId: paramChannelId } = route.params || {};
   const { userToken, userInfo } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
 
   const [isJoined, setIsJoined] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -384,7 +386,7 @@ const LiveScreen = ({ navigation, route }) => {
         </View>
 
         {/* Left vertical icons */}
-        <View style={styles.leftRail} pointerEvents="box-none">
+        <View style={[styles.leftRail, { paddingBottom: insets.bottom + 24 }]} pointerEvents="box-none">
           <View style={styles.lockButton}>
             <Ionicons name="lock-closed" size={22} color="#fff" />
             <Text style={styles.lockCount}>{remoteUsers.length}</Text>
@@ -454,7 +456,13 @@ const LiveScreen = ({ navigation, route }) => {
         </View>
 
         {/* Bottom bar */}
-        <View style={styles.bottomBar} pointerEvents="box-none">
+        <View
+          style={[
+            styles.bottomBar,
+            { bottom: insets.bottom + 12, paddingBottom: Math.max(insets.bottom, 8) },
+          ]}
+          pointerEvents="box-none"
+        >
           <View style={styles.chatInput}>
             <Text style={styles.chatPlaceholder}>قل شيئاً...</Text>
           </View>

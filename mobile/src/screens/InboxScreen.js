@@ -23,28 +23,7 @@ const InboxScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Mock stories data
-  const stories = [
-    { id: "create", type: "create", user: { username: "إنشاء" } },
-    {
-      id: "1",
-      type: "story",
-      user: { username: "البرنسيسه م...", profileImage: null },
-      hasStory: true,
-    },
-    {
-      id: "2",
-      type: "story",
-      user: { username: "الكريزه🍒🥑", profileImage: null },
-      hasStory: true,
-    },
-    {
-      id: "3",
-      type: "story",
-      user: { username: "هدي 💕", profileImage: null },
-      hasStory: true,
-    },
-  ];
+  const [notifications, setNotifications] = useState([]);
 
   const fetchConversations = async () => {
     try {
@@ -55,52 +34,35 @@ const InboxScreen = ({ navigation }) => {
       setConversations(res.data);
     } catch (e) {
       console.error("Error fetching conversations:", e);
-      // Fallback to dummy data if endpoint fails or is empty
-      if (conversations.length === 0) {
-        setConversations([
-          {
-            _id: "1",
-            otherUser: { username: "توتـا✨💎", isOnline: true },
-            lastMessage: { text: "نشط الآن", createdAt: new Date() },
-          },
-          {
-            _id: "2",
-            otherUser: { username: "نور الرحمن", isOnline: true },
-            lastMessage: {
-              text: "شارك بثًا مباشرًا",
-              createdAt: new Date(Date.now() - 86400000 * 13),
-            }, // 13 days ago
-          },
-          {
-            _id: "3",
-            otherUser: { username: "الملكه 🍬 سما سيمو👑", isOnline: false },
-            lastMessage: {
-              text: "شارك بثًا مباشرًا",
-              createdAt: new Date(Date.now() - 86400000 * 17),
-            },
-          },
-          {
-            _id: "4",
-            otherUser: { username: "ادم. محمد", isOnline: false },
-            lastMessage: { text: "❤️❤️❤️❤️", createdAt: new Date() },
-          },
-        ]);
-      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setNotifications(res.data || []);
+    } catch (e) {
+      console.error("Error fetching notifications:", e);
+      setNotifications([]);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchConversations();
+      fetchNotifications();
     }, [])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchConversations();
+    fetchNotifications();
   };
 
   const renderStoryItem = (item) => {
@@ -152,6 +114,43 @@ const InboxScreen = ({ navigation }) => {
     );
   };
 
+  const getSummaryText = (notification) => {
+    const username = notification.fromUser?.username || "TikBook";
+    switch (notification.type) {
+      case "like":
+        return `${username} أعجب بالفيديو الخاص بك`;
+      case "comment":
+        return `${username} علّق على الفيديو الخاص بك`;
+      case "follow":
+        return `${username} بدأ في متابعتك`;
+      default:
+        return `${username} تفاعل معك`;
+    }
+  };
+
+  const stories = [
+    { id: "create", type: "create", user: { username: "إنشاء" } },
+    ...conversations
+      .filter((c) => c.otherUser)
+      .slice(0, 6)
+      .map((c) => ({
+        id: c._id,
+        type: "story",
+        user: c.otherUser,
+        hasStory: true,
+      })),
+  ];
+
+  const systemNotifications = notifications.filter((n) => !n.fromUser);
+  const followerNotifications = notifications.filter((n) => n.type === "follow");
+  const activityNotifications = notifications.filter(
+    (n) => n.fromUser && n.type !== "follow"
+  );
+
+  const latestFollower = followerNotifications[0];
+  const latestActivity = activityNotifications[0];
+  const latestSystem = systemNotifications[0];
+
   const ListHeader = () => (
     <View>
       {/* Stories Section */}
@@ -175,11 +174,19 @@ const InboxScreen = ({ navigation }) => {
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>متابعون جدد</Text>
-            <Text style={styles.menuSubtitle}>انا ام نيره بدأ في متابعتك.</Text>
+            <Text style={styles.menuSubtitle} numberOfLines={1}>
+              {latestFollower
+                ? getSummaryText(latestFollower)
+                : "لا يوجد متابعون جدد"}
+            </Text>
           </View>
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>1</Text>
-          </View>
+          {followerNotifications.length > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>
+                {followerNotifications.length}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -192,12 +199,18 @@ const InboxScreen = ({ navigation }) => {
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>النشاط</Text>
             <Text style={styles.menuSubtitle} numberOfLines={1}>
-              Mel, ⓉⓞⓉⓐ و س قاموا بزيارة...
+              {latestActivity
+                ? getSummaryText(latestActivity)
+                : "لا يوجد نشاط"}
             </Text>
           </View>
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>2</Text>
-          </View>
+          {activityNotifications.length > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>
+                {activityNotifications.length}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -210,10 +223,12 @@ const InboxScreen = ({ navigation }) => {
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>إشعارات النظام</Text>
             <Text style={styles.menuSubtitle} numberOfLines={1}>
-              TikTok: لا تفوّت فرصة ... . 28 نوفمبر
+              {latestSystem
+                ? getSummaryText(latestSystem)
+                : "لا توجد إشعارات نظام"}
             </Text>
           </View>
-          <View style={styles.dotBadge} />
+          {systemNotifications.length > 0 && <View style={styles.dotBadge} />}
         </TouchableOpacity>
       </View>
     </View>

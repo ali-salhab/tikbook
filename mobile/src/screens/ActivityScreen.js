@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,128 +7,132 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { AuthContext } from "../context/AuthContext";
+import { BASE_URL } from "../config/api";
+import axios from "axios";
+import { useFocusEffect } from "@react-navigation/native";
 
 const ActivityScreen = ({ navigation }) => {
-  // Mock data based on screenshot
-  const [activities, setActivities] = useState([
-    {
-      id: "1",
-      users: ["Mel", "ⓉⓞⓉⓐ", "س"],
-      action: "قاموا بزيارة ملفك الشخصي",
-      time: "3 نوفمبر",
-      type: "profile_view",
-      avatars: [null, null], // Multiple avatars
-    },
-    {
-      id: "2",
-      username: "احمد ابن الشرقيه",
-      action: "أعجبه فيديو أعدت نشره",
-      time: "30 أغسطس",
-      type: "like",
-      thumbnail: null, // Video thumbnail
-    },
-    {
-      id: "3",
-      username: "احمد ابن الشرقيه",
-      action: "أعجبه فيديو أعدت نشره",
-      time: "20 أغسطس",
-      type: "like",
-      thumbnail: null,
-    },
-    {
-      id: "4",
-      username: "ⓉⓞⓉⓐ",
-      action: "أعجب بالفيديو الخاص بك",
-      time: "18 أغسطس",
-      type: "like",
-      thumbnail: null,
-    },
-    {
-      id: "5",
-      username: "User123",
-      action: "أعجب بالفيديو الخاص بك",
-      time: "12 أغسطس",
-      type: "like",
-      thumbnail: null,
-    },
-    {
-      id: "6",
-      username: "اعجاز شوركوت آلا❤️ و جاريم",
-      action: "أعجب بالفيديو الخاص بك",
-      time: "12 أغسطس",
-      type: "like",
-      thumbnail: null,
-    },
-    {
-      id: "7",
-      username: "جاريم",
-      action: "أضاف الفيديو الخاص بك إلى المفضلات",
-      time: "12 أغسطس",
-      type: "favorite",
-      thumbnail: null,
-    },
-    {
-      id: "8",
-      username: "الدولي 🦅🧿",
-      action: "أعجب بالفيديو الخاص بك",
-      time: "12 أغسطس",
-      type: "like",
-      thumbnail: null,
-    },
-    {
-      id: "9",
-      username: "الدولي 🦅🧿",
-      action: "أجاب على تعليقك: 🥰🥰🥰🥰",
-      time: "12 أغسطس",
-      type: "comment",
-      thumbnail: null,
-    },
-  ]);
+  const { userToken } = useContext(AuthContext);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const renderItem = ({ item }) => (
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "الآن";
+    if (minutes < 60) return `منذ ${minutes} د`;
+    if (hours < 24) return `منذ ${hours} س`;
+    if (days < 7) return `منذ ${days} ي`;
+    return date.toLocaleDateString("ar-EG");
+  };
+
+  const buildCloudinaryThumbnail = (url) => {
+    if (!url) return null;
+    if (!url.includes("cloudinary.com")) return null;
+    return url
+      .replace("/upload/", "/upload/c_fill,g_center,w_200,h_260,so_1/")
+      .replace(/\.(mp4|mov|m4v|avi|mkv|webm)$/i, ".jpg");
+  };
+
+  const isImageUrl = (url) =>
+    typeof url === "string" &&
+    url.match(/\.(jpe?g|png|gif|webp)$/i) !== null;
+
+  const getActionText = (notification) => {
+    const username = notification.fromUser?.username || "TikBook";
+    switch (notification.type) {
+      case "like":
+        return `${username} أعجب بالفيديو الخاص بك`;
+      case "comment":
+        return `${username} علّق على الفيديو الخاص بك`;
+      case "follow":
+        return `${username} بدأ في متابعتك`;
+      default:
+        return `${username} تفاعل معك`;
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setActivities(res.data || []);
+    } catch (e) {
+      console.error("Error fetching notifications:", e);
+      setActivities([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchNotifications();
+  };
+
+  const renderItem = ({ item }) => {
+    const videoUrl = item.video?.videoUrl;
+    const thumbUrl = isImageUrl(videoUrl)
+      ? videoUrl
+      : buildCloudinaryThumbnail(videoUrl);
+
+    return (
     <TouchableOpacity style={styles.itemContainer}>
       <View style={styles.leftContent}>
         <View style={styles.avatarContainer}>
-          {item.type === "profile_view" ? (
-            <View style={styles.multiAvatar}>
-              <View style={[styles.avatarPlaceholder, styles.avatarOverlap1]}>
-                <Ionicons name="person" size={20} color="#CCC" />
-              </View>
-              <View style={[styles.avatarPlaceholder, styles.avatarOverlap2]}>
-                <Ionicons name="person" size={20} color="#CCC" />
-              </View>
-            </View>
-          ) : (
-            <View style={styles.avatarPlaceholder}>
+          <View style={styles.avatarPlaceholder}>
+            {item.fromUser?.profileImage ? (
+              <Image
+                source={{ uri: item.fromUser.profileImage }}
+                style={styles.avatarImage}
+              />
+            ) : (
               <Ionicons name="person" size={24} color="#CCC" />
-            </View>
-          )}
-
-          {/* Icon Badge */}
-          {item.type === "profile_view" && (
-            <View style={styles.iconBadge}>
-              <Ionicons name="eye" size={10} color="#FFF" />
-            </View>
-          )}
+            )}
+          </View>
         </View>
 
         <View style={styles.textContainer}>
           <Text style={styles.username}>
-            {item.users ? item.users.join(", ") : item.username}
+            {item.fromUser?.username || "TikBook"}
           </Text>
           <Text style={styles.actionText}>
-            {item.action} <Text style={styles.time}>. {item.time}</Text>
+            {getActionText(item)}{" "}
+            <Text style={styles.time}>. {formatDate(item.createdAt)}</Text>
           </Text>
         </View>
       </View>
 
-      {item.thumbnail !== undefined && (
-        <View style={styles.thumbnailPlaceholder}>{/* Video Thumbnail */}</View>
-      )}
+      {videoUrl ? (
+        thumbUrl ? (
+          <Image source={{ uri: thumbUrl }} style={styles.thumbnailImage} />
+        ) : (
+          <View style={styles.thumbnailPlaceholder} />
+        )
+      ) : null}
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -143,12 +147,27 @@ const ActivityScreen = ({ navigation }) => {
         <View style={{ width: 24 }} />
       </View>
 
-      <FlatList
-        data={activities}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-      />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#FE2C55" />
+        </View>
+      ) : (
+        <FlatList
+          data={activities}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="notifications-off-outline" size={56} color="#ccc" />
+              <Text style={styles.emptyText}>لا توجد إشعارات بعد</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -178,6 +197,20 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
   },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 12,
+    color: "#999",
+  },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -204,31 +237,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  multiAvatar: {
-    width: 56,
-    height: 56,
-    position: "relative",
-  },
-  avatarOverlap1: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    zIndex: 1,
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  avatarOverlap2: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#FFF",
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
   },
   textContainer: {
     flex: 1,
@@ -252,6 +264,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 64,
     backgroundColor: "#333",
+    borderRadius: 4,
+  },
+  thumbnailImage: {
+    width: 48,
+    height: 64,
     borderRadius: 4,
   },
 });

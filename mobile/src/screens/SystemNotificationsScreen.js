@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,69 +7,91 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { AuthContext } from "../context/AuthContext";
+import { BASE_URL } from "../config/api";
+import axios from "axios";
+import { useFocusEffect } from "@react-navigation/native";
 
 const SystemNotificationsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("الكل");
+  const { userToken } = useContext(AuthContext);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const tabs = ["الكل", "TikTok", "مساعد المعاملات", "LIVE"];
 
-  const notifications = [
-    {
-      id: "1",
-      source: "TikTok . الأنشطة",
-      title: "لا تفوّت فرصة فتح مكافأة خاصة لـ Maxton Hall الموسم 2!",
-      time: "عرض المزيد",
-      icon: "logo-tiktok",
-      type: "tiktok",
-    },
-    {
-      id: "2",
-      source: "مساعد المعاملات",
-      title: "Purchase of Coins",
-      description: "23 نوفمبر . You purchased 50 Coins for $ 0.52",
-      time: "عرض المزيد",
-      icon: "wallet",
-      type: "transaction",
-    },
-    {
-      id: "3",
-      source: "مساعد المعاملات",
-      title: "Purchase of Coins",
-      description: "23 نوفمبر . You purchased 35 Coins for $ 0.37",
-      time: "عرض المزيد",
-      icon: "wallet",
-      type: "transaction",
-    },
-    {
-      id: "4",
-      source: "TikTok . الأنشطة",
-      title: "احصل على الاطار الرسمي لـ Maxton Hall الموسم 2 لفترة محدودة هنا!",
-      time: "عرض المزيد",
-      icon: "logo-tiktok",
-      type: "tiktok",
-    },
-  ];
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "الآن";
+    if (minutes < 60) return `منذ ${minutes} د`;
+    if (hours < 24) return `منذ ${hours} س`;
+    if (days < 7) return `منذ ${days} ي`;
+    return date.toLocaleDateString("ar-EG");
+  };
+
+  const getSummaryText = (notification) => {
+    switch (notification.type) {
+      case "admin_broadcast":
+        return "إشعار عام من الإدارة";
+      default:
+        return "إشعار من النظام";
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const systemOnly = (res.data || []).filter((n) => !n.fromUser);
+      setNotifications(systemOnly);
+    } catch (e) {
+      console.error("Error fetching system notifications:", e);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchNotifications();
+  };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.sourceContainer}>
           <View style={styles.iconContainer}>
-            <Ionicons name={item.icon} size={16} color="#000" />
+            <Ionicons name="logo-tiktok" size={16} color="#000" />
           </View>
-          <Text style={styles.sourceText}>{item.source}</Text>
+          <Text style={styles.sourceText}>TikBook . النظام</Text>
         </View>
         <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
       </View>
 
       <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        {item.description && (
-          <Text style={styles.cardDescription}>{item.description}</Text>
-        )}
-        <Text style={styles.moreText}>{item.time}</Text>
+        <Text style={styles.cardTitle}>{getSummaryText(item)}</Text>
+        <Text style={styles.moreText}>{formatDate(item.createdAt)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -109,12 +131,27 @@ const SystemNotificationsScreen = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      <FlatList
-        data={notifications}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-      />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#FE2C55" />
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="notifications-off-outline" size={56} color="#ccc" />
+              <Text style={styles.emptyText}>لا توجد إشعارات نظام</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -164,6 +201,20 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     gap: 12,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 12,
+    color: "#999",
   },
   card: {
     backgroundColor: "#FFF",
