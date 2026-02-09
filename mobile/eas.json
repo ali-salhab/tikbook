@@ -6,32 +6,30 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "gradleCommand": ":app:assembleDebug"
-      },
-      "ios": {
-        "buildConfiguration": "Debug"
-      }
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "client": {
+      "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
-      "channel": "production",
       "android": {
         "buildType": "app-bundle"
-      },
-      "ios": {
-        "buildConfiguration": "Release"
+      }
+    },
+    "client-apk": {
+      "distribution": "store",
+      "android": {
+        "buildType": "apk"
       }
     }
-  },
-  "submit": {
-    "production": {}
   }
 }

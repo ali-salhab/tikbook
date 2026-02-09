@@ -235,7 +235,12 @@ const InboxScreen = ({ navigation }) => {
   );
 
   const renderConversation = ({ item }) => {
-    const isOnline = item.otherUser?.isOnline;
+    const otherUser = item.otherUser;
+    if (!otherUser?._id) {
+      return null;
+    }
+
+    const isOnline = otherUser?.isOnline;
     const lastMsg = item.lastMessage?.text || "بدأ محادثة";
     const time = formatDate(item.lastMessage?.createdAt);
 
@@ -244,16 +249,16 @@ const InboxScreen = ({ navigation }) => {
         style={styles.conversationItem}
         onPress={() =>
           navigation.navigate("Chat", {
-            userId: item.otherUser._id,
-            username: item.otherUser.username,
-            profileImage: item.otherUser.profileImage,
+            userId: otherUser._id,
+            username: otherUser.username,
+            profileImage: otherUser.profileImage,
           })
         }
       >
         <View style={styles.avatarContainer}>
-          {item.otherUser?.profileImage ? (
+          {otherUser?.profileImage ? (
             <Image
-              source={{ uri: item.otherUser.profileImage }}
+              source={{ uri: otherUser.profileImage }}
               style={styles.avatar}
             />
           ) : (
@@ -265,7 +270,7 @@ const InboxScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.contentContainer}>
-          <Text style={styles.username}>{item.otherUser?.username}</Text>
+          <Text style={styles.username}>{otherUser?.username}</Text>
           <Text style={styles.message} numberOfLines={1}>
             {lastMsg}
             {time && <Text style={styles.time}> . {time}</Text>}
