@@ -16,7 +16,8 @@ Notifications.setNotificationHandler({
 export const requestUserPermission = async () => {
   if (Platform.OS === "android") {
     try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== "granted") {
         const { status } = await Notifications.requestPermissionsAsync();
@@ -58,12 +59,16 @@ export const getPushToken = async () => {
     let lastError = null;
     for (let i = 0; i < 3; i++) {
       try {
-        const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId }))
+          .data;
         console.log("Expo Push Token:", token);
         return token;
       } catch (err) {
         lastError = err;
-        console.warn(`Expo token fetch failed (attempt ${i + 1}/3):`, err?.message || err);
+        console.warn(
+          `Expo token fetch failed (attempt ${i + 1}/3):`,
+          err?.message || err,
+        );
         await new Promise((res) => setTimeout(res, 800 * (i + 1)));
       }
     }
@@ -84,7 +89,7 @@ export const saveTokenToBackend = async (userToken, pushToken, baseUrl) => {
     await axios.put(
       `${baseUrl}/users/fcm-token`, // Keeping endpoint name for now to avoid breaking backend
       { token: pushToken },
-      { headers: { Authorization: `Bearer ${userToken}` } }
+      { headers: { Authorization: `Bearer ${userToken}` } },
     );
     console.log("Push Token saved to backend");
   } catch (error) {
@@ -93,18 +98,24 @@ export const saveTokenToBackend = async (userToken, pushToken, baseUrl) => {
 };
 
 // Notification Listeners
-export const notificationListener = () => {
+export const notificationListener = (navigationRef) => {
   // Listener for foreground notifications
-  const foregroundSubscription = Notifications.addNotificationReceivedListener(notification => {
-    console.log("Foreground notification received:", notification);
-  });
+  const foregroundSubscription = Notifications.addNotificationReceivedListener(
+    (notification) => {
+      console.log("Foreground notification received:", notification);
+    },
+  );
 
-  // Listener for when a user taps on a notification
-  const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
-    console.log("Notification tapped:", response);
-    // const data = response.notification.request.content.data;
-    // navigation.navigate(data.type);
-  });
+  // Listener for notification interactions (taps)
+  const responseSubscription =
+    Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log("Notification tapped with data:", data);
+
+      if (data?.screen && navigationRef?.isReady()) {
+        navigationRef.navigate(data.screen, data.params);
+      }
+    });
 
   return () => {
     foregroundSubscription.remove();
@@ -114,5 +125,7 @@ export const notificationListener = () => {
 
 // Background Message Handler (Expo handles this internally when configured)
 export const setBackgroundMessageHandler = () => {
-  console.log("Background message handler setup (managed by expo-notifications)");
+  console.log(
+    "Background message handler setup (managed by expo-notifications)",
+  );
 };

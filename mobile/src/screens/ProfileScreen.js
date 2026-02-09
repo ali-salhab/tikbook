@@ -15,6 +15,9 @@ import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 import ProfileMenuModal from "../components/ProfileMenuModal";
+import { useNetInfo } from "@react-native-community/netinfo";
+import OfflineNotice from "../components/OfflineNotice";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 const { width } = Dimensions.get("window");
 const COLUMN_WIDTH = width / 3;
@@ -25,19 +28,21 @@ const ProfileScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
+  const netInfo = useNetInfo();
 
   const fetchProfile = useCallback(async () => {
+    if (netInfo.isConnected === false) return;
     try {
       const res = await axios.get(`${BASE_URL}/users/${userInfo._id}`);
 
       // Fetch user's videos
       const videosRes = await axios.get(
-        `${BASE_URL}/videos/user/${userInfo._id}`
+        `${BASE_URL}/videos/user/${userInfo._id}`,
       );
       const userVideos = videosRes.data || [];
       const likesCount = userVideos.reduce(
         (sum, v) => sum + (v.likes?.length || 0),
-        0
+        0,
       );
 
       setProfile({
@@ -55,7 +60,9 @@ const ProfileScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       if (userInfo) {
-        fetchProfile();
+        if (netInfo.isConnected !== false) {
+          fetchProfile();
+        }
       } else {
         // Default profile when not logged in
         setProfile({
@@ -68,8 +75,19 @@ const ProfileScreen = ({ navigation }) => {
           likesCount: 0,
         });
       }
-    }, [userInfo, fetchProfile])
+    }, [userInfo, fetchProfile, netInfo.isConnected]),
   );
+
+  // If user is logged in, but we have no profile and no internet => Offline
+  if (userInfo && !profile && netInfo.isConnected === false) {
+    return <OfflineNotice onRetry={fetchProfile} />;
+  }
+
+  // If user is logged in and we are fetching profile => Loading
+  // Note: We often want to show cached profile if possible, but for now we assume fresh fetch
+  if (userInfo && !profile) {
+    return <LoadingIndicator />;
+  }
 
   const renderTabIcon = (name, tabName, IconComponent = Ionicons) => (
     <TouchableOpacity
@@ -88,49 +106,45 @@ const ProfileScreen = ({ navigation }) => {
   const renderTabContent = () => {
     switch (activeTab) {
       case "videos":
-        return (
-          videos.length ? (
-            <View style={styles.gridContainer}>
-              {videos.map((video) => (
-                <TouchableOpacity
-                  key={video._id}
-                  style={styles.gridItem}
-                  onPress={() =>
-                    navigation.navigate("Home", { videoId: video._id })
-                  }
-                >
-                  {video.thumbnailUrl || video.thumbnail || video.coverUrl ? (
-                    <Image
-                      source={{
-                        uri:
-                          video.thumbnailUrl ||
-                          video.thumbnail ||
-                          video.coverUrl,
-                      }}
-                      style={styles.gridImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.gridPlaceholder} />
-                  )}
-                  <View style={styles.viewsContainer}>
-                    <Ionicons name="play-outline" size={14} color="#FFF" />
-                    <Text style={styles.viewsText}>
-                      {video.views?.toString() || "0"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <Ionicons name="videocam-off-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyStateTitle}>لا توجد فيديوهات</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                ابدأ بنشر أول فيديو لعرضه هنا.
-              </Text>
-            </View>
-          )
+        return videos.length ? (
+          <View style={styles.gridContainer}>
+            {videos.map((video) => (
+              <TouchableOpacity
+                key={video._id}
+                style={styles.gridItem}
+                onPress={() =>
+                  navigation.navigate("Home", { videoId: video._id })
+                }
+              >
+                {video.thumbnailUrl || video.thumbnail || video.coverUrl ? (
+                  <Image
+                    source={{
+                      uri:
+                        video.thumbnailUrl || video.thumbnail || video.coverUrl,
+                    }}
+                    style={styles.gridImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.gridPlaceholder} />
+                )}
+                <View style={styles.viewsContainer}>
+                  <Ionicons name="play-outline" size={14} color="#FFF" />
+                  <Text style={styles.viewsText}>
+                    {video.views?.toString() || "0"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="videocam-off-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyStateTitle}>لا توجد فيديوهات</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              ابدأ بنشر أول فيديو لعرضه هنا.
+            </Text>
+          </View>
         );
       case "private":
         return (
@@ -196,9 +210,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {profile?.username || "User"}
-          </Text>
+          <Text style={styles.headerTitle}>{profile?.username || "User"}</Text>
         </View>
 
         <View style={styles.headerRight}>
@@ -236,16 +248,12 @@ const ProfileScreen = ({ navigation }) => {
               {profile?.username || "User"}
             </Text>
           </View>
-          <Text style={styles.username}>
-            @{profile?.username || "user"}
-          </Text>
+          <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
           {/* Stats */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {profile?.likesCount || 0}
-              </Text>
+              <Text style={styles.statNumber}>{profile?.likesCount || 0}</Text>
               <Text style={styles.statLabel}>تسجيلات الإعجاب</Text>
             </View>
             <View style={styles.statDivider} />
@@ -265,9 +273,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
 
           {/* Bio */}
-          <Text style={styles.bio}>
-            {profile?.bio || "لا توجد نبذة بعد"}
-          </Text>
+          <Text style={styles.bio}>{profile?.bio || "لا توجد نبذة بعد"}</Text>
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>

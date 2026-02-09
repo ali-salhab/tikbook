@@ -28,7 +28,9 @@ export default function App() {
 
       try {
         // Request Notification Permission (Don't await it if it hangs)
-        requestUserPermission().catch(e => console.warn("Permission request failed:", e));
+        requestUserPermission().catch((e) =>
+          console.warn("Permission request failed:", e),
+        );
 
         // Pre-load fonts, make any API calls you need to do here
         // No async operations needed at this time.
@@ -44,10 +46,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Setup notification listeners (foreground, background, quit)
-    const unsubscribe = notificationListener();
-
-    return unsubscribe;
+    // Notification listener is now handled in AppNavigator with access to navigation setup
+    // But we can keep requestUserPermission here for early permission request
   }, []);
 
   useEffect(() => {
@@ -55,8 +55,6 @@ export default function App() {
       SplashScreen.hideAsync();
     }
   }, [appIsReady]);
-
-
 
   if (!appIsReady) {
     return null;
@@ -79,7 +77,8 @@ const styles = StyleSheet.create({
   offlineBanner: {
     backgroundColor: "#FE2C55",
     paddingVertical: 10,
-    paddingTop: Platform.OS === "android" ? (Constants.statusBarHeight || 0) + 10 : 40,
+    paddingTop:
+      Platform.OS === "android" ? (Constants.statusBarHeight || 0) + 10 : 40,
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",

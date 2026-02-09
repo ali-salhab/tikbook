@@ -15,12 +15,16 @@ import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
+import { useNetInfo } from "@react-native-community/netinfo";
+import OfflineNotice from "../components/OfflineNotice";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 const ActivityScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const netInfo = useNetInfo();
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -47,8 +51,7 @@ const ActivityScreen = ({ navigation }) => {
   };
 
   const isImageUrl = (url) =>
-    typeof url === "string" &&
-    url.match(/\.(jpe?g|png|gif|webp)$/i) !== null;
+    typeof url === "string" && url.match(/\.(jpe?g|png|gif|webp)$/i) !== null;
 
   const getActionText = (notification) => {
     const username = notification.fromUser?.username || "TikBook";
@@ -65,6 +68,7 @@ const ActivityScreen = ({ navigation }) => {
   };
 
   const fetchNotifications = async () => {
+    if (netInfo.isConnected === false) return;
     try {
       const res = await axios.get(`${BASE_URL}/notifications`, {
         headers: { Authorization: `Bearer ${userToken}` },
@@ -81,14 +85,28 @@ const ActivityScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchNotifications();
-    }, [])
+      if (netInfo.isConnected !== false) {
+        fetchNotifications();
+      } else {
+        setLoading(false);
+      }
+    }, [netInfo.isConnected]),
   );
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications();
+    if (netInfo.isConnected !== false) {
+      setRefreshing(true);
+      fetchNotifications();
+    }
   };
+
+  if (netInfo.isConnected === false && activities.length === 0) {
+    return <OfflineNotice onRetry={onRefresh} />;
+  }
+
+  if (loading && activities.length === 0) {
+    return <LoadingIndicator />;
+  }
 
   const renderItem = ({ item }) => {
     const videoUrl = item.video?.videoUrl;
@@ -97,40 +115,40 @@ const ActivityScreen = ({ navigation }) => {
       : buildCloudinaryThumbnail(videoUrl);
 
     return (
-    <TouchableOpacity style={styles.itemContainer}>
-      <View style={styles.leftContent}>
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatarPlaceholder}>
-            {item.fromUser?.profileImage ? (
-              <Image
-                source={{ uri: item.fromUser.profileImage }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Ionicons name="person" size={24} color="#CCC" />
-            )}
+      <TouchableOpacity style={styles.itemContainer}>
+        <View style={styles.leftContent}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatarPlaceholder}>
+              {item.fromUser?.profileImage ? (
+                <Image
+                  source={{ uri: item.fromUser.profileImage }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person" size={24} color="#CCC" />
+              )}
+            </View>
+          </View>
+
+          <View style={styles.textContainer}>
+            <Text style={styles.username}>
+              {item.fromUser?.username || "TikBook"}
+            </Text>
+            <Text style={styles.actionText}>
+              {getActionText(item)}{" "}
+              <Text style={styles.time}>. {formatDate(item.createdAt)}</Text>
+            </Text>
           </View>
         </View>
 
-        <View style={styles.textContainer}>
-          <Text style={styles.username}>
-            {item.fromUser?.username || "TikBook"}
-          </Text>
-          <Text style={styles.actionText}>
-            {getActionText(item)}{" "}
-            <Text style={styles.time}>. {formatDate(item.createdAt)}</Text>
-          </Text>
-        </View>
-      </View>
-
-      {videoUrl ? (
-        thumbUrl ? (
-          <Image source={{ uri: thumbUrl }} style={styles.thumbnailImage} />
-        ) : (
-          <View style={styles.thumbnailPlaceholder} />
-        )
-      ) : null}
-    </TouchableOpacity>
+        {videoUrl ? (
+          thumbUrl ? (
+            <Image source={{ uri: thumbUrl }} style={styles.thumbnailImage} />
+          ) : (
+            <View style={styles.thumbnailPlaceholder} />
+          )
+        ) : null}
+      </TouchableOpacity>
     );
   };
 
@@ -162,7 +180,11 @@ const ActivityScreen = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={56} color="#ccc" />
+              <Ionicons
+                name="notifications-off-outline"
+                size={56}
+                color="#ccc"
+              />
               <Text style={styles.emptyText}>لا توجد إشعارات بعد</Text>
             </View>
           }

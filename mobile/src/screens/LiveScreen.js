@@ -11,7 +11,10 @@ import {
   Image,
   Dimensions,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   createAgoraRtcEngine,
@@ -28,14 +31,17 @@ import { Audio } from "expo-av";
 const { width, height } = Dimensions.get("window");
 
 export default function LiveScreen({ navigation, route }) {
-  const { isBroadcaster } = route.params || {};
+  const { isBroadcaster, channelId } = route.params || {};
   const { userToken, userInfo } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
   const engineRef = useRef(null);
 
   const [joined, setJoined] = useState(false);
-  const [channelName, setChannelName] = useState(userInfo?._id || "test");
+  // If audience, use passed channelId. If broadcaster, use own ID.
+  const [channelName, setChannelName] = useState(
+    isBroadcaster ? userInfo?._id || "test" : channelId || "test",
+  );
   const [localUid, setLocalUid] = useState(null);
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [liveTitle, setLiveTitle] = useState("");
@@ -117,7 +123,7 @@ export default function LiveScreen({ navigation, route }) {
           role: isBroadcaster ? "publisher" : "subscriber",
           title: liveTitle,
         },
-        { headers: { Authorization: `Bearer ${userToken}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
       const finalChannel = res.data.channelName || channelName;
@@ -127,7 +133,7 @@ export default function LiveScreen({ navigation, route }) {
       engine.setClientRole(
         isBroadcaster
           ? ClientRoleType.ClientRoleBroadcaster
-          : ClientRoleType.ClientRoleAudience
+          : ClientRoleType.ClientRoleAudience,
       );
 
       if (isBroadcaster) engine.startPreview();
@@ -203,7 +209,12 @@ export default function LiveScreen({ navigation, route }) {
         style={StyleSheet.absoluteFillObject}
         blurRadius={Platform.OS === "ios" ? 20 : 10}
       />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.35)" }]} />
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: "rgba(0,0,0,0.35)" },
+        ]}
+      />
 
       {/* Video */}
       {isBroadcaster ? (
@@ -213,7 +224,13 @@ export default function LiveScreen({ navigation, route }) {
       ) : null}
 
       {/* UI */}
-      <SafeAreaView style={styles.ui} pointerEvents="box-none">
+      <View
+        style={[
+          styles.ui,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+        pointerEvents="box-none"
+      >
         {errorMessage ? (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText} numberOfLines={2}>
@@ -234,8 +251,22 @@ export default function LiveScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* MOCK AVATARS (Visual Only) */}
+        {!isBroadcaster && (
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", top: 100, right: 0, left: 0 }}
+          >
+            {/* Could put floating hearts here */}
+          </View>
+        )}
+
         {/* AVATARS */}
-        <ScrollView horizontal style={styles.avatarRow}>
+        <ScrollView
+          horizontal
+          style={styles.avatarRow}
+          showsHorizontalScrollIndicator={false}
+        >
           {avatars.map((a, i) => (
             <View key={i} style={styles.fireWrap}>
               <View style={styles.fireRing} />
@@ -246,25 +277,27 @@ export default function LiveScreen({ navigation, route }) {
 
         {/* CHAT */}
         <View style={styles.chat}>
-          {chats.map((c, i) => (
-            <View
-              key={i}
-              style={[
-                styles.chatBubble,
-                c.vip && { backgroundColor: "#ff4fa3" },
-              ]}
-            >
-              <Text style={styles.chatUser}>
-                {c.vip ? "VIP " : ""}
-                {c.user}
-              </Text>
-              <Text style={{ color: "#fff" }}>{c.text}</Text>
-            </View>
-          ))}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {chats.map((c, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.chatBubble,
+                  c.vip && { backgroundColor: "#ff4fa3" },
+                ]}
+              >
+                <Text style={styles.chatUser}>
+                  {c.vip ? "VIP " : ""}
+                  {c.user}
+                </Text>
+                <Text style={{ color: "#fff" }}>{c.text}</Text>
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         {/* BOTTOM */}
-        <View style={[styles.bottom, { paddingBottom: insets.bottom }]}>
+        <View style={styles.bottom}>
           <View style={styles.inputFake}>
             <Text style={{ color: "#bbb" }}>قل شيئاً...</Text>
           </View>
@@ -278,7 +311,7 @@ export default function LiveScreen({ navigation, route }) {
             <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }

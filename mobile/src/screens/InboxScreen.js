@@ -16,16 +16,21 @@ import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
+import { useNetInfo } from "@react-native-community/netinfo";
+import OfflineNotice from "../components/OfflineNotice";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 const InboxScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const netInfo = useNetInfo();
 
   const [notifications, setNotifications] = useState([]);
 
   const fetchConversations = async () => {
+    if (netInfo.isConnected === false) return;
     try {
       // Use the new endpoint for conversations
       const res = await axios.get(`${BASE_URL}/messages/conversations`, {
@@ -41,6 +46,7 @@ const InboxScreen = ({ navigation }) => {
   };
 
   const fetchNotifications = async () => {
+    if (netInfo.isConnected === false) return;
     try {
       const res = await axios.get(`${BASE_URL}/notifications`, {
         headers: { Authorization: `Bearer ${userToken}` },
@@ -54,16 +60,34 @@ const InboxScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchConversations();
-      fetchNotifications();
-    }, [])
+      if (netInfo.isConnected !== false) {
+        fetchConversations();
+        fetchNotifications();
+      } else {
+        setLoading(false);
+      }
+    }, [netInfo.isConnected]),
   );
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchConversations();
-    fetchNotifications();
+    if (netInfo.isConnected !== false) {
+      setRefreshing(true);
+      fetchConversations();
+      fetchNotifications();
+    }
   };
+
+  if (
+    netInfo.isConnected === false &&
+    conversations.length === 0 &&
+    notifications.length === 0
+  ) {
+    return <OfflineNotice onRetry={onRefresh} />;
+  }
+
+  if (loading && conversations.length === 0) {
+    return <LoadingIndicator />;
+  }
 
   const renderStoryItem = (item) => {
     if (item.type === "create") {
@@ -142,9 +166,11 @@ const InboxScreen = ({ navigation }) => {
   ];
 
   const systemNotifications = notifications.filter((n) => !n.fromUser);
-  const followerNotifications = notifications.filter((n) => n.type === "follow");
+  const followerNotifications = notifications.filter(
+    (n) => n.type === "follow",
+  );
   const activityNotifications = notifications.filter(
-    (n) => n.fromUser && n.type !== "follow"
+    (n) => n.fromUser && n.type !== "follow",
   );
 
   const latestFollower = followerNotifications[0];
@@ -199,9 +225,7 @@ const InboxScreen = ({ navigation }) => {
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>النشاط</Text>
             <Text style={styles.menuSubtitle} numberOfLines={1}>
-              {latestActivity
-                ? getSummaryText(latestActivity)
-                : "لا يوجد نشاط"}
+              {latestActivity ? getSummaryText(latestActivity) : "لا يوجد نشاط"}
             </Text>
           </View>
           {activityNotifications.length > 0 && (

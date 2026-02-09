@@ -25,7 +25,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../config/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModal";
+import OfflineNotice from "../components/OfflineNotice";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -40,7 +43,15 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const netInfo = useNetInfo();
+
   const fetchVideos = useCallback(async () => {
+    // If no internet, don't try to fetch (avoids Network Error logs)
+    if (netInfo.isConnected === false) {
+      setLoading(false);
+      return;
+    }
+
     try {
       console.log("📹 Fetching videos from:", `${BASE_URL}/videos`);
       const res = await axios.get(`${BASE_URL}/videos`, { timeout: 10000 });
@@ -55,9 +66,9 @@ const HomeScreen = ({ navigation }) => {
         videoUrl: video.videoUrl?.startsWith("http")
           ? video.videoUrl
           : `${BASE_URL.replace("/api", "")}/${(video.videoUrl || "").replace(
-            /\\/g,
-            "/"
-          )}`,
+              /\\/g,
+              "/",
+            )}`,
       }));
 
       console.log("📹 Videos ready for rendering:", mappedVideos.length);
@@ -65,6 +76,12 @@ const HomeScreen = ({ navigation }) => {
       setLoading(false);
     } catch (e) {
       console.error("❌ Error fetching videos:", e.message);
+      if (e.response) {
+        console.error("   Status:", e.response.status);
+        console.error("   Data:", e.response.data);
+      } else if (e.request) {
+        console.error("   Request made but no response received");
+      }
       setVideos([]); // show empty state instead of dummy content
       setLoading(false);
     }
@@ -80,9 +97,20 @@ const HomeScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       console.log("🔄 HomeScreen focused - refreshing videos");
-      fetchVideos();
-    }, [fetchVideos])
+      if (netInfo.isConnected !== false) {
+        fetchVideos();
+      }
+    }, [fetchVideos, netInfo.isConnected]),
   );
+
+  if (netInfo.isConnected === false && videos.length === 0) {
+    return <OfflineNotice onRetry={fetchVideos} />;
+  }
+
+  if (loading && videos.length === 0) {
+    // Basic loading indicator
+    return <LoadingIndicator />;
+  }
 
   const formatNumber = (num) => {
     // Handle if it's an array (likes array)
@@ -114,7 +142,7 @@ const HomeScreen = ({ navigation }) => {
           };
         }
         return video;
-      })
+      }),
     );
 
     // Send to backend
@@ -124,7 +152,7 @@ const HomeScreen = ({ navigation }) => {
         {},
         {
           headers: { Authorization: `Bearer ${userToken}` },
-        }
+        },
       );
     } catch (error) {
       console.log("Error liking video:", error);
@@ -139,7 +167,7 @@ const HomeScreen = ({ navigation }) => {
             };
           }
           return video;
-        })
+        }),
       );
     }
   };

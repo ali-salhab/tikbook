@@ -11,6 +11,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
+import { useNetInfo } from "@react-native-community/netinfo";
+import OfflineNotice from "../components/OfflineNotice";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
@@ -19,10 +22,13 @@ const UserProfileScreen = ({ route, navigation }) => {
   const [videos, setVideos] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState("videos");
+  const netInfo = useNetInfo();
 
   useEffect(() => {
-    fetchUserProfile();
-  }, [userId]);
+    if (netInfo.isConnected !== false) {
+      fetchUserProfile();
+    }
+  }, [userId, netInfo.isConnected]);
 
   const fetchUserProfile = async () => {
     try {
@@ -49,7 +55,7 @@ const UserProfileScreen = ({ route, navigation }) => {
         await axios.put(
           `${BASE_URL}/users/${userId}/unfollow`,
           {},
-          { headers }
+          { headers },
         );
         setIsFollowing(false);
         // Update follower count locally
@@ -69,17 +75,17 @@ const UserProfileScreen = ({ route, navigation }) => {
     } catch (e) {
       console.log(
         "❌ Error following user:",
-        e.response?.data?.message || e.message
+        e.response?.data?.message || e.message,
       );
     }
   };
 
+  if (netInfo.isConnected === false && !profile) {
+    return <OfflineNotice onRetry={fetchUserProfile} />;
+  }
+
   if (!profile) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>جاري التحميل...</Text>
-      </View>
-    );
+    return <LoadingIndicator />;
   }
 
   return (

@@ -1,8 +1,13 @@
-import React, { useContext, useState, useEffect } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useContext, useState, useEffect, useRef } from "react";
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { AuthContext } from "../context/AuthContext";
+import { notificationListener } from "../services/notificationService";
+import * as Notifications from "expo-notifications";
 import VersionChecker from "../components/VersionChecker";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import LoginScreen from "../screens/LoginScreen";
@@ -249,6 +254,38 @@ const AppNavigator = () => {
     }
   };
 
+  const navigationRef = useNavigationContainerRef();
+
+  useEffect(() => {
+    // Setup notification listener handling
+    const unsubscribe = notificationListener(navigationRef);
+
+    // Handle cold start (App launched from notification)
+    const checkInitialNotification = async () => {
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response?.notification?.request?.content?.data?.screen) {
+          const { screen, params } = response.notification.request.content.data;
+          console.log("🚀 Cold start notification:", screen, params);
+          // Wait for navigation to be ready
+          const interval = setInterval(() => {
+            if (navigationRef.isReady()) {
+              navigationRef.navigate(screen, params);
+              clearInterval(interval);
+            }
+          }, 100);
+          // Timeout after 5s
+          setTimeout(() => clearInterval(interval), 5000);
+        }
+      } catch (e) {
+        console.error("Failed to check initial notification:", e);
+      }
+    };
+
+    checkInitialNotification();
+    return unsubscribe;
+  }, []);
+
   // Safety fallback for showOnboarding
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -260,16 +297,15 @@ const AppNavigator = () => {
     return () => clearTimeout(timer);
   }, [showOnboarding]);
 
-  const [isSplashAnimationFinished, setIsSplashAnimationFinished] = useState(false);
+  const [isSplashAnimationFinished, setIsSplashAnimationFinished] =
+    useState(false);
 
   // While checking auth state or onboarding status, or if splash animation isn't done
   if (isLoading || showOnboarding === null || !isSplashAnimationFinished) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
         {/* Show SplashScreen and wait for it to signal completion */}
-        <SplashScreen
-          onFinish={() => setIsSplashAnimationFinished(true)}
-        />
+        <SplashScreen onFinish={() => setIsSplashAnimationFinished(true)} />
       </View>
     );
   }
@@ -278,7 +314,7 @@ const AppNavigator = () => {
 
   return (
     <VersionChecker>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {showOnboarding && !userToken ? (
             <Stack.Screen
@@ -297,7 +333,10 @@ const AppNavigator = () => {
               <Stack.Screen name="Upload" component={UploadScreen} />
               <Stack.Screen name="PostEdit" component={PostEditScreen} />
               <Stack.Screen name="Live" component={LiveScreen} />
-              <Stack.Screen name="LiveStreamsList" component={LiveStreamsListScreen} />
+              <Stack.Screen
+                name="LiveStreamsList"
+                component={LiveStreamsListScreen}
+              />
               <Stack.Screen name="Wallet" component={WalletScreen} />
               <Stack.Screen
                 name="NewFollowers"
