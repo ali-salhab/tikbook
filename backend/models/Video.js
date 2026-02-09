@@ -23,10 +23,18 @@ const videoSchema = mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // Backward-compatible primary media URL (first media item)
     videoUrl: {
       type: String,
       required: true,
     },
+    // New: support multi-media posts (videos or images)
+    media: [
+      {
+        url: { type: String, required: true },
+        type: { type: String, enum: ["video", "image"], default: "video" },
+      },
+    ],
     description: {
       type: String,
     },

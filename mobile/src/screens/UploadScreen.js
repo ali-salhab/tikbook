@@ -72,19 +72,20 @@ export default function UploadScreen() {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: false,
+      allowsMultipleSelection: true,
       quality: 1,
     });
 
     if (!result.canceled) {
-      const asset = result.assets[0];
-      const mediaType = asset.type === "video" ? "video" : "image";
+      const mediaItems = result.assets.map((asset) => ({
+        uri: asset.uri,
+        type: asset.type === "video" ? "video" : "image",
+      }));
 
-      console.log("Selected from gallery:", asset.uri, "Type:", mediaType);
+      console.log("Selected from gallery:", mediaItems);
 
-      // Navigate to PostEditScreen
       navigation.navigate("PostEdit", {
-        mediaUri: asset.uri,
-        mediaType: mediaType,
+        mediaItems,
       });
     }
   };
@@ -98,8 +99,7 @@ export default function UploadScreen() {
 
           // Navigate to PostEditScreen
           navigation.navigate("PostEdit", {
-            mediaUri: photo.uri,
-            mediaType: "image",
+            mediaItems: [{ uri: photo.uri, type: "image" }],
           });
         } catch (e) {
           console.error("Photo capture error:", e);
@@ -117,8 +117,7 @@ export default function UploadScreen() {
 
             // Navigate to PostEditScreen
             navigation.navigate("PostEdit", {
-              mediaUri: video.uri,
-              mediaType: "video",
+              mediaItems: [{ uri: video.uri, type: "video" }],
             });
           } catch (e) {
             console.error("Video recording error:", e);

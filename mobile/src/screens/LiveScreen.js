@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   ScrollView,
+  Image,
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -223,6 +224,37 @@ const LiveScreen = ({ navigation, route }) => {
 
   const remoteUid = useMemo(() => remoteUsers[0] ?? null, [remoteUsers]);
 
+  // --- UI DATA (placeholder-ready, wire real data when available) ---
+  const viewerAvatars = useMemo(
+    () => [
+      userInfo?.profileImage,
+      "https://i.pravatar.cc/100?img=12",
+      "https://i.pravatar.cc/100?img=22",
+      "https://i.pravatar.cc/100?img=32",
+    ].filter(Boolean),
+    [userInfo]
+  );
+
+  const floatingUsers = useMemo(
+    () => [
+      { name: "ليمار", uri: "https://i.pravatar.cc/120?img=48", vip: true },
+      { name: "ترلاهه", uri: "https://i.pravatar.cc/120?img=57", vip: true },
+      { name: "سيف", uri: "https://i.pravatar.cc/120?img=29", vip: false },
+      { name: "رامي", uri: "https://i.pravatar.cc/120?img=15", vip: false },
+    ],
+    []
+  );
+
+  const chatMessages = useMemo(
+    () => [
+      { user: "hamode", text: "نورّت", vip: true, color: "#ff5fa2" },
+      { user: "تريلاهه", text: "❤️", vip: false, color: "#222" },
+      { user: "سيف", text: "سلام", vip: true, color: "#c21f2f" },
+      { user: "ليمار", text: "هلا فيكم", vip: false, color: "#333" },
+    ],
+    []
+  );
+
   // --- UI RENDER ---
 
   // 1. Pre-Live View (Broadcaster only)
@@ -296,57 +328,152 @@ const LiveScreen = ({ navigation, route }) => {
       )}
 
       {/* Overlay UI */}
-      <SafeAreaView style={styles.overlayContainer}>
-        {/* Top Bar */}
-        <View style={styles.topBar}>
-          <View style={styles.hostInfo}>
-            <View style={styles.avatarBubble}>
-              <Ionicons name="person" size={16} color="#FFF" />
+      <SafeAreaView style={styles.overlayContainer} pointerEvents="box-none">
+        {/* Top cluster */}
+        <View style={styles.topCluster} pointerEvents="box-none">
+          <View style={styles.titleCard}>
+            <Text style={styles.titleText} numberOfLines={1}>
+              {liveTitle || "لايف أنـ ..."}
+            </Text>
+            <Text style={styles.idText}>ID: {channelName || "SY1660000"}</Text>
+          </View>
+
+          <View style={styles.topBadgesRow}>
+            <View style={styles.badgePill}>
+              <Ionicons name="medal" size={14} color="#FFD700" />
+              <Text style={styles.badgeText}>السجـل</Text>
             </View>
-            <View>
-              <Text style={styles.hostName}>{channelName}</Text>
-              <Text style={styles.viewerCount}>{viewerCount} viewers</Text>
+            <View style={styles.badgePill}>
+              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text style={styles.badgeText}>الأسبوعي</Text>
+            </View>
+            <View style={styles.badgePill}>
+              <Ionicons name="diamond" size={14} color="#7df0ff" />
+              <Text style={styles.badgeText}>13M</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.closeButtonSmall} onPress={leave}>
-            <Ionicons name="close" size={24} color="#FFF" />
-          </TouchableOpacity>
+
+          <View style={styles.viewerRow}>
+            <View style={styles.viewerCountPill}>
+              <Ionicons name="eye" size={14} color="#fff" />
+              <Text style={styles.viewerCountText}>{viewerCount}</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.viewerAvatars}
+            >
+              {viewerAvatars.map((uri, idx) => (
+                <View key={idx} style={styles.viewerAvatar}>
+                  <View style={styles.avatarRing}>
+                    <View style={styles.avatarInner}>
+                      <Image
+                        source={{ uri }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.closeButtonSmall} onPress={leave}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Bottom Area */}
-        <View style={styles.bottomArea}>
-          {/* Comments Area (Mock) */}
-          <ScrollView style={styles.commentsList} />
+        {/* Left vertical icons */}
+        <View style={styles.leftRail} pointerEvents="box-none">
+          <View style={styles.lockButton}>
+            <Ionicons name="lock-closed" size={22} color="#fff" />
+            <Text style={styles.lockCount}>{remoteUsers.length}</Text>
+          </View>
+          <View style={styles.sideIconBubble}>
+            <Ionicons name="rocket" size={20} color="#7df0ff" />
+          </View>
+          <View style={styles.sideIconBubble}>
+            <Ionicons name="sparkles" size={20} color="#ff8a00" />
+          </View>
+          <View style={styles.sideIconBubble}>
+            <Ionicons name="shield-checkmark" size={20} color="#20d5ec" />
+          </View>
+        </View>
 
-          {/* Controls */}
-          <View style={styles.controlsRow}>
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Say something..."
-              placeholderTextColor="#DDD"
-            />
+        {/* Center avatars */}
+        <View style={styles.centerStage} pointerEvents="box-none">
+          <View style={styles.hostBadge}>
+            <View style={styles.hostCrown} />
+            <View style={styles.hostAvatar}>
+              <Ionicons name="person" size={42} color="#fff" />
+            </View>
+            <Text style={styles.hostNameText}>{userInfo?.username || "Host"}</Text>
+          </View>
 
-            {/* Gift Button (Audience) */}
-            {!isBroadcaster && (
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="gift" size={28} color="#FFD700" />
-              </TouchableOpacity>
-            )}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.floatingRow}
+          >
+            {floatingUsers.map((u, idx) => (
+              <View key={idx} style={styles.floatingAvatar}>
+                <View style={styles.fireRing} />
+                <View style={styles.floatingInner}>
+                  <Ionicons name="person" size={24} color="#fff" />
+                </View>
+                <Text style={styles.floatingLabel} numberOfLines={1}>
+                  {u.name}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
 
-            {/* Share */}
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="share-social" size={28} color="#FFF" />
-            </TouchableOpacity>
-
-            {/* Switch Cam (Host) */}
-            {isBroadcaster && (
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={switchCamera}
+        {/* Chat bubbles (right side) */}
+        <View style={styles.chatColumn} pointerEvents="box-none">
+          <ScrollView
+            contentContainerStyle={{ gap: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {chatMessages.map((msg, idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.chatBubble,
+                  { backgroundColor: msg.color || "rgba(0,0,0,0.4)" },
+                ]}
               >
-                <Ionicons name="camera-reverse" size={28} color="#FFF" />
-              </TouchableOpacity>
-            )}
+                <Text style={styles.chatUser}>
+                  {msg.vip ? "VIP " : ""}
+                  {msg.user}
+                </Text>
+                <Text style={styles.chatText}>{msg.text}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Bottom bar */}
+        <View style={styles.bottomBar} pointerEvents="box-none">
+          <View style={styles.chatInput}>
+            <Text style={styles.chatPlaceholder}>قل شيئاً...</Text>
+          </View>
+          <View style={styles.bottomIcons}>
+            <TouchableOpacity style={styles.bottomIcon}>
+              <Ionicons name="gift" size={22} color="#ffb100" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bottomIcon}>
+              <Ionicons name="send" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bottomIcon}>
+              <Ionicons name="share-social" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bottomIcon} onPress={switchCamera}>
+              <Ionicons name="camera-reverse" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bottomIcon}>
+              <Ionicons name="apps" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
@@ -404,75 +531,250 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
   },
-  topBar: {
+  topCluster: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    gap: 8,
+  },
+  titleCard: {
+    alignSelf: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  titleText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+    textAlign: "right",
+  },
+  idText: {
+    color: "#d0d0d0",
+    fontSize: 11,
+    textAlign: "right",
+  },
+  topBadgesRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 16,
-    alignItems: "flex-start",
+    justifyContent: "flex-end",
+    gap: 8,
   },
-  hostInfo: {
+  badgePill: {
     flexDirection: "row",
-    backgroundColor: "rgba(0,0,0,0.3)",
-    padding: 4,
-    borderRadius: 20,
     alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
-  avatarBubble: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#FE2C55",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  hostName: {
-    color: "#FFF",
+  badgeText: {
+    color: "#fff",
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
-  viewerCount: {
-    color: "#DDD",
-    fontSize: 10,
+  viewerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    justifyContent: "flex-end",
+  },
+  viewerCountPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  viewerCountText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  viewerAvatars: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  viewerAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  avatarRing: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: "#FE2C55",
+    borderRadius: 17,
+    padding: 2,
+  },
+  avatarInner: {
+    flex: 1,
+    borderRadius: 15,
+    overflow: "hidden",
+  },
+  avatarFill: {
+    flex: 1,
   },
   closeButtonSmall: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     alignItems: "center",
   },
-  bottomArea: {
-    padding: 16,
+  leftRail: {
+    position: "absolute",
+    left: 10,
+    top: height * 0.25,
+    gap: 12,
   },
-  commentsList: {
-    height: 200,
-    marginBottom: 10,
+  lockButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  comment: {
-    color: "#FFF",
-    marginBottom: 4,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowRadius: 2,
+  lockCount: {
+    color: "#fff",
+    fontSize: 12,
+    marginTop: 2,
   },
-  commentUser: {
-    fontWeight: "bold",
-    color: "#DDD",
-  },
-  controlsRow: {
-    flexDirection: "row",
+  sideIconBubble: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  commentInput: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    color: "#FFF",
-    marginRight: 10,
+  centerStage: {
+    position: "absolute",
+    top: height * 0.32,
+    width: "100%",
+    alignItems: "center",
+    gap: 14,
   },
-  iconButton: {
-    marginLeft: 10,
+  hostBadge: {
+    alignItems: "center",
+    gap: 6,
+  },
+  hostCrown: {
+    width: 90,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,183,0,0.3)",
+  },
+  hostAvatar: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    borderColor: "#ffd700",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  hostNameText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  floatingRow: {
+    gap: 16,
+    paddingHorizontal: 20,
+  },
+  floatingAvatar: {
+    alignItems: "center",
+    gap: 4,
+  },
+  fireRing: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: "rgba(255,94,0,0.35)",
+  },
+  floatingInner: {
+    position: "absolute",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  floatingLabel: {
+    color: "#fff",
+    fontSize: 12,
+    maxWidth: 64,
+    textAlign: "center",
+  },
+  chatColumn: {
+    position: "absolute",
+    right: 10,
+    top: height * 0.35,
+    width: width * 0.45,
+  },
+  chatBubble: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  chatUser: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  chatText: {
+    color: "#fff",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  bottomBar: {
+    position: "absolute",
+    bottom: 12,
+    left: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  chatInput: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  chatPlaceholder: {
+    color: "#bbb",
+    fontSize: 13,
+    textAlign: "right",
+  },
+  bottomIcons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  bottomIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
 });
 

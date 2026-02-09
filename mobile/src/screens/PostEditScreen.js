@@ -24,11 +24,16 @@ import axios from "axios";
 const { width, height } = Dimensions.get("window");
 
 const PostEditScreen = ({ navigation, route }) => {
-    const { mediaUri, mediaType } = route.params;
+    const initialMedia =
+        route.params?.mediaItems ||
+        (route.params?.mediaUri
+            ? [{ uri: route.params.mediaUri, type: route.params.mediaType }]
+            : []);
     const { userToken } = useContext(AuthContext);
     const insets = useSafeAreaInsets();
     const videoRef = useRef(null);
 
+    const [mediaItems, setMediaItems] = useState(initialMedia);
     const [description, setDescription] = useState("");
     const [privacy, setPrivacy] = useState("public");
     const [allowComments, setAllowComments] = useState(true);
@@ -49,6 +54,11 @@ const PostEditScreen = ({ navigation, route }) => {
             return;
         }
 
+        if (!mediaItems.length) {
+            Alert.alert("خطأ", "لا يوجد وسائط مرفوعة");
+            return;
+        }
+
         setUploading(true);
         setUploadProgress(0);
 
@@ -56,16 +66,16 @@ const PostEditScreen = ({ navigation, route }) => {
             // Create FormData
             const formData = new FormData();
 
-            // Determine file type and extension
-            const uriParts = mediaUri.split(".");
-            const fileExtension = uriParts[uriParts.length - 1];
-            const fileName = `${mediaType}-${Date.now()}.${fileExtension}`;
+            mediaItems.forEach((item, index) => {
+                const uriParts = item.uri.split(".");
+                const fileExtension = uriParts[uriParts.length - 1] || (item.type === "video" ? "mp4" : "jpg");
+                const fileName = `${item.type || "media"}-${Date.now()}-${index}.${fileExtension}`;
 
-            // Add file to FormData (backend expects 'video' field for both videos and images)
-            formData.append("video", {
-                uri: mediaUri,
-                type: mediaType === "video" ? `video/${fileExtension}` : `image/${fileExtension}`,
-                name: fileName,
+                formData.append("video", {
+                    uri: item.uri,
+                    type: item.type === "video" ? `video/${fileExtension}` : `image/${fileExtension}`,
+                    name: fileName,
+                });
             });
 
             // Add metadata
@@ -90,7 +100,7 @@ const PostEditScreen = ({ navigation, route }) => {
                     setUploadProgress(percentCompleted);
                     console.log(`Upload Progress: ${percentCompleted}%`);
                 },
-                timeout: 120000, // 2 minutes timeout for large videos
+                timeout: 180000, // 3 minutes timeout for multi-media
             });
 
             console.log("✅ Upload successful:", response.data);
@@ -159,12 +169,22 @@ const PostEditScreen = ({ navigation, route }) => {
             </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {mediaItems.length > 1 && (
+                    <Text style={styles.multiHint}>
+                        تم اختيار {mediaItems.length} ملف (سيتم رفعهم في منشور واحد)
+                    </Text>
+                )}
                 {/* Media Preview */}
+                {mediaItems.length > 1 && (
+                    <Text style={styles.multiHint}>
+                        تم اختيار {mediaItems.length} ملف (سيتم رفعهم في منشور واحد)
+                    </Text>
+                )}
                 <View style={styles.previewContainer}>
-                    {mediaType === "video" ? (
+                    {mediaItems[0]?.type === "video" ? (
                         <Video
                             ref={videoRef}
-                            source={{ uri: mediaUri }}
+                            source={{ uri: mediaItems[0].uri }}
                             style={styles.preview}
                             resizeMode="cover"
                             shouldPlay
@@ -173,11 +193,11 @@ const PostEditScreen = ({ navigation, route }) => {
                             useNativeControls={false}
                         />
                     ) : (
-                        <Image source={{ uri: mediaUri }} style={styles.preview} resizeMode="cover" />
+                        <Image source={{ uri: mediaItems[0]?.uri }} style={styles.preview} resizeMode="cover" />
                     )}
 
                     {/* Play button overlay for video */}
-                    {mediaType === "video" && (
+                    {mediaItems[0]?.type === "video" && (
                         <TouchableOpacity
                             style={styles.playButton}
                             onPress={() => {
@@ -383,6 +403,11 @@ const styles = StyleSheet.create({
         height: width * 1.33, // 3:4 aspect ratio like TikTok
         backgroundColor: "#1a1a1a",
         position: "relative",
+    },
+    multiHint: {
+        color: "#bbb",
+        textAlign: "center",
+        marginBottom: 6,
     },
     preview: {
         width: "100%",

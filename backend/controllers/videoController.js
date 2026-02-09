@@ -31,11 +31,11 @@ const createVideo = async (req, res) => {
     console.log("User:", req.user?._id);
 
     // Multer with fields will put files in req.files as arrays keyed by fieldname
-    const videoFile = req.files && req.files.video ? req.files.video[0] : null;
+    const mediaFiles = (req.files && req.files.video) || [];
     const soundFile = req.files && req.files.sound ? req.files.sound[0] : null;
 
-    if (!videoFile) {
-      return res.status(400).json({ message: "لم يتم رفع أي فيديو" });
+    if (!mediaFiles.length) {
+      return res.status(400).json({ message: "لم يتم رفع أي ملف وسائط" });
     }
 
     const { description } = req.body;
@@ -44,16 +44,18 @@ const createVideo = async (req, res) => {
       return res.status(400).json({ message: "الوصف مطلوب" });
     }
 
-    // Validate file size (100MB limit)
+    // Validate file size (100MB per file)
     const maxSize = 100 * 1024 * 1024; // 100MB in bytes
-    if (videoFile.size > maxSize) {
-      return res.status(400).json({
-        message: "حجم الفيديو كبير جداً. الحد الأقصى 100 ميجابايت"
-      });
+    for (const file of mediaFiles) {
+      if (file.size > maxSize) {
+        return res.status(400).json({
+          message: `حجم الملف كبير جداً (${file.originalname}). الحد الأقصى 100 ميجابايت`
+        });
+      }
     }
 
-    // Upload video
-    let videoUrl = null;
+    // Upload media files to Cloudinary
+    let mediaResults = [];
     try {
       // Check Cloudinary configuration
       if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
@@ -69,38 +71,44 @@ const createVideo = async (req, res) => {
         throw new Error("Cloudinary credentials are still placeholder values. Please update them with actual values from Cloudinary dashboard.");
       }
 
-      // Upload to Cloudinary
-      console.log("📤 Uploading video to Cloudinary...");
-      console.log("   File path:", videoFile.path);
-      console.log("   File size:", (videoFile.size / 1024 / 1024).toFixed(2), "MB");
+      for (const file of mediaFiles) {
+        console.log("📤 Uploading media to Cloudinary...");
+        console.log("   File path:", file.path);
+        console.log("   File size:", (file.size / 1024 / 1024).toFixed(2), "MB");
 
-      videoUrl = await uploadToCloudinary(videoFile.path, "videos", "auto");
-      console.log("✅ Uploaded to Cloudinary:", videoUrl);
+        const url = await uploadToCloudinary(file.path, "videos", "auto");
+        const isImage = file.mimetype?.startsWith("image/");
+        mediaResults.push({
+          url,
+          type: isImage ? "image" : "video",
+        });
 
-      // Cleanup local file
-      try {
-        if (fs.existsSync(videoFile.path)) {
-          fs.unlinkSync(videoFile.path);
-          console.log("🗑️  Deleted local file:", videoFile.path);
+        // Cleanup local file
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+            console.log("🗑️  Deleted local file:", file.path);
+          }
+        } catch (e) {
+          console.error("⚠️  Error deleting local media:", e.message);
         }
-      } catch (e) {
-        console.error("⚠️  Error deleting local video:", e.message);
       }
-
     } catch (error) {
-      console.error("❌ Video upload failed:", error);
+      console.error("❌ Media upload failed:", error);
 
-      // Cleanup local file on error
-      try {
-        if (videoFile.path && fs.existsSync(videoFile.path)) {
-          fs.unlinkSync(videoFile.path);
+      // Cleanup any remaining temp files
+      for (const file of mediaFiles) {
+        try {
+          if (file.path && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (e) {
+          console.error("⚠️  Error cleaning up file:", e.message);
         }
-      } catch (e) {
-        console.error("⚠️  Error cleaning up file:", e.message);
       }
 
       // Return specific error message
-      let errorMessage = "فشل رفع الفيديو";
+      let errorMessage = "فشل رفع الوسائط";
 
       if (error.message.includes("not configured")) {
         errorMessage = "Cloudinary غير مكون. تحقق من إعدادات الخادم";
@@ -120,7 +128,8 @@ const createVideo = async (req, res) => {
 
     const videoData = {
       user: req.user._id,
-      videoUrl: videoUrl,
+      videoUrl: mediaResults[0]?.url, // preserve existing clients
+      media: mediaResults,
       description: description.trim(),
       privacy: req.body.privacy || "public",
       allowComments: req.body.allowComments === "true",

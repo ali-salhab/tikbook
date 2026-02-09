@@ -46,53 +46,26 @@ const HomeScreen = ({ navigation }) => {
       const res = await axios.get(`${BASE_URL}/videos`, { timeout: 10000 });
       console.log("✅ Videos fetched:", res.data.length);
 
-      if (!res.data || res.data.length === 0) {
-        console.log("⚠️ No videos found, using dummy data");
-        throw new Error("No videos available");
-      }
+      // Map videos and ensure URLs are absolute
+      const mappedVideos = (res.data || []).map((video) => ({
+        ...video,
+        isLiked: false,
+        // If backend already returns an absolute URL (Cloudinary/HTTPS), use it directly.
+        // Otherwise, build one from the API base (keeps support for local uploads).
+        videoUrl: video.videoUrl?.startsWith("http")
+          ? video.videoUrl
+          : `${BASE_URL.replace("/api", "")}/${(video.videoUrl || "").replace(
+            /\\/g,
+            "/"
+          )}`,
+      }));
 
-      // Map videos and ensure Cloudinary URLs are used as-is
-      const mappedVideos = res.data
-        .map((video) => ({
-          ...video,
-          isLiked: false,
-          // Cloudinary URLs start with http/https, use them directly
-          // Only construct URL for local file paths (legacy support)
-          videoUrl: video.videoUrl.startsWith("http")
-            ? video.videoUrl
-            : `${BASE_URL.replace("/api", "")}/${video.videoUrl.replace(
-              /\\/g,
-              "/"
-            )}`,
-        }))
-        // Filter out videos that don't have valid Cloudinary URLs
-        .filter((video) => {
-          const isCloudinary = video.videoUrl.includes("cloudinary.com");
-          if (!isCloudinary) {
-            console.warn("⚠️ Skipping non-Cloudinary video:", video.videoUrl);
-          }
-          return isCloudinary;
-        });
-
-      console.log("📹 Valid Cloudinary videos:", mappedVideos.length);
-
-      if (mappedVideos.length === 0) {
-        console.log("⚠️ No Cloudinary videos found, using dummy data");
-        throw new Error("No valid Cloudinary videos");
-      }
-
-      console.log("📹 First video URL:", mappedVideos[0]?.videoUrl);
+      console.log("📹 Videos ready for rendering:", mappedVideos.length);
       setVideos(mappedVideos);
       setLoading(false);
     } catch (e) {
       console.error("❌ Error fetching videos:", e.message);
-      console.log("Using local dummy videos");
-
-      // Enhanced dummy data with Arabic content and local assets
-      // const video1 = require("../../assets/videos/video1.mp4");
-      // const video2 = require("../../assets/videos/video2.mp4");
-
-  
+      setVideos([]); // show empty state instead of dummy content
       setLoading(false);
     }
   }, []);
@@ -424,6 +397,19 @@ const HomeScreen = ({ navigation }) => {
           backgroundColor="transparent"
         />
         <Text style={styles.loadingText}>جاري التحميل...</Text>
+      </View>
+    );
+  }
+
+  if (!videos.length) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <StatusBar
+          barStyle="light-content"
+          translucent
+          backgroundColor="transparent"
+        />
+        <Text style={styles.loadingText}>لا توجد فيديوهات متاحة حالياً</Text>
       </View>
     );
   }

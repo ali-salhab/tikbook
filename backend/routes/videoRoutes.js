@@ -18,7 +18,7 @@ router
   .post(
     protect,
     videoUpload.fields([
-      { name: "video", maxCount: 1 },
+      { name: "video", maxCount: 5 }, // allow multiple media files (video or image)
       { name: "sound", maxCount: 1 },
     ]),
     createVideo
