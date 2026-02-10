@@ -76,7 +76,7 @@ const TabIconWithBadge = ({ name, color, size, badgeCount }) => (
 
 const HomeTabs = () => {
   const insets = useSafeAreaInsets();
-  const { userInfo } = React.useContext(AuthContext);
+  const { userInfo, notificationCount } = React.useContext(AuthContext);
 
   return (
     <Tab.Navigator
@@ -201,7 +201,7 @@ const HomeTabs = () => {
               }
               size={24}
               color={color}
-              badgeCount={0}
+              badgeCount={notificationCount}
             />
           ),
         }}

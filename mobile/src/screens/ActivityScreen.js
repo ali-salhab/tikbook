@@ -6,10 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
@@ -20,7 +20,7 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const ActivityScreen = ({ navigation }) => {
-  const { userToken } = useContext(AuthContext);
+  const { userToken, setNotificationCount } = useContext(AuthContext);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +67,38 @@ const ActivityScreen = ({ navigation }) => {
     }
   };
 
+  const handleNotificationPress = (notification) => {
+    if (notification.type === "like" || notification.type === "comment") {
+      if (notification.video) {
+        navigation.navigate("MainTabs", {
+          screen: "Home",
+          params: { videoId: notification.video._id },
+        });
+      }
+    } else if (notification.type === "follow") {
+      if (notification.fromUser) {
+        navigation.navigate("UserProfile", {
+          userId: notification.fromUser._id,
+        });
+      }
+    }
+  };
+
+  const markNotificationsAsRead = async () => {
+    try {
+      await axios.post(
+        `${BASE_URL}/notifications/mark-read`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${userToken}` },
+        },
+      );
+      setNotificationCount(0);
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+    }
+  };
+
   const fetchNotifications = async () => {
     if (netInfo.isConnected === false) return;
     try {
@@ -87,6 +119,7 @@ const ActivityScreen = ({ navigation }) => {
     useCallback(() => {
       if (netInfo.isConnected !== false) {
         fetchNotifications();
+        markNotificationsAsRead();
       } else {
         setLoading(false);
       }
@@ -115,7 +148,10 @@ const ActivityScreen = ({ navigation }) => {
       : buildCloudinaryThumbnail(videoUrl);
 
     return (
-      <TouchableOpacity style={styles.itemContainer}>
+      <TouchableOpacity
+        style={styles.itemContainer}
+        onPress={() => handleNotificationPress(item)}
+      >
         <View style={styles.leftContent}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarPlaceholder}>
@@ -153,7 +189,7 @@ const ActivityScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-forward" size={24} color="#000" />

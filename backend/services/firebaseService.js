@@ -1,4 +1,8 @@
 const admin = require("firebase-admin");
+const {
+  sendExpoPushNotification,
+  isExpoPushToken,
+} = require("./expoPushService");
 
 // Initialize Firebase Admin SDK
 // You'll need to download your service account key from Firebase Console
@@ -35,7 +39,7 @@ try {
     console.log("Firebase Admin initialized successfully");
   } else {
     console.log(
-      "Firebase Admin not initialized - no service account configured"
+      "Firebase Admin not initialized - no service account configured",
     );
   }
 } catch (error) {
@@ -44,6 +48,12 @@ try {
 
 const sendPushNotification = async (token, title, body, data = {}) => {
   try {
+    // Check if it's an Expo push token
+    if (isExpoPushToken(token)) {
+      return await sendExpoPushNotification(token, title, body, data);
+    }
+
+    // Otherwise try Firebase
     if (!admin.apps.length) {
       console.log("Firebase not initialized, skipping notification");
       return null;
@@ -89,7 +99,7 @@ const sendMulticastNotification = async (tokens, title, body, data = {}) => {
 
     const response = await admin.messaging().sendMulticast(message);
     console.log(
-      `Successfully sent ${response.successCount} notifications. Failed: ${response.failureCount}`
+      `Successfully sent ${response.successCount} notifications. Failed: ${response.failureCount}`,
     );
     return response;
   } catch (error) {

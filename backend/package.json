@@ -7,7 +7,9 @@
     "dev": "nodemon server.js",
     "seed": "node seedData.js",
     "create-admin": "node createAdmin.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-push": "node testPushNotification.js",
+    "send-notification": "node quickSend.js"
   },
   "keywords": [],
   "author": "",

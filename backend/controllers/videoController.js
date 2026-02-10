@@ -49,7 +49,7 @@ const createVideo = async (req, res) => {
     for (const file of mediaFiles) {
       if (file.size > maxSize) {
         return res.status(400).json({
-          message: `حجم الملف كبير جداً (${file.originalname}). الحد الأقصى 100 ميجابايت`
+          message: `حجم الملف كبير جداً (${file.originalname}). الحد الأقصى 100 ميجابايت`,
         });
       }
     }
@@ -58,23 +58,37 @@ const createVideo = async (req, res) => {
     let mediaResults = [];
     try {
       // Check Cloudinary configuration
-      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      if (
+        !process.env.CLOUDINARY_CLOUD_NAME ||
+        !process.env.CLOUDINARY_API_KEY ||
+        !process.env.CLOUDINARY_API_SECRET
+      ) {
         console.error("❌ Cloudinary credentials missing!");
-        throw new Error("Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.");
+        throw new Error(
+          "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.",
+        );
       }
 
       // Check if credentials are still placeholders
-      if (process.env.CLOUDINARY_CLOUD_NAME.includes("your_") ||
+      if (
+        process.env.CLOUDINARY_CLOUD_NAME.includes("your_") ||
         process.env.CLOUDINARY_API_KEY.includes("your_") ||
-        process.env.CLOUDINARY_API_SECRET.includes("your_")) {
+        process.env.CLOUDINARY_API_SECRET.includes("your_")
+      ) {
         console.error("❌ Cloudinary credentials are placeholders!");
-        throw new Error("Cloudinary credentials are still placeholder values. Please update them with actual values from Cloudinary dashboard.");
+        throw new Error(
+          "Cloudinary credentials are still placeholder values. Please update them with actual values from Cloudinary dashboard.",
+        );
       }
 
       for (const file of mediaFiles) {
         console.log("📤 Uploading media to Cloudinary...");
         console.log("   File path:", file.path);
-        console.log("   File size:", (file.size / 1024 / 1024).toFixed(2), "MB");
+        console.log(
+          "   File size:",
+          (file.size / 1024 / 1024).toFixed(2),
+          "MB",
+        );
 
         const url = await uploadToCloudinary(file.path, "videos", "auto");
         const isImage = file.mimetype?.startsWith("image/");
@@ -122,7 +136,7 @@ const createVideo = async (req, res) => {
 
       return res.status(500).json({
         message: errorMessage,
-        error: error.message
+        error: error.message,
       });
     }
 
@@ -246,7 +260,7 @@ const likeVideo = async (req, res) => {
 
       if (isLiked) {
         video.likes = video.likes.filter(
-          (id) => id.toString() !== req.user._id.toString()
+          (id) => id.toString() !== req.user._id.toString(),
         );
       } else {
         video.likes.push(req.user._id);
@@ -266,7 +280,7 @@ const likeVideo = async (req, res) => {
             video.user._id,
             "إعجاب جديد",
             `أعجب @${req.user.username} بفيديوك`,
-            { type: "like", videoId: video._id.toString() }
+            { type: "like", videoId: video._id.toString() },
           );
         }
       }
@@ -313,7 +327,7 @@ const commentVideo = async (req, res) => {
           video.user._id,
           "تعليق جديد",
           `علّق @${req.user.username}: ${text.substring(0, 50)}`,
-          { type: "comment", videoId: video._id.toString() }
+          { type: "comment", videoId: video._id.toString() },
         );
       }
 
@@ -356,11 +370,40 @@ const getVideoComments = async (req, res) => {
 
     // Sort comments by most recent first
     const sortedComments = video.comments.sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
 
     res.json(sortedComments);
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get videos from followed users
+// @route   GET /api/videos/following
+// @access  Private
+const getFollowingVideos = async (req, res) => {
+  try {
+    const User = require("../models/User");
+
+    // Get current user with populated following list
+    const user = await User.findById(req.user._id).select("following");
+
+    if (!user || !user.following || user.following.length === 0) {
+      return res.json([]);
+    }
+
+    // Get videos from followed users
+    const videos = await Video.find({
+      user: { $in: user.following },
+    })
+      .populate("user", "username profileImage")
+      .sort({ createdAt: -1 })
+      .limit(50); // Limit to latest 50 videos
+
+    res.json(videos);
+  } catch (error) {
+    console.error("❌ Error fetching following videos:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -372,4 +415,5 @@ module.exports = {
   commentVideo,
   getUserVideos,
   getVideoComments,
+  getFollowingVideos,
 };

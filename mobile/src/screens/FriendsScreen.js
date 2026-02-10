@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -8,74 +14,92 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Video } from "expo-av";
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { AuthContext } from "../context/AuthContext";
+import { useFocusEffect } from "@react-navigation/native";
+import axios from "axios";
+import { useNetInfo } from "@react-native-community/netinfo";
+import OfflineNotice from "../components/OfflineNotice";
+import LoadingIndicator from "../components/LoadingIndicator";
 
 const { width, height } = Dimensions.get("window");
 
 const FriendsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { userToken, userInfo, BASE_URL } = useContext(AuthContext);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [friendsVideos, setFriendsVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const netInfo = useNetInfo();
 
-  // Mock Data for Friends Feed
-  const friendsVideos = [
-    {
-      id: "1",
-      username: "ahmed_ali",
-      userAvatar:
-        "https://ui-avatars.com/api/?name=Ahmed+Ali&background=random",
-      description: "يوم جميل مع الأصدقاء! ☀️ #friends #fun",
-      videoUrl:
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", // Sample video
-      likes: "12K",
-      comments: "340",
-      shares: "1.2K",
-      isLiked: true,
-      time: "منذ 2 ساعة",
-    },
-    {
-      id: "2",
-      username: "sara_design",
-      userAvatar:
-        "https://ui-avatars.com/api/?name=Sara+Design&background=random",
-      description: "تصميمي الجديد 🎨 رأيكم؟",
-      videoUrl:
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      likes: "8.5K",
-      comments: "120",
-      shares: "500",
-      isLiked: false,
-      time: "منذ 5 ساعات",
-    },
-    {
-      id: "3",
-      username: "mohamed_dev",
-      userAvatar:
-        "https://ui-avatars.com/api/?name=Mohamed+Dev&background=random",
-      description: "Coding life 💻☕️",
-      videoUrl:
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      likes: "20K",
-      comments: "800",
-      shares: "2K",
-      isLiked: true,
-      time: "الأمس",
-    },
-  ];
-
+  // MUST declare useRef before any conditional returns (Rules of Hooks)
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems && viewableItems.length > 0) {
       setActiveVideoIndex(viewableItems[0].index);
     }
   }).current;
 
+  const formatNumber = (num) => {
+    if (!num || num === 0) return "0";
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+    return num.toString();
+  };
+
+  const fetchFriendsVideos = async () => {
+    if (netInfo.isConnected === false) return;
+    try {
+      // Fetch videos from followed users
+      const res = await axios.get(`${BASE_URL}/videos/following`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setFriendsVideos(res.data || []);
+    } catch (e) {
+      console.log("❌ Error fetching friends videos:", e.message);
+      setFriendsVideos([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (netInfo.isConnected !== false) {
+        fetchFriendsVideos();
+      } else {
+        setLoading(false);
+      }
+    }, [netInfo.isConnected]),
+  );
+
+  const onRefresh = () => {
+    if (netInfo.isConnected !== false) {
+      setRefreshing(true);
+      fetchFriendsVideos();
+    }
+  };
+
+  if (netInfo.isConnected === false && friendsVideos.length === 0) {
+    return <OfflineNotice onRetry={onRefresh} />;
+  }
+
+  if (loading && friendsVideos.length === 0) {
+    return <LoadingIndicator />;
+  }
+
   const renderItem = ({ item, index }) => {
     const isActive = index === activeVideoIndex;
+    const username = item.user?.username || "user";
+    const profileImage = item.user?.profileImage;
 
     return (
       <View style={[styles.videoContainer, { height: height - tabBarHeight }]}>
@@ -92,43 +116,68 @@ const FriendsScreen = ({ navigation }) => {
         <View style={styles.overlay}>
           {/* Right Side Actions */}
           <View style={styles.rightContainer}>
-            <View style={styles.profileContainer}>
-              <Image source={{ uri: item.userAvatar }} style={styles.avatar} />
+            <TouchableOpacity
+              style={styles.profileContainer}
+              onPress={() =>
+                navigation.navigate("UserProfile", { userId: item.user._id })
+              }
+            >
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatar} />
+              ) : (
+                <View
+                  style={[
+                    styles.avatar,
+                    {
+                      backgroundColor: "#666",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    },
+                  ]}
+                >
+                  <Ionicons name="person" size={24} color="#FFF" />
+                </View>
+              )}
               <View style={styles.followBadge}>
                 <Ionicons name="add" size={12} color="#FFF" />
               </View>
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              {item.isLiked ? (
+                <Ionicons name="heart" size={35} color="#FE2C55" />
+              ) : (
+                <Ionicons name="heart-outline" size={35} color="#FFF" />
+              )}
+              <Text style={styles.actionText}>
+                {formatNumber(item.likes?.length || 0)}
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons
-                name="heart"
+                name="chatbubble-ellipses-sharp"
                 size={35}
-                color={item.isLiked ? "#FE2C55" : "#FFF"}
+                color="#FFF"
               />
-              <Text style={styles.actionText}>{item.likes}</Text>
+              <Text style={styles.actionText}>
+                {formatNumber(item.comments || 0)}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="chatbubble-ellipses" size={35} color="#FFF" />
-              <Text style={styles.actionText}>{item.comments}</Text>
+              <Ionicons name="bookmark-outline" size={35} color="#FFF" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="bookmark" size={35} color="#FFF" />
-              <Text style={styles.actionText}>حفظ</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="share-social" size={35} color="#FFF" />
-              <Text style={styles.actionText}>{item.shares}</Text>
+              <Ionicons name="arrow-redo-sharp" size={35} color="#FFF" />
             </TouchableOpacity>
           </View>
 
           {/* Bottom Content */}
           <View style={styles.bottomContainer}>
-            <Text style={styles.username}>@{item.username}</Text>
+            <Text style={styles.username}>@{username}</Text>
             <Text style={styles.description}>{item.description}</Text>
-            <Text style={styles.time}>{item.time}</Text>
           </View>
         </View>
       </View>
@@ -161,20 +210,38 @@ const FriendsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={friendsVideos}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={height - tabBarHeight}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{
-          itemVisiblePercentThreshold: 50,
-        }}
-      />
+      {friendsVideos.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="people-outline" size={64} color="#666" />
+          <Text style={styles.emptyText}>لا توجد فيديوهات من الأصدقاء</Text>
+          <Text style={styles.emptySubtext}>
+            تابع المزيد من المستخدمين لرؤية محتواهم هنا
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={friendsVideos}
+          renderItem={renderItem}
+          keyExtractor={(item) => item._id}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={height - tabBarHeight}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          scrollEventThrottle={16}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{
+            itemVisiblePercentThreshold: 80,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FFF"
+            />
+          }
+        />
+      )}
     </View>
   );
 };
@@ -216,6 +283,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#000",
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 20,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    color: "#999",
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: "center",
   },
   videoContainer: {
     width: width,

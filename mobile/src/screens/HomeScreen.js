@@ -42,8 +42,15 @@ const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const netInfo = useNetInfo();
+
+  // Refs should be defined at the top level
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const videoRef = useRef(null);
+  const lastTap = useRef(0);
+  const flatListRef = useRef(null);
 
   const fetchVideos = useCallback(async () => {
     // If no internet, don't try to fetch (avoids Network Error logs)
@@ -51,10 +58,10 @@ const HomeScreen = ({ navigation }) => {
       setLoading(false);
       return;
     }
-
+    setLoading(true);
     try {
       console.log("📹 Fetching videos from:", `${BASE_URL}/videos`);
-      const res = await axios.get(`${BASE_URL}/videos`, { timeout: 10000 });
+      const res = await axios.get(`${BASE_URL}/videos`, { timeout: 20000 }); // Increased timeout
       console.log("✅ Videos fetched:", res.data.length);
 
       // Map videos and ensure URLs are absolute
@@ -73,7 +80,6 @@ const HomeScreen = ({ navigation }) => {
 
       console.log("📹 Videos ready for rendering:", mappedVideos.length);
       setVideos(mappedVideos);
-      setLoading(false);
     } catch (e) {
       console.error("❌ Error fetching videos:", e.message);
       if (e.response) {
@@ -83,9 +89,10 @@ const HomeScreen = ({ navigation }) => {
         console.error("   Request made but no response received");
       }
       setVideos([]); // show empty state instead of dummy content
+    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [netInfo.isConnected, BASE_URL]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -102,15 +109,6 @@ const HomeScreen = ({ navigation }) => {
       }
     }, [fetchVideos, netInfo.isConnected]),
   );
-
-  if (netInfo.isConnected === false && videos.length === 0) {
-    return <OfflineNotice onRetry={fetchVideos} />;
-  }
-
-  if (loading && videos.length === 0) {
-    // Basic loading indicator
-    return <LoadingIndicator />;
-  }
 
   const formatNumber = (num) => {
     // Handle if it's an array (likes array)
@@ -193,12 +191,6 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const VideoItem = ({ item, isActive }) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const heartOpacity = useRef(new Animated.Value(0)).current;
-    const heartScale = useRef(new Animated.Value(0)).current;
-    const videoRef = useRef(null);
-    const lastTap = useRef(0);
-
     useEffect(() => {
       if (videoRef.current) {
         if (isActive) {
@@ -362,16 +354,19 @@ const HomeScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* Like Button */}
+          {/* Like Button - TikTok Style */}
           <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              <Ionicons
-                name="heart"
-                size={35}
-                color={item.isLiked ? "#FE2C55" : "#FFF"}
-              />
+              {item.isLiked ? (
+                <View style={styles.likedHeart}>
+                  <Ionicons name="heart" size={35} color="#FE2C55" />
+                  <View style={styles.heartGlow} />
+                </View>
+              ) : (
+                <Ionicons name="heart-outline" size={35} color="#FFF" />
+              )}
             </Animated.View>
-            <Text style={styles.actionText}>
+            <Text style={[styles.actionText, item.isLiked && styles.likedText]}>
               {formatNumber(item.likes || 0)}
             </Text>
           </TouchableOpacity>
@@ -389,8 +384,7 @@ const HomeScreen = ({ navigation }) => {
 
           {/* Bookmark Button */}
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="bookmark" size={35} color="#FFF" />
-            <Text style={styles.actionText}>483</Text>
+            <Ionicons name="bookmark-outline" size={35} color="#FFF" />
           </TouchableOpacity>
 
           {/* Share Button */}
@@ -399,7 +393,6 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => handleShare(item)}
           >
             <Ionicons name="arrow-redo-sharp" size={35} color="#FFF" />
-            <Text style={styles.actionText}>120</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -416,17 +409,13 @@ const HomeScreen = ({ navigation }) => {
     }
   }).current;
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <StatusBar
-          barStyle="light-content"
-          translucent
-          backgroundColor="transparent"
-        />
-        <Text style={styles.loadingText}>جاري التحميل...</Text>
-      </View>
-    );
+  // Conditional rendering at the end of the component
+  if (netInfo.isConnected === false && videos.length === 0) {
+    return <OfflineNotice onRetry={fetchVideos} />;
+  }
+
+  if (loading && videos.length === 0) {
+    return <LoadingIndicator />;
   }
 
   if (!videos.length) {
@@ -438,6 +427,9 @@ const HomeScreen = ({ navigation }) => {
           backgroundColor="transparent"
         />
         <Text style={styles.loadingText}>لا توجد فيديوهات متاحة حالياً</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchVideos}>
+          <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -476,6 +468,7 @@ const HomeScreen = ({ navigation }) => {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={videos}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
@@ -484,13 +477,15 @@ const HomeScreen = ({ navigation }) => {
         snapToInterval={Dimensions.get("window").height}
         snapToAlignment="start"
         decelerationRate="fast"
+        scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
-          itemVisiblePercentThreshold: 50,
+          itemVisiblePercentThreshold: 80,
         }}
         windowSize={3}
         initialNumToRender={1}
-        maxToRenderPerBatch={1}
+        maxToRenderPerBatch={2}
+        updateCellsBatchingPeriod={100}
         removeClippedSubviews={true}
         refreshControl={
           <RefreshControl
@@ -499,7 +494,7 @@ const HomeScreen = ({ navigation }) => {
             tintColor="#FFF"
             title="سحب للتحديث"
             titleColor="#FFF"
-            progressViewOffset={insets.top + 60} // Push loader below the top bar
+            progressViewOffset={insets.top + 60}
           />
         }
       />
@@ -695,6 +690,24 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
+  likedHeart: {
+    position: "relative",
+  },
+  heartGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#FE2C55",
+    opacity: 0.3,
+    borderRadius: 20,
+    transform: [{ scale: 1.3 }],
+  },
+  likedText: {
+    color: "#FE2C55",
+    fontWeight: "bold",
+  },
   loadingContainer: {
     justifyContent: "center",
     alignItems: "center",
@@ -702,6 +715,17 @@ const styles = StyleSheet.create({
   loadingText: {
     color: "#FFF",
     fontSize: 18,
+    fontWeight: "bold",
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: "#FE2C55",
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFF",
     fontWeight: "bold",
   },
 });

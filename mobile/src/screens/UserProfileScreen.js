@@ -39,11 +39,33 @@ const UserProfileScreen = ({ route, navigation }) => {
       setIsFollowing(res.data.followers?.includes(userInfo._id));
 
       // Fetch user's videos
-      const videosRes = await axios.get(`${BASE_URL}/videos?userId=${userId}`);
-      setVideos(videosRes.data);
+      const videosRes = await axios.get(`${BASE_URL}/videos/user/${userId}`);
+      setVideos(videosRes.data || []);
     } catch (e) {
       console.log("❌ Error fetching user profile:", e.message);
     }
+  };
+
+  const buildCloudinaryThumbnail = (url) => {
+    if (!url) return null;
+    if (!url.includes("cloudinary.com")) return url;
+    return url
+      .replace("/upload/", "/upload/c_fill,g_center,w_200,h_260,so_1/")
+      .replace(/\.(mp4|mov|m4v|avi|mkv|webm)$/i, ".jpg");
+  };
+
+  const isImageUrl = (url) =>
+    typeof url === "string" && url.match(/\.(jpe?g|png|gif|webp)$/i) !== null;
+
+  const getVideoThumbnail = (video) => {
+    const videoUrl = video.videoUrl;
+    if (video.thumbnailUrl || video.thumbnail || video.coverUrl) {
+      return video.thumbnailUrl || video.thumbnail || video.coverUrl;
+    }
+    if (isImageUrl(videoUrl)) {
+      return videoUrl;
+    }
+    return buildCloudinaryThumbnail(videoUrl);
   };
 
   const handleFollow = async () => {
@@ -174,25 +196,36 @@ const UserProfileScreen = ({ route, navigation }) => {
         <View style={styles.grid}>
           {videos.length > 0 ? (
             <View style={styles.videoGrid}>
-              {videos.map((video) => (
-                <TouchableOpacity
-                  key={video._id}
-                  style={styles.videoItem}
-                  onPress={() =>
-                    navigation.navigate("Home", { videoId: video._id })
-                  }
-                >
-                  <View style={styles.videoThumbnail}>
-                    <Ionicons name="play" size={32} color="#FFF" />
-                  </View>
-                  <View style={styles.videoStats}>
-                    <Ionicons name="heart" size={14} color="#FFF" />
-                    <Text style={styles.videoStatText}>
-                      {video.likes?.length || 0}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {videos.map((video) => {
+                const thumbnail = getVideoThumbnail(video);
+                return (
+                  <TouchableOpacity
+                    key={video._id}
+                    style={styles.videoItem}
+                    onPress={() =>
+                      navigation.navigate("Home", { videoId: video._id })
+                    }
+                  >
+                    {thumbnail ? (
+                      <Image
+                        source={{ uri: thumbnail }}
+                        style={styles.videoThumbnailImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.videoThumbnail}>
+                        <Ionicons name="videocam" size={32} color="#666" />
+                      </View>
+                    )}
+                    <View style={styles.videoStats}>
+                      <Ionicons name="play-outline" size={14} color="#FFF" />
+                      <Text style={styles.videoStatText}>
+                        {video.views || 0}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           ) : (
             <View style={styles.emptyState}>
@@ -323,6 +356,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#000",
+  },
+  videoThumbnailImage: {
+    width: "100%",
+    height: "100%",
   },
   videoStats: {
     position: "absolute",

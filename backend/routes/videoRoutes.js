@@ -6,6 +6,7 @@ const {
   commentVideo,
   getUserVideos,
   getVideoComments,
+  getFollowingVideos,
 } = require("../controllers/videoController");
 const { protect } = require("../middleware/authMiddleware");
 const { videoUpload } = require("../middleware/uploadMiddleware");
@@ -21,8 +22,9 @@ router
       { name: "video", maxCount: 5 }, // allow multiple media files (video or image)
       { name: "sound", maxCount: 1 },
     ]),
-    createVideo
+    createVideo,
   );
+router.route("/following").get(protect, getFollowingVideos);
 router.route("/user/:id").get(getUserVideos);
 router.route("/:id/like").put(protect, likeVideo);
 router.route("/:id/comment").post(protect, commentVideo);

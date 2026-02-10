@@ -20,6 +20,27 @@
         "buildType": "apk"
       }
     },
+    "release-apk": {
+      "android": {
+        "buildType": "apk",
+        "image": "latest",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "cache": {
+        "key": "release-apk",
+        "paths": ["node_modules", "android/.gradle"]
+      }
+    },
+    "release-apk-all": {
+      "extends": "release-apk",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a"
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"
