@@ -79,7 +79,7 @@ const FriendsScreen = ({ navigation }) => {
       } else {
         setLoading(false);
       }
-      
+
       // Cleanup: pause all videos when screen loses focus
       return () => {
         console.log("🔇 FriendsScreen unfocused - pausing videos");
