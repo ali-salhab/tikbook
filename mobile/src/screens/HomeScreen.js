@@ -107,6 +107,15 @@ const HomeScreen = ({ navigation }) => {
       if (netInfo.isConnected !== false) {
         fetchVideos();
       }
+      
+      // Cleanup: pause video when screen loses focus
+      return () => {
+        console.log("🔇 HomeScreen unfocused - pausing video");
+        if (videoRef.current) {
+          videoRef.current.pauseAsync().catch(() => {});
+          videoRef.current.setIsMutedAsync(true).catch(() => {});
+        }
+      };
     }, [fetchVideos, netInfo.isConnected]),
   );
 
