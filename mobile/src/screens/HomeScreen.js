@@ -504,7 +504,7 @@ const HomeScreen = ({ navigation }) => {
         visible={commentsVisible}
         onClose={closeComments}
         videoId={selectedVideo?._id}
-        initialComments={selectedVideo?.commentsData || []}
+        initialComments={selectedVideo?.comments || []}
       />
     </View>
   );

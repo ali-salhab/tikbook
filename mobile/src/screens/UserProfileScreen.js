@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
@@ -125,7 +126,21 @@ const UserProfileScreen = ({ route, navigation }) => {
         {/* Profile Info */}
         <View style={styles.profileInfo}>
           <View style={styles.avatar}>
-            <Ionicons name="person-circle" size={96} color="#888" />
+            {profile.profileImage ? (
+              <Image
+                source={{ uri: profile.profileImage }}
+                style={styles.profileImageStyle}
+                resizeMode="cover"
+                onError={(e) => {
+                  console.log(
+                    "❌ Error loading profile image:",
+                    e.nativeEvent.error,
+                  );
+                }}
+              />
+            ) : (
+              <Ionicons name="person-circle" size={96} color="#888" />
+            )}
           </View>
 
           {/* Stats */}
@@ -267,6 +282,15 @@ const styles = StyleSheet.create({
   },
   avatar: {
     marginBottom: 16,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    overflow: "hidden",
+    backgroundColor: "#1F1F1F",
+  },
+  profileImageStyle: {
+    width: "100%",
+    height: "100%",
   },
   stats: {
     flexDirection: "row",

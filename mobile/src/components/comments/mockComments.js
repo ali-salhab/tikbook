@@ -1,0 +1,217 @@
+// Mock comments data for testing
+export const mockComments = [
+  {
+    id: "1",
+    user: {
+      id: "user1",
+      username: "ahmed_khalid",
+      avatar: null,
+      isVerified: true,
+      isVip: false,
+    },
+    text: "هذا المحتوى رائع جداً! 🔥 استمر",
+    timestamp: new Date(Date.now() - 1000 * 20).toISOString(), // 20 seconds ago
+    likesCount: 127,
+    isLiked: false,
+    replies: [
+      {
+        id: "r1",
+        user: {
+          id: "user2",
+          username: "sara_m",
+          avatar: null,
+          isVerified: false,
+          isVip: true,
+        },
+        text: "أوافقك الرأي تماماً! 💯",
+        timestamp: new Date(Date.now() - 1000 * 10).toISOString(),
+        likesCount: 24,
+        isLiked: true,
+      },
+      {
+        id: "r2",
+        user: {
+          id: "user3",
+          username: "omar_tech",
+          avatar: null,
+          isVerified: true,
+          isVip: false,
+        },
+        text: "شكراً على المشاركة 🙏",
+        timestamp: new Date(Date.now() - 1000 * 5).toISOString(),
+        likesCount: 8,
+        isLiked: false,
+      },
+    ],
+    showReplies: false,
+  },
+  {
+    id: "2",
+    user: {
+      id: "user4",
+      username: "mohamed_ali",
+      avatar: null,
+      isVerified: false,
+      isVip: true,
+    },
+    text: "ممتاز! طريقة شرحك واضحة جداً 👍",
+    timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), // 2 minutes ago
+    likesCount: 56,
+    isLiked: true,
+    replies: [],
+    showReplies: false,
+  },
+  {
+    id: "3",
+    user: {
+      id: "user5",
+      username: "layla_star",
+      avatar: null,
+      isVerified: true,
+      isVip: true,
+    },
+    text: "هل يمكنك عمل فيديو عن هذا الموضوع؟ سيكون مفيداً جداً 😊",
+    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 minutes ago
+    likesCount: 89,
+    isLiked: false,
+    replies: [
+      {
+        id: "r3",
+        user: {
+          id: "user1",
+          username: "ahmed_khalid",
+          avatar: null,
+          isVerified: true,
+          isVip: false,
+        },
+        text: "فكرة رائعة! سأعمل عليها قريباً ✨",
+        timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+        likesCount: 34,
+        isLiked: false,
+      },
+    ],
+    showReplies: false,
+  },
+  {
+    id: "4",
+    user: {
+      id: "user6",
+      username: "youssef_design",
+      avatar: null,
+      isVerified: false,
+      isVip: false,
+    },
+    text: "محتوى قيم، شكراً لك 🎉",
+    timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
+    likesCount: 12,
+    isLiked: false,
+    replies: [],
+    showReplies: false,
+  },
+  {
+    id: "5",
+    user: {
+      id: "user7",
+      username: "fatima_code",
+      avatar: null,
+      isVerified: true,
+      isVip: false,
+    },
+    text: "أفضل شرح شاهدته حتى الآن! 😍 استمر في العمل الرائع",
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    likesCount: 203,
+    isLiked: true,
+    replies: [
+      {
+        id: "r4",
+        user: {
+          id: "user8",
+          username: "ali_pro",
+          avatar: null,
+          isVerified: false,
+          isVip: true,
+        },
+        text: "صحيح! أنا أيضاً استفدت كثيراً 💯",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        likesCount: 15,
+        isLiked: false,
+      },
+      {
+        id: "r5",
+        user: {
+          id: "user9",
+          username: "noor_dev",
+          avatar: null,
+          isVerified: true,
+          isVip: false,
+        },
+        text: "نفس الشيء هنا! 👏",
+        timestamp: new Date(Date.now() - 1000 * 60 * 50).toISOString(),
+        likesCount: 7,
+        isLiked: true,
+      },
+    ],
+    showReplies: false,
+  },
+  {
+    id: "6",
+    user: {
+      id: "user10",
+      username: "hasaan_gamer",
+      avatar: null,
+      isVerified: false,
+      isVip: false,
+    },
+    text: "🔥🔥🔥",
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
+    likesCount: 45,
+    isLiked: false,
+    replies: [],
+    showReplies: false,
+  },
+  {
+    id: "7",
+    user: {
+      id: "user11",
+      username: "rana_beauty",
+      avatar: null,
+      isVerified: true,
+      isVip: true,
+    },
+    text: "هل ممكن تنزل المزيد من هذا المحتوى؟ ننتظر بشوق! ✨",
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+    likesCount: 178,
+    isLiked: false,
+    replies: [
+      {
+        id: "r6",
+        user: {
+          id: "user1",
+          username: "ahmed_khalid",
+          avatar: null,
+          isVerified: true,
+          isVip: false,
+        },
+        text: "بالتأكيد! المزيد قادم قريباً 🎉",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
+        likesCount: 67,
+        isLiked: false,
+      },
+      {
+        id: "r7",
+        user: {
+          id: "user12",
+          username: "khaled_fitness",
+          avatar: null,
+          isVerified: false,
+          isVip: false,
+        },
+        text: "ننتظر! 💪",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
+        likesCount: 11,
+        isLiked: true,
+      },
+    ],
+    showReplies: false,
+  },
+];

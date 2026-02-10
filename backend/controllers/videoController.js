@@ -13,6 +13,7 @@ const getVideos = async (req, res) => {
   try {
     const videos = await Video.find({})
       .populate("user", "username profileImage")
+      .populate("comments.user", "username profileImage")
       .sort({ createdAt: -1 });
     res.json(videos);
   } catch (error) {
@@ -331,6 +332,9 @@ const commentVideo = async (req, res) => {
         );
       }
 
+      // Populate the comments.user field before returning
+      await video.populate("comments.user", "username profileImage");
+
       res.status(201).json(video.comments);
     } else {
       res.status(404).json({ message: "Video not found" });
@@ -347,6 +351,7 @@ const getUserVideos = async (req, res) => {
   try {
     const videos = await Video.find({ user: req.params.id })
       .populate("user", "username profileImage")
+      .populate("comments.user", "username profileImage")
       .sort({ createdAt: -1 });
     res.json(videos);
   } catch (error) {
@@ -398,6 +403,7 @@ const getFollowingVideos = async (req, res) => {
       user: { $in: user.following },
     })
       .populate("user", "username profileImage")
+      .populate("comments.user", "username profileImage")
       .sort({ createdAt: -1 })
       .limit(50); // Limit to latest 50 videos
 
