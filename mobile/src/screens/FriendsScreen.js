@@ -41,6 +41,7 @@ const FriendsScreen = ({ navigation }) => {
   const netInfo = useNetInfo();
 
   // MUST declare useRef before any conditional returns (Rules of Hooks)
+  const videoRefs = useRef([]);
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems && viewableItems.length > 0) {
       setActiveVideoIndex(viewableItems[0].index);
@@ -78,6 +79,17 @@ const FriendsScreen = ({ navigation }) => {
       } else {
         setLoading(false);
       }
+      
+      // Cleanup: pause all videos when screen loses focus
+      return () => {
+        console.log("🔇 FriendsScreen unfocused - pausing videos");
+        videoRefs.current.forEach((video) => {
+          if (video) {
+            video.pauseAsync().catch(() => {});
+            video.setIsMutedAsync(true).catch(() => {});
+          }
+        });
+      };
     }, [netInfo.isConnected]),
   );
 
@@ -104,6 +116,7 @@ const FriendsScreen = ({ navigation }) => {
     return (
       <View style={[styles.videoContainer, { height: height - tabBarHeight }]}>
         <Video
+          ref={(ref) => (videoRefs.current[index] = ref)}
           source={{ uri: item.videoUrl }}
           style={styles.video}
           resizeMode="cover"
