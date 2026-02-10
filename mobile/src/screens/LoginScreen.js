@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Image,
 } from "react-native";
 import ErrorModal from "../components/ErrorModal";
 import { AuthContext } from "../context/AuthContext";
@@ -35,7 +36,11 @@ const LoginScreen = ({ navigation }) => {
     <View style={styles.container}>
       <Animated.View style={{ opacity: fadeAnim, alignItems: "center" }}>
         <View style={styles.logo}>
-          <Ionicons name="logo-tiktok" size={80} color="#FE2C55" />
+          <Image
+            source={require("../../assets/logo.jpg")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
       </Animated.View>
       <Text style={styles.title}>{i18n.t("loginToTikBook")}</Text>
@@ -125,6 +130,11 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   title: {
     fontSize: 36,

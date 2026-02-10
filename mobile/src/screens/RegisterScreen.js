@@ -60,7 +60,7 @@ const RegisterScreen = ({ navigation }) => {
         axios.post(
           `${base}/auth/send-otp`,
           { email },
-          { timeout: 60000 } // 60 second timeout for cold starts
+          { timeout: 60000 }, // 60 second timeout for cold starts
         );
 
       let response;
@@ -68,23 +68,38 @@ const RegisterScreen = ({ navigation }) => {
         response = await sendRequest(BASE_URL);
       } catch (primaryErr) {
         // Fallback to public Render URL if the computed BASE_URL isn't reachable (common on emulators / network issues)
-        console.log("⚠️ Primary OTP request failed, retrying with Render URL...", primaryErr.message);
+        console.log(
+          "⚠️ Primary OTP request failed, retrying with Render URL...",
+          primaryErr.message,
+        );
         response = await sendRequest("https://tikbook-1cdb.onrender.com/api");
       }
 
       console.log("✅ OTP Sent:", response.data);
-      if (response.data.dev_otp) {
-        Alert.alert(
-          "وضع الاختبار",
-          `لم يتمكن الخادم من إرسال البريد عبر SMTP. رمز الاختبار: ${response.data.dev_otp}`
-        );
-      }
+
+      // Navigate to OTP screen
       navigation.navigate("OTP", {
         username,
         email,
         password,
+        devOtp: response.data.dev_otp, // Pass dev OTP if available
       });
 
+      // Show dev OTP alert after navigation
+      if (response.data.dev_otp) {
+        setTimeout(() => {
+          Alert.alert(
+            "⚠️ وضع التطوير",
+            `الخادم لم يتمكن من إرسال البريد عبر SMTP.\n\nرمز التحقق للاختبار:\n${response.data.dev_otp}\n\nانسخ هذا الرمز وأدخله في الشاشة التالية.`,
+            [
+              {
+                text: "حسناً",
+                style: "default",
+              },
+            ],
+          );
+        }, 500);
+      }
     } catch (error) {
       console.log("❌ OTP Send Request Failed:", error.message);
       console.log("❌ OTP Error code:", error.code);
@@ -96,7 +111,12 @@ const RegisterScreen = ({ navigation }) => {
         console.log("❌ No Response Received (Network/Timeout)");
       }
 
-      Alert.alert("خطأ", error.response?.data?.message || error.message || "فشل إرسال رمز التحقق");
+      Alert.alert(
+        "خطأ",
+        error.response?.data?.message ||
+          error.message ||
+          "فشل إرسال رمز التحقق",
+      );
     } finally {
       setLoading(false);
     }
@@ -110,7 +130,11 @@ const RegisterScreen = ({ navigation }) => {
     <View style={styles.container}>
       <Animated.View style={{ opacity: fadeAnim, alignItems: "center" }}>
         <View style={styles.logo}>
-          <Ionicons name="logo-tiktok" size={80} color="#FE2C55" />
+          <Image
+            source={require("../../assets/logo.jpg")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
       </Animated.View>
       <Text style={styles.title}>{i18n.t("signUpForTikBook")}</Text>
@@ -193,6 +217,11 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   otpIconContainer: {
     width: 120,

@@ -1,10 +1,11 @@
 import React from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
+import AnimatedLogo from "./AnimatedLogo";
 
 const LoadingIndicator = () => {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#FE2C55" />
+      <AnimatedLogo size={120} />
     </View>
   );
 };

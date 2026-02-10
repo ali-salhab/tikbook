@@ -22,7 +22,9 @@ export const AuthProvider = ({ children }) => {
 
       // Global safety timeout to ensure isLoading is always set to false
       const safetyTimeout = setTimeout(() => {
-        console.log("⚠️ Auth initialization taking too long, clearing loading state...");
+        console.log(
+          "⚠️ Auth initialization taking too long, clearing loading state...",
+        );
         setIsLoading(false);
       }, 5000); // Reduced to 5 seconds
 
@@ -30,7 +32,7 @@ export const AuthProvider = ({ children }) => {
         // Check version with timeout (skip if network error)
         const versionCheckPromise = versionService.checkVersion(BASE_URL);
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Version check timeout")), 5000)
+          setTimeout(() => reject(new Error("Version check timeout")), 5000),
         );
 
         try {
@@ -42,7 +44,7 @@ export const AuthProvider = ({ children }) => {
             versionService.showUpdateDialog(
               versionCheck.message,
               versionCheck.isForced,
-              versionCheck.updateUrl
+              versionCheck.updateUrl,
             );
           }
         } catch (versionError) {
@@ -63,7 +65,7 @@ export const AuthProvider = ({ children }) => {
           try {
             const tokenPromise = getFCMToken();
             const tokenTimeout = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("FCM token timeout")), 3000)
+              setTimeout(() => reject(new Error("FCM token timeout")), 3000),
             );
 
             const fcmToken = await Promise.race([tokenPromise, tokenTimeout]);
@@ -103,7 +105,7 @@ export const AuthProvider = ({ children }) => {
         },
         {
           timeout: 60000, // 60 second timeout for cold starts
-        }
+        },
       );
       console.log("✅ Login successful:", res.data);
       setUserInfo(res.data);
@@ -119,16 +121,18 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.log("❌ Login error:", e.response?.data || e.message);
       if (e.code === "ECONNABORTED" || e.message.includes("timeout")) {
-        throw new Error("انتهت المهلة. تحقق من اتصال الشبكة والتأكد من تشغيل الخادم.");
+        throw new Error(
+          "انتهت المهلة. تحقق من اتصال الشبكة والتأكد من تشغيل الخادم.",
+        );
       } else if (e.message === "Network Error") {
         throw new Error(
           "خطأ في الاتصال. تأكد من:\n1. تشغيل الخادم على المنفذ 5000\n2. اتصال الهاتف والكمبيوتر بنفس الشبكة\n3. عنوان IP صحيح: " +
-          BASE_URL
+            BASE_URL,
         );
       }
       throw new Error(
         e.response?.data?.message ||
-          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور"
+          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور",
       );
     } finally {
       setIsLoading(false);
@@ -149,13 +153,15 @@ export const AuthProvider = ({ children }) => {
         },
         {
           timeout: 60000, // 60 second timeout for cold starts
-        }
+        },
       );
       console.log("✅ Registration successful:", res.data);
       setUserInfo(res.data);
       setUserToken(res.data.token);
       await AsyncStorage.setItem("userToken", res.data.token);
       await AsyncStorage.setItem("userInfo", JSON.stringify(res.data));
+      // Mark onboarding as seen for new users to skip onboarding screen
+      await AsyncStorage.setItem("hasSeenOnboarding", "true");
 
       // Register for push notifications
       const fcmToken = await getFCMToken();
@@ -169,7 +175,6 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(false);
     }
   };
-
 
   const logout = async () => {
     setIsLoading(true);
