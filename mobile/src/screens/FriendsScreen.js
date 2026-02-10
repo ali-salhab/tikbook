@@ -25,6 +25,7 @@ import { AuthContext } from "../context/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
+import CommentsModal from "../components/CommentsModal";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
@@ -36,6 +37,8 @@ const FriendsScreen = ({ navigation }) => {
   const { userToken, userInfo, BASE_URL } = useContext(AuthContext);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [friendsVideos, setFriendsVideos] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [commentsVisible, setCommentsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const netInfo = useNetInfo();
@@ -49,10 +52,13 @@ const FriendsScreen = ({ navigation }) => {
   }).current;
 
   const formatNumber = (num) => {
-    if (!num || num === 0) return "0";
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-    return num.toString();
+    // Handle if it's an array (likes or comments array)
+    const count = Array.isArray(num) ? num.length : num;
+
+    if (!count || count === 0) return "0";
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + "م";
+    if (count >= 1000) return (count / 1000).toFixed(1) + "ألف";
+    return count.toString();
   };
 
   const fetchFriendsVideos = async () => {
@@ -70,6 +76,16 @@ const FriendsScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const handleComment = (video) => {
+    setSelectedVideo(video);
+    setCommentsVisible(true);
+  };
+
+  const closeComments = () => {
+    setCommentsVisible(false);
+    setSelectedVideo(null);
   };
 
   useFocusEffect(
@@ -167,14 +183,17 @@ const FriendsScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleComment(item)}
+            >
               <Ionicons
                 name="chatbubble-ellipses-sharp"
                 size={35}
                 color="#FFF"
               />
               <Text style={styles.actionText}>
-                {formatNumber(item.comments || 0)}
+                {formatNumber(item.comments)}
               </Text>
             </TouchableOpacity>
 
@@ -253,6 +272,16 @@ const FriendsScreen = ({ navigation }) => {
               tintColor="#FFF"
             />
           }
+        />
+      )}
+
+      {/* Comments Modal */}
+      {selectedVideo && (
+        <CommentsModal
+          visible={commentsVisible}
+          onClose={closeComments}
+          videoId={selectedVideo._id}
+          initialComments={selectedVideo.comments}
         />
       )}
     </View>
