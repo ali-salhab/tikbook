@@ -20,7 +20,8 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const ActivityScreen = ({ navigation }) => {
-  const { userToken, setNotificationCount, fetchNotificationCount } = useContext(AuthContext);
+  const { userToken, setNotificationCount, fetchNotificationCount } =
+    useContext(AuthContext);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,13 +63,21 @@ const ActivityScreen = ({ navigation }) => {
         return `${username} علّق على الفيديو الخاص بك`;
       case "follow":
         return `${username} بدأ في متابعتك`;
+      case "new_video":
+        return `${username} نشر فيديو جديد`;
+      case "live_stream":
+        return `${username} بدأ بث مباشر`;
       default:
         return `${username} تفاعل معك`;
     }
   };
 
   const handleNotificationPress = (notification) => {
-    if (notification.type === "like" || notification.type === "comment") {
+    if (
+      notification.type === "like" ||
+      notification.type === "comment" ||
+      notification.type === "new_video"
+    ) {
       if (notification.video) {
         navigation.navigate("MainTabs", {
           screen: "Home",
@@ -81,6 +90,8 @@ const ActivityScreen = ({ navigation }) => {
           userId: notification.fromUser._id,
         });
       }
+    } else if (notification.type === "live_stream") {
+      navigation.navigate("LiveStreamsListScreen");
     }
   };
 
@@ -147,6 +158,26 @@ const ActivityScreen = ({ navigation }) => {
       ? videoUrl
       : buildCloudinaryThumbnail(videoUrl);
 
+    // Get icon for notification type
+    const getNotificationIcon = () => {
+      switch (item.type) {
+        case "like":
+          return { name: "heart", color: "#FE2C55" };
+        case "comment":
+          return { name: "chatbubble", color: "#4A90E2" };
+        case "follow":
+          return { name: "person-add", color: "#00C875" };
+        case "new_video":
+          return { name: "videocam", color: "#9B59B6" };
+        case "live_stream":
+          return { name: "radio", color: "#E74C3C" };
+        default:
+          return { name: "notifications", color: "#999" };
+      }
+    };
+
+    const notifIcon = getNotificationIcon();
+
     return (
       <TouchableOpacity
         style={styles.itemContainer}
@@ -163,6 +194,12 @@ const ActivityScreen = ({ navigation }) => {
               ) : (
                 <Ionicons name="person" size={24} color="#CCC" />
               )}
+            </View>
+            {/* Notification type icon badge */}
+            <View
+              style={[styles.iconBadge, { backgroundColor: notifIcon.color }]}
+            >
+              <Ionicons name={notifIcon.name} size={14} color="#FFF" />
             </View>
           </View>
 
@@ -299,6 +336,18 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 28,
+  },
+  iconBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
   },
   textContainer: {
     flex: 1,

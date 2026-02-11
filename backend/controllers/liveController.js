@@ -1,5 +1,8 @@
 const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
 const LiveStream = require("../models/LiveStream");
+const User = require("../models/User");
+const Notification = require("../models/Notification");
+const { sendNotificationToUser } = require("./pushNotificationController");
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -37,7 +40,7 @@ const generateToken = async (req, res) => {
     channelName,
     0, // uid (0 = allow any)
     rtcRole,
-    privilegeExpiredTs
+    privilegeExpiredTs,
   );
 
   // If publisher, create/update LiveStream record
@@ -46,15 +49,42 @@ const generateToken = async (req, res) => {
       // End any previous active streams for this user
       await LiveStream.updateMany(
         { user: req.user._id, status: "active" },
-        { status: "ended" }
+        { status: "ended" },
       );
 
-      await LiveStream.create({
+      const liveStream = await LiveStream.create({
         user: req.user._id,
         channelName,
         title: title || "Live Stream",
         status: "active",
       });
+
+      // Notify all followers about the live stream
+      try {
+        const user = await User.findById(req.user._id);
+        if (user && user.followers && user.followers.length > 0) {
+          // Create notifications for all followers
+          const notifications = user.followers.map((followerId) => ({
+            user: followerId,
+            type: "live_stream",
+            fromUser: req.user._id,
+          }));
+          await Notification.insertMany(notifications);
+
+          // Send push notifications to followers
+          for (const followerId of user.followers) {
+            await sendNotificationToUser(
+              followerId,
+              `${user.username} بدأ بث مباشر: ${title || "بث مباشر"}`,
+              "بث مباشر جديد",
+              { screen: "LiveStreamsListScreen" },
+            );
+          }
+        }
+      } catch (notifError) {
+        console.error("Error sending live stream notifications:", notifError);
+        // Continue anyway
+      }
     } catch (error) {
       console.error("Error creating LiveStream record:", error);
     }
@@ -79,7 +109,7 @@ const endStream = async (req, res) => {
     const { channelName } = req.body;
     await LiveStream.updateMany(
       { user: req.user._id, channelName, status: "active" },
-      { status: "ended" }
+      { status: "ended" },
     );
     res.json({ message: "Stream ended" });
   } catch (error) {

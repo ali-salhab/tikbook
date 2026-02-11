@@ -1,4 +1,5 @@
 const Video = require("../models/Video");
+const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { sendNotificationToUser } = require("./pushNotificationController");
 // const { uploadFileToStorage } = require("../services/firebaseService"); // Sending to Cloudinary now
@@ -240,6 +241,34 @@ const createVideo = async (req, res) => {
 
     // Populate user data before sending response
     await createdVideo.populate("user", "username profileImage");
+
+    // Notify all followers about the new video
+    try {
+      const user = await User.findById(req.user._id);
+      if (user && user.followers && user.followers.length > 0) {
+        // Create notifications for all followers
+        const notifications = user.followers.map((followerId) => ({
+          user: followerId,
+          type: "new_video",
+          fromUser: req.user._id,
+          video: createdVideo._id,
+        }));
+        await Notification.insertMany(notifications);
+
+        // Send push notifications to followers
+        for (const followerId of user.followers) {
+          await sendNotificationToUser(
+            followerId,
+            `${user.username} نشر فيديو جديد`,
+            "فيديو جديد",
+            { screen: "Home", videoId: createdVideo._id.toString() },
+          );
+        }
+      }
+    } catch (notifError) {
+      console.error("Error sending follower notifications:", notifError);
+      // Continue anyway, video was uploaded successfully
+    }
 
     console.log("✅ Video created successfully:", createdVideo._id);
     res.status(201).json(createdVideo);

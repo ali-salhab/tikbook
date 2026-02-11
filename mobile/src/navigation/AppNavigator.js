@@ -237,7 +237,8 @@ const HomeTabs = () => {
 };
 
 const AppNavigator = () => {
-  const { isLoading, userToken, fetchNotificationCount } = useContext(AuthContext);
+  const { isLoading, userToken, fetchNotificationCount } =
+    useContext(AuthContext);
   const [showOnboarding, setShowOnboarding] = useState(null);
 
   useEffect(() => {

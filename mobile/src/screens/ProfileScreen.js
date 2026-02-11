@@ -67,11 +67,11 @@ const ProfileScreen = ({ navigation }) => {
       } else {
         // Default profile when not logged in
         setProfile({
-          username: \"guest\",
-          email: \"guest@tikbook.com\",
+          username: "guest",
+          email: "guest@tikbook.com",
           followers: [],
           following: [],
-          bio: \"مرحباً! سجل الدخول لرؤية ملفك الشخصي 👋\",
+          bio: "مرحباً! سجل الدخول لرؤية ملفك الشخصي 👋",
           videosCount: 0,
           likesCount: 0,
         });

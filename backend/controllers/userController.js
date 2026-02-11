@@ -162,7 +162,9 @@ const getAllUsers = async (req, res) => {
 // @access  Private
 const uploadProfileImage = async (req, res) => {
   try {
-    const { uploadImageToCloudinary } = require("../services/cloudinaryService");
+    const {
+      uploadImageToCloudinary,
+    } = require("../services/cloudinaryService");
     const fs = require("fs");
 
     if (!req.file) {
@@ -183,7 +185,7 @@ const uploadProfileImage = async (req, res) => {
         profileImageUrl = await uploadImageToCloudinary(
           req.file.path,
           "profile_images",
-          { width: 500, height: 500, quality: "auto:good" }
+          { width: 500, height: 500, quality: "auto:good" },
         );
         console.log("✅ Uploaded to Cloudinary:", profileImageUrl);
       } else {
