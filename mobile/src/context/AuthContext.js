@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     const checkVersionAndInit = async () => {
@@ -180,9 +181,22 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     setUserToken(null);
     setUserInfo(null);
+    setNotificationCount(0);
     await AsyncStorage.removeItem("userToken");
     await AsyncStorage.removeItem("userInfo");
     setIsLoading(false);
+  };
+
+  const fetchNotificationCount = async () => {
+    if (!userToken) return;
+    try {
+      const res = await axios.get(`${BASE_URL}/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setNotificationCount(res.data.count || 0);
+    } catch (error) {
+      console.log("Error fetching notification count:", error.message);
+    }
   };
 
   return (
@@ -195,6 +209,9 @@ export const AuthProvider = ({ children }) => {
         userToken,
         userInfo,
         BASE_URL,
+        notificationCount,
+        setNotificationCount,
+        fetchNotificationCount,
       }}
     >
       {children}

@@ -237,17 +237,18 @@ const HomeTabs = () => {
 };
 
 const AppNavigator = () => {
-  const { isLoading, userToken } = useContext(AuthContext);
+  const { isLoading, userToken, fetchNotificationCount } = useContext(AuthContext);
   const [showOnboarding, setShowOnboarding] = useState(null);
 
   useEffect(() => {
     checkOnboarding();
-  }, []);
+  }, [userToken]); // Re-check when userToken changes
 
   const checkOnboarding = async () => {
     try {
       const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-      setShowOnboarding(hasSeenOnboarding === null);
+      // Only show onboarding if user hasn't seen it AND is not logged in
+      setShowOnboarding(hasSeenOnboarding === null && !userToken);
     } catch (error) {
       console.error("Error checking onboarding:", error);
       setShowOnboarding(false);
@@ -286,6 +287,19 @@ const AppNavigator = () => {
     return unsubscribe;
   }, []);
 
+  // Poll for notification count every 30 seconds when user is logged in
+  useEffect(() => {
+    if (userToken && fetchNotificationCount) {
+      // Fetch immediately
+      fetchNotificationCount();
+      // Then poll every 30 seconds
+      const interval = setInterval(() => {
+        fetchNotificationCount();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userToken, fetchNotificationCount]);
+
   // Safety fallback for showOnboarding
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -316,14 +330,13 @@ const AppNavigator = () => {
     <VersionChecker>
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {showOnboarding && !userToken ? (
+          {showOnboarding ? (
             <Stack.Screen
               name="Onboarding"
               component={OnboardingScreen}
               options={{ gestureEnabled: false }}
             />
-          ) : null}
-          {userToken ? (
+          ) : userToken ? (
             <>
               <Stack.Screen name="MainTabs" component={HomeTabs} />
               <Stack.Screen name="Chat" component={ChatScreen} />

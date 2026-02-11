@@ -20,7 +20,7 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const ActivityScreen = ({ navigation }) => {
-  const { userToken, setNotificationCount } = useContext(AuthContext);
+  const { userToken, setNotificationCount, fetchNotificationCount } = useContext(AuthContext);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

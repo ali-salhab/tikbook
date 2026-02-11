@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,10 +21,9 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const { width } = Dimensions.get("window");
-const COLUMN_WIDTH = width / 3;
 
 const ProfileScreen = ({ navigation }) => {
-  const { logout, userInfo, BASE_URL } = useContext(AuthContext);
+  const { logout, userInfo, BASE_URL, notificationCount, fetchNotificationCount } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
@@ -62,20 +62,21 @@ const ProfileScreen = ({ navigation }) => {
       if (userInfo) {
         if (netInfo.isConnected !== false) {
           fetchProfile();
+          fetchNotificationCount();
         }
       } else {
         // Default profile when not logged in
         setProfile({
-          username: "guest",
-          email: "guest@tikbook.com",
+          username: \"guest\",
+          email: \"guest@tikbook.com\",
           followers: [],
           following: [],
-          bio: "مرحباً! سجل الدخول لرؤية ملفك الشخصي 👋",
+          bio: \"مرحباً! سجل الدخول لرؤية ملفك الشخصي 👋\",
           videosCount: 0,
           likesCount: 0,
         });
       }
-    }, [userInfo, fetchProfile, netInfo.isConnected]),
+    }, [userInfo, fetchProfile, fetchNotificationCount, netInfo.isConnected]),
   );
 
   // If user is logged in, but we have no profile and no internet => Offline
@@ -86,7 +87,18 @@ const ProfileScreen = ({ navigation }) => {
   // If user is logged in and we are fetching profile => Loading
   // Note: We often want to show cached profile if possible, but for now we assume fresh fetch
   if (userInfo && !profile) {
-    return <LoadingIndicator />;
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#fff",
+        }}
+      >
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
   }
 
   const renderTabIcon = (name, tabName, IconComponent = Ionicons) => (
@@ -107,7 +119,7 @@ const ProfileScreen = ({ navigation }) => {
     if (!url) return null;
     if (!url.includes("cloudinary.com")) return url;
     return url
-      .replace("/upload/", "/upload/c_fill,g_center,w_200,h_260,so_1/")
+      .replace("/upload/", "/upload/c_fill,g_center,w_200,h_260,so_0/")
       .replace(/\.(mp4|mov|m4v|avi|mkv|webm)$/i, ".jpg");
   };
 
@@ -238,8 +250,35 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="person-add-outline" size={24} color="#000" />
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation.navigate(\"Activity\")}
+          >
+            <View>
+              <Ionicons name=\"notifications-outline\" size={26} color=\"#000\" />
+              {notificationCount > 0 && (
+                <View
+                  style={{
+                    position: \"absolute\",
+                    right: -6,
+                    top: -4,
+                    backgroundColor: \"#FE2C55\",
+                    borderRadius: 10,
+                    minWidth: 20,
+                    height: 20,
+                    justifyContent: \"center\",
+                    alignItems: \"center\",
+                    paddingHorizontal: 4,
+                    borderWidth: 2,
+                    borderColor: \"#FFF\",
+                  }}
+                >
+                  <Text style={{ color: \"#FFF\", fontSize: 10, fontWeight: \"bold\" }}>
+                    {notificationCount > 99 ? \"99+\" : notificationCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -525,14 +564,14 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: 1,
   },
   gridItem: {
-    width: COLUMN_WIDTH - 2,
-    height: COLUMN_WIDTH * 1.3,
-    margin: 1,
+    width: width / 3,
+    height: (width / 3) * 1.3,
     backgroundColor: "#333",
     position: "relative",
+    borderWidth: 0.5,
+    borderColor: "#fff",
   },
   gridImage: {
     width: "100%",

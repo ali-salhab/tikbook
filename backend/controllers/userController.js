@@ -1,5 +1,7 @@
 const User = require("../models/User");
 const Video = require("../models/Video");
+const Notification = require("../models/Notification");
+const { sendNotificationToUser } = require("./pushNotificationController");
 
 // @desc    Get user profile
 // @route   GET /api/users/:id
@@ -44,6 +46,23 @@ const followUser = async (req, res) => {
       if (!userToFollow.followers.includes(req.user._id)) {
         await userToFollow.updateOne({ $push: { followers: req.user._id } });
         await currentUser.updateOne({ $push: { following: req.params.id } });
+
+        // Create notification
+        const notification = new Notification({
+          user: userToFollow._id,
+          type: "follow",
+          fromUser: req.user._id,
+        });
+        await notification.save();
+
+        // Send push notification
+        await sendNotificationToUser(
+          userToFollow._id,
+          `${currentUser.username} بدأ في متابعتك`,
+          "متابع جديد",
+          { screen: "UserProfile", userId: req.user._id.toString() },
+        );
+
         res.status(200).json({ message: "User followed" });
       } else {
         res.status(403).json({ message: "You already follow this user" });
