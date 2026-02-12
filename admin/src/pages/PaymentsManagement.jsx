@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../config/api";
 import AdminLayout from "../components/AdminLayout";
 import {
   FiDollarSign,
@@ -11,8 +11,6 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 import "../styles/PaymentsManagement.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const PaymentsManagement = ({ onLogout }) => {
   const [transactions, setTransactions] = useState([]);
@@ -59,7 +57,7 @@ const PaymentsManagement = ({ onLogout }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("adminToken");
-      const response = await axios.get(`${API_URL}/api/admin/transactions`, {
+      const response = await api.get("/admin/transactions", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -116,7 +114,7 @@ const PaymentsManagement = ({ onLogout }) => {
           transaction.transactionId
             ?.toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          transaction.gateway?.toLowerCase().includes(searchTerm.toLowerCase())
+          transaction.gateway?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -140,7 +138,7 @@ const PaymentsManagement = ({ onLogout }) => {
           startDate = new Date(
             now.getFullYear(),
             now.getMonth(),
-            now.getDate()
+            now.getDate(),
           );
           break;
         case "thisWeek":
@@ -182,10 +180,10 @@ const PaymentsManagement = ({ onLogout }) => {
 
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.post(
-        `${API_URL}/api/admin/transactions/${transactionId}/refund`,
+      await api.post(
+        `/admin/transactions/${transactionId}/refund`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       fetchTransactions();

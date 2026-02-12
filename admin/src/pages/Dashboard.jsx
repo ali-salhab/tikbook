@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
@@ -15,6 +14,7 @@ import {
   Legend,
   ArcElement,
   PointElement,
+  Filler,
 } from "chart.js";
 import "../styles/Dashboard.css";
 import {
@@ -34,6 +34,7 @@ ChartJS.register(
   Legend,
   ArcElement,
   PointElement,
+  Filler,
 );
 
 const Dashboard = () => {

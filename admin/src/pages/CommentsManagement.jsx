@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../config/api";
 import AdminLayout from "../components/AdminLayout";
 import {
   FiTrash2,
@@ -10,8 +10,6 @@ import {
   FiUser,
 } from "react-icons/fi";
 import "../styles/CommentsManagement.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const CommentsManagement = ({ onLogout }) => {
   const [comments, setComments] = useState([]);
@@ -44,7 +42,7 @@ const CommentsManagement = ({ onLogout }) => {
       const token = localStorage.getItem("adminToken");
 
       // Fetch videos with comments
-      const videosResponse = await axios.get(`${API_URL}/api/videos`, {
+      const videosResponse = await api.get("/admin/videos", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -77,7 +75,7 @@ const CommentsManagement = ({ onLogout }) => {
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate()
+      now.getDate(),
     );
 
     setStats({
@@ -102,7 +100,7 @@ const CommentsManagement = ({ onLogout }) => {
             .includes(searchTerm.toLowerCase()) ||
           comment.videoDescription
             ?.toLowerCase()
-            .includes(searchTerm.toLowerCase())
+            .includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -116,7 +114,7 @@ const CommentsManagement = ({ onLogout }) => {
           startDate = new Date(
             now.getFullYear(),
             now.getMonth(),
-            now.getDate()
+            now.getDate(),
           );
           break;
         case "thisWeek":
@@ -133,7 +131,7 @@ const CommentsManagement = ({ onLogout }) => {
       }
 
       filtered = filtered.filter(
-        (comment) => new Date(comment.createdAt) >= startDate
+        (comment) => new Date(comment.createdAt) >= startDate,
       );
     }
 
@@ -165,12 +163,9 @@ const CommentsManagement = ({ onLogout }) => {
 
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.delete(
-        `${API_URL}/api/videos/${videoId}/comments/${commentId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await api.delete(`/videos/${videoId}/comments/${commentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       fetchComments();
     } catch (error) {
@@ -182,10 +177,10 @@ const CommentsManagement = ({ onLogout }) => {
   const handleApproveComment = async (videoId, commentId) => {
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.patch(
-        `${API_URL}/api/videos/${videoId}/comments/${commentId}/approve`,
+      await api.patch(
+        `/videos/${videoId}/comments/${commentId}/approve`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       fetchComments();

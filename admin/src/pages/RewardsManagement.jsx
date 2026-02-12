@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../config/api";
 import AdminLayout from "../components/AdminLayout";
 import {
   FiUser,
@@ -10,8 +10,6 @@ import {
   FiX,
 } from "react-icons/fi";
 import "../styles/RewardsManagement.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const RewardsManagement = ({ onLogout }) => {
   const [users, setUsers] = useState([]);
@@ -53,7 +51,7 @@ const RewardsManagement = ({ onLogout }) => {
       const token = localStorage.getItem("adminToken");
 
       // Fetch users with wallet data
-      const response = await axios.get(`${API_URL}/api/admin/users`, {
+      const response = await api.get("/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const usersData = response.data;
@@ -65,17 +63,14 @@ const RewardsManagement = ({ onLogout }) => {
       const usersWithWallets = await Promise.all(
         usersArray.map(async (user) => {
           try {
-            const walletResponse = await axios.get(
-              `${API_URL}/api/wallet/${user._id}`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
+            const walletResponse = await api.get(`/wallet/${user._id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
             return { ...user, wallet: walletResponse.data };
           } catch (error) {
             return { ...user, wallet: { balance: 0 } };
           }
-        })
+        }),
       );
 
       setUsers(usersWithWallets);
@@ -90,17 +85,17 @@ const RewardsManagement = ({ onLogout }) => {
   const calculateStats = (usersData) => {
     const totalCoins = usersData.reduce(
       (sum, user) => sum + (user.wallet?.balance || 0),
-      0
+      0,
     );
     const activeUsersCount = usersData.filter(
-      (u) => (u.wallet?.balance || 0) > 0
+      (u) => (u.wallet?.balance || 0) > 0,
     ).length;
     const averageBalance =
       usersData.length > 0 ? totalCoins / usersData.length : 0;
     const topUser = usersData.reduce(
       (max, user) =>
         (user.wallet?.balance || 0) > (max?.wallet?.balance || 0) ? user : max,
-      usersData[0]
+      usersData[0],
     );
 
     setStats({
@@ -119,7 +114,7 @@ const RewardsManagement = ({ onLogout }) => {
       filtered = filtered.filter(
         (user) =>
           user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+          user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -148,18 +143,18 @@ const RewardsManagement = ({ onLogout }) => {
 
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.post(
-        `${API_URL}/api/wallet/add-coins`,
+      await api.post(
+        "/admin/wallet/grant",
         {
           userId: selectedUser._id,
           amount: parseFloat(rewardAmount),
           reason: rewardReason || "Admin reward",
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       alert(
-        `Successfully gave ${rewardAmount} coins to ${selectedUser.username}!`
+        `Successfully gave ${rewardAmount} coins to ${selectedUser.username}!`,
       );
       setShowRewardModal(false);
       setRewardAmount("");
@@ -179,7 +174,7 @@ const RewardsManagement = ({ onLogout }) => {
 
     if (
       !window.confirm(
-        `Give ${bulkRewardAmount} coins to all ${filteredUsers.length} users?`
+        `Give ${bulkRewardAmount} coins to all ${filteredUsers.length} users?`,
       )
     ) {
       return;
@@ -189,20 +184,20 @@ const RewardsManagement = ({ onLogout }) => {
       const token = localStorage.getItem("adminToken");
       await Promise.all(
         filteredUsers.map((user) =>
-          axios.post(
-            `${API_URL}/api/wallet/add-coins`,
+          api.post(
+            "/admin/wallet/grant",
             {
               userId: user._id,
               amount: parseFloat(bulkRewardAmount),
               reason: bulkRewardReason || "Bulk admin reward",
             },
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-        )
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        ),
       );
 
       alert(
-        `Successfully gave ${bulkRewardAmount} coins to ${filteredUsers.length} users!`
+        `Successfully gave ${bulkRewardAmount} coins to ${filteredUsers.length} users!`,
       );
       setShowBulkRewardModal(false);
       setBulkRewardAmount("");

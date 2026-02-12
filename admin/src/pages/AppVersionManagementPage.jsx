@@ -25,7 +25,7 @@ const AppVersionManagementPage = () => {
   const fetchVersions = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/versions', {
+      const response = await api.get("/versions", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
@@ -65,7 +65,7 @@ const AppVersionManagementPage = () => {
         alert("Version updated successfully");
       } else {
         // Create new version
-        await api.post('/versions', formData, {
+        await api.post("/versions", formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
         alert("Version created successfully");
@@ -338,8 +338,8 @@ const AppVersionManagementPage = () => {
                   {loading
                     ? "Saving..."
                     : editingId
-                    ? "Update Version"
-                    : "Create Version"}
+                      ? "Update Version"
+                      : "Create Version"}
                 </button>
               </div>
             </form>

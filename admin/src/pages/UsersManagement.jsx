@@ -45,7 +45,7 @@ const UsersManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/users', {
+      const response = await api.get("/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;

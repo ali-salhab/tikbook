@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminNav from "../components/AdminNav";
@@ -13,6 +12,7 @@ import {
   Tooltip,
   Legend,
   ArcElement,
+  Filler,
 } from "chart.js";
 
 ChartJS.register(
@@ -22,7 +22,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  Filler,
 );
 
 const DashboardPage = () => {
@@ -59,10 +60,10 @@ const DashboardPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       };
 
-      const statsRes = await axios.get(`${api.admin}/stats`, config);
+      const statsRes = await api.get("/admin/stats", config);
       setStats(statsRes.data);
 
-      const usersRes = await axios.get(`${api.admin}/users`, config);
+      const usersRes = await api.get("/admin/users", config);
       const usersData = usersRes.data;
       // Backend may return { users: [...] } or an array; normalize to array
       const usersArray = Array.isArray(usersData)
@@ -71,7 +72,7 @@ const DashboardPage = () => {
       setUsers(usersArray);
 
       // Fetch videos (admin scoped)
-      const videosRes = await axios.get(`${api.admin}/videos`, config);
+      const videosRes = await api.get("/admin/videos", config);
       const videosData = videosRes.data;
       const videosArray = Array.isArray(videosData)
         ? videosData
@@ -90,7 +91,7 @@ const DashboardPage = () => {
     if (window.confirm("هل أنت متأكد من حذف هذا المستخدم؟")) {
       try {
         const token = localStorage.getItem("adminToken");
-        await axios.delete(`http://localhost:5001/api/admin/users/${id}`, {
+        await api.delete(`/admin/users/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUsers(users.filter((user) => user._id !== id));
@@ -124,8 +125,8 @@ const DashboardPage = () => {
     setSending(true);
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.post(
-        `${api.admin}/wallet/grant`,
+      await api.post(
+        "/admin/wallet/grant",
         {
           userId: selectedUser._id,
           amount: grantAmount,
@@ -133,7 +134,7 @@ const DashboardPage = () => {
         },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       alert("تم إرسال العملات بنجاح");
       setShowGrantModal(false);
@@ -154,15 +155,15 @@ const DashboardPage = () => {
     setSending(true);
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.post(
-        `${api.admin}/notify/${selectedUser._id}`,
+      await api.post(
+        `/admin/notify/${selectedUser._id}`,
         {
           title: notificationTitle,
           body: notificationBody,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       alert("تم إرسال الإشعار بنجاح");
       setShowNotificationModal(false);
@@ -182,15 +183,15 @@ const DashboardPage = () => {
     setSending(true);
     try {
       const token = localStorage.getItem("adminToken");
-      await axios.post(
-        `${api.admin}/notify/all`,
+      await api.post(
+        "/admin/notify/all",
         {
           title: broadcastTitle,
           body: broadcastBody,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       alert("تم إرسال الإشعار العام بنجاح");
       setBroadcastOpen(false);
@@ -399,12 +400,12 @@ const DashboardPage = () => {
                 <Doughnut
                   data={{
                     labels: (stats.charts?.connectionSplit || []).map(
-                      (x) => x.name
+                      (x) => x.name,
                     ),
                     datasets: [
                       {
                         data: (stats.charts?.connectionSplit || []).map(
-                          (x) => x.value
+                          (x) => x.value,
                         ),
                         backgroundColor: ["#10B981", "#EF4444"],
                       },

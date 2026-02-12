@@ -41,7 +41,7 @@ const VideosManagement = () => {
   const fetchVideos = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/videos', {
+      const response = await api.get("/admin/videos", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
@@ -67,7 +67,7 @@ const VideosManagement = () => {
             .includes(filters.search.toLowerCase()) ||
           video.user?.username
             ?.toLowerCase()
-            .includes(filters.search.toLowerCase())
+            .includes(filters.search.toLowerCase()),
       );
     }
 
@@ -307,7 +307,7 @@ const VideosManagement = () => {
                     </p>
                     <p className="date">
                       {new Date(selectedVideo.createdAt).toLocaleDateString(
-                        "ar-EG"
+                        "ar-EG",
                       )}
                     </p>
                   </div>

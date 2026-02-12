@@ -26,7 +26,7 @@ router.get("/transactions", protect, admin, async (req, res) => {
   try {
     const Transaction = require("../models/Transaction");
     const transactions = await Transaction.find()
-      .populate("userId", "username email")
+      .populate("user", "username email profileImage")
       .sort({ createdAt: -1 })
       .limit(500);
     res.json(transactions);
@@ -58,7 +58,7 @@ router.post("/transactions/:id/refund", protect, admin, async (req, res) => {
     await transaction.save();
 
     // Deduct from user wallet
-    const wallet = await Wallet.findOne({ userId: transaction.userId });
+    const wallet = await Wallet.findOne({ user: transaction.user });
     if (wallet) {
       wallet.balance -= transaction.amount;
       await wallet.save();
