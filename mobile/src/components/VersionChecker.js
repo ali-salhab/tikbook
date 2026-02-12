@@ -87,7 +87,7 @@ export default function VersionChecker({ children }) {
       } catch (error) {
         Alert.alert(
           "Error",
-          "Could not open the download link. Please try again."
+          "Could not open the download link. Please try again.",
         );
       }
     }
@@ -117,7 +117,7 @@ export default function VersionChecker({ children }) {
     return (
       <Modal visible={true} animationType="fade" transparent={false}>
         <View style={styles.modalContainer}>
-          <View style={styles.updateCard}>
+          <View style={styles.forcedUpdateCard}>
             <Ionicons
               name="alert-circle"
               size={64}
@@ -133,7 +133,7 @@ export default function VersionChecker({ children }) {
             </Text>
 
             <TouchableOpacity
-              style={[styles.button, styles.updateButton]}
+              style={[styles.button, styles.updateButtonForced]}
               onPress={handleUpdate}
             >
               <Ionicons name="download" size={20} color="#FFF" />
@@ -218,9 +218,10 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 24,
   },
   overlay: {
     flex: 1,
@@ -234,6 +235,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
     alignItems: "center",
+    maxHeight: "80%",
+  },
+  forcedUpdateCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 24,
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   closeButton: {
     position: "absolute",
@@ -266,11 +285,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   warning: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 16,
-    fontStyle: "italic",
-    textAlign: "center",
+    minHeight: 48,
+  },
+  updateButton: {
+    backgroundColor: "#FE2C55",
+  },
+  updateButtonForced: {
+    backgroundColor: "#FE2C55",
+    width: "100%",
+    paddingVertical: 16,
   },
   buttonContainer: {
     width: "100%",

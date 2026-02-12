@@ -18,7 +18,8 @@ import { useFocusEffect } from "@react-navigation/native";
 
 const SystemNotificationsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("الكل");
-  const { userToken } = useContext(AuthContext);
+  const { userToken, setNotificationCount, fetchNotificationCount } =
+    useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,9 +92,28 @@ const SystemNotificationsScreen = ({ navigation }) => {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      await axios.put(
+        `${BASE_URL}/notifications/mark-read`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${userToken}` },
+        },
+      );
+      // Update notification counter
+      if (fetchNotificationCount) {
+        await fetchNotificationCount();
+      }
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
+      markAllAsRead();
     }, []),
   );
 

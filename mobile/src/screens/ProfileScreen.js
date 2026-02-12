@@ -359,6 +359,17 @@ const ProfileScreen = ({ navigation }) => {
               <Feather name="edit-2" size={20} color="#000" />
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.verificationButton}
+              onPress={() => navigation.navigate("VerificationRequest")}
+            >
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={20}
+                color="#00BFFF"
+              />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.studioButton}>
               <Text style={styles.studioButtonText}>TikTok Studio</Text>
               <MaterialCommunityIcons
@@ -531,6 +542,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: "#f1f1f1",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 44,
+  },
+  verificationButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#E6F7FF",
     borderRadius: 4,
     justifyContent: "center",
     alignItems: "center",

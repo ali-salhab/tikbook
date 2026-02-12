@@ -165,17 +165,22 @@ const InboxScreen = ({ navigation }) => {
       })),
   ];
 
-  const systemNotifications = notifications.filter((n) => !n.fromUser);
+  const systemNotifications = notifications.filter(
+    (n) => !n.fromUser && !n.read,
+  );
   const followerNotifications = notifications.filter(
-    (n) => n.type === "follow",
+    (n) => n.type === "follow" && !n.read,
   );
   const activityNotifications = notifications.filter(
-    (n) => n.fromUser && n.type !== "follow",
+    (n) => n.fromUser && n.type !== "follow" && !n.read,
   );
 
-  const latestFollower = followerNotifications[0];
-  const latestActivity = activityNotifications[0];
-  const latestSystem = systemNotifications[0];
+  // Get latest notifications for preview (can be read or unread)
+  const latestFollower = notifications.find((n) => n.type === "follow");
+  const latestActivity = notifications.find(
+    (n) => n.fromUser && n.type !== "follow",
+  );
+  const latestSystem = notifications.find((n) => !n.fromUser);
 
   const ListHeader = () => (
     <View>

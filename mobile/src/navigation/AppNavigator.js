@@ -29,6 +29,7 @@ import WalletScreen from "../screens/WalletScreen";
 import NewFollowersScreen from "../screens/NewFollowersScreen";
 import ActivityScreen from "../screens/ActivityScreen";
 import SystemNotificationsScreen from "../screens/SystemNotificationsScreen";
+import VerificationRequestScreen from "../screens/VerificationRequestScreen";
 import MapScreen from "../screens/MapScreen";
 import SplashScreen from "../screens/SplashScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
@@ -360,6 +361,10 @@ const AppNavigator = () => {
               <Stack.Screen
                 name="SystemNotifications"
                 component={SystemNotificationsScreen}
+              />
+              <Stack.Screen
+                name="VerificationRequest"
+                component={VerificationRequestScreen}
               />
               <Stack.Screen name="Map" component={MapScreen} />
             </>

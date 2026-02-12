@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,64 +8,118 @@ import {
   Image,
   SafeAreaView,
   FlatList as RNFlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AuthContext } from "../context/AuthContext";
+import { BASE_URL } from "../config/api";
+import axios from "axios";
+import { useFocusEffect } from "@react-navigation/native";
 
 const NewFollowersScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { userToken, setNotificationCount, fetchNotificationCount } =
+    useContext(AuthContext);
+  const [followers, setFollowers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock data based on screenshot
-  const [followers, setFollowers] = useState([
-    {
-      id: "1",
-      username: "user3703226950703",
-      action: "بدأ في متابعتك",
-      time: "الآن",
-      avatar: null,
-      isFollowingBack: false,
-    },
-    {
-      id: "2",
-      username: "user5386237398167",
-      action: "بدأ في متابعتك",
-      time: "الآن",
-      avatar: null,
-      isFollowingBack: false,
-    },
-    {
-      id: "3",
-      username: "pahezosalitotte",
-      action: "بدأ في متابعتك",
-      time: "الآن",
-      avatar: null,
-      isFollowingBack: false,
-    },
-    {
-      id: "4",
-      username: "gehiweinatihafef",
-      action: "بدأ في متابعتك",
-      time: "الآن",
-      avatar: null,
-      isFollowingBack: false,
-    },
-    {
-      id: "5",
-      username: "metuxucotoxetiranah",
-      action: "بدأ في متابعتك",
-      time: "الآن",
-      avatar: null,
-      isFollowingBack: false,
-    },
-    {
-      id: "6",
-      username: "miyullonnoqoruce",
-      action: "بدأ في متابعتك",
-      time: "الآن",
-      avatar: null,
-      isFollowingBack: false,
-    },
-  ]);
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "الآن";
+    if (minutes < 60) return `منذ ${minutes} د`;
+    if (hours < 24) return `منذ ${hours} س`;
+    if (days < 7) return `منذ ${days} ي`;
+    return date.toLocaleDateString("ar-EG");
+  };
+
+  const fetchFollowers = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      // Filter only follow notifications
+      const followNotifications = (res.data || []).filter(
+        (n) => n.type === "follow" && n.fromUser,
+      );
+      setFollowers(followNotifications);
+    } catch (e) {
+      console.error("Error fetching followers:", e);
+      setFollowers([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await axios.put(
+        `${BASE_URL}/notifications/mark-read`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${userToken}` },
+        },
+      );
+      // Update notification counter
+      if (fetchNotificationCount) {
+        await fetchNotificationCount();
+      }
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchFollowers();
+      markAllAsRead();
+    }, []),
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchFollowers();
+  };
+
+  const handleFollowBack = async (userId, currentlyFollowing) => {
+    try {
+      if (currentlyFollowing) {
+        // Unfollow
+        await axios.delete(`${BASE_URL}/user/${userId}/unfollow`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+      } else {
+        // Follow
+        await axios.post(
+          `${BASE_URL}/user/${userId}/follow`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+      }
+      // Update local state
+      setFollowers((prevFollowers) =>
+        prevFollowers.map((f) =>
+          f.fromUser?._id === userId
+            ? { ...f, isFollowingBack: !currentlyFollowing }
+            : f,
+        ),
+      );
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+    }
+  };
 
   const suggested = [
     { id: "s1", username: "user_a", reason: "مقترح لك" },
@@ -74,43 +128,58 @@ const NewFollowersScreen = ({ navigation }) => {
     { id: "s4", username: "user_d", reason: "الأصدقاء" },
   ];
 
-  const renderItem = ({ item }) => (
-    <View style={styles.itemContainer}>
-      <View style={styles.userInfo}>
-        <View style={styles.avatarContainer}>
-          {item.avatar ? (
-            <Image source={{ uri: item.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={24} color="#CCC" />
-            </View>
-          )}
-          <View style={styles.newBadge} />
-        </View>
-        <View style={styles.textContainer}>
-          <Text style={styles.username}>{item.username}</Text>
-          <Text style={styles.actionText}>
-            {item.action} <Text style={styles.time}>. {item.time}</Text>
-          </Text>
-        </View>
-      </View>
-      <TouchableOpacity
-        style={[
-          styles.followButton,
-          item.isFollowingBack && styles.followingButton,
-        ]}
-      >
-        <Text
-          style={[
-            styles.followButtonText,
-            item.isFollowingBack && styles.followingButtonText,
-          ]}
+  const renderItem = ({ item }) => {
+    const user = item.fromUser;
+    if (!user) return null;
+
+    return (
+      <View style={styles.itemContainer}>
+        <TouchableOpacity
+          style={styles.userInfo}
+          onPress={() =>
+            navigation.navigate("UserProfile", { userId: user._id })
+          }
         >
-          {item.isFollowingBack ? "أصدقاء" : "رد المتابعة"}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+          <View style={styles.avatarContainer}>
+            {user.profileImage ? (
+              <Image
+                source={{ uri: user.profileImage }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={24} color="#CCC" />
+              </View>
+            )}
+            {!item.read && <View style={styles.newBadge} />}
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={styles.username}>{user.username}</Text>
+            <Text style={styles.actionText}>
+              بدأ في متابعتك{" "}
+              <Text style={styles.time}>. {formatDate(item.createdAt)}</Text>
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.followButton,
+            item.isFollowingBack && styles.followingButton,
+          ]}
+          onPress={() => handleFollowBack(user._id, item.isFollowingBack)}
+        >
+          <Text
+            style={[
+              styles.followButtonText,
+              item.isFollowingBack && styles.followingButtonText,
+            ]}
+          >
+            {item.isFollowingBack ? "أصدقاء" : "رد المتابعة"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
@@ -122,32 +191,49 @@ const NewFollowersScreen = ({ navigation }) => {
         <View style={{ width: 24 }} />
       </View>
 
-      <FlatList
-        data={followers}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
-      />
-
-      <View style={styles.suggestedSection}>
-        <Text style={styles.suggestedTitle}>حسابات مقترحة ⓘ</Text>
-        <RNFlatList
-          data={suggested}
-          keyExtractor={(item) => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.suggestedList}
-          renderItem={({ item }) => (
-            <View style={styles.suggestedCard}>
-              <View style={styles.suggestedAvatar}>
-                <Ionicons name="person" size={20} color="#CCC" />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FE2C55" />
+        </View>
+      ) : (
+        <>
+          <FlatList
+            data={followers}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={56} color="#ccc" />
+                <Text style={styles.emptyText}>لا يوجد متابعون جدد</Text>
               </View>
-              <Text style={styles.suggestedName}>{item.username}</Text>
-              <Text style={styles.suggestedReason}>{item.reason}</Text>
-            </View>
-          )}
-        />
-      </View>
+            }
+          />
+
+          <View style={styles.suggestedSection}>
+            <Text style={styles.suggestedTitle}>حسابات مقترحة ⓘ</Text>
+            <RNFlatList
+              data={suggested}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestedList}
+              renderItem={({ item }) => (
+                <View style={styles.suggestedCard}>
+                  <View style={styles.suggestedAvatar}>
+                    <Ionicons name="person" size={20} color="#CCC" />
+                  </View>
+                  <Text style={styles.suggestedName}>{item.username}</Text>
+                  <Text style={styles.suggestedReason}>{item.reason}</Text>
+                </View>
+              )}
+            />
+          </View>
+        </>
+      )}
     </SafeAreaView>
   );
 };
@@ -157,6 +243,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFF",
     paddingTop: 0,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    marginTop: 12,
   },
   header: {
     flexDirection: "row",
