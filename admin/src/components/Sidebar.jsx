@@ -13,6 +13,7 @@ import {
   FiMenu,
   FiX,
   FiBell,
+  FiAward,
 } from "react-icons/fi";
 
 const Sidebar = ({ onLogout }) => {
@@ -51,6 +52,12 @@ const Sidebar = ({ onLogout }) => {
       label: "الإشعارات",
       icon: FiBell,
       path: "/notifications",
+    },
+    {
+      id: "verification",
+      label: "التوثيق",
+      icon: FiAward,
+      path: "/verification",
     },
     {
       id: "payments",

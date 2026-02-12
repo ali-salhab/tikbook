@@ -9,7 +9,13 @@ const transactionSchema = mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["purchase", "gift_sent", "gift_received", "withdrawal"],
+      enum: [
+        "purchase",
+        "gift_sent",
+        "gift_received",
+        "withdrawal",
+        "admin_grant",
+      ],
       required: true,
     },
     amount: {
@@ -30,13 +36,13 @@ const transactionSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
+      enum: ["pending", "completed", "failed", "refunded"],
       default: "completed",
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Transaction = mongoose.model("Transaction", transactionSchema);

@@ -46,6 +46,15 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationBadge: {
+      type: String,
+      enum: ["none", "blue", "gold"],
+      default: "none",
+    },
     pushToken: {
       type: String,
       default: "",
@@ -57,7 +66,7 @@ const userSchema = mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
