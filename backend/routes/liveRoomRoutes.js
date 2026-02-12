@@ -14,22 +14,22 @@ const {
   getMyLiveRooms,
   endLiveRoom,
 } = require("../controllers/liveRoomController");
-const auth = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 
 // Public routes
 router.get("/", getActiveLiveRooms);
 router.get("/:roomId", getLiveRoom);
 
 // Protected routes
-router.post("/create", auth, createLiveRoom);
-router.post("/:roomId/join", auth, joinLiveRoom);
-router.post("/:roomId/leave", auth, leaveLiveRoom);
-router.post("/:roomId/raise-hand", auth, raiseHand);
-router.post("/:roomId/lower-hand", auth, lowerHand);
-router.post("/:roomId/make-speaker", auth, makeSpeaker);
-router.post("/:roomId/remove-speaker", auth, removeSpeaker);
-router.post("/:roomId/toggle-mute", auth, toggleMute);
-router.post("/:roomId/end", auth, endLiveRoom);
-router.get("/my/rooms", auth, getMyLiveRooms);
+router.post("/create", protect, createLiveRoom);
+router.post("/:roomId/join", protect, joinLiveRoom);
+router.post("/:roomId/leave", protect, leaveLiveRoom);
+router.post("/:roomId/raise-hand", protect, raiseHand);
+router.post("/:roomId/lower-hand", protect, lowerHand);
+router.post("/:roomId/make-speaker", protect, makeSpeaker);
+router.post("/:roomId/remove-speaker", protect, removeSpeaker);
+router.post("/:roomId/toggle-mute", protect, toggleMute);
+router.post("/:roomId/end", protect, endLiveRoom);
+router.get("/my/rooms", protect, getMyLiveRooms);
 
 module.exports = router;
