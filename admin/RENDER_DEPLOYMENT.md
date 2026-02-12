@@ -131,8 +131,8 @@ Fill in the following settings:
 
 In the **Environment** section, add:
 
-| Key            | Value                                        |
-| -------------- | -------------------------------------------- |
+| Key            | Value                                         |
+| -------------- | --------------------------------------------- |
 | `VITE_API_URL` | `https://tikbook-1cdb.onrender.com` (no /api) |
 
 ### 3.4 Advanced Settings (Optional)

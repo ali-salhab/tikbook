@@ -20,7 +20,9 @@ import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import UsersScreen from "../screens/UsersScreen";
-import FriendsScreen from "../screens/FriendsScreen";
+import LiveRoomsListScreen from "../screens/LiveRoomsListScreen";
+import LiveRoomScreen from "../screens/LiveRoomScreen";
+import CreateLiveRoomScreen from "../screens/CreateLiveRoomScreen";
 import InboxScreen from "../screens/InboxScreen";
 import ChatScreen from "../screens/ChatScreen";
 import LiveScreen from "../screens/LiveScreen";
@@ -121,13 +123,13 @@ const HomeTabs = () => {
         }}
       />
       <Tab.Screen
-        name="Friends"
-        component={FriendsScreen}
+        name="LiveRooms"
+        component={LiveRoomsListScreen}
         options={{
-          tabBarLabel: "الأصدقاء",
+          tabBarLabel: "البث المباشر",
           tabBarIcon: ({ color, focused }) => (
             <TabIconWithBadge
-              name={focused ? "people" : "people-outline"}
+              name={focused ? "radio" : "radio-outline"}
               size={26}
               color={color}
               badgeCount={0}
@@ -351,6 +353,11 @@ const AppNavigator = () => {
               <Stack.Screen
                 name="LiveStreamsList"
                 component={LiveStreamsListScreen}
+              />
+              <Stack.Screen name="LiveRoom" component={LiveRoomScreen} />
+              <Stack.Screen
+                name="CreateLiveRoom"
+                component={CreateLiveRoomScreen}
               />
               <Stack.Screen name="Wallet" component={WalletScreen} />
               <Stack.Screen
