@@ -12,8 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_URL = "https://tikbook-1cdb.onrender.com/api";
+import { BASE_URL } from "../config/api";
 
 const CreateLiveRoomScreen = ({ navigation }) => {
   const [title, setTitle] = useState("");
@@ -41,7 +40,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `${API_URL}/live-rooms/create`,
+        `${BASE_URL}/live-rooms/create`,
         {
           title: title.trim(),
           description: description.trim(),

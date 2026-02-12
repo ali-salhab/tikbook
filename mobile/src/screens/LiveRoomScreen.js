@@ -13,9 +13,9 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import io from "socket.io-client";
+import { BASE_URL } from "../config/api";
 
-const API_URL = "https://tikbook-1cdb.onrender.com/api";
-const SOCKET_URL = "https://tikbook-1cdb.onrender.com";
+const SOCKET_URL = BASE_URL.replace("/api", "");
 
 const LiveRoomScreen = ({ route, navigation }) => {
   const { roomId } = route.params;
@@ -96,7 +96,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `${API_URL}/live-rooms/${roomId}/join`,
+        `${BASE_URL}/live-rooms/${roomId}/join`,
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -125,7 +125,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const fetchRoomData = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/live-rooms/${roomId}`, {
+      const response = await axios.get(`${BASE_URL}/live-rooms/${roomId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -141,7 +141,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       await axios.post(
-        `${API_URL}/live-rooms/${roomId}/leave`,
+        `${BASE_URL}/live-rooms/${roomId}/leave`,
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -164,7 +164,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       if (isHandRaised) {
         await axios.post(
-          `${API_URL}/live-rooms/${roomId}/lower-hand`,
+          `${BASE_URL}/live-rooms/${roomId}/lower-hand`,
           {},
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -175,7 +175,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
       } else {
         await axios.post(
-          `${API_URL}/live-rooms/${roomId}/raise-hand`,
+          `${BASE_URL}/live-rooms/${roomId}/raise-hand`,
           {},
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -196,7 +196,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `${API_URL}/live-rooms/${roomId}/toggle-mute`,
+        `${BASE_URL}/live-rooms/${roomId}/toggle-mute`,
         {},
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -219,7 +219,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `${API_URL}/live-rooms/${roomId}/make-speaker`,
+        `${BASE_URL}/live-rooms/${roomId}/make-speaker`,
         { userId },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -249,7 +249,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           try {
             const token = await AsyncStorage.getItem("token");
             await axios.post(
-              `${API_URL}/live-rooms/${roomId}/end`,
+              `${BASE_URL}/live-rooms/${roomId}/end`,
               {},
               { headers: { Authorization: `Bearer ${token}` } },
             );
