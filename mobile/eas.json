@@ -24,7 +24,7 @@
       "android": {
         "buildType": "apk",
         "image": "latest",
-        "gradleCommand": ":app:assembleRelease"
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a"
       },
       "env": {
         "NODE_ENV": "production"
@@ -34,11 +34,16 @@
         "paths": ["node_modules", "android/.gradle"]
       }
     },
-    "release-apk-all": {
+    "release-arm64": {
       "extends": "release-apk",
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a"
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a"
+      }
+    },
+    "release-arm32": {
+      "extends": "release-apk",
+      "android": {
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a"
       }
     },
     "production": {

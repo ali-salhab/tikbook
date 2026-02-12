@@ -23,7 +23,13 @@ import LoadingIndicator from "../components/LoadingIndicator";
 const { width } = Dimensions.get("window");
 
 const ProfileScreen = ({ navigation }) => {
-  const { logout, userInfo, BASE_URL, notificationCount, fetchNotificationCount } = useContext(AuthContext);
+  const {
+    logout,
+    userInfo,
+    BASE_URL,
+    notificationCount,
+    fetchNotificationCount,
+  } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
@@ -252,29 +258,31 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => navigation.navigate(\"Activity\")}
+            onPress={() => navigation.navigate("Activity")}
           >
             <View>
-              <Ionicons name=\"notifications-outline\" size={26} color=\"#000\" />
+              <Ionicons name="notifications-outline" size={26} color="#000" />
               {notificationCount > 0 && (
                 <View
                   style={{
-                    position: \"absolute\",
+                    position: "absolute",
                     right: -6,
                     top: -4,
-                    backgroundColor: \"#FE2C55\",
+                    backgroundColor: "#FE2C55",
                     borderRadius: 10,
                     minWidth: 20,
                     height: 20,
-                    justifyContent: \"center\",
-                    alignItems: \"center\",
+                    justifyContent: "center",
+                    alignItems: "center",
                     paddingHorizontal: 4,
                     borderWidth: 2,
-                    borderColor: \"#FFF\",
+                    borderColor: "#FFF",
                   }}
                 >
-                  <Text style={{ color: \"#FFF\", fontSize: 10, fontWeight: \"bold\" }}>
-                    {notificationCount > 99 ? \"99+\" : notificationCount}
+                  <Text
+                    style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}
+                  >
+                    {notificationCount > 99 ? "99+" : notificationCount}
                   </Text>
                 </View>
               )}

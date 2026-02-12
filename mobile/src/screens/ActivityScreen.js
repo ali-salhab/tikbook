@@ -97,7 +97,7 @@ const ActivityScreen = ({ navigation }) => {
 
   const markNotificationsAsRead = async () => {
     try {
-      await axios.post(
+      await axios.put(
         `${BASE_URL}/notifications/mark-read`,
         {},
         {

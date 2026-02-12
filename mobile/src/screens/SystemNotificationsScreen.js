@@ -5,11 +5,11 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
@@ -69,7 +69,7 @@ const SystemNotificationsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
-    }, [])
+    }, []),
   );
 
   const onRefresh = () => {
@@ -97,7 +97,7 @@ const SystemNotificationsScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-forward" size={24} color="#000" />
@@ -146,7 +146,11 @@ const SystemNotificationsScreen = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={56} color="#ccc" />
+              <Ionicons
+                name="notifications-off-outline"
+                size={56}
+                color="#ccc"
+              />
               <Text style={styles.emptyText}>لا توجد إشعارات نظام</Text>
             </View>
           }

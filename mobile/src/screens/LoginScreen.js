@@ -9,8 +9,8 @@ import {
   Image,
   Modal,
   ActivityIndicator,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import i18n from "../i18n";
@@ -114,6 +114,11 @@ const LoginScreen = ({ navigation }) => {
         style={{ opacity: fadeAnim }}
         showsVerticalScrollIndicator={false}
         scrollEnabled={!loading}
+        contentContainerStyle={{
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100%",
+        }}
       >
         <Animated.View style={{ alignItems: "center" }}>
           <View style={styles.logo}>
@@ -350,7 +355,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   inputContainer: {
-    marginHorizontal: 20,
+    width: "100%",
     marginBottom: 16,
     position: "relative",
     flexDirection: "row",
@@ -385,7 +390,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 20,
+    width: "100%",
     marginTop: 28,
     shadowColor: "#FE2C55",
     shadowOffset: { width: 0, height: 4 },
