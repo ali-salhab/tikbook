@@ -43,11 +43,25 @@ const SystemNotificationsScreen = ({ navigation }) => {
 
   const getSummaryText = (notification) => {
     switch (notification.type) {
+      case "admin":
+        return notification.title || "إشعار من الإدارة";
       case "admin_broadcast":
-        return "إشعار عام من الإدارة";
+        return notification.title || "إشعار عام من الإدارة";
+      case "system":
+        return notification.title || "إشعار من النظام";
+      case "announcement":
+        return notification.title || "إعلان";
+      case "promo":
+        return notification.title || "عرض خاص";
+      case "update":
+        return notification.title || "تحديث التطبيق";
       default:
-        return "إشعار من النظام";
+        return notification.title || "إشعار من النظام";
     }
+  };
+
+  const getDetailText = (notification) => {
+    return notification.message || notification.body || "";
   };
 
   const fetchNotifications = async () => {
@@ -55,7 +69,18 @@ const SystemNotificationsScreen = ({ navigation }) => {
       const res = await axios.get(`${BASE_URL}/notifications`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      const systemOnly = (res.data || []).filter((n) => !n.fromUser);
+      // Include system notifications AND admin notifications (types: admin, admin_broadcast, system, announcement, promo, update)
+      const systemTypes = [
+        "admin",
+        "admin_broadcast",
+        "system",
+        "announcement",
+        "promo",
+        "update",
+      ];
+      const systemOnly = (res.data || []).filter(
+        (n) => systemTypes.includes(n.type) || !n.fromUser,
+      );
       setNotifications(systemOnly);
     } catch (e) {
       console.error("Error fetching system notifications:", e);
@@ -77,24 +102,89 @@ const SystemNotificationsScreen = ({ navigation }) => {
     fetchNotifications();
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.sourceContainer}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="logo-tiktok" size={16} color="#000" />
-          </View>
-          <Text style={styles.sourceText}>TikBook . النظام</Text>
-        </View>
-        <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
-      </View>
+  const renderItem = ({ item }) => {
+    const isUnread = !item.read;
 
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{getSummaryText(item)}</Text>
-        <Text style={styles.moreText}>{formatDate(item.createdAt)}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+    return (
+      <TouchableOpacity
+        style={[styles.card, isUnread && styles.unreadCard]}
+        onPress={() => markAsRead(item._id)}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.sourceContainer}>
+            <View
+              style={[
+                styles.iconContainer,
+                item.type === "admin" && { backgroundColor: "#007bff" },
+                item.type === "admin_broadcast" && {
+                  backgroundColor: "#28a745",
+                },
+                item.type === "announcement" && { backgroundColor: "#ffc107" },
+                item.type === "promo" && { backgroundColor: "#ff6b6b" },
+                item.type === "update" && { backgroundColor: "#6c757d" },
+              ]}
+            >
+              <Ionicons
+                name={
+                  item.type === "admin"
+                    ? "person-circle"
+                    : item.type === "admin_broadcast"
+                      ? "megaphone"
+                      : item.type === "announcement"
+                        ? "megaphone-outline"
+                        : item.type === "promo"
+                          ? "gift"
+                          : item.type === "update"
+                            ? "cloud-download"
+                            : "notifications"
+                }
+                size={16}
+                color="#fff"
+              />
+            </View>
+            <Text style={styles.sourceText}>TikBook . النظام</Text>
+          </View>
+          {isUnread && (
+            <View style={styles.unreadBadge}>
+              <View style={styles.unreadDot} />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.cardContent}>
+          <Text style={[styles.cardTitle, isUnread && styles.unreadTitle]}>
+            {getSummaryText(item)}
+          </Text>
+          {getDetailText(item) ? (
+            <Text style={styles.cardMessage} numberOfLines={2}>
+              {getDetailText(item)}
+            </Text>
+          ) : null}
+          <Text style={styles.moreText}>{formatDate(item.createdAt)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await axios.put(
+        `${BASE_URL}/notifications/${notificationId}/read`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${userToken}` },
+        },
+      );
+      // Update local state
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((n) =>
+          n._id === notificationId ? { ...n, read: true } : n,
+        ),
+      );
+    } catch (e) {
+      console.error("Error marking notification as read:", e);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -230,6 +320,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  unreadCard: {
+    backgroundColor: "#F0F8FF",
+    borderLeftWidth: 3,
+    borderLeftColor: "#007bff",
+  },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -253,6 +348,18 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 13,
   },
+  unreadBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#007bff",
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#007bff",
+  },
   cardContent: {
     paddingRight: 32, // Indent content to align with text
   },
@@ -261,6 +368,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "left",
+  },
+  unreadTitle: {
+    color: "#007bff",
+  },
+  cardMessage: {
+    fontSize: 14,
+    color: "#333",
+    marginBottom: 8,
+    textAlign: "left",
+    lineHeight: 20,
   },
   cardDescription: {
     fontSize: 13,

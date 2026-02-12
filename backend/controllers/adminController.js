@@ -66,7 +66,7 @@ const getDashboardStats = async (req, res) => {
     const earliestDate = new Date(
       earliestMonth.year,
       earliestMonth.month - 1,
-      1
+      1,
     );
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -338,7 +338,7 @@ const deleteUser = async (req, res) => {
 // @access  Private/Admin
 const sendNotificationToUser = async (req, res) => {
   try {
-    const { title, body } = req.body;
+    const { title, body, type = "admin" } = req.body;
     const userId = req.params.userId;
 
     const user = await User.findById(userId);
@@ -346,30 +346,40 @@ const sendNotificationToUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (!user.pushToken && !user.fcmToken) {
-      return res
-        .status(400)
-        .json({ message: "User has no push token registered" });
+    // Create notification in database
+    const notification = new Notification({
+      user: userId,
+      type: type, // 'admin', 'system', 'announcement', etc.
+      message: body || title,
+      title: title,
+      fromUser: req.user._id, // Admin user ID
+      read: false,
+    });
+    await notification.save();
+
+    // Also send push notification if user has token
+    if (user.pushToken || user.fcmToken) {
+      const { sendPushNotification } = require("../services/firebaseService");
+      const token = user.pushToken || user.fcmToken;
+      await sendPushNotification(
+        token,
+        title || "إشعار من TikBook",
+        body || "لديك إشعار جديد",
+        {
+          type: "admin",
+          source: "admin",
+          notificationId: notification._id.toString(),
+        },
+      );
     }
 
-    const { sendPushNotification } = require("../services/firebaseService");
-    const token = user.pushToken || user.fcmToken;
-    const result = await sendPushNotification(
-      token,
-      title || "إشعار من TikBook",
-      body || "لديك إشعار جديد",
-      { type: "admin", source: "admin" }
-    );
-
-    if (result) {
-      res.json({
-        message: "Notification sent successfully",
-        user: user.username,
-      });
-    } else {
-      res.status(500).json({ message: "Failed to send notification" });
-    }
+    res.json({
+      message: "Notification sent successfully",
+      user: user.username,
+      notification: notification,
+    });
   } catch (error) {
+    console.error("Error sending notification:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -381,7 +391,7 @@ const getAllVideos = async (req, res) => {
   try {
     const videos = await Video.find({}).populate(
       "user",
-      "username email profileImage"
+      "username email profileImage",
     );
     res.json(videos);
   } catch (error) {
@@ -394,46 +404,17 @@ const getAllVideos = async (req, res) => {
 // @access  Private/Admin
 const sendBroadcastNotification = async (req, res) => {
   try {
-    const { title, body } = req.body;
+    const { title, body, type = "admin_broadcast" } = req.body;
 
-    const users = await User.find({
-      $or: [
-        { pushToken: { $exists: true, $ne: "" } },
-        { fcmToken: { $exists: true, $ne: "" } },
-      ],
-    });
+    // Get all users (not just those with tokens, for database notifications)
+    const allUsers = await User.find({});
 
-    const tokens = users
-      .map((user) => user.pushToken || user.fcmToken)
-      .filter((token) => token);
-
-    if (tokens.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No users with push tokens found" });
-    }
-
-    const {
-      sendMultipleNotifications,
-    } = require("../services/firebaseService");
-    const result = await sendMultipleNotifications(
-      tokens,
-      title || "إشعار عام",
-      body || "لديك إشعار جديد",
-      { type: "admin_broadcast", source: "admin" }
-    );
-
-    if (!result) {
-      return res.status(500).json({
-        message:
-          "Failed to send broadcast: Firebase not initialized or no valid tokens",
-      });
-    }
-
-    // Save notification to database for each user
-    const notificationsToSave = users.map((user) => ({
+    // Create notification in database for all users
+    const notificationsToSave = allUsers.map((user) => ({
       user: user._id,
-      type: "admin_broadcast", // You might need to add this type to your frontend handling
+      type: type,
+      message: body || title,
+      title: title,
       fromUser: req.user._id, // The admin who sent it
       read: false,
     }));
@@ -442,12 +423,43 @@ const sendBroadcastNotification = async (req, res) => {
       await Notification.insertMany(notificationsToSave);
     }
 
+    // Get users with push tokens for push notifications
+    const usersWithTokens = allUsers.filter(
+      (user) => user.pushToken || user.fcmToken,
+    );
+
+    let pushResult = null;
+    if (usersWithTokens.length > 0) {
+      const tokens = usersWithTokens
+        .map((user) => user.pushToken || user.fcmToken)
+        .filter((token) => token);
+
+      if (tokens.length > 0) {
+        const {
+          sendMultipleNotifications,
+        } = require("../services/firebaseService");
+        pushResult = await sendMultipleNotifications(
+          tokens,
+          title || "إشعار عام",
+          body || "لديك إشعار جديد",
+          { type: "admin_broadcast", source: "admin" },
+        );
+      }
+    }
+
     res.json({
       message: "Broadcast sent successfully",
-      successCount: result.successCount,
-      failureCount: result.failureCount,
+      totalUsers: allUsers.length,
+      notificationsSaved: notificationsToSave.length,
+      pushNotifications: pushResult
+        ? {
+            successCount: pushResult.successCount,
+            failureCount: pushResult.failureCount,
+          }
+        : { successCount: 0, failureCount: 0 },
     });
   } catch (error) {
+    console.error("Error sending broadcast notification:", error);
     res.status(500).json({ message: error.message });
   }
 };

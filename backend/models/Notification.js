@@ -8,7 +8,7 @@ const notificationSchema = mongoose.Schema(
       required: true,
     },
     type: {
-      type: String, // 'like', 'comment', 'follow'
+      type: String, // 'like', 'comment', 'follow', 'admin', 'admin_broadcast', 'system', 'announcement', 'promo', 'update'
       required: true,
     },
     fromUser: {
@@ -20,6 +20,14 @@ const notificationSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
     },
+    title: {
+      type: String,
+      required: false, // Optional title for admin/system notifications
+    },
+    message: {
+      type: String,
+      required: false, // Optional message for admin/system notifications
+    },
     read: {
       type: Boolean,
       default: false,
@@ -27,7 +35,7 @@ const notificationSchema = mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Notification = mongoose.model("Notification", notificationSchema);

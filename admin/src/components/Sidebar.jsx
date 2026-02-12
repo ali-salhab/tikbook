@@ -12,6 +12,7 @@ import {
   FiLogOut,
   FiMenu,
   FiX,
+  FiBell,
 } from "react-icons/fi";
 
 const Sidebar = ({ onLogout }) => {
@@ -44,6 +45,12 @@ const Sidebar = ({ onLogout }) => {
       label: "التعليقات",
       icon: FiMessageSquare,
       path: "/comments",
+    },
+    {
+      id: "notifications",
+      label: "الإشعارات",
+      icon: FiBell,
+      path: "/notifications",
     },
     {
       id: "payments",
@@ -96,7 +103,36 @@ const Sidebar = ({ onLogout }) => {
       >
         {/* Header */}
         <div className="sidebar-header">
-          <h1 className="sidebar-title">TikBook</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {isOpen && (
+              <img 
+                src="/logo.jpg" 
+                alt="TikBook" 
+                style={{ 
+                  width: '40px', 
+                  height: '40px', 
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }} 
+              />
+            )}
+            {!isOpen && (
+              <img 
+                src="/logo.jpg" 
+                alt="TikBook" 
+                style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  margin: '0 auto'
+                }} 
+              />
+            )}
+            {isOpen && <h1 className="sidebar-title">TikBook</h1>}
+          </div>
           <button
             className="sidebar-toggle"
             onClick={() => setIsOpen(!isOpen)}

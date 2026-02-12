@@ -346,7 +346,11 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.modalOverlay}
+        keyboardVerticalOffset={0}
+      >
         {/* Backdrop */}
         <TouchableOpacity
           style={styles.backdrop}
@@ -371,132 +375,131 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
           </View>
 
           {/* Comments List */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#FE2C55" />
-            </View>
-          ) : (
-            <FlatList
-              ref={flatListRef}
-              data={comments}
-              renderItem={renderCommentWithReplies}
-              keyExtractor={(item) => item._id}
-              contentContainerStyle={styles.commentsList}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="chatbubble-outline" size={60} color="#ccc" />
-                  <Text style={styles.emptyText}>لا توجد تعليقات بعد</Text>
-                  <Text style={styles.emptySubtext}>كن أول من يعلق!</Text>
-                </View>
-              }
-            />
-          )}
+          <View style={{ flex: 1 }}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FE2C55" />
+              </View>
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={comments}
+                renderItem={renderCommentWithReplies}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={styles.commentsList}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={60}
+                      color="#ccc"
+                    />
+                    <Text style={styles.emptyText}>لا توجد تعليقات بعد</Text>
+                    <Text style={styles.emptySubtext}>كن أول من يعلق!</Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
 
           {/* Input Section */}
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={0}
+          <View
+            style={[
+              styles.footerContainer,
+              { paddingBottom: Math.max(insets.bottom, 10) },
+            ]}
           >
-            <View
-              style={[
-                styles.footerContainer,
-                { paddingBottom: Math.max(insets.bottom, 10) },
-              ]}
-            >
-              {/* Reply Banner */}
-              {replyingTo && (
-                <View style={styles.replyBanner}>
-                  <Ionicons name="return-down-forward" size={16} color="#666" />
-                  <Text style={styles.replyBannerText}>
-                    الرد على @{replyingTo.user?.username}
-                  </Text>
-                  <TouchableOpacity onPress={() => setReplyingTo(null)}>
-                    <Ionicons name="close" size={16} color="#666" />
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Selected Image Preview */}
-              {selectedImage && (
-                <View style={styles.imagePreviewContainer}>
-                  <Image
-                    source={{ uri: selectedImage }}
-                    style={styles.imagePreview}
-                  />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => setSelectedImage(null)}
-                  >
-                    <Ionicons name="close-circle" size={24} color="#FE2C55" />
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Quick Reactions */}
-              <View style={styles.quickReactionsContainer}>
-                <FlatList
-                  horizontal
-                  data={quickReactions}
-                  showsHorizontalScrollIndicator={false}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.reactionButton}
-                      onPress={() => setCommentText((prev) => prev + item)}
-                    >
-                      <Text style={styles.reactionEmoji}>{item}</Text>
-                    </TouchableOpacity>
-                  )}
-                  keyExtractor={(item, index) => index.toString()}
-                />
-              </View>
-
-              {/* Input Row */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputLeftIcons}>
-                  <TouchableOpacity
-                    style={styles.inputIcon}
-                    onPress={pickImage}
-                  >
-                    <Ionicons name="image-outline" size={22} color="#000" />
-                  </TouchableOpacity>
-                </View>
-
-                <TextInput
-                  style={styles.input}
-                  placeholder={
-                    replyingTo
-                      ? `الرد على @${replyingTo.user?.username}`
-                      : "أضف تعليق..."
-                  }
-                  placeholderTextColor="#999"
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  multiline
-                  maxLength={500}
-                  textAlign="right"
-                />
-
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    (commentText.trim() || selectedImage) &&
-                      styles.sendButtonActive,
-                  ]}
-                  onPress={handleSendComment}
-                  disabled={(!commentText.trim() && !selectedImage) || sending}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Ionicons name="send" size={20} color="#FFF" />
-                  )}
+            {/* Reply Banner */}
+            {replyingTo && (
+              <View style={styles.replyBanner}>
+                <Ionicons name="return-down-forward" size={16} color="#666" />
+                <Text style={styles.replyBannerText}>
+                  الرد على @{replyingTo.user?.username}
+                </Text>
+                <TouchableOpacity onPress={() => setReplyingTo(null)}>
+                  <Ionicons name="close" size={16} color="#666" />
                 </TouchableOpacity>
               </View>
+            )}
+
+            {/* Selected Image Preview */}
+            {selectedImage && (
+              <View style={styles.imagePreviewContainer}>
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.imagePreview}
+                />
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={() => setSelectedImage(null)}
+                >
+                  <Ionicons name="close-circle" size={24} color="#FE2C55" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Quick Reactions */}
+            <View style={styles.quickReactionsContainer}>
+              <FlatList
+                horizontal
+                data={quickReactions}
+                showsHorizontalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.reactionButton}
+                    onPress={() => setCommentText((prev) => prev + item)}
+                  >
+                    <Text style={styles.reactionEmoji}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+                keyExtractor={(item, index) => index.toString()}
+              />
             </View>
-          </KeyboardAvoidingView>
+
+            {/* Input Row */}
+            <View style={styles.inputRow}>
+              <View style={styles.inputLeftIcons}>
+                <TouchableOpacity style={styles.inputIcon} onPress={pickImage}>
+                  <Ionicons name="image-outline" size={22} color="#000" />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder={
+                  replyingTo
+                    ? `الرد على @${replyingTo.user?.username}`
+                    : "أضف تعليق..."
+                }
+                placeholderTextColor="#999"
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                maxLength={500}
+                textAlign="right"
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  (commentText.trim() || selectedImage) &&
+                    styles.sendButtonActive,
+                ]}
+                onPress={handleSendComment}
+                disabled={(!commentText.trim() && !selectedImage) || sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="send" size={20} color="#FFF" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -514,11 +517,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: "75%",
+    maxHeight: "75%",
     backgroundColor: "#FFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: "hidden",
+    flexDirection: "column",
   },
   header: {
     flexDirection: "row",
@@ -576,6 +580,7 @@ const styles = StyleSheet.create({
   },
   commentAvatarContainer: {
     marginLeft: 12,
+    marginRight: 8,
   },
   commentAvatar: {
     width: 36,
@@ -646,6 +651,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderTopWidth: 0.5,
     borderTopColor: "#E0E0E0",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   replyBanner: {
     flexDirection: "row",

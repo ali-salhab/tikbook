@@ -387,7 +387,7 @@ const UsersManagement = () => {
                     <p className="label">تاريخ الانضمام</p>
                     <p className="value">
                       {new Date(selectedUser.createdAt).toLocaleDateString(
-                        "ar-EG"
+                        "ar-EG",
                       )}
                     </p>
                   </div>
@@ -395,6 +395,21 @@ const UsersManagement = () => {
               </div>
 
               <div className="modal-actions">
+                <button
+                  className="btn-secondary"
+                  style={{
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    marginRight: "10px",
+                  }}
+                  onClick={() => {
+                    navigate(
+                      `/notifications?userId=${selectedUser._id}&username=${selectedUser.username}`,
+                    );
+                  }}
+                >
+                  📬 إرسال إشعار
+                </button>
                 <button
                   className="btn-primary"
                   onClick={() => setSelectedUser(null)}

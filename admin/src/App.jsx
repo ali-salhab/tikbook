@@ -16,6 +16,7 @@ import PaymentsManagement from "./pages/PaymentsManagement";
 import RewardsManagement from "./pages/RewardsManagement";
 import AppVersionManagementPage from "./pages/AppVersionManagementPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import NotificationsManagement from "./pages/NotificationsManagement";
 
 // Wrapper component to handle logout
 const PageWrapper = ({ Component }) => {
@@ -58,6 +59,10 @@ function App() {
         <Route
           path="/rewards"
           element={<PageWrapper Component={RewardsManagement} />}
+        />
+        <Route
+          path="/notifications"
+          element={<PageWrapper Component={NotificationsManagement} />}
         />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/app-versions" element={<AppVersionManagementPage />} />
