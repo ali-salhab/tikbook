@@ -14,6 +14,7 @@ import {
   FiX,
   FiBell,
   FiAward,
+  FiSmartphone,
 } from "react-icons/fi";
 
 const Sidebar = ({ onLogout }) => {
@@ -80,7 +81,7 @@ const Sidebar = ({ onLogout }) => {
     {
       id: "app-versions",
       label: "إدارة الإصدارات",
-      icon: FiVideo,
+      icon: FiSmartphone,
       path: "/app-versions",
     },
   ];

@@ -133,16 +133,14 @@ export default function VersionChecker({ children }) {
             </Text>
 
             <TouchableOpacity
-              style={[styles.button, styles.updateButtonForced]}
+              style={styles.updateButtonForced}
               onPress={handleUpdate}
             >
-              <Ionicons name="download" size={20} color="#FFF" />
-              <Text style={styles.buttonText}>تحديث الآن</Text>
+              <Ionicons name="download" size={22} color="#FFF" />
+              <Text style={styles.buttonTextForced}>تحديث الآن</Text>
             </TouchableOpacity>
 
-            <Text style={styles.warning}>
-              يجب تحديث التطبيق للمتابعة في استخدام التطبيق
-            </Text>
+            <Text style={styles.warning}>يجب تحديث التطبيق للاستمرار</Text>
           </View>
         </View>
       </Modal>
@@ -179,15 +177,12 @@ export default function VersionChecker({ children }) {
           </Text>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.button, styles.skipButton]}
-              onPress={handleSkip}
-            >
+            <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
               <Text style={styles.skipButtonText}>تخطي</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.updateButton]}
+              style={styles.updateButton}
               onPress={handleUpdate}
             >
               <Ionicons name="download" size={20} color="#FFF" />
@@ -283,9 +278,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 24,
     lineHeight: 24,
+    paddingHorizontal: 8,
   },
   warning: {
-    minHeight: 48,
+    fontSize: 13,
+    color: "#999",
+    marginTop: 16,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
   updateButton: {
     backgroundColor: "#FE2C55",
@@ -294,28 +295,44 @@ const styles = StyleSheet.create({
     backgroundColor: "#FE2C55",
     width: "100%",
     paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  buttonTextForced: {
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "700",
   },
   buttonContainer: {
     width: "100%",
     flexDirection: "row",
     gap: 12,
   },
-  button: {
-    paddingVertical: 12,
+  updateButton: {
+    backgroundColor: "#FE2C55",
+    flex: 1,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    flex: 1,
-  },
-  updateButton: {
-    backgroundColor: "#FE2C55",
+    gap: 8,
   },
   skipButton: {
     backgroundColor: "#F0F0F0",
     borderWidth: 1,
     borderColor: "#D9D9D9",
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonText: {
     color: "#FFF",
