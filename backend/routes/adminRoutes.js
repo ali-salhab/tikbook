@@ -6,6 +6,7 @@ const {
   deleteUser,
   sendNotificationToUser,
   getAllVideos,
+  deleteVideo,
   sendBroadcastNotification,
   grantCoinsToUser,
 } = require("../controllers/adminController");
@@ -17,6 +18,7 @@ router.delete("/users/:id", protect, admin, deleteUser);
 router.post("/notify/all", protect, admin, sendBroadcastNotification);
 router.post("/notify/:userId", protect, admin, sendNotificationToUser);
 router.get("/videos", protect, admin, getAllVideos);
+router.delete("/videos/:id", protect, admin, deleteVideo);
 router.post("/wallet/grant", protect, admin, grantCoinsToUser);
 
 // New routes for advanced admin features

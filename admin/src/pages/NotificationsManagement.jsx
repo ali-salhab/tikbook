@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { api } from "../config/api";
-import Sidebar from "../components/Sidebar";
+import AdminLayout from "../components/AdminLayout";
 
 const NotificationsManagement = ({ onLogout }) => {
   const location = useLocation();
@@ -153,508 +153,504 @@ const NotificationsManagement = ({ onLogout }) => {
   ];
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar onLogout={onLogout} />
-      <div style={{ flex: 1, padding: "20px", backgroundColor: "#f5f5f5" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <h1 style={{ marginBottom: "30px", color: "#333" }}>
-            📬 Notifications Management
-          </h1>
+    <AdminLayout onLogout={onLogout}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <h1 style={{ marginBottom: "30px", color: "#333" }}>
+          📬 Notifications Management
+        </h1>
 
-          {/* Message Alert */}
-          {message.text && (
-            <div
-              style={{
-                padding: "15px 20px",
-                marginBottom: "20px",
-                borderRadius: "8px",
-                backgroundColor:
-                  message.type === "success" ? "#d4edda" : "#f8d7da",
-                color: message.type === "success" ? "#155724" : "#721c24",
-                border: `1px solid ${
-                  message.type === "success" ? "#c3e6cb" : "#f5c6cb"
-                }`,
-              }}
-            >
-              {message.text}
-            </div>
-          )}
-
-          {/* Tabs */}
+        {/* Message Alert */}
+        {message.text && (
           <div
             style={{
-              display: "flex",
-              gap: "10px",
+              padding: "15px 20px",
               marginBottom: "20px",
-              borderBottom: "2px solid #ddd",
+              borderRadius: "8px",
+              backgroundColor:
+                message.type === "success" ? "#d4edda" : "#f8d7da",
+              color: message.type === "success" ? "#155724" : "#721c24",
+              border: `1px solid ${
+                message.type === "success" ? "#c3e6cb" : "#f5c6cb"
+              }`,
             }}
           >
-            <button
-              onClick={() => setActiveTab("send")}
-              style={{
-                padding: "12px 24px",
-                border: "none",
-                borderBottom:
-                  activeTab === "send" ? "3px solid #007bff" : "none",
-                backgroundColor: "transparent",
-                cursor: "pointer",
-                fontWeight: activeTab === "send" ? "bold" : "normal",
-                color: activeTab === "send" ? "#007bff" : "#666",
-              }}
-            >
-              Send to User
-            </button>
-            <button
-              onClick={() => setActiveTab("broadcast")}
-              style={{
-                padding: "12px 24px",
-                border: "none",
-                borderBottom:
-                  activeTab === "broadcast" ? "3px solid #007bff" : "none",
-                backgroundColor: "transparent",
-                cursor: "pointer",
-                fontWeight: activeTab === "broadcast" ? "bold" : "normal",
-                color: activeTab === "broadcast" ? "#007bff" : "#666",
-              }}
-            >
-              Broadcast to All
-            </button>
-            <button
-              onClick={() => setActiveTab("templates")}
-              style={{
-                padding: "12px 24px",
-                border: "none",
-                borderBottom:
-                  activeTab === "templates" ? "3px solid #007bff" : "none",
-                backgroundColor: "transparent",
-                cursor: "pointer",
-                fontWeight: activeTab === "templates" ? "bold" : "normal",
-                color: activeTab === "templates" ? "#007bff" : "#666",
-              }}
-            >
-              Templates
-            </button>
+            {message.text}
           </div>
+        )}
 
-          {/* Send to User Tab */}
-          {activeTab === "send" && (
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: "30px",
-                borderRadius: "12px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}
-            >
-              <h2 style={{ marginBottom: "20px", color: "#333" }}>
-                Send Notification to User
-              </h2>
-              <form onSubmit={handleSendToUser}>
-                {/* User Selection */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Select User *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search by username or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                      marginBottom: "10px",
-                    }}
-                  />
-                  <select
-                    value={selectedUser}
-                    onChange={(e) => setSelectedUser(e.target.value)}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    <option value="">-- Select User --</option>
-                    {filteredUsers.map((user) => (
-                      <option key={user._id} value={user._id}>
-                        {user.username} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Notification Type */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Notification Type
-                  </label>
-                  <select
-                    value={notificationData.type}
-                    onChange={(e) =>
-                      setNotificationData({
-                        ...notificationData,
-                        type: e.target.value,
-                      })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    {notificationTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Title */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={notificationData.title}
-                    onChange={(e) =>
-                      setNotificationData({
-                        ...notificationData,
-                        title: e.target.value,
-                      })
-                    }
-                    required
-                    placeholder="Enter notification title..."
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </div>
-
-                {/* Body */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Message *
-                  </label>
-                  <textarea
-                    value={notificationData.body}
-                    onChange={(e) =>
-                      setNotificationData({
-                        ...notificationData,
-                        body: e.target.value,
-                      })
-                    }
-                    required
-                    placeholder="Enter notification message..."
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                      resize: "vertical",
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    padding: "12px 30px",
-                    backgroundColor: loading ? "#ccc" : "#007bff",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                  }}
-                >
-                  {loading ? "Sending..." : "Send Notification"}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* Broadcast Tab */}
-          {activeTab === "broadcast" && (
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: "30px",
-                borderRadius: "12px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}
-            >
-              <h2 style={{ marginBottom: "20px", color: "#333" }}>
-                Broadcast to All Users
-              </h2>
-              <div
-                style={{
-                  padding: "15px",
-                  backgroundColor: "#fff3cd",
-                  border: "1px solid #ffeaa7",
-                  borderRadius: "6px",
-                  marginBottom: "20px",
-                  color: "#856404",
-                }}
-              >
-                ⚠️ This will send a notification to ALL users in the system!
-              </div>
-              <form onSubmit={handleBroadcast}>
-                {/* Notification Type */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Notification Type
-                  </label>
-                  <select
-                    value={notificationData.type}
-                    onChange={(e) =>
-                      setNotificationData({
-                        ...notificationData,
-                        type: e.target.value,
-                      })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    {notificationTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Title */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={notificationData.title}
-                    onChange={(e) =>
-                      setNotificationData({
-                        ...notificationData,
-                        title: e.target.value,
-                      })
-                    }
-                    required
-                    placeholder="Enter notification title..."
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </div>
-
-                {/* Body */}
-                <div style={{ marginBottom: "20px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "8px",
-                      fontWeight: "bold",
-                      color: "#555",
-                    }}
-                  >
-                    Message *
-                  </label>
-                  <textarea
-                    value={notificationData.body}
-                    onChange={(e) =>
-                      setNotificationData({
-                        ...notificationData,
-                        body: e.target.value,
-                      })
-                    }
-                    required
-                    placeholder="Enter broadcast message..."
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "6px",
-                      resize: "vertical",
-                    }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    padding: "12px 30px",
-                    backgroundColor: loading ? "#ccc" : "#dc3545",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                  }}
-                >
-                  {loading ? "Broadcasting..." : "Send Broadcast"}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* Templates Tab */}
-          {activeTab === "templates" && (
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: "30px",
-                borderRadius: "12px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}
-            >
-              <h2 style={{ marginBottom: "20px", color: "#333" }}>
-                Notification Templates
-              </h2>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                  gap: "20px",
-                }}
-              >
-                {notificationTemplates.map((template, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      padding: "20px",
-                      border: "1px solid #ddd",
-                      borderRadius: "8px",
-                      backgroundColor: "#f9f9f9",
-                    }}
-                  >
-                    <h3 style={{ marginBottom: "10px", color: "#333" }}>
-                      {template.title}
-                    </h3>
-                    <p
-                      style={{
-                        marginBottom: "10px",
-                        color: "#666",
-                        fontSize: "14px",
-                      }}
-                    >
-                      {template.body}
-                    </p>
-                    <div
-                      style={{
-                        marginBottom: "15px",
-                        fontSize: "12px",
-                        color: "#888",
-                      }}
-                    >
-                      Type: <strong>{template.type}</strong>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setNotificationData(template);
-                        setActiveTab("send");
-                      }}
-                      style={{
-                        padding: "8px 16px",
-                        backgroundColor: "#007bff",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                        marginRight: "10px",
-                      }}
-                    >
-                      Use Template
-                    </button>
-                    <button
-                      onClick={() => {
-                        setNotificationData(template);
-                        setActiveTab("broadcast");
-                      }}
-                      style={{
-                        padding: "8px 16px",
-                        backgroundColor: "#28a745",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                      }}
-                    >
-                      Broadcast
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Tabs */}
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            marginBottom: "20px",
+            borderBottom: "2px solid #ddd",
+          }}
+        >
+          <button
+            onClick={() => setActiveTab("send")}
+            style={{
+              padding: "12px 24px",
+              border: "none",
+              borderBottom: activeTab === "send" ? "3px solid #007bff" : "none",
+              backgroundColor: "transparent",
+              cursor: "pointer",
+              fontWeight: activeTab === "send" ? "bold" : "normal",
+              color: activeTab === "send" ? "#007bff" : "#666",
+            }}
+          >
+            Send to User
+          </button>
+          <button
+            onClick={() => setActiveTab("broadcast")}
+            style={{
+              padding: "12px 24px",
+              border: "none",
+              borderBottom:
+                activeTab === "broadcast" ? "3px solid #007bff" : "none",
+              backgroundColor: "transparent",
+              cursor: "pointer",
+              fontWeight: activeTab === "broadcast" ? "bold" : "normal",
+              color: activeTab === "broadcast" ? "#007bff" : "#666",
+            }}
+          >
+            Broadcast to All
+          </button>
+          <button
+            onClick={() => setActiveTab("templates")}
+            style={{
+              padding: "12px 24px",
+              border: "none",
+              borderBottom:
+                activeTab === "templates" ? "3px solid #007bff" : "none",
+              backgroundColor: "transparent",
+              cursor: "pointer",
+              fontWeight: activeTab === "templates" ? "bold" : "normal",
+              color: activeTab === "templates" ? "#007bff" : "#666",
+            }}
+          >
+            Templates
+          </button>
         </div>
+
+        {/* Send to User Tab */}
+        {activeTab === "send" && (
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "30px",
+              borderRadius: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h2 style={{ marginBottom: "20px", color: "#333" }}>
+              Send Notification to User
+            </h2>
+            <form onSubmit={handleSendToUser}>
+              {/* User Selection */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Select User *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search by username or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    marginBottom: "10px",
+                  }}
+                />
+                <select
+                  value={selectedUser}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                  }}
+                >
+                  <option value="">-- Select User --</option>
+                  {filteredUsers.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {user.username} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Notification Type */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Notification Type
+                </label>
+                <select
+                  value={notificationData.type}
+                  onChange={(e) =>
+                    setNotificationData({
+                      ...notificationData,
+                      type: e.target.value,
+                    })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                  }}
+                >
+                  {notificationTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Title */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={notificationData.title}
+                  onChange={(e) =>
+                    setNotificationData({
+                      ...notificationData,
+                      title: e.target.value,
+                    })
+                  }
+                  required
+                  placeholder="Enter notification title..."
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                  }}
+                />
+              </div>
+
+              {/* Body */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Message *
+                </label>
+                <textarea
+                  value={notificationData.body}
+                  onChange={(e) =>
+                    setNotificationData({
+                      ...notificationData,
+                      body: e.target.value,
+                    })
+                  }
+                  required
+                  placeholder="Enter notification message..."
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: loading ? "#ccc" : "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontWeight: "bold",
+                  fontSize: "16px",
+                }}
+              >
+                {loading ? "Sending..." : "Send Notification"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Broadcast Tab */}
+        {activeTab === "broadcast" && (
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "30px",
+              borderRadius: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h2 style={{ marginBottom: "20px", color: "#333" }}>
+              Broadcast to All Users
+            </h2>
+            <div
+              style={{
+                padding: "15px",
+                backgroundColor: "#fff3cd",
+                border: "1px solid #ffeaa7",
+                borderRadius: "6px",
+                marginBottom: "20px",
+                color: "#856404",
+              }}
+            >
+              ⚠️ This will send a notification to ALL users in the system!
+            </div>
+            <form onSubmit={handleBroadcast}>
+              {/* Notification Type */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Notification Type
+                </label>
+                <select
+                  value={notificationData.type}
+                  onChange={(e) =>
+                    setNotificationData({
+                      ...notificationData,
+                      type: e.target.value,
+                    })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                  }}
+                >
+                  {notificationTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Title */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={notificationData.title}
+                  onChange={(e) =>
+                    setNotificationData({
+                      ...notificationData,
+                      title: e.target.value,
+                    })
+                  }
+                  required
+                  placeholder="Enter notification title..."
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                  }}
+                />
+              </div>
+
+              {/* Body */}
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "bold",
+                    color: "#555",
+                  }}
+                >
+                  Message *
+                </label>
+                <textarea
+                  value={notificationData.body}
+                  onChange={(e) =>
+                    setNotificationData({
+                      ...notificationData,
+                      body: e.target.value,
+                    })
+                  }
+                  required
+                  placeholder="Enter broadcast message..."
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "6px",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: loading ? "#ccc" : "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontWeight: "bold",
+                  fontSize: "16px",
+                }}
+              >
+                {loading ? "Broadcasting..." : "Send Broadcast"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Templates Tab */}
+        {activeTab === "templates" && (
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "30px",
+              borderRadius: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h2 style={{ marginBottom: "20px", color: "#333" }}>
+              Notification Templates
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                gap: "20px",
+              }}
+            >
+              {notificationTemplates.map((template, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: "20px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    backgroundColor: "#f9f9f9",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "10px", color: "#333" }}>
+                    {template.title}
+                  </h3>
+                  <p
+                    style={{
+                      marginBottom: "10px",
+                      color: "#666",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {template.body}
+                  </p>
+                  <div
+                    style={{
+                      marginBottom: "15px",
+                      fontSize: "12px",
+                      color: "#888",
+                    }}
+                  >
+                    Type: <strong>{template.type}</strong>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setNotificationData(template);
+                      setActiveTab("send");
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#007bff",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      marginRight: "10px",
+                    }}
+                  >
+                    Use Template
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNotificationData(template);
+                      setActiveTab("broadcast");
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#28a745",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Broadcast
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

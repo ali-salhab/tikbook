@@ -399,6 +399,24 @@ const getAllVideos = async (req, res) => {
   }
 };
 
+// @desc    Delete video
+// @route   DELETE /api/admin/videos/:id
+// @access  Private/Admin
+const deleteVideo = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id);
+
+    if (video) {
+      await video.deleteOne();
+      res.json({ message: "Video removed successfully" });
+    } else {
+      res.status(404).json({ message: "Video not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Send notification to all users
 // @route   POST /api/admin/notify/all
 // @access  Private/Admin
@@ -470,6 +488,7 @@ module.exports = {
   deleteUser,
   sendNotificationToUser,
   getAllVideos,
+  deleteVideo,
   sendBroadcastNotification,
   grantCoinsToUser,
 };

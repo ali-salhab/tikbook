@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from "react";
-import axios from "axios";
 import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
@@ -46,7 +45,7 @@ const UsersManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${api}/users`, {
+      const response = await api.get('/admin/users', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;

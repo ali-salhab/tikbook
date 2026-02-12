@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
@@ -42,7 +41,7 @@ const VideosManagement = () => {
   const fetchVideos = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${api}/videos`, {
+      const response = await api.get('/admin/videos', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
@@ -114,7 +113,7 @@ const VideosManagement = () => {
   const handleDeleteVideo = async (videoId) => {
     if (window.confirm("هل أنت متأكد من حذف هذا الفيديو؟")) {
       try {
-        await axios.delete(`${api}/videos/${videoId}`, {
+        await api.delete(`/admin/videos/${videoId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setVideos(videos.filter((v) => v._id !== videoId));

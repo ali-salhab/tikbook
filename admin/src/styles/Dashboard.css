@@ -11,6 +11,16 @@
   color: #1f2937;
 }
 
+/* Loading Animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* Stats Grid */
 .stats-grid {
   display: grid;
@@ -26,14 +36,16 @@
   display: flex;
   gap: 16px;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-left: 4px solid #3b82f6;
-  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 2px 8px rgba(254, 44, 85, 0.1);
+  border-left: 4px solid #fe2c55;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s;
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(254, 44, 85, 0.15);
 }
 
 .stat-icon {
@@ -121,7 +133,7 @@
 }
 
 .top-item:hover {
-  background: #f3f4f6;
+  background: #fff0f3;
 }
 
 .rank {
@@ -130,7 +142,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #fe2c55 0%, #fe2c55 100%);
   color: white;
   border-radius: 50%;
   font-weight: 700;

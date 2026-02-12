@@ -44,15 +44,19 @@ const LoginPage = () => {
       <div className="p-10 bg-white rounded-lg shadow-xl w-96">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <img 
-            src="/logo.jpg" 
-            alt="TikBook Logo" 
+          <img
+            src="/logo.jpg"
+            alt="TikBook Logo"
             className="w-24 h-24 object-contain rounded-full shadow-md"
           />
         </div>
-        
-        <h2 className="mb-2 text-2xl font-bold text-center text-gray-800">TikBook Admin</h2>
-        <p className="mb-6 text-sm text-center text-gray-600">Admin Panel Login</p>
+
+        <h2 className="mb-2 text-2xl font-bold text-center text-gray-800">
+          TikBook Admin
+        </h2>
+        <p className="mb-6 text-sm text-center text-gray-600">
+          Admin Panel Login
+        </p>
 
         {error && (
           <div className="p-3 mb-4 text-sm text-red-700 bg-red-100 border border-red-400 rounded">

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { api } from "../config/api";
 import "../styles/AppVersionManagement.css";
 
@@ -26,7 +25,7 @@ const AppVersionManagementPage = () => {
   const fetchVersions = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${api}/versions`, {
+      const response = await api.get('/versions', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
@@ -60,13 +59,13 @@ const AppVersionManagementPage = () => {
     try {
       if (editingId) {
         // Update version
-        await axios.put(`${api}/versions/${editingId}`, formData, {
+        await api.put(`/versions/${editingId}`, formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
         alert("Version updated successfully");
       } else {
         // Create new version
-        await axios.post(`${api}/versions`, formData, {
+        await api.post('/versions', formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
         alert("Version created successfully");
@@ -98,7 +97,7 @@ const AppVersionManagementPage = () => {
     if (window.confirm("Are you sure you want to delete this version?")) {
       setLoading(true);
       try {
-        await axios.delete(`${api}/versions/${id}`, {
+        await api.delete(`/versions/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         alert("Version deleted successfully");
