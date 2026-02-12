@@ -44,24 +44,37 @@ const followUser = async (req, res) => {
       }
 
       if (!userToFollow.followers.includes(req.user._id)) {
+        // Update follow relationships
         await userToFollow.updateOne({ $push: { followers: req.user._id } });
         await currentUser.updateOne({ $push: { following: req.params.id } });
 
-        // Create notification
-        const notification = new Notification({
-          user: userToFollow._id,
-          type: "follow",
-          fromUser: req.user._id,
-        });
-        await notification.save();
+        // Create notification (with error handling to not break follow action)
+        try {
+          const notification = new Notification({
+            user: userToFollow._id,
+            type: "follow",
+            fromUser: req.user._id,
+          });
+          await notification.save();
+          console.log(
+            `✅ Follow notification created: ${currentUser.username} -> ${userToFollow.username}`,
+          );
+        } catch (notifError) {
+          console.error("Error creating follow notification:", notifError);
+        }
 
-        // Send push notification
-        await sendNotificationToUser(
-          userToFollow._id,
-          `${currentUser.username} بدأ في متابعتك`,
-          "متابع جديد",
-          { screen: "UserProfile", userId: req.user._id.toString() },
-        );
+        // Send push notification (with error handling)
+        try {
+          await sendNotificationToUser(
+            userToFollow._id,
+            `${currentUser.username} بدأ في متابعتك`,
+            "متابع جديد",
+            { screen: "UserProfile", userId: req.user._id.toString() },
+          );
+          console.log(`✅ Push notification sent to ${userToFollow.username}`);
+        } catch (pushError) {
+          console.error("Error sending push notification:", pushError);
+        }
 
         res.status(200).json({ message: "User followed" });
       } else {
@@ -71,6 +84,7 @@ const followUser = async (req, res) => {
       res.status(403).json({ message: "You cannot follow yourself" });
     }
   } catch (error) {
+    console.error("Error in followUser:", error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -10,6 +10,18 @@ const commentSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  image: {
+    type: String, // URL to comment image
+  },
+  parentComment: {
+    type: mongoose.Schema.Types.ObjectId, // If replying to another comment
+  },
+  likes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
@@ -87,7 +99,7 @@ const videoSchema = mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Video = mongoose.model("Video", videoSchema);

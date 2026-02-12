@@ -104,7 +104,12 @@ const ActivityScreen = ({ navigation }) => {
           headers: { Authorization: `Bearer ${userToken}` },
         },
       );
+      // Clear badge immediately and then refetch to stay in sync
       setNotificationCount(0);
+      // Refetch count from server to ensure accuracy
+      if (fetchNotificationCount) {
+        await fetchNotificationCount();
+      }
     } catch (error) {
       console.error("Error marking notifications as read:", error);
     }

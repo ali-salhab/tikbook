@@ -330,45 +330,64 @@ const likeVideo = async (req, res) => {
 // @access  Private
 const commentVideo = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, parentComment } = req.body;
     const video = await Video.findById(req.params.id).populate("user");
 
-    if (video) {
-      const comment = {
-        user: req.user._id,
-        text,
-      };
-
-      video.comments.push(comment);
-      await video.save();
-
-      // Create notification and send push notification
-      if (video.user._id.toString() !== req.user._id.toString()) {
-        const notification = new Notification({
-          user: video.user._id,
-          type: "comment",
-          fromUser: req.user._id,
-          video: video._id,
-        });
-        await notification.save();
-
-        // Send push notification
-        await sendNotificationToUser(
-          video.user._id,
-          "تعليق جديد",
-          `علّق @${req.user.username}: ${text.substring(0, 50)}`,
-          { type: "comment", videoId: video._id.toString() },
-        );
-      }
-
-      // Populate the comments.user field before returning
-      await video.populate("comments.user", "username profileImage");
-
-      res.status(201).json(video.comments);
-    } else {
-      res.status(404).json({ message: "Video not found" });
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
     }
+
+    // Handle image upload if present
+    let imageUrl = null;
+    if (req.file) {
+      const { uploadToCloudinary } = require("../services/cloudinaryService");
+      const result = await uploadToCloudinary(req.file.path, "comments");
+      imageUrl = result.url;
+    }
+
+    const comment = {
+      user: req.user._id,
+      text: text || " ", // Allow empty text if image is provided
+      image: imageUrl,
+      parentComment: parentComment || undefined,
+    };
+
+    video.comments.push(comment);
+    await video.save();
+
+    // Create notification (only if not commenting on own video)
+    if (video.user._id.toString() !== req.user._id.toString()) {
+      const notification = new Notification({
+        user: video.user._id,
+        type: "comment",
+        fromUser: req.user._id,
+        video: video._id,
+      });
+      await notification.save();
+
+      // Send push notification
+      const notificationText = parentComment
+        ? `رد @${req.user.username} على تعليقك`
+        : imageUrl
+          ? `علّق @${req.user.username} بصورة`
+          : `علّق @${req.user.username}: ${text.substring(0, 50)}`;
+
+      await sendNotificationToUser(
+        video.user._id,
+        "تعليق جديد",
+        notificationText,
+        { type: "comment", videoId: video._id.toString() },
+      );
+    }
+
+    // Populate the comments.user field before returning
+    await video.populate("comments.user", "username profileImage");
+
+    // Return only the new comment with populated user
+    const newComment = video.comments[video.comments.length - 1];
+    res.status(201).json(newComment);
   } catch (error) {
+    console.error("Error posting comment:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -443,6 +462,87 @@ const getFollowingVideos = async (req, res) => {
   }
 };
 
+// @desc    Like/Unlike a comment
+// @route   PUT /api/videos/:id/comments/:commentId/like
+// @access  Private
+const likeComment = async (req, res) => {
+  try {
+    const { id: videoId, commentId } = req.params;
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    const comment = video.comments.id(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    const userLikedIndex = comment.likes.indexOf(req.user._id);
+
+    if (userLikedIndex === -1) {
+      // Like the comment
+      comment.likes.push(req.user._id);
+    } else {
+      // Unlike the comment
+      comment.likes.splice(userLikedIndex, 1);
+    }
+
+    await video.save();
+
+    res.json({
+      commentId: comment._id,
+      likes: comment.likes,
+      likesCount: comment.likes.length,
+      isLiked: userLikedIndex === -1,
+    });
+  } catch (error) {
+    console.error("Error liking comment:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Delete a comment
+// @route   DELETE /api/videos/:id/comments/:commentId
+// @access  Private
+const deleteComment = async (req, res) => {
+  try {
+    const { id: videoId, commentId } = req.params;
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    const comment = video.comments.id(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // Check if user is comment owner or video owner
+    if (
+      comment.user.toString() !== req.user._id.toString() &&
+      video.user.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this comment" });
+    }
+
+    // Remove comment using pull
+    video.comments.pull(commentId);
+    await video.save();
+
+    res.json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getVideos,
   createVideo,
@@ -451,4 +551,6 @@ module.exports = {
   getUserVideos,
   getVideoComments,
   getFollowingVideos,
+  likeComment,
+  deleteComment,
 };
