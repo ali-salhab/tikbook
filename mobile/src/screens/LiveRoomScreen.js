@@ -11,13 +11,14 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import io from "socket.io-client";
 import { BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
 const LiveRoomScreen = ({ route, navigation }) => {
+  const { userToken, userInfo } = React.useContext(AuthContext);
   const { roomId } = route.params;
   const [room, setRoom] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -41,9 +42,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const loadCurrentUser = async () => {
     try {
-      const userStr = await AsyncStorage.getItem("user");
-      if (userStr) {
-        setCurrentUser(JSON.parse(userStr));
+      if (userInfo) {
+        setCurrentUser(userInfo);
       }
     } catch (error) {
       console.error("Error loading user:", error);
@@ -94,24 +94,23 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const joinRoom = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/join`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
       if (response.data.success) {
         setRoom(response.data.data);
 
         // Emit socket event
-        const userStr = await AsyncStorage.getItem("user");
-        const user = JSON.parse(userStr);
-        socketRef.current?.emit("liveroom:join", {
-          roomId,
-          userId: user._id,
-          user,
-        });
+        if (userInfo) {
+          socketRef.current?.emit("liveroom:join", {
+            roomId,
+            userId: userInfo._id,
+            user: userInfo,
+          });
+        }
       }
     } catch (error) {
       console.error("Error joining room:", error);
@@ -124,9 +123,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const fetchRoomData = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.get(`${BASE_URL}/live-rooms/${roomId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${userToken}` },
       });
 
       if (response.data.success) {
@@ -139,11 +137,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const leaveRoom = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
       await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/leave`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
       if (currentUser) {
@@ -160,13 +157,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const handleRaiseHand = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-
       if (isHandRaised) {
         await axios.post(
           `${BASE_URL}/live-rooms/${roomId}/lower-hand`,
           {},
-          { headers: { Authorization: `Bearer ${token}` } },
+          { headers: { Authorization: `Bearer ${userToken}` } },
         );
         setIsHandRaised(false);
         socketRef.current?.emit("liveroom:lower_hand", {
@@ -177,7 +172,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         await axios.post(
           `${BASE_URL}/live-rooms/${roomId}/raise-hand`,
           {},
-          { headers: { Authorization: `Bearer ${token}` } },
+          { headers: { Authorization: `Bearer ${userToken}` } },
         );
         setIsHandRaised(true);
         socketRef.current?.emit("liveroom:raise_hand", {
@@ -194,11 +189,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const handleToggleMute = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/toggle-mute`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
       if (response.data.success) {
@@ -217,11 +211,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const handleMakeSpeaker = async (userId) => {
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/make-speaker`,
         { userId },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
       if (response.data.success) {
@@ -247,11 +240,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
-            const token = await AsyncStorage.getItem("token");
             await axios.post(
               `${BASE_URL}/live-rooms/${roomId}/end`,
               {},
-              { headers: { Authorization: `Bearer ${token}` } },
+              { headers: { Authorization: `Bearer ${userToken}` } },
             );
 
             socketRef.current?.emit("liveroom:end", { roomId });

@@ -11,10 +11,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 const CreateLiveRoomScreen = ({ navigation }) => {
+  const { userToken } = React.useContext(AuthContext);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("chat");
@@ -38,7 +39,6 @@ const CreateLiveRoomScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
         `${BASE_URL}/live-rooms/create`,
         {
@@ -48,7 +48,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
           isPrivate,
         },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${userToken}` },
         },
       );
 

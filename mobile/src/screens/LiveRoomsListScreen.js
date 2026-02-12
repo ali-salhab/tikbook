@@ -11,10 +11,11 @@ import {
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
 const LiveRoomsListScreen = ({ navigation }) => {
+  const { userToken } = React.useContext(AuthContext);
   const [liveRooms, setLiveRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,10 +36,9 @@ const LiveRoomsListScreen = ({ navigation }) => {
 
   const fetchLiveRooms = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.get(`${BASE_URL}/live-rooms`, {
         params: { category: selectedCategory },
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${userToken}` },
       });
 
       if (response.data.success) {
