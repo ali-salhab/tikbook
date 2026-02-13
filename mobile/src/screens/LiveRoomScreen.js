@@ -8,12 +8,15 @@ import {
   Image,
   Alert,
   Modal,
+  ImageBackground,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import axios from "axios";
 import io from "socket.io-client";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
@@ -270,11 +273,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
     return (
       <View style={styles.participantItem}>
         <View style={styles.avatarContainer}>
-          <Image
-            source={{
-              uri: item.user?.avatar || "https://via.placeholder.com/60",
-            }}
-            style={styles.avatar}
+          <ProfileBadgeFrame
+            profileImage={item.user?.avatar || item.user?.profileImage}
+            badgeImage={item.user?.activeBadge?.imageUrl}
+            size={60}
           />
           {isSpeaker && (
             <View
@@ -317,7 +319,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
   ];
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={{
+        uri:
+          room.host?.activeBackground?.imageUrl ||
+          room.backgroundImage ||
+          "https://via.placeholder.com/1080x1920/1a1a1a/ffffff?text=Live+Room",
+      }}
+      style={styles.container}
+      resizeMode="cover"
+    >
+      {/* Dark overlay for readability */}
+      <View style={styles.overlay} />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -443,6 +457,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   centerContainer: {
     flex: 1,

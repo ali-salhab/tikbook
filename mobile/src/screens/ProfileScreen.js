@@ -19,6 +19,7 @@ import ProfileMenuModal from "../components/ProfileMenuModal";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 const { width } = Dimensions.get("window");
 
@@ -294,20 +295,13 @@ const ProfileScreen = ({ navigation }) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile Info */}
         <View style={styles.profileInfo}>
-          {/* Avatar */}
+          {/* Avatar with Badge Frame */}
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              {profile?.profileImage ? (
-                <Image
-                  source={{ uri: profile.profileImage }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Ionicons name="person" size={40} color="#999" />
-                </View>
-              )}
-            </View>
+            <ProfileBadgeFrame
+              profileImage={profile?.profileImage}
+              badgeImage={profile?.activeBadge?.imageUrl}
+              size={100}
+            />
             <TouchableOpacity style={styles.addStoryButton}>
               <Ionicons name="add" size={20} color="#FFF" />
             </TouchableOpacity>
@@ -368,6 +362,13 @@ const ProfileScreen = ({ navigation }) => {
                 size={20}
                 color="#00BFFF"
               />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.badgeButton}
+              onPress={() => navigation.navigate("MyBadges")}
+            >
+              <Ionicons name="medal-outline" size={20} color="#FFD700" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.studioButton}>
@@ -539,6 +540,24 @@ const styles = StyleSheet.create({
     minWidth: 44,
   },
   editProfileButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#f1f1f1",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 44,
+  },
+  verificationButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#f1f1f1",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 44,
+  },
+  badgeButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: "#f1f1f1",

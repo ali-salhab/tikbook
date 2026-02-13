@@ -15,6 +15,7 @@ import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
@@ -125,23 +126,11 @@ const UserProfileScreen = ({ route, navigation }) => {
 
         {/* Profile Info */}
         <View style={styles.profileInfo}>
-          <View style={styles.avatar}>
-            {profile.profileImage ? (
-              <Image
-                source={{ uri: profile.profileImage }}
-                style={styles.profileImageStyle}
-                resizeMode="cover"
-                onError={(e) => {
-                  console.log(
-                    "❌ Error loading profile image:",
-                    e.nativeEvent.error,
-                  );
-                }}
-              />
-            ) : (
-              <Ionicons name="person-circle" size={96} color="#888" />
-            )}
-          </View>
+          <ProfileBadgeFrame
+            profileImage={profile.profileImage}
+            badgeImage={profile.activeBadge?.imageUrl}
+            size={96}
+          />
 
           {/* Stats */}
           <View style={styles.stats}>

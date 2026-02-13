@@ -5,7 +5,9 @@ import { Alert } from "react-native";
 class VersionService {
   async checkVersion(baseUrl) {
     try {
-      const response = await axios.get(`${baseUrl}/version`, { timeout: 10000 });
+      const response = await axios.get(`${baseUrl}/version`, {
+        timeout: 10000,
+      });
       const { currentVersion, minVersion, updateRequired, updateUrl, message } =
         response.data;
 
@@ -69,7 +71,7 @@ class VersionService {
       cancelable: !isForced,
     });
   }
-
+  // this in production env will open app store and update the app
   openUpdateUrl(url) {
     if (url) {
       // In production, this would open the app store

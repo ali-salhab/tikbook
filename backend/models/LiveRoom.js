@@ -24,6 +24,10 @@ const liveRoomSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    backgroundImage: {
+      type: String,
+      default: "", // Custom background for the live room
+    },
     status: {
       type: String,
       enum: ["active", "ended", "scheduled"],

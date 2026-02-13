@@ -55,6 +55,46 @@ const userSchema = mongoose.Schema(
       enum: ["none", "blue", "gold"],
       default: "none",
     },
+    // Profile frame/badge system
+    ownedBadges: [
+      {
+        badge: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Badge",
+        },
+        acquiredAt: {
+          type: Date,
+          default: Date.now,
+        },
+        giftedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      },
+    ],
+    activeBadge: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Badge",
+      default: null,
+    },
+    // Custom backgrounds for live rooms
+    ownedBackgrounds: [
+      {
+        badge: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Badge",
+        },
+        acquiredAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    activeBackground: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Badge",
+      default: null,
+    },
     pushToken: {
       type: String,
       default: "",
