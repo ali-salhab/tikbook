@@ -15,6 +15,7 @@ import {
   FiBell,
   FiAward,
   FiSmartphone,
+  FiStar,
 } from "react-icons/fi";
 
 const Sidebar = ({ onLogout }) => {
@@ -59,6 +60,12 @@ const Sidebar = ({ onLogout }) => {
       label: "التوثيق",
       icon: FiAward,
       path: "/verification",
+    },
+    {
+      id: "badges",
+      label: "الشارات والإطارات",
+      icon: FiStar,
+      path: "/badges",
     },
     {
       id: "payments",

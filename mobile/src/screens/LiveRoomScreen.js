@@ -16,7 +16,6 @@ import io from "socket.io-client";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
-import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
@@ -331,7 +330,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     >
       {/* Dark overlay for readability */}
       <View style={styles.overlay} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -449,7 +448,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           <Text style={styles.leaveButtonText}>Leave</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ImageBackground>
   );
 };
 

@@ -18,6 +18,7 @@ import AppVersionManagementPage from "./pages/AppVersionManagementPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import NotificationsManagement from "./pages/NotificationsManagement";
 import VerificationManagement from "./pages/VerificationManagement";
+import BadgeManagement from "./pages/BadgeManagement";
 
 // Wrapper component to handle logout
 const PageWrapper = ({ Component }) => {
@@ -68,6 +69,10 @@ function App() {
         <Route
           path="/verification"
           element={<PageWrapper Component={VerificationManagement} />}
+        />
+        <Route
+          path="/badges"
+          element={<PageWrapper Component={BadgeManagement} />}
         />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/app-versions" element={<AppVersionManagementPage />} />
