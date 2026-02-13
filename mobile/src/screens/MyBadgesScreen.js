@@ -78,7 +78,7 @@ const MyBadgesScreen = ({ navigation }) => {
               }
             },
           },
-        ]
+        ],
       );
     } else {
       // Select

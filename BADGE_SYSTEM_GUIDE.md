@@ -1,6 +1,7 @@
 # Badge System Implementation Guide
 
 ## Overview
+
 The badge system allows users to customize their profile appearance with decorative frames and live room backgrounds. Administrators can gift exclusive badges to users, and users can purchase badges using in-app diamonds.
 
 ## Features Implemented
@@ -8,6 +9,7 @@ The badge system allows users to customize their profile appearance with decorat
 ### Backend (Node.js/Express/MongoDB)
 
 #### 1. **Badge Model** (`backend/models/Badge.js`)
+
 - Badge types: `frame` (profile frames) and `background` (live room backgrounds)
 - Rarity levels: `common`, `rare`, `epic`, `legendary`
 - Properties: animations, glow effects, particle effects
@@ -15,16 +17,20 @@ The badge system allows users to customize their profile appearance with decorat
 - Price in diamonds
 
 #### 2. **User Model Updates** (`backend/models/User.js`)
+
 - `ownedBadges`: Array of badges with acquisition date and gifted by info
 - `activeBadge`: Currently active profile frame
 - `ownedBackgrounds`: Array of background badges
 - `activeBackground`: Currently active live room background
 
 #### 3. **LiveRoom Model Updates** (`backend/models/LiveRoom.js`)
+
 - `backgroundImage`: Custom background URL for the live room
 
 #### 4. **Badge Controller** (`backend/controllers/badgeController.js`)
+
 API endpoints:
+
 - `GET /api/badges` - Get all available badges (with optional type filter)
 - `GET /api/badges/my-badges` - Get user's owned badges and active selections
 - `POST /api/badges/purchase/:badgeId` - Purchase a badge with diamonds
@@ -36,22 +42,28 @@ API endpoints:
 - `DELETE /api/badges/:badgeId` - Admin: Delete badge
 
 #### 5. **Badge Routes** (`backend/routes/badgeRoutes.js`)
+
 All routes integrated into the main server
 
 #### 6. **Seed Data** (`backend/seedBadges.js`)
+
 Sample badges with different rarities and types for testing
 
 ### Mobile App (React Native)
 
 #### 1. **Badge Service** (`mobile/src/services/badgeService.js`)
+
 API client for all badge-related operations
 
 #### 2. **ProfileBadgeFrame Component** (`mobile/src/components/ProfileBadgeFrame.js`)
+
 Reusable component that displays profile image with badge frame overlay
+
 - Accepts `profileImage`, `badgeImage`, and `size` props
 - Centers profile image and overlays badge frame
 
 #### 3. **Badge Shop Screen** (`mobile/src/screens/BadgeShopScreen.js`)
+
 - Browse available badges (frames and backgrounds)
 - Filter by type (tabs for frames vs backgrounds)
 - Display rarity with color coding
@@ -60,6 +72,7 @@ Reusable component that displays profile image with badge frame overlay
 - Handle exclusive badges (admin gift only)
 
 #### 4. **My Badges Screen** (`mobile/src/screens/MyBadgesScreen.js`)
+
 - View all owned badges
 - Preview current look with active badge
 - Select/deselect badges
@@ -67,20 +80,24 @@ Reusable component that displays profile image with badge frame overlay
 - Quick access to shop for more badges
 
 #### 5. **Profile Screen Updates** (`mobile/src/screens/ProfileScreen.js`)
+
 - Display active badge frame around profile image
 - New badge button to access My Badges screen
 - Integration with ProfileBadgeFrame component
 
 #### 6. **User Profile Screen Updates** (`mobile/src/screens/UserProfileScreen.js`)
+
 - Show other users' active badge frames
 - View their profile with badge overlay
 
 #### 7. **Live Room Screen Updates** (`mobile/src/screens/LiveRoomScreen.js`)
+
 - Display host's active background as room background
 - Show participant avatars with their badge frames
 - Dark overlay for text readability over backgrounds
 
 #### 8. **Navigation Updates** (`mobile/src/navigation/AppNavigator.js`)
+
 - Added BadgeShop and MyBadges screens to navigation stack
 
 ## Usage Instructions
@@ -88,6 +105,7 @@ Reusable component that displays profile image with badge frame overlay
 ### For Users
 
 #### Purchasing Badges:
+
 1. Navigate to Profile tab
 2. Tap the medal/badge icon button
 3. Browse available badges in the shop
@@ -95,12 +113,14 @@ Reusable component that displays profile image with badge frame overlay
 5. Badge will be added to "My Badges"
 
 #### Equipping Badges:
+
 1. Go to "My Badges" from profile or badge shop
 2. Tap on an owned badge to equip it
 3. View preview of your profile with the badge
 4. Tap again to unequip
 
 #### Using in Live Rooms:
+
 - Profile frames appear around your avatar in live rooms
 - Active background is displayed when you host a live room
 - Other participants see your badge frame
@@ -108,6 +128,7 @@ Reusable component that displays profile image with badge frame overlay
 ### For Administrators
 
 #### Gifting Badges:
+
 ```javascript
 POST /api/badges/gift
 Authorization: Bearer <admin_token>
@@ -118,6 +139,7 @@ Body: {
 ```
 
 #### Creating New Badges:
+
 ```javascript
 POST /api/badges/create
 Authorization: Bearer <admin_token>
@@ -138,6 +160,7 @@ Body: {
 ```
 
 #### Seeding Sample Badges:
+
 ```bash
 cd backend
 node seedBadges.js
@@ -146,6 +169,7 @@ node seedBadges.js
 ## Database Schema
 
 ### Badge Document
+
 ```javascript
 {
   name: String,
@@ -168,6 +192,7 @@ node seedBadges.js
 ```
 
 ### User Badge Fields
+
 ```javascript
 {
   ownedBadges: [{
@@ -187,17 +212,20 @@ node seedBadges.js
 ## Image Requirements
 
 ### Profile Frame Badges:
+
 - **Size**: 512x512px minimum
 - **Format**: PNG with transparency
 - **Design**: Central circular area transparent for profile image
 - **Frame**: Decorative elements around the edges
 
 ### Background Images:
+
 - **Size**: 1080x1920px (9:16 aspect ratio)
 - **Format**: JPG or PNG
 - **Design**: Dark or muted colors recommended for text readability
 
 ## Rarity Color Coding
+
 - **Common**: #95A5A6 (Gray)
 - **Rare**: #3498DB (Blue)
 - **Epic**: #9B59B6 (Purple)

@@ -35,7 +35,7 @@ export const badgeService = {
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -51,7 +51,7 @@ export const badgeService = {
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -67,7 +67,7 @@ export const badgeService = {
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -83,7 +83,7 @@ export const badgeService = {
         { badgeId, userId },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -99,7 +99,7 @@ export const badgeService = {
         badgeData,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       return response.data;
     } catch (error) {

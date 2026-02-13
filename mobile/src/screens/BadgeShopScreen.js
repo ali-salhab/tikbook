@@ -20,7 +20,10 @@ const { width } = Dimensions.get("window");
 const BadgeShopScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
   const [badges, setBadges] = useState([]);
-  const [myBadges, setMyBadges] = useState({ ownedBadges: [], ownedBackgrounds: [] });
+  const [myBadges, setMyBadges] = useState({
+    ownedBadges: [],
+    ownedBackgrounds: [],
+  });
   const [activeTab, setActiveTab] = useState("frames");
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
@@ -57,7 +60,7 @@ const BadgeShopScreen = ({ navigation }) => {
     if (badge.isExclusive) {
       Alert.alert(
         "Exclusive Badge",
-        "This badge can only be gifted by administrators"
+        "This badge can only be gifted by administrators",
       );
       return;
     }
@@ -85,7 +88,7 @@ const BadgeShopScreen = ({ navigation }) => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
