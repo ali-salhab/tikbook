@@ -166,13 +166,6 @@ const BadgeManagement = ({ onLogout }) => {
         setLoading(false);
         return;
       }
-          "• ImgBB: https://imgbb.com\n" +
-          "• Imgur: https://imgur.com\n\n" +
-          "Then paste the direct image URL in the 'Image URL' field."
-        );
-        setLoading(false);
-        return;
-      }
 
       // Validate image URL format
       if (!imageUrl.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)/i)) {
