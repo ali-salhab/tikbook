@@ -492,6 +492,32 @@
   background: #5568d3;
 }
 
+.upload-progress {
+  position: relative;
+  width: 100%;
+  height: 32px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.upload-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.upload-progress span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  z-index: 1;
+}
+
 .image-preview {
   width: 200px;
   height: 200px;
