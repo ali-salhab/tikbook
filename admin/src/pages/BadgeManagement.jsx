@@ -51,6 +51,8 @@ const BadgeManagement = ({ onLogout }) => {
     userId: "",
     username: "",
   });
+  const [users, setUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!token) navigate("/");
@@ -72,6 +74,17 @@ const BadgeManagement = ({ onLogout }) => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get("/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers(response.data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -88,7 +101,7 @@ const BadgeManagement = ({ onLogout }) => {
     // Using your Cloudinary account: dah8ui33p
     const cloudName = "dah8ui33p";
     const uploadPreset = "badges_preset"; // ✅ Preset created and ready!
-    
+
     const cloudinaryData = new FormData();
     cloudinaryData.append("file", file);
     cloudinaryData.append("upload_preset", uploadPreset);
@@ -96,7 +109,7 @@ const BadgeManagement = ({ onLogout }) => {
 
     try {
       setUploadProgress(10);
-      
+
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
         {
@@ -104,16 +117,16 @@ const BadgeManagement = ({ onLogout }) => {
           body: cloudinaryData,
         },
       );
-      
+
       setUploadProgress(80);
       const data = await response.json();
-      
+
       if (data.error) {
         throw new Error(data.error.message || "Upload failed");
       }
-      
+
       setUploadProgress(100);
-      
+
       return data.secure_url;
     } catch (error) {
       console.error("Cloudinary upload error:", error);
@@ -135,14 +148,14 @@ const BadgeManagement = ({ onLogout }) => {
         } catch (uploadError) {
           alert(
             `Image upload failed: ${uploadError.message}\n\n` +
-            "SOLUTION:\n" +
-            "1. Create an unsigned upload preset named 'badges_preset' in Cloudinary\n" +
-            "   (See CLOUDINARY_SETUP.md for instructions)\n\n" +
-            "OR\n\n" +
-            "2. Upload your image manually to Cloudinary and paste the URL in 'Image URL' field\n" +
-            "   • Login to Cloudinary: https://cloudinary.com/console\n" +
-            "   • Upload to Media Library\n" +
-            "   • Copy image URL and paste it below"
+              "SOLUTION:\n" +
+              "1. Create an unsigned upload preset named 'badges_preset' in Cloudinary\n" +
+              "   (See CLOUDINARY_SETUP.md for instructions)\n\n" +
+              "OR\n\n" +
+              "2. Upload your image manually to Cloudinary and paste the URL in 'Image URL' field\n" +
+              "   • Login to Cloudinary: https://cloudinary.com/console\n" +
+              "   • Upload to Media Library\n" +
+              "   • Copy image URL and paste it below",
           );
           setLoading(false);
           return;
@@ -152,16 +165,16 @@ const BadgeManagement = ({ onLogout }) => {
       if (!imageUrl) {
         alert(
           "Please provide an image!\n\n" +
-          "OPTION 1: Upload File\n" +
-          "• Click 'Choose Image' button\n" +
-          "• Select your badge PNG file\n" +
-          "• Requires Cloudinary preset setup (see CLOUDINARY_SETUP.md)\n\n" +
-          "OPTION 2: Use Image URL (Recommended)\n" +
-          "• Upload your badge to Cloudinary manually\n" +
-          "• Login: https://console.cloudinary.com/console/dah8ui33p/media_library\n" +
-          "• Upload to Media Library → tikbook/badges folder\n" +
-          "• Copy the image URL and paste it in 'Image URL' field\n\n" +
-          "Your Cloudinary account: dah8ui33p"
+            "OPTION 1: Upload File\n" +
+            "• Click 'Choose Image' button\n" +
+            "• Select your badge PNG file\n" +
+            "• Requires Cloudinary preset setup (see CLOUDINARY_SETUP.md)\n\n" +
+            "OPTION 2: Use Image URL (Recommended)\n" +
+            "• Upload your badge to Cloudinary manually\n" +
+            "• Login: https://console.cloudinary.com/console/dah8ui33p/media_library\n" +
+            "• Upload to Media Library → tikbook/badges folder\n" +
+            "• Copy the image URL and paste it in 'Image URL' field\n\n" +
+            "Your Cloudinary account: dah8ui33p",
         );
         setLoading(false);
         return;
@@ -169,7 +182,9 @@ const BadgeManagement = ({ onLogout }) => {
 
       // Validate image URL format
       if (!imageUrl.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)/i)) {
-        alert("Please provide a valid image URL ending with .jpg, .png, .gif, or .webp");
+        alert(
+          "Please provide a valid image URL ending with .jpg, .png, .gif, or .webp",
+        );
         setLoading(false);
         return;
       }
@@ -215,8 +230,8 @@ const BadgeManagement = ({ onLogout }) => {
           imageUrl = await uploadImageToCloudinary(formData.imageFile);
         } catch (uploadError) {
           alert(
-            uploadError.message || 
-            "Image upload failed. Please use the Image URL field instead."
+            uploadError.message ||
+              "Image upload failed. Please use the Image URL field instead.",
           );
           setLoading(false);
           return;
@@ -323,6 +338,7 @@ const BadgeManagement = ({ onLogout }) => {
 
   const openGiftModal = (badge) => {
     setSelectedBadge(badge);
+    fetchUsers();
     setShowGiftModal(true);
   };
 
@@ -541,10 +557,21 @@ const BadgeManagement = ({ onLogout }) => {
 
                 <div className="form-group">
                   <label>Image Upload (Optional - Requires Setup)</label>
+                  <small
+                    style={{
+                      color: "#ff6b00",
+                      fontWeight: "bold",
+                      display: "block",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    📏 Recommended size: 512x512px (PNG with transparent
+                    background)
+                  </small>
                   <div className="image-upload-container">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png,image/webp"
                       onChange={handleImageChange}
                       id="image-upload"
                       style={{ display: "none" }}
@@ -554,8 +581,8 @@ const BadgeManagement = ({ onLogout }) => {
                     </label>
                     {uploadProgress > 0 && uploadProgress < 100 && (
                       <div className="upload-progress">
-                        <div 
-                          className="upload-progress-bar" 
+                        <div
+                          className="upload-progress-bar"
                           style={{ width: `${uploadProgress}%` }}
                         ></div>
                         <span>{uploadProgress}%</span>
@@ -567,7 +594,9 @@ const BadgeManagement = ({ onLogout }) => {
                       </div>
                     )}
                   </div>
-                  <small>⚠️ Requires Cloudinary preset setup. See CLOUDINARY_SETUP.md</small>
+                  <small>
+                    ⚠️ Requires Cloudinary preset setup. See CLOUDINARY_SETUP.md
+                  </small>
                 </div>
 
                 <div className="form-group">
@@ -590,9 +619,9 @@ const BadgeManagement = ({ onLogout }) => {
                   />
                   <small>
                     💡 <strong>How to get URL:</strong> Upload image to your{" "}
-                    <a 
-                      href="https://console.cloudinary.com/console/dah8ui33p/media_library" 
-                      target="_blank" 
+                    <a
+                      href="https://console.cloudinary.com/console/dah8ui33p/media_library"
+                      target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: "#667eea", textDecoration: "underline" }}
                     >
@@ -937,17 +966,51 @@ const BadgeManagement = ({ onLogout }) => {
 
               <form onSubmit={handleGiftBadge} className="gift-form">
                 <div className="form-group">
-                  <label>User ID *</label>
+                  <label>Search User *</label>
                   <input
                     type="text"
-                    value={giftData.userId}
-                    onChange={(e) =>
-                      setGiftData({ ...giftData, userId: e.target.value })
-                    }
-                    required
-                    placeholder="Enter user ID"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by username or email..."
+                    className="user-search-input"
                   />
-                  <small>Enter the MongoDB ObjectId of the user</small>
+                </div>
+
+                <div className="form-group">
+                  <label>Select User *</label>
+                  <select
+                    value={giftData.userId}
+                    onChange={(e) => {
+                      const selectedUser = users.find(
+                        (u) => u._id === e.target.value,
+                      );
+                      setGiftData({
+                        userId: e.target.value,
+                        username: selectedUser?.username || "",
+                      });
+                    }}
+                    required
+                    className="user-select"
+                  >
+                    <option value="">-- Select User --</option>
+                    {users
+                      .filter(
+                        (user) =>
+                          !searchQuery ||
+                          user.username
+                            ?.toLowerCase()
+                            .includes(searchQuery.toLowerCase()) ||
+                          user.email
+                            ?.toLowerCase()
+                            .includes(searchQuery.toLowerCase()),
+                      )
+                      .map((user) => (
+                        <option key={user._id} value={user._id}>
+                          {user.username} ({user.email})
+                        </option>
+                      ))}
+                  </select>
+                  <small>💡 Use search box above to filter users</small>
                 </div>
 
                 <div className="form-actions">

@@ -8,7 +8,9 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
@@ -85,6 +87,15 @@ const ProfileScreen = ({ navigation }) => {
       }
     }, [userInfo, fetchProfile, fetchNotificationCount, netInfo.isConnected]),
   );
+
+  const copyUserId = async () => {
+    if (userInfo?._id) {
+      await Clipboard.setStringAsync(userInfo._id);
+      Alert.alert("✅ تم النسخ", "تم نسخ معرف المستخدم إلى الحافظة", [
+        { text: "حسناً" },
+      ]);
+    }
+  };
 
   // If user is logged in, but we have no profile and no internet => Offline
   if (userInfo && !profile && netInfo.isConnected === false) {
@@ -315,6 +326,26 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
+          {/* User ID with Copy */}
+          {userInfo?._id && (
+            <TouchableOpacity
+              style={styles.userIdContainer}
+              onPress={copyUserId}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.userIdLabel}>معرف المستخدم: </Text>
+              <Text style={styles.userIdText} numberOfLines={1}>
+                {userInfo._id}
+              </Text>
+              <Ionicons
+                name="copy-outline"
+                size={16}
+                color="#666"
+                style={styles.copyIcon}
+              />
+            </TouchableOpacity>
+          )}
+
           {/* Stats */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
@@ -494,6 +525,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 16,
+  },
+  userIdContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    maxWidth: "90%",
+    alignSelf: "center",
+  },
+  userIdLabel: {
+    fontSize: 12,
+    color: "#888",
+    fontWeight: "600",
+  },
+  userIdText: {
+    fontSize: 12,
+    color: "#333",
+    fontFamily: "monospace",
+    flex: 1,
+    marginRight: 8,
+  },
+  copyIcon: {
+    marginLeft: 4,
   },
   statsContainer: {
     flexDirection: "row",

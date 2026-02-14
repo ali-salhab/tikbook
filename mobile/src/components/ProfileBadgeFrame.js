@@ -9,19 +9,20 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
       position: "relative",
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor: "transparent",
     },
     profileImage: {
-      width: size * 0.7,
-      height: size * 0.7,
-      borderRadius: (size * 0.7) / 2,
+      width: size * 0.65,
+      height: size * 0.65,
+      borderRadius: (size * 0.65) / 2,
       backgroundColor: "#ddd",
     },
     badgeFrame: {
       position: "absolute",
-      width: size,
-      height: size,
-      top: 0,
-      left: 0,
+      width: size * 1.1,
+      height: size * 1.1,
+      top: -size * 0.05,
+      left: -size * 0.05,
     },
   });
 
@@ -38,7 +39,7 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
         <View style={styles.profileImage} />
       )}
 
-      {/* Badge Frame Overlay */}
+      {/* Badge Frame Overlay - Transparent PNG */}
       {badgeImage && (
         <Image
           source={{ uri: badgeImage }}
