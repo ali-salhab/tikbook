@@ -12,17 +12,17 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
       backgroundColor: "transparent",
     },
     profileImage: {
-      width: size * 0.65,
-      height: size * 0.65,
-      borderRadius: (size * 0.65) / 2,
+      width: size * 0.72,
+      height: size * 0.72,
+      borderRadius: (size * 0.72) / 2,
       backgroundColor: "#ddd",
     },
     badgeFrame: {
       position: "absolute",
-      width: size * 1.1,
-      height: size * 1.1,
-      top: -size * 0.05,
-      left: -size * 0.05,
+      width: size * 1.4,
+      height: size * 1.4,
+      top: -size * 0.2,
+      left: -size * 0.2,
     },
   });
 

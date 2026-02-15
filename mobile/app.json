@@ -57,16 +57,11 @@
       "expo-web-browser"
     ],
     "extra": {
-      "eas": {
-        "projectId": "344bf77b-6b91-4396-9869-66d6238c83cc"
-      }
+      "eas": {}
     },
-    "owner": "ali.salhab",
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/344bf77b-6b91-4396-9869-66d6238c83cc"
-    }
+    "updates": {}
   }
 }

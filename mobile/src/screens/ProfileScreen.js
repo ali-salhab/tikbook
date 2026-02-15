@@ -9,8 +9,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Clipboard,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
@@ -88,9 +88,9 @@ const ProfileScreen = ({ navigation }) => {
     }, [userInfo, fetchProfile, fetchNotificationCount, netInfo.isConnected]),
   );
 
-  const copyUserId = async () => {
+  const copyUserId = () => {
     if (userInfo?._id) {
-      await Clipboard.setStringAsync(userInfo._id);
+      Clipboard.setString(userInfo._id);
       Alert.alert("✅ تم النسخ", "تم نسخ معرف المستخدم إلى الحافظة", [
         { text: "حسناً" },
       ]);
@@ -313,9 +313,6 @@ const ProfileScreen = ({ navigation }) => {
               badgeImage={profile?.activeBadge?.imageUrl}
               size={100}
             />
-            <TouchableOpacity style={styles.addStoryButton}>
-              <Ionicons name="add" size={20} color="#FFF" />
-            </TouchableOpacity>
           </View>
 
           {/* Name & Username */}
@@ -497,18 +494,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  addStoryButton: {
+  badgeShopButton: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#20D5EC",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: "#000",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#FFF",
+    borderColor: "#FFD700",
   },
   nameContainer: {
     flexDirection: "row",

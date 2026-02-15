@@ -8,7 +8,10 @@ const { sendNotificationToUser } = require("./pushNotificationController");
 // @access  Public
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id)
+      .select("-password")
+      .populate("activeBadge")
+      .populate("activeBackground");
 
     if (user) {
       // Get user's videos

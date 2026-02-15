@@ -88,11 +88,50 @@ const BadgeManagement = ({ onLogout }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({ ...formData, imageFile: file });
+      // Check file type
+      if (!file.type.includes("png") && !file.type.includes("webp")) {
+        alert(
+          "⚠️ Please upload PNG or WebP format for transparent background!",
+        );
+        return;
+      }
+
+      // Check file size (recommended 512x512, but allow some flexibility)
+      const img = new Image();
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
+
+      reader.onload = (event) => {
+        img.onload = () => {
+          const width = img.width;
+          const height = img.height;
+
+          // Warn if not square
+          if (width !== height) {
+            alert(
+              `⚠️ Frame should be square!\n\nYour image: ${width}x${height}px\nRecommended: 512x512px or 1024x1024px`,
+            );
+            return;
+          }
+
+          // Warn if too small or too large
+          if (width < 256 || width > 2048) {
+            alert(
+              `⚠️ Frame size should be between 256px and 2048px!\n\nYour image: ${width}x${height}px\nRecommended: 512x512px or 1024x1024px`,
+            );
+            return;
+          }
+
+          // Show info if good
+          if (width >= 512 && width <= 1024) {
+            console.log(`✅ Good frame size: ${width}x${height}px`);
+          }
+
+          setFormData({ ...formData, imageFile: file });
+          setImagePreview(event.target.result);
+        };
+        img.src = event.target.result;
       };
+
       reader.readAsDataURL(file);
     }
   };
@@ -557,17 +596,50 @@ const BadgeManagement = ({ onLogout }) => {
 
                 <div className="form-group">
                   <label>Image Upload (Optional - Requires Setup)</label>
-                  <small
+                  <div
                     style={{
-                      color: "#ff6b00",
-                      fontWeight: "bold",
-                      display: "block",
-                      marginBottom: "8px",
+                      backgroundColor: "#fff3cd",
+                      border: "1px solid #ffc107",
+                      borderRadius: "8px",
+                      padding: "12px",
+                      marginBottom: "12px",
                     }}
                   >
-                    📏 Recommended size: 512x512px (PNG with transparent
-                    background)
-                  </small>
+                    <strong
+                      style={{
+                        color: "#856404",
+                        display: "block",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      🎯 FRAME REQUIREMENTS:
+                    </strong>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: "20px",
+                        color: "#856404",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <li>
+                        <strong>Format:</strong> PNG or WebP with transparent
+                        background
+                      </li>
+                      <li>
+                        <strong>Size:</strong> 512x512px or 1024x1024px (must be
+                        square!)
+                      </li>
+                      <li>
+                        <strong>Circle:</strong> Center circle should be ~50-55%
+                        of total size
+                      </li>
+                      <li>
+                        <strong>Design:</strong> Frame elements (wings, crown,
+                        etc.) around circle
+                      </li>
+                    </ul>
+                  </div>
                   <div className="image-upload-container">
                     <input
                       type="file"
