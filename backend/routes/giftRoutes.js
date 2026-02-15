@@ -8,18 +8,18 @@ const {
   updateGift,
   deleteGift,
 } = require("../controllers/giftController");
-const { authenticateToken } = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 
 // Public routes
-router.get("/", authenticateToken, getGifts);
+router.get("/", protect, getGifts);
 
 // User routes
-router.post("/send", authenticateToken, sendGift);
-router.get("/history", authenticateToken, getGiftHistory);
+router.post("/send", protect, sendGift);
+router.get("/history", protect, getGiftHistory);
 
 // Admin routes (add admin middleware later)
-router.post("/admin/create", authenticateToken, createGift);
-router.put("/admin/:id", authenticateToken, updateGift);
-router.delete("/admin/:id", authenticateToken, deleteGift);
+router.post("/admin/create", protect, createGift);
+router.put("/admin/:id", protect, updateGift);
+router.delete("/admin/:id", protect, deleteGift);
 
 module.exports = router;
