@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import * as Clipboard from 'expo-clipboard';
+import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
 
 // Enable RTL
@@ -84,7 +84,8 @@ const LoginScreen = ({ navigation }) => {
       // Build technical details
       let technicalDetails = `Error: ${err.message}\n`;
       if (err.code) technicalDetails += `Code: ${err.code}\n`;
-      if (err.response?.status) technicalDetails += `Status: ${err.response.status}\n`;
+      if (err.response?.status)
+        technicalDetails += `Status: ${err.response.status}\n`;
       if (err.response?.data) {
         technicalDetails += `Response: ${JSON.stringify(err.response.data, null, 2)}\n`;
       }
@@ -145,16 +146,17 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const copyErrorDetails = async () => {
-    const details = `خطأ في تسجيل الدخول\n\n` +
+    const details =
+      `خطأ في تسجيل الدخول\n\n` +
       `العنوان: ${errorModal.title}\n` +
       `الرسالة: ${errorModal.message}\n` +
       `النوع: ${errorModal.type}\n` +
       `رمز الخطأ: ${errorModal.errorCode}\n` +
-      `${errorModal.statusCode ? `رمز الحالة: ${errorModal.statusCode}\n` : ''}` +
+      `${errorModal.statusCode ? `رمز الحالة: ${errorModal.statusCode}\n` : ""}` +
       `الوقت: ${errorModal.timestamp}\n` +
       `نقطة النهاية: ${errorModal.endpoint}\n\n` +
       `التفاصيل التقنية:\n${errorModal.technicalDetails}`;
-    
+
     await Clipboard.setStringAsync(details);
     Alert.alert("تم النسخ", "تم نسخ تفاصيل الخطأ إلى الحافظة");
   };
@@ -304,7 +306,7 @@ const LoginScreen = ({ navigation }) => {
         statusBarTranslucent
       >
         <View style={styles.errorOverlay}>
-          <ScrollView 
+          <ScrollView
             style={styles.errorScrollView}
             contentContainerStyle={styles.errorScrollContent}
             showsVerticalScrollIndicator={false}
@@ -350,12 +352,20 @@ const LoginScreen = ({ navigation }) => {
               <View style={styles.errorCodeContainer}>
                 <View style={styles.errorCodeBadge}>
                   <Ionicons name="bug" size={14} color="#FF6B6B" />
-                  <Text style={styles.errorCodeText}>{errorModal.errorCode}</Text>
+                  <Text style={styles.errorCodeText}>
+                    {errorModal.errorCode}
+                  </Text>
                 </View>
                 {errorModal.statusCode && (
                   <View style={styles.errorCodeBadge}>
-                    <Ionicons name="information-circle" size={14} color="#FF6B6B" />
-                    <Text style={styles.errorCodeText}>HTTP {errorModal.statusCode}</Text>
+                    <Ionicons
+                      name="information-circle"
+                      size={14}
+                      color="#FF6B6B"
+                    />
+                    <Text style={styles.errorCodeText}>
+                      HTTP {errorModal.statusCode}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -379,13 +389,15 @@ const LoginScreen = ({ navigation }) => {
                 style={styles.technicalToggle}
                 onPress={() => setShowTechnicalDetails(!showTechnicalDetails)}
               >
-                <Ionicons 
-                  name={showTechnicalDetails ? "chevron-up" : "chevron-down"} 
-                  size={20} 
-                  color="#888" 
+                <Ionicons
+                  name={showTechnicalDetails ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#888"
                 />
                 <Text style={styles.technicalToggleText}>
-                  {showTechnicalDetails ? "إخفاء التفاصيل التقنية" : "عرض التفاصيل التقنية"}
+                  {showTechnicalDetails
+                    ? "إخفاء التفاصيل التقنية"
+                    : "عرض التفاصيل التقنية"}
                 </Text>
               </TouchableOpacity>
 
@@ -395,16 +407,20 @@ const LoginScreen = ({ navigation }) => {
                   <View style={styles.technicalRow}>
                     <Text style={styles.technicalLabel}>الوقت:</Text>
                     <Text style={styles.technicalValue}>
-                      {new Date(errorModal.timestamp).toLocaleString('ar-EG')}
+                      {new Date(errorModal.timestamp).toLocaleString("ar-EG")}
                     </Text>
                   </View>
                   <View style={styles.technicalRow}>
                     <Text style={styles.technicalLabel}>نقطة النهاية:</Text>
-                    <Text style={styles.technicalValue}>{errorModal.endpoint}</Text>
+                    <Text style={styles.technicalValue}>
+                      {errorModal.endpoint}
+                    </Text>
                   </View>
                   <View style={styles.technicalDivider} />
-                  <Text style={styles.technicalDetailsLabel}>التفاصيل الكاملة:</Text>
-                  <ScrollView 
+                  <Text style={styles.technicalDetailsLabel}>
+                    التفاصيل الكاملة:
+                  </Text>
+                  <ScrollView
                     style={styles.technicalDetailsScroll}
                     nestedScrollEnabled
                   >
@@ -434,8 +450,13 @@ const LoginScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={[styles.errorButton, errorModal.type === "network" && styles.dismissButton]}
-                  onPress={() => setErrorModal({ ...errorModal, visible: false })}
+                  style={[
+                    styles.errorButton,
+                    errorModal.type === "network" && styles.dismissButton,
+                  ]}
+                  onPress={() =>
+                    setErrorModal({ ...errorModal, visible: false })
+                  }
                 >
                   <Text style={styles.errorButtonText}>
                     {errorModal.type === "network" ? "إغلاق" : "فهمت"}

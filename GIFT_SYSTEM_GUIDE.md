@@ -1,6 +1,7 @@
 # 🎁 Animated Gifts System - Complete Implementation Guide
 
 ## 📋 Table of Contents
+
 1. [System Overview](#system-overview)
 2. [Backend Setup](#backend-setup)
 3. [Frontend Components](#frontend-components)
@@ -13,6 +14,7 @@
 ## 🎯 System Overview
 
 The animated gifts system includes:
+
 - **Backend**: Gift model, transactions, wallet integration
 - **Frontend**: AnimatedGift component, GiftPanel, real-time broadcasting
 - **Features**: Combo animations, full-screen effects, sound support
@@ -23,12 +25,14 @@ The animated gifts system includes:
 ## 🔧 Backend Setup
 
 ### 1. Seed Sample Gifts
+
 ```bash
 cd backend
 node seedGifts.js
 ```
 
 ### 2. API Endpoints Created
+
 - `GET /api/gifts` - Get all gifts
 - `POST /api/gifts/send` - Send a gift
 - `GET /api/gifts/history` - Get gift history
@@ -37,12 +41,13 @@ node seedGifts.js
 - `DELETE /api/gifts/admin/:id` - Admin: Delete gift
 
 ### 3. Socket Events (Already Configured)
+
 ```javascript
 // Client sends:
-socket.emit("liveroom:send_gift", { 
-  roomId, 
-  gift, 
-  sender 
+socket.emit("liveroom:send_gift", {
+  roomId,
+  gift,
+  sender,
 });
 
 // All clients receive:
@@ -56,6 +61,7 @@ socket.on("liveroom:gift_received", ({ gift, sender, timestamp }) => {
 ## 🎨 Frontend Components
 
 ### 1. AnimatedGift Component
+
 - Location: `mobile/src/components/AnimatedGift.js`
 - Renders Lottie/GIF animations
 - Auto-scales for combo gifts
@@ -63,6 +69,7 @@ socket.on("liveroom:gift_received", ({ gift, sender, timestamp }) => {
 - Shows sender info with avatar
 
 ### 2. GiftPanel Component
+
 - Location: `mobile/src/components/GiftPanel.js`
 - Category filtering (Basic, Premium, VIP, Special)
 - Balance checking
@@ -97,18 +104,18 @@ const { userInfo } = useAuth();
 
 \`\`\`javascript
 useEffect(() => {
-  loadUserBalance();
+loadUserBalance();
 }, []);
 
 const loadUserBalance = async () => {
-  try {
-    const response = await walletService.getBalance();
-    if (response.success) {
-      setUserBalance(response.wallet.balance);
-    }
-  } catch (error) {
-    console.error("Error loading balance:", error);
-  }
+try {
+const response = await walletService.getBalance();
+if (response.success) {
+setUserBalance(response.wallet.balance);
+}
+} catch (error) {
+console.error("Error loading balance:", error);
+}
 };
 \`\`\`
 
@@ -116,15 +123,15 @@ const loadUserBalance = async () => {
 
 \`\`\`javascript
 const handleSendGift = async ({ gift, quantity, totalCost }) => {
-  try {
-    // Send to backend
-    const response = await giftService.sendGift({
-      giftId: gift._id,
-      receiverId: room.host._id,
-      context: "live",
-      contextId: room._id,
-      quantity,
-    });
+try {
+// Send to backend
+const response = await giftService.sendGift({
+giftId: gift.\_id,
+receiverId: room.host.\_id,
+context: "live",
+contextId: room.\_id,
+quantity,
+});
 
     if (response.success) {
       // Update balance
@@ -147,10 +154,11 @@ const handleSendGift = async ({ gift, quantity, totalCost }) => {
       // Close panel
       setShowGiftPanel(false);
     }
-  } catch (error) {
-    console.error("Error sending gift:", error);
-    Alert.alert("خطأ", "فشل في إرسال الهدية");
-  }
+
+} catch (error) {
+console.error("Error sending gift:", error);
+Alert.alert("خطأ", "فشل في إرسال الهدية");
+}
 };
 \`\`\`
 
@@ -158,20 +166,20 @@ const handleSendGift = async ({ gift, quantity, totalCost }) => {
 
 \`\`\`javascript
 useEffect(() => {
-  if (!socket) return;
+if (!socket) return;
 
-  socket.on("liveroom:gift_received", ({ gift, sender, timestamp }) => {
-    // Add to active gifts
-    const giftId = \`\${sender._id}-\${Date.now()}\`;
-    setActiveGifts((prev) => [
-      ...prev,
-      { id: giftId, gift, sender, timestamp },
-    ]);
-  });
+socket.on("liveroom:gift_received", ({ gift, sender, timestamp }) => {
+// Add to active gifts
+const giftId = \`\${sender.\_id}-\${Date.now()}\`;
+setActiveGifts((prev) => [
+...prev,
+{ id: giftId, gift, sender, timestamp },
+]);
+});
 
-  return () => {
-    socket.off("liveroom:gift_received");
-  };
+return () => {
+socket.off("liveroom:gift_received");
+};
 }, [socket]);
 \`\`\`
 
@@ -180,47 +188,47 @@ useEffect(() => {
 Add inside `<ImageBackground>` (before controls):
 
 \`\`\`javascript
-{/* Animated Gifts */}
+{/_ Animated Gifts _/}
 {activeGifts.map((activeGift) => (
-  <AnimatedGift
+<AnimatedGift
     key={activeGift.id}
     gift={activeGift.gift}
     sender={activeGift.sender}
     isCombo={activeGift.gift.quantity > 1}
-    onComplete={() => {
-      // Remove from active gifts after animation
-      setActiveGifts((prev) =>
-        prev.filter((g) => g.id !== activeGift.id)
-      );
-    }}
-  />
+onComplete={() => {
+// Remove from active gifts after animation
+setActiveGifts((prev) =>
+prev.filter((g) => g.id !== activeGift.id)
+);
+}}
+/>
 ))}
 \`\`\`
 
 ### Step 7: Add Gift Button in Controls
 
 \`\`\`javascript
-{/* Gift Button */}
+{/_ Gift Button _/}
 <TouchableOpacity
-  style={styles.controlButton}
-  onPress={() => setShowGiftPanel(true)}
->
-  <Ionicons name="gift" size={24} color="#FFD700" />
-</TouchableOpacity>
-\`\`\`
+style={styles.controlButton}
+onPress={() => setShowGiftPanel(true)}
+
+>   <Ionicons name="gift" size={24} color="#FFD700" />
+> </TouchableOpacity>
+> \`\`\`
 
 ### Step 8: Add Gift Panel Modal
 
 Add at the end (after `</ImageBackground>`):
 
 \`\`\`javascript
-{/* Gift Panel */}
+{/_ Gift Panel _/}
 <GiftPanel
-  visible={showGiftPanel}
-  onClose={() => setShowGiftPanel(false)}
-  onSendGift={handleSendGift}
-  receiverId={room?.host?._id}
-  userBalance={userBalance}
+visible={showGiftPanel}
+onClose={() => setShowGiftPanel(false)}
+onSendGift={handleSendGift}
+receiverId={room?.host?.\_id}
+userBalance={userBalance}
 />
 \`\`\`
 
@@ -229,6 +237,7 @@ Add at the end (after `</ImageBackground>`):
 ## 🎬 Getting Lottie Animations
 
 ### Free Sources:
+
 1. **LottieFiles** (Best): https://lottiefiles.com/
    - Search: "gift", "lion", "fireworks", "heart", etc.
    - Download JSON file
@@ -242,6 +251,7 @@ Add at the end (after `</ImageBackground>`):
    - Free and premium Lottie animations
 
 ### How to Use:
+
 1. Download `.json` file from LottieFiles
 2. Upload to your server (Cloudinary, AWS S3, etc.)
 3. Get the URL
@@ -249,19 +259,20 @@ Add at the end (after `</ImageBackground>`):
 
 \`\`\`javascript
 {
-  name: "Lion",
-  nameAr: "أسد",
-  animationUrl: "https://your-server.com/animations/lion.json",
-  thumbnailUrl: "🦁", // or image URL
-  animationType: "lottie",
-  price: 1000,
-  category: "special",
-  duration: 8,
-  fullScreen: true
+name: "Lion",
+nameAr: "أسد",
+animationUrl: "https://your-server.com/animations/lion.json",
+thumbnailUrl: "🦁", // or image URL
+animationType: "lottie",
+price: 1000,
+category: "special",
+duration: 8,
+fullScreen: true
 }
 \`\`\`
 
 ### Popular LottieFiles URLs:
+
 - **Lion**: https://lottie.host/embed/cf4aee63-9f42-4e41-9fe3-3a01c9c31c72/Iy5jhY4dPD.json
 - **Heart**: https://lottie.host/embed/3c6cbd78-8ed4-4278-9a4d-c8b8c8e60f0c/Gg7PtJvUL1.json
 - **Fireworks**: https://lottie.host/embed/1d2e3f4g-5f6e-7d8e-e9f0-4d5e6f7g8h9i/Fireworks.json
@@ -271,24 +282,29 @@ Add at the end (after `</ImageBackground>`):
 ## 🧪 Testing
 
 ### 1. Test Backend
+
 \`\`\`bash
+
 # Get gifts
+
 curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:5000/api/gifts
 
 # Send gift
+
 curl -X POST http://localhost:5000/api/gifts/send \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "giftId": "GIFT_ID",
-    "receiverId": "RECEIVER_ID",
-    "context": "live",
-    "contextId": "ROOM_ID",
-    "quantity": 1
-  }'
+-H "Authorization: Bearer YOUR_TOKEN" \\
+-H "Content-Type: application/json" \\
+-d '{
+"giftId": "GIFT_ID",
+"receiverId": "RECEIVER_ID",
+"context": "live",
+"contextId": "ROOM_ID",
+"quantity": 1
+}'
 \`\`\`
 
 ### 2. Test Frontend
+
 1. Open live room as listener
 2. Tap gift button (bottom controls)
 3. Select a gift
@@ -297,6 +313,7 @@ curl -X POST http://localhost:5000/api/gifts/send \\
 6. Animation should appear for all users
 
 ### 3. Test Features
+
 - ✅ Balance deduction
 - ✅ Real-time animation for all users
 - ✅ Combo effect for quantity > 1
@@ -309,13 +326,16 @@ curl -X POST http://localhost:5000/api/gifts/send \\
 ## 💎 Advanced Features
 
 ### 1. Combo System
+
 When user sends same gift multiple times quickly:
+
 - Accumulate quantity
 - Scale animation bigger
 - Show "COMBO!" badge
 - Play special sound
 
 ### 2. Sound Effects
+
 Add to Gift model:
 \`\`\`javascript
 soundUrl: "https://your-server.com/sounds/lion-roar.mp3"
@@ -326,27 +346,28 @@ Play in AnimatedGift component:
 import { Audio } from 'expo-av';
 
 useEffect(() => {
-  if (gift.soundUrl) {
-    playSound();
-  }
+if (gift.soundUrl) {
+playSound();
+}
 }, []);
 
 const playSound = async () => {
-  const { sound } = await Audio.Sound.createAsync(
-    { uri: gift.soundUrl }
-  );
-  await sound.playAsync();
+const { sound } = await Audio.Sound.createAsync(
+{ uri: gift.soundUrl }
+);
+await sound.playAsync();
 };
 \`\`\`
 
 ### 3. Leaderboard
+
 Show top gift senders in room:
 \`\`\`javascript
 const [topGifters, setTopGifters] = useState([]);
 
 // Track gifts sent in current session
 socket.on("liveroom:gift_received", ({ gift, sender }) => {
-  updateLeaderboard(sender, gift.price);
+updateLeaderboard(sender, gift.price);
 });
 \`\`\`
 
@@ -355,16 +376,19 @@ socket.on("liveroom:gift_received", ({ gift, sender }) => {
 ## 📱 UI/UX Tips
 
 ### Gift Button Placement
+
 - **LiveRoom**: Bottom controls, golden color
 - **Profile**: Below bio section
 - **Video**: Right side vertical toolbar
 
 ### Animation Duration
+
 - Basic gifts: 2-3 seconds
 - Premium: 4-5 seconds
 - Special: 6-10 seconds
 
 ### Categories
+
 - **Basic**: 1-50 coins (roses, hearts, claps)
 - **Premium**: 100-500 coins (diamonds, crowns, boxes)
 - **VIP**: 500-1000 coins (fireworks, rockets, full screen)
@@ -395,6 +419,7 @@ socket.on("liveroom:gift_received", ({ gift, sender }) => {
 ## 🎉 Ready to Launch!
 
 Your animated gift system is now complete! Users can:
+
 - ✅ Browse beautiful animated gifts
 - ✅ Send gifts with quantity
 - ✅ See stunning animations in real-time
@@ -402,6 +427,7 @@ Your animated gift system is now complete! Users can:
 - ✅ Enjoy full-screen effects for premium gifts
 
 **Next Steps:**
+
 1. Run `node seedGifts.js` to add sample gifts
 2. Download real Lottie animations from LottieFiles
 3. Update animation URLs in database

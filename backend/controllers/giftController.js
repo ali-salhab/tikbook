@@ -7,7 +7,10 @@ const { LiveRoom } = require("../models/LiveRoom");
 // Get all active gifts
 exports.getGifts = async (req, res) => {
   try {
-    const gifts = await Gift.find({ isActive: true }).sort({ sortOrder: 1, price: 1 });
+    const gifts = await Gift.find({ isActive: true }).sort({
+      sortOrder: 1,
+      price: 1,
+    });
 
     res.json({
       success: true,

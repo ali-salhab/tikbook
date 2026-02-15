@@ -16,7 +16,8 @@ const sampleGifts = [
   {
     name: "Rose",
     nameAr: "وردة",
-    animationUrl: "https://lottie.host/cf4aee63-9f42-4e41-9fe3-3a01c9c31c72/Iy5jhY4dPD.json",
+    animationUrl:
+      "https://lottie.host/cf4aee63-9f42-4e41-9fe3-3a01c9c31c72/Iy5jhY4dPD.json",
     thumbnailUrl: "🌹",
     animationType: "lottie",
     price: 10,
@@ -29,7 +30,8 @@ const sampleGifts = [
   {
     name: "Heart",
     nameAr: "قلب",
-    animationUrl: "https://lottie.host/3c6cbd78-8ed4-4278-9a4d-c8b8c8e60f0c/Gg7PtJvUL1.json",
+    animationUrl:
+      "https://lottie.host/3c6cbd78-8ed4-4278-9a4d-c8b8c8e60f0c/Gg7PtJvUL1.json",
     thumbnailUrl: "❤️",
     animationType: "lottie",
     price: 20,
@@ -42,7 +44,8 @@ const sampleGifts = [
   {
     name: "Star",
     nameAr: "نجمة",
-    animationUrl: "https://lottie.host/5e8d8c0c-7c75-4b6e-b7f4-8a2d3c4e5f6g/StarAnimation.json",
+    animationUrl:
+      "https://lottie.host/5e8d8c0c-7c75-4b6e-b7f4-8a2d3c4e5f6g/StarAnimation.json",
     thumbnailUrl: "⭐",
     animationType: "lottie",
     price: 30,
@@ -55,7 +58,8 @@ const sampleGifts = [
   {
     name: "Clap",
     nameAr: "تصفيق",
-    animationUrl: "https://lottie.host/7f9e8d0d-1e8f-4c5d-b6e5-9a3c4d5e6f7g/ClapAnimation.json",
+    animationUrl:
+      "https://lottie.host/7f9e8d0d-1e8f-4c5d-b6e5-9a3c4d5e6f7g/ClapAnimation.json",
     thumbnailUrl: "👏",
     animationType: "lottie",
     price: 50,
@@ -70,7 +74,8 @@ const sampleGifts = [
   {
     name: "Diamond",
     nameAr: "ماسة",
-    animationUrl: "https://lottie.host/8a9b0c1d-2f3e-4d5e-b6c7-1a2b3c4d5e6f/DiamondAnimation.json",
+    animationUrl:
+      "https://lottie.host/8a9b0c1d-2f3e-4d5e-b6c7-1a2b3c4d5e6f/DiamondAnimation.json",
     thumbnailUrl: "💎",
     animationType: "lottie",
     price: 100,
@@ -84,7 +89,8 @@ const sampleGifts = [
   {
     name: "Crown",
     nameAr: "تاج",
-    animationUrl: "https://lottie.host/9b0c1d2e-3f4e-5d6e-c7d8-2b3c4d5e6f7g/CrownAnimation.json",
+    animationUrl:
+      "https://lottie.host/9b0c1d2e-3f4e-5d6e-c7d8-2b3c4d5e6f7g/CrownAnimation.json",
     thumbnailUrl: "👑",
     animationType: "lottie",
     price: 150,
@@ -98,7 +104,8 @@ const sampleGifts = [
   {
     name: "Gift Box",
     nameAr: "صندوق هدايا",
-    animationUrl: "https://lottie.host/0c1d2e3f-4f5e-6d7e-d8e9-3c4d5e6f7g8h/GiftBoxAnimation.json",
+    animationUrl:
+      "https://lottie.host/0c1d2e3f-4f5e-6d7e-d8e9-3c4d5e6f7g8h/GiftBoxAnimation.json",
     thumbnailUrl: "🎁",
     animationType: "lottie",
     price: 200,
@@ -114,7 +121,8 @@ const sampleGifts = [
   {
     name: "Fireworks",
     nameAr: "ألعاب نارية",
-    animationUrl: "https://lottie.host/1d2e3f4g-5f6e-7d8e-e9f0-4d5e6f7g8h9i/FireworksAnimation.json",
+    animationUrl:
+      "https://lottie.host/1d2e3f4g-5f6e-7d8e-e9f0-4d5e6f7g8h9i/FireworksAnimation.json",
     thumbnailUrl: "🎆",
     animationType: "lottie",
     price: 500,
@@ -128,7 +136,8 @@ const sampleGifts = [
   {
     name: "Rocket",
     nameAr: "صاروخ",
-    animationUrl: "https://lottie.host/2e3f4g5h-6f7e-8d9e-f0g1-5e6f7g8h9i0j/RocketAnimation.json",
+    animationUrl:
+      "https://lottie.host/2e3f4g5h-6f7e-8d9e-f0g1-5e6f7g8h9i0j/RocketAnimation.json",
     thumbnailUrl: "🚀",
     animationType: "lottie",
     price: 800,
@@ -144,7 +153,8 @@ const sampleGifts = [
   {
     name: "Lion",
     nameAr: "أسد",
-    animationUrl: "https://lottie.host/3f4g5h6i-7f8e-9d0e-g1h2-6f7g8h9i0j1k/LionAnimation.json",
+    animationUrl:
+      "https://lottie.host/3f4g5h6i-7f8e-9d0e-g1h2-6f7g8h9i0j1k/LionAnimation.json",
     thumbnailUrl: "🦁",
     animationType: "lottie",
     price: 1000,
@@ -158,7 +168,8 @@ const sampleGifts = [
   {
     name: "Dragon",
     nameAr: "تنين",
-    animationUrl: "https://lottie.host/4g5h6i7j-8f9e-0d1e-h2i3-7g8h9i0j1k2l/DragonAnimation.json",
+    animationUrl:
+      "https://lottie.host/4g5h6i7j-8f9e-0d1e-h2i3-7g8h9i0j1k2l/DragonAnimation.json",
     thumbnailUrl: "🐉",
     animationType: "lottie",
     price: 1500,
@@ -172,7 +183,8 @@ const sampleGifts = [
   {
     name: "Money Rain",
     nameAr: "مطر نقود",
-    animationUrl: "https://lottie.host/5h6i7j8k-9f0e-1d2e-i3j4-8h9i0j1k2l3m/MoneyRainAnimation.json",
+    animationUrl:
+      "https://lottie.host/5h6i7j8k-9f0e-1d2e-i3j4-8h9i0j1k2l3m/MoneyRainAnimation.json",
     thumbnailUrl: "💰",
     animationType: "lottie",
     price: 2000,

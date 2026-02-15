@@ -16,7 +16,13 @@ import giftService from "../services/giftService";
 
 const { width } = Dimensions.get("window");
 
-const GiftPanel = ({ visible, onClose, onSendGift, receiverId, userBalance }) => {
+const GiftPanel = ({
+  visible,
+  onClose,
+  onSendGift,
+  receiverId,
+  userBalance,
+}) => {
   const [gifts, setGifts] = useState([]);
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -53,7 +59,7 @@ const GiftPanel = ({ visible, onClose, onSendGift, receiverId, userBalance }) =>
   };
 
   const filteredGifts = gifts.filter((gift) =>
-    selectedCategory === "all" ? true : gift.category === selectedCategory
+    selectedCategory === "all" ? true : gift.category === selectedCategory,
   );
 
   const handleSendGift = async () => {
@@ -70,11 +76,14 @@ const GiftPanel = ({ visible, onClose, onSendGift, receiverId, userBalance }) =>
         `تحتاج ${totalCost} عملة. رصيدك الحالي: ${userBalance}`,
         [
           { text: "إلغاء", style: "cancel" },
-          { text: "شحن الرصيد", onPress: () => {
-            onClose();
-            // Navigate to wallet screen
-          }},
-        ]
+          {
+            text: "شحن الرصيد",
+            onPress: () => {
+              onClose();
+              // Navigate to wallet screen
+            },
+          },
+        ],
       );
       return;
     }
@@ -180,7 +189,8 @@ const GiftPanel = ({ visible, onClose, onSendGift, receiverId, userBalance }) =>
                   <Text
                     style={[
                       styles.categoryText,
-                      selectedCategory === item.id && styles.selectedCategoryText,
+                      selectedCategory === item.id &&
+                        styles.selectedCategoryText,
                     ]}
                   >
                     {item.name}

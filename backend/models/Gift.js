@@ -74,7 +74,7 @@ const giftSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const giftTransactionSchema = new mongoose.Schema(
@@ -116,10 +116,13 @@ const giftTransactionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Gift = mongoose.model("Gift", giftSchema);
-const GiftTransaction = mongoose.model("GiftTransaction", giftTransactionSchema);
+const GiftTransaction = mongoose.model(
+  "GiftTransaction",
+  giftTransactionSchema,
+);
 
 module.exports = { Gift, GiftTransaction };

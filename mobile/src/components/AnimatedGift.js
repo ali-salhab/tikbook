@@ -26,35 +26,34 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       damping: 10,
       stiffness: 100,
     });
-    translateY.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
+    translateY.value = withTiming(0, {
+      duration: 400,
+      easing: Easing.out(Easing.cubic),
+    });
 
     // Auto complete after gift duration
-    const timer = setTimeout(() => {
-      exitAnimation();
-    }, (gift.duration || 3) * 1000);
+    const timer = setTimeout(
+      () => {
+        exitAnimation();
+      },
+      (gift.duration || 3) * 1000,
+    );
 
     return () => clearTimeout(timer);
   }, []);
 
   const exitAnimation = () => {
-    opacity.value = withTiming(
-      0,
-      { duration: 500 },
-      (finished) => {
-        if (finished && onComplete) {
-          runOnJS(onComplete)();
-        }
+    opacity.value = withTiming(0, { duration: 500 }, (finished) => {
+      if (finished && onComplete) {
+        runOnJS(onComplete)();
       }
-    );
+    });
     scale.value = withTiming(0.5, { duration: 500 });
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { scale: scale.value },
-      { translateY: translateY.value },
-    ],
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
   }));
 
   const renderAnimation = () => {
@@ -88,10 +87,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
 
   return (
     <View
-      style={[
-        styles.container,
-        gift.fullScreen && styles.fullScreenContainer,
-      ]}
+      style={[styles.container, gift.fullScreen && styles.fullScreenContainer]}
       pointerEvents="none"
     >
       <Animated.View
@@ -102,7 +98,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         ]}
       >
         {renderAnimation()}
-        
+
         {/* Sender Info */}
         <View style={styles.senderInfo}>
           <Image
