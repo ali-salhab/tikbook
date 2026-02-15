@@ -15,7 +15,7 @@ const liveRoomService = {
       const response = await axios.post(
         `${API_URL}/${roomId}/kick`,
         { userId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       return response.data;
     } catch (error) {
@@ -31,7 +31,7 @@ const liveRoomService = {
       const response = await axios.post(
         `${API_URL}/${roomId}/ban`,
         { userId, reason },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       return response.data;
     } catch (error) {
@@ -47,7 +47,7 @@ const liveRoomService = {
       const response = await axios.post(
         `${API_URL}/${roomId}/unban`,
         { userId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       return response.data;
     } catch (error) {
@@ -63,7 +63,7 @@ const liveRoomService = {
       const response = await axios.post(
         `${API_URL}/${roomId}/assign-moderator`,
         { userId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       return response.data;
     } catch (error) {
@@ -79,7 +79,7 @@ const liveRoomService = {
       const response = await axios.post(
         `${API_URL}/${roomId}/remove-moderator`,
         { userId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       return response.data;
     } catch (error) {
@@ -92,11 +92,9 @@ const liveRoomService = {
   controlMusic: async (roomId, data) => {
     try {
       const token = await getToken();
-      const response = await axios.post(
-        `${API_URL}/${roomId}/music`,
-        data,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await axios.post(`${API_URL}/${roomId}/music`, data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       return response.data;
     } catch (error) {
       console.error("Control music error:", error);

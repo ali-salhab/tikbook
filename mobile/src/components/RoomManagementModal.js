@@ -34,18 +34,14 @@ const RoomManagementModal = ({
   };
 
   const handleKick = (userId) => {
-    Alert.alert(
-      "طرد المستخدم",
-      "هل أنت متأكد من طرد هذا المستخدم من الغرفة؟",
-      [
-        { text: "إلغاء", style: "cancel" },
-        {
-          text: "طرد",
-          style: "destructive",
-          onPress: () => onKickUser(userId),
-        },
-      ]
-    );
+    Alert.alert("طرد المستخدم", "هل أنت متأكد من طرد هذا المستخدم من الغرفة؟", [
+      { text: "إلغاء", style: "cancel" },
+      {
+        text: "طرد",
+        style: "destructive",
+        onPress: () => onKickUser(userId),
+      },
+    ]);
   };
 
   const handleBan = (userId) => {
@@ -64,22 +60,18 @@ const RoomManagementModal = ({
           },
         },
       ],
-      "plain-text"
+      "plain-text",
     );
   };
 
   const handleUnban = (userId) => {
-    Alert.alert(
-      "إلغاء الحظر",
-      "هل تريد إلغاء حظر هذا المستخدم؟",
-      [
-        { text: "إلغاء", style: "cancel" },
-        {
-          text: "إلغاء الحظر",
-          onPress: () => onUnbanUser(userId),
-        },
-      ]
-    );
+    Alert.alert("إلغاء الحظر", "هل تريد إلغاء حظر هذا المستخدم؟", [
+      { text: "إلغاء", style: "cancel" },
+      {
+        text: "إلغاء الحظر",
+        onPress: () => onUnbanUser(userId),
+      },
+    ]);
   };
 
   const handleToggleModerator = (userId) => {
@@ -94,20 +86,16 @@ const RoomManagementModal = ({
             style: "destructive",
             onPress: () => onRemoveModerator(userId),
           },
-        ]
+        ],
       );
     } else {
-      Alert.alert(
-        "تعيين كمسؤول",
-        "هل تريد تعيين هذا المستخدم كمسؤول؟",
-        [
-          { text: "إلغاء", style: "cancel" },
-          {
-            text: "تعيين",
-            onPress: () => onAssignModerator(userId),
-          },
-        ]
-      );
+      Alert.alert("تعيين كمسؤول", "هل تريد تعيين هذا المستخدم كمسؤول؟", [
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: "تعيين",
+          onPress: () => onAssignModerator(userId),
+        },
+      ]);
     }
   };
 
@@ -275,7 +263,10 @@ const RoomManagementModal = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tab, activeTab === "moderators" && styles.activeTab]}
+              style={[
+                styles.tab,
+                activeTab === "moderators" && styles.activeTab,
+              ]}
               onPress={() => setActiveTab("moderators")}
             >
               <Ionicons
@@ -321,8 +312,8 @@ const RoomManagementModal = ({
               activeTab === "participants"
                 ? renderParticipantItem
                 : activeTab === "moderators"
-                ? renderModeratorItem
-                : renderBannedItem
+                  ? renderModeratorItem
+                  : renderBannedItem
             }
             contentContainerStyle={styles.list}
             ListEmptyComponent={

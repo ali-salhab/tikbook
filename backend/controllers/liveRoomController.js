@@ -496,11 +496,13 @@ exports.kickUser = async (req, res) => {
     // Check if kicker is host or moderator
     const isHost = liveRoom.host.toString() === kickerId.toString();
     const isModerator = liveRoom.moderators.some(
-      (m) => m.user.toString() === kickerId.toString()
+      (m) => m.user.toString() === kickerId.toString(),
     );
 
     if (!isHost && !isModerator) {
-      return res.status(403).json({ message: "Only host or moderators can kick users" });
+      return res
+        .status(403)
+        .json({ message: "Only host or moderators can kick users" });
     }
 
     // Cannot kick the host
@@ -510,17 +512,17 @@ exports.kickUser = async (req, res) => {
 
     // Remove from speakers
     liveRoom.speakers = liveRoom.speakers.filter(
-      (s) => s.user.toString() !== userId
+      (s) => s.user.toString() !== userId,
     );
 
     // Remove from listeners
     liveRoom.listeners = liveRoom.listeners.filter(
-      (l) => l.user.toString() !== userId
+      (l) => l.user.toString() !== userId,
     );
 
     // Remove from hand raised
     liveRoom.handRaised = liveRoom.handRaised.filter(
-      (h) => h.user.toString() !== userId
+      (h) => h.user.toString() !== userId,
     );
 
     await liveRoom.save();
@@ -551,11 +553,13 @@ exports.banUser = async (req, res) => {
     // Check if banner is host or moderator
     const isHost = liveRoom.host.toString() === bannerId.toString();
     const isModerator = liveRoom.moderators.some(
-      (m) => m.user.toString() === bannerId.toString()
+      (m) => m.user.toString() === bannerId.toString(),
     );
 
     if (!isHost && !isModerator) {
-      return res.status(403).json({ message: "Only host or moderators can ban users" });
+      return res
+        .status(403)
+        .json({ message: "Only host or moderators can ban users" });
     }
 
     // Cannot ban the host
@@ -565,7 +569,7 @@ exports.banUser = async (req, res) => {
 
     // Check if already banned
     const alreadyBanned = liveRoom.bannedUsers.some(
-      (b) => b.user.toString() === userId
+      (b) => b.user.toString() === userId,
     );
 
     if (alreadyBanned) {
@@ -581,17 +585,17 @@ exports.banUser = async (req, res) => {
 
     // Remove from speakers
     liveRoom.speakers = liveRoom.speakers.filter(
-      (s) => s.user.toString() !== userId
+      (s) => s.user.toString() !== userId,
     );
 
     // Remove from listeners
     liveRoom.listeners = liveRoom.listeners.filter(
-      (l) => l.user.toString() !== userId
+      (l) => l.user.toString() !== userId,
     );
 
     // Remove from hand raised
     liveRoom.handRaised = liveRoom.handRaised.filter(
-      (h) => h.user.toString() !== userId
+      (h) => h.user.toString() !== userId,
     );
 
     await liveRoom.save();
@@ -626,7 +630,7 @@ exports.unbanUser = async (req, res) => {
 
     // Remove from banned list
     liveRoom.bannedUsers = liveRoom.bannedUsers.filter(
-      (b) => b.user.toString() !== userId
+      (b) => b.user.toString() !== userId,
     );
 
     await liveRoom.save();
@@ -656,12 +660,14 @@ exports.assignModerator = async (req, res) => {
 
     // Only host can assign moderators
     if (liveRoom.host.toString() !== hostId.toString()) {
-      return res.status(403).json({ message: "Only host can assign moderators" });
+      return res
+        .status(403)
+        .json({ message: "Only host can assign moderators" });
     }
 
     // Check if already a moderator
     const alreadyModerator = liveRoom.moderators.some(
-      (m) => m.user.toString() === userId
+      (m) => m.user.toString() === userId,
     );
 
     if (alreadyModerator) {
@@ -715,12 +721,14 @@ exports.removeModerator = async (req, res) => {
 
     // Only host can remove moderators
     if (liveRoom.host.toString() !== hostId.toString()) {
-      return res.status(403).json({ message: "Only host can remove moderators" });
+      return res
+        .status(403)
+        .json({ message: "Only host can remove moderators" });
     }
 
     // Remove from moderators
     liveRoom.moderators = liveRoom.moderators.filter(
-      (m) => m.user.toString() !== userId
+      (m) => m.user.toString() !== userId,
     );
 
     await liveRoom.save();

@@ -61,7 +61,7 @@ const MusicPlayerControl = ({
           shouldPlay: true,
           volume: volume / 100,
         },
-        onPlaybackStatusUpdate
+        onPlaybackStatusUpdate,
       );
 
       setSound(newSound);
@@ -123,7 +123,12 @@ const MusicPlayerControl = ({
         await sound.playAsync();
         setIsPlaying(true);
         if (isHost) {
-          onControlMusic("play", musicPlayer?.currentTrack, musicPlayer?.trackName, volume);
+          onControlMusic(
+            "play",
+            musicPlayer?.currentTrack,
+            musicPlayer?.trackName,
+            volume,
+          );
         }
       }
     } catch (error) {
@@ -221,7 +226,10 @@ const MusicPlayerControl = ({
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.playButton} onPress={handlePlayPause}>
+            <TouchableOpacity
+              style={styles.playButton}
+              onPress={handlePlayPause}
+            >
               <Ionicons
                 name={isPlaying ? "pause" : "play"}
                 size={36}
