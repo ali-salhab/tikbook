@@ -21,6 +21,9 @@ import io from "socket.io-client";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import RoomManagementModal from "../components/RoomManagementModal";
+import MusicPlayerControl from "../components/MusicPlayerControl";
+import liveRoomService from "../services/liveRoomService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -36,6 +39,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [roomBackground, setRoomBackground] = useState(null);
+  const [showMusicPlayer, setShowMusicPlayer] = useState(false);
+  const [showManagementModal, setShowManagementModal] = useState(false);
+  const [musicPlayer, setMusicPlayer] = useState({
+    isPlaying: false,
+    currentTrack: "",
+    trackName: "",
+    volume: 50,
+  });
   const socketRef = useRef(null);
   const joinSoundRef = useRef(null);
 
@@ -125,6 +136,53 @@ const LiveRoomScreen = ({ route, navigation }) => {
     socketRef.current.on("liveroom:mute_toggled", ({ userId, isMuted }) => {
       fetchRoomData();
     });
+
+    socketRef.current.on("liveroom:user_kicked", ({ userId, kickedBy }) => {
+      if (currentUser && userId === currentUser._id) {
+        Alert.alert("تم طردك", `تم طردك من الغرفة بواسطة ${kickedBy}`, [
+          {
+            text: "حسناً",
+            onPress: () => navigation.goBack(),
+          },
+        ]);
+      } else {
+        fetchRoomData();
+      }
+    });
+
+    socketRef.current.on(
+      "liveroom:user_banned",
+      ({ userId, bannedBy, reason }) => {
+        if (currentUser && userId === currentUser._id) {
+          Alert.alert(
+            "تم حظرك",
+            `تم حظرك من الغرفة بواسطة ${bannedBy}${reason ? `\n\nالسبب: ${reason}` : ""}`,
+            [
+              {
+                text: "حسناً",
+                onPress: () => navigation.goBack(),
+              },
+            ],
+          );
+        } else {
+          fetchRoomData();
+        }
+      },
+    );
+
+    socketRef.current.on("liveroom:moderator_assigned", ({ userId }) => {
+      if (currentUser && userId === currentUser._id) {
+        Alert.alert("تهانينا", "تم تعيينك كمسؤول في هذه الغرفة");
+      }
+      fetchRoomData();
+    });
+
+    socketRef.current.on(
+      "liveroom:music_updated",
+      ({ musicPlayer: updatedMusicPlayer }) => {
+        setMusicPlayer(updatedMusicPlayer);
+      },
+    );
 
     socketRef.current.on("liveroom:ended", () => {
       Alert.alert("Room Ended", "The host has ended this live room", [
@@ -359,6 +417,119 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const isHost = currentUser && room?.host?._id === currentUser._id;
   const isSpeaker =
     currentUser && room?.speakers?.some((s) => s.user._id === currentUser._id);
+  const isModerator =
+    currentUser &&
+    room?.moderators?.some((m) => m.user._id === currentUser._id);
+
+  // Room management handlers
+  const handleKickUser = async (userId) => {
+    try {
+      const response = await liveRoomService.kickUser(room._id, userId);
+      if (response.success) {
+        socketRef.current?.emit("liveroom:kick_user", {
+          roomId: room._id,
+          userId,
+          kickedBy: userInfo.username,
+        });
+        Alert.alert("تم", "تم طرد المستخدم بنجاح");
+        joinRoom(); // Refresh room data
+      }
+    } catch (error) {
+      console.error("Error kicking user:", error);
+      Alert.alert("خطأ", "فشل في طرد المستخدم");
+    }
+  };
+
+  const handleBanUser = async (userId, reason) => {
+    try {
+      const response = await liveRoomService.banUser(room._id, userId, reason);
+      if (response.success) {
+        socketRef.current?.emit("liveroom:ban_user", {
+          roomId: room._id,
+          userId,
+          bannedBy: userInfo.username,
+          reason,
+        });
+        Alert.alert("تم", "تم حظر المستخدم بنجاح");
+        joinRoom();
+      }
+    } catch (error) {
+      console.error("Error banning user:", error);
+      Alert.alert("خطأ", "فشل في حظر المستخدم");
+    }
+  };
+
+  const handleUnbanUser = async (userId) => {
+    try {
+      const response = await liveRoomService.unbanUser(room._id, userId);
+      if (response.success) {
+        Alert.alert("تم", "تم إلغاء حظر المستخدم");
+        joinRoom();
+      }
+    } catch (error) {
+      console.error("Error unbanning user:", error);
+      Alert.alert("خطأ", "فشل في إلغاء الحظر");
+    }
+  };
+
+  const handleAssignModerator = async (userId) => {
+    try {
+      const response = await liveRoomService.assignModerator(room._id, userId);
+      if (response.success) {
+        socketRef.current?.emit("liveroom:assign_moderator", {
+          roomId: room._id,
+          userId,
+          assignedBy: userInfo.username,
+        });
+        Alert.alert("تم", "تم تعيين المستخدم كمسؤول");
+        joinRoom();
+      }
+    } catch (error) {
+      console.error("Error assigning moderator:", error);
+      Alert.alert("خطأ", "فشل في تعيين المسؤول");
+    }
+  };
+
+  const handleRemoveModerator = async (userId) => {
+    try {
+      const response = await liveRoomService.removeModerator(room._id, userId);
+      if (response.success) {
+        socketRef.current?.emit("liveroom:remove_moderator", {
+          roomId: room._id,
+          userId,
+        });
+        Alert.alert("تم", "تم إزالة المسؤول");
+        joinRoom();
+      }
+    } catch (error) {
+      console.error("Error removing moderator:", error);
+      Alert.alert("خطأ", "فشل في إزالة المسؤول");
+    }
+  };
+
+  const handleControlMusic = async (action, trackUrl, trackName, volume) => {
+    try {
+      const response = await liveRoomService.controlMusic(room._id, {
+        action,
+        trackUrl,
+        trackName,
+        volume,
+      });
+
+      if (response.success) {
+        setMusicPlayer(response.musicPlayer);
+
+        socketRef.current?.emit("liveroom:music_control", {
+          roomId: room._id,
+          action,
+          musicPlayer: response.musicPlayer,
+        });
+      }
+    } catch (error) {
+      console.error("Error controlling music:", error);
+      Alert.alert("خطأ", "فشل في التحكم في الموسيقى");
+    }
+  };
 
   // Create 8 fixed seats with positions
   const getSeatPositions = () => {
@@ -668,6 +839,28 @@ const LiveRoomScreen = ({ route, navigation }) => {
             </TouchableOpacity>
           )}
 
+          {/* Music Player Button */}
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={() => setShowMusicPlayer(true)}
+          >
+            <Ionicons
+              name="musical-notes"
+              size={24}
+              color={musicPlayer?.isPlaying ? "#FFD700" : "#fff"}
+            />
+          </TouchableOpacity>
+
+          {/* Room Management Button (Host & Moderators only) */}
+          {(isHost || isModerator) && (
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={() => setShowManagementModal(true)}
+            >
+              <Ionicons name="settings" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.leaveButton}
             onPress={() => {
@@ -679,6 +872,38 @@ const LiveRoomScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ImageBackground>
+
+      {/* Room Management Modal */}
+      <RoomManagementModal
+        visible={showManagementModal}
+        onClose={() => setShowManagementModal(false)}
+        participants={[
+          ...(room?.speakers?.map((s) => ({ user: s.user, type: "speaker" })) ||
+            []),
+          ...(room?.listeners?.map((l) => ({
+            user: l.user,
+            type: "listener",
+          })) || []),
+        ]}
+        moderators={room?.moderators || []}
+        bannedUsers={room?.bannedUsers || []}
+        isHost={isHost}
+        currentUserId={currentUser?._id}
+        onKickUser={handleKickUser}
+        onBanUser={handleBanUser}
+        onUnbanUser={handleUnbanUser}
+        onAssignModerator={handleAssignModerator}
+        onRemoveModerator={handleRemoveModerator}
+      />
+
+      {/* Music Player Control */}
+      <MusicPlayerControl
+        visible={showMusicPlayer}
+        onClose={() => setShowMusicPlayer(false)}
+        musicPlayer={musicPlayer}
+        onControlMusic={handleControlMusic}
+        isHost={isHost}
+      />
     </SafeAreaView>
   );
 };

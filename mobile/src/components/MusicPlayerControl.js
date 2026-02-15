@@ -6,8 +6,8 @@ import {
   StyleSheet,
   Modal,
   Alert,
-  Slider,
 } from "react-native";
+import Slider from "@react-native-community/slider";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as DocumentPicker from "expo-document-picker";
