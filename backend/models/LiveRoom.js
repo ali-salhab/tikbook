@@ -85,6 +85,65 @@ const liveRoomSchema = new mongoose.Schema(
         },
       },
     ],
+    // Banned users - kicked and cannot rejoin
+    bannedUsers: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        bannedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        bannedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        reason: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
+    // Moderators - can help manage the room
+    moderators: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        assignedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        assignedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    // Music player settings
+    musicPlayer: {
+      isPlaying: {
+        type: Boolean,
+        default: false,
+      },
+      currentTrack: {
+        type: String,
+        default: "",
+      },
+      trackName: {
+        type: String,
+        default: "",
+      },
+      volume: {
+        type: Number,
+        default: 50,
+        min: 0,
+        max: 100,
+      },
+    },
     maxParticipants: {
       type: Number,
       default: 1000,

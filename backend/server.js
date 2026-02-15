@@ -214,6 +214,61 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Kick user from room
+  socket.on("liveroom:kick_user", ({ roomId, userId, kickedBy }) => {
+    console.log(`User ${userId} kicked from room ${roomId} by ${kickedBy}`);
+
+    io.to(`liveroom:${roomId}`).emit("liveroom:user_kicked", {
+      userId,
+      kickedBy,
+      timestamp: new Date(),
+    });
+  });
+
+  // Ban user from room
+  socket.on("liveroom:ban_user", ({ roomId, userId, bannedBy, reason }) => {
+    console.log(`User ${userId} banned from room ${roomId} by ${bannedBy}`);
+
+    io.to(`liveroom:${roomId}`).emit("liveroom:user_banned", {
+      userId,
+      bannedBy,
+      reason,
+      timestamp: new Date(),
+    });
+  });
+
+  // Assign moderator
+  socket.on("liveroom:assign_moderator", ({ roomId, userId, assignedBy }) => {
+    console.log(`User ${userId} assigned as moderator in room ${roomId}`);
+
+    io.to(`liveroom:${roomId}`).emit("liveroom:moderator_assigned", {
+      userId,
+      assignedBy,
+      timestamp: new Date(),
+    });
+  });
+
+  // Remove moderator
+  socket.on("liveroom:remove_moderator", ({ roomId, userId }) => {
+    console.log(`User ${userId} removed as moderator from room ${roomId}`);
+
+    io.to(`liveroom:${roomId}`).emit("liveroom:moderator_removed", {
+      userId,
+      timestamp: new Date(),
+    });
+  });
+
+  // Music control
+  socket.on("liveroom:music_control", ({ roomId, action, musicPlayer }) => {
+    console.log(`Music ${action} in room ${roomId}`);
+
+    io.to(`liveroom:${roomId}`).emit("liveroom:music_updated", {
+      action,
+      musicPlayer,
+      timestamp: new Date(),
+    });
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });

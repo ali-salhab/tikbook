@@ -479,3 +479,312 @@ exports.endLiveRoom = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// Kick user from room (host or moderator)
+exports.kickUser = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const kickerId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+
+    if (!liveRoom) {
+      return res.status(404).json({ message: "Live room not found" });
+    }
+
+    // Check if kicker is host or moderator
+    const isHost = liveRoom.host.toString() === kickerId.toString();
+    const isModerator = liveRoom.moderators.some(
+      (m) => m.user.toString() === kickerId.toString()
+    );
+
+    if (!isHost && !isModerator) {
+      return res.status(403).json({ message: "Only host or moderators can kick users" });
+    }
+
+    // Cannot kick the host
+    if (userId === liveRoom.host.toString()) {
+      return res.status(400).json({ message: "Cannot kick the host" });
+    }
+
+    // Remove from speakers
+    liveRoom.speakers = liveRoom.speakers.filter(
+      (s) => s.user.toString() !== userId
+    );
+
+    // Remove from listeners
+    liveRoom.listeners = liveRoom.listeners.filter(
+      (l) => l.user.toString() !== userId
+    );
+
+    // Remove from hand raised
+    liveRoom.handRaised = liveRoom.handRaised.filter(
+      (h) => h.user.toString() !== userId
+    );
+
+    await liveRoom.save();
+
+    res.json({
+      success: true,
+      message: "User kicked successfully",
+    });
+  } catch (error) {
+    console.error("Error kicking user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Ban user from room (host or moderator)
+exports.banUser = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId, reason } = req.body;
+    const bannerId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+
+    if (!liveRoom) {
+      return res.status(404).json({ message: "Live room not found" });
+    }
+
+    // Check if banner is host or moderator
+    const isHost = liveRoom.host.toString() === bannerId.toString();
+    const isModerator = liveRoom.moderators.some(
+      (m) => m.user.toString() === bannerId.toString()
+    );
+
+    if (!isHost && !isModerator) {
+      return res.status(403).json({ message: "Only host or moderators can ban users" });
+    }
+
+    // Cannot ban the host
+    if (userId === liveRoom.host.toString()) {
+      return res.status(400).json({ message: "Cannot ban the host" });
+    }
+
+    // Check if already banned
+    const alreadyBanned = liveRoom.bannedUsers.some(
+      (b) => b.user.toString() === userId
+    );
+
+    if (alreadyBanned) {
+      return res.status(400).json({ message: "User is already banned" });
+    }
+
+    // Add to banned list
+    liveRoom.bannedUsers.push({
+      user: userId,
+      bannedBy: bannerId,
+      reason: reason || "",
+    });
+
+    // Remove from speakers
+    liveRoom.speakers = liveRoom.speakers.filter(
+      (s) => s.user.toString() !== userId
+    );
+
+    // Remove from listeners
+    liveRoom.listeners = liveRoom.listeners.filter(
+      (l) => l.user.toString() !== userId
+    );
+
+    // Remove from hand raised
+    liveRoom.handRaised = liveRoom.handRaised.filter(
+      (h) => h.user.toString() !== userId
+    );
+
+    await liveRoom.save();
+
+    res.json({
+      success: true,
+      message: "User banned successfully",
+    });
+  } catch (error) {
+    console.error("Error banning user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Unban user (host only)
+exports.unbanUser = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+
+    if (!liveRoom) {
+      return res.status(404).json({ message: "Live room not found" });
+    }
+
+    // Only host can unban
+    if (liveRoom.host.toString() !== requesterId.toString()) {
+      return res.status(403).json({ message: "Only host can unban users" });
+    }
+
+    // Remove from banned list
+    liveRoom.bannedUsers = liveRoom.bannedUsers.filter(
+      (b) => b.user.toString() !== userId
+    );
+
+    await liveRoom.save();
+
+    res.json({
+      success: true,
+      message: "User unbanned successfully",
+    });
+  } catch (error) {
+    console.error("Error unbanning user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Assign moderator (host only)
+exports.assignModerator = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const hostId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+
+    if (!liveRoom) {
+      return res.status(404).json({ message: "Live room not found" });
+    }
+
+    // Only host can assign moderators
+    if (liveRoom.host.toString() !== hostId.toString()) {
+      return res.status(403).json({ message: "Only host can assign moderators" });
+    }
+
+    // Check if already a moderator
+    const alreadyModerator = liveRoom.moderators.some(
+      (m) => m.user.toString() === userId
+    );
+
+    if (alreadyModerator) {
+      return res.status(400).json({ message: "User is already a moderator" });
+    }
+
+    // Add as moderator
+    liveRoom.moderators.push({
+      user: userId,
+      assignedBy: hostId,
+    });
+
+    await liveRoom.save();
+
+    // Send notification
+    try {
+      const user = await User.findById(userId);
+      if (user) {
+        await sendNotificationToUser(user, {
+          title: "تم تعيينك كمسؤول",
+          body: `تم تعيينك كمسؤول في غرفة: ${liveRoom.title}`,
+          data: { roomId: liveRoom.roomId, type: "moderator_assigned" },
+        });
+      }
+    } catch (notifError) {
+      console.error("Error sending notification:", notifError);
+    }
+
+    res.json({
+      success: true,
+      message: "Moderator assigned successfully",
+    });
+  } catch (error) {
+    console.error("Error assigning moderator:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Remove moderator (host only)
+exports.removeModerator = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const hostId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+
+    if (!liveRoom) {
+      return res.status(404).json({ message: "Live room not found" });
+    }
+
+    // Only host can remove moderators
+    if (liveRoom.host.toString() !== hostId.toString()) {
+      return res.status(403).json({ message: "Only host can remove moderators" });
+    }
+
+    // Remove from moderators
+    liveRoom.moderators = liveRoom.moderators.filter(
+      (m) => m.user.toString() !== userId
+    );
+
+    await liveRoom.save();
+
+    res.json({
+      success: true,
+      message: "Moderator removed successfully",
+    });
+  } catch (error) {
+    console.error("Error removing moderator:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Control music player (host only)
+exports.controlMusic = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { action, trackUrl, trackName, volume } = req.body;
+    const hostId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+
+    if (!liveRoom) {
+      return res.status(404).json({ message: "Live room not found" });
+    }
+
+    // Only host can control music
+    if (liveRoom.host.toString() !== hostId.toString()) {
+      return res.status(403).json({ message: "Only host can control music" });
+    }
+
+    switch (action) {
+      case "play":
+        liveRoom.musicPlayer.isPlaying = true;
+        if (trackUrl) liveRoom.musicPlayer.currentTrack = trackUrl;
+        if (trackName) liveRoom.musicPlayer.trackName = trackName;
+        break;
+      case "pause":
+        liveRoom.musicPlayer.isPlaying = false;
+        break;
+      case "stop":
+        liveRoom.musicPlayer.isPlaying = false;
+        liveRoom.musicPlayer.currentTrack = "";
+        liveRoom.musicPlayer.trackName = "";
+        break;
+      case "volume":
+        if (volume !== undefined) {
+          liveRoom.musicPlayer.volume = Math.max(0, Math.min(100, volume));
+        }
+        break;
+      default:
+        return res.status(400).json({ message: "Invalid action" });
+    }
+
+    await liveRoom.save();
+
+    res.json({
+      success: true,
+      message: "Music control updated",
+      musicPlayer: liveRoom.musicPlayer,
+    });
+  } catch (error) {
+    console.error("Error controlling music:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

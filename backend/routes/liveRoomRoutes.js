@@ -13,6 +13,12 @@ const {
   toggleMute,
   getMyLiveRooms,
   endLiveRoom,
+  kickUser,
+  banUser,
+  unbanUser,
+  assignModerator,
+  removeModerator,
+  controlMusic,
 } = require("../controllers/liveRoomController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -31,5 +37,15 @@ router.post("/:roomId/remove-speaker", protect, removeSpeaker);
 router.post("/:roomId/toggle-mute", protect, toggleMute);
 router.post("/:roomId/end", protect, endLiveRoom);
 router.get("/my/rooms", protect, getMyLiveRooms);
+
+// Room management (host/moderator)
+router.post("/:roomId/kick", protect, kickUser);
+router.post("/:roomId/ban", protect, banUser);
+router.post("/:roomId/unban", protect, unbanUser);
+router.post("/:roomId/assign-moderator", protect, assignModerator);
+router.post("/:roomId/remove-moderator", protect, removeModerator);
+
+// Music control (host only)
+router.post("/:roomId/music", protect, controlMusic);
 
 module.exports = router;
