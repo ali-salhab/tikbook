@@ -29,6 +29,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import videoService from "../services/videoService";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -186,6 +187,40 @@ const HomeScreen = ({ navigation }) => {
       });
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const handleSave = async (videoId) => {
+    // Optimistic update
+    setVideos((prevVideos) =>
+      prevVideos.map((video) => {
+        if (video._id === videoId) {
+          return {
+            ...video,
+            isSaved: !video.isSaved,
+          };
+        }
+        return video;
+      }),
+    );
+
+    // Send to backend
+    try {
+      await videoService.saveVideo(videoId);
+    } catch (error) {
+      console.log("Error saving video:", error);
+      // Revert on error
+      setVideos((prevVideos) =>
+        prevVideos.map((video) => {
+          if (video._id === videoId) {
+            return {
+              ...video,
+              isSaved: !video.isSaved,
+            };
+          }
+          return video;
+        }),
+      );
     }
   };
 
@@ -392,8 +427,15 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           {/* Bookmark Button */}
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="bookmark-outline" size={35} color="#FFF" />
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleSave(item._id)}
+          >
+            <Ionicons
+              name={item.isSaved ? "bookmark" : "bookmark-outline"}
+              size={35}
+              color="#FFF"
+            />
           </TouchableOpacity>
 
           {/* Share Button */}

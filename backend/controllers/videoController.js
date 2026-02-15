@@ -16,7 +16,21 @@ const getVideos = async (req, res) => {
       .populate("user", "username profileImage")
       .populate("comments.user", "username profileImage")
       .sort({ createdAt: -1 });
-    res.json(videos);
+
+    // If user is authenticated, check which videos are saved
+    let savedVideoIds = [];
+    if (req.user && req.user._id) {
+      const user = await User.findById(req.user._id).select("savedVideos");
+      savedVideoIds = user?.savedVideos.map((id) => id.toString()) || [];
+    }
+
+    // Add isSaved property to each video
+    const videosWithSavedStatus = videos.map((video) => ({
+      ...video.toObject(),
+      isSaved: savedVideoIds.includes(video._id.toString()),
+    }));
+
+    res.json(videosWithSavedStatus);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -543,6 +557,69 @@ const deleteComment = async (req, res) => {
   }
 };
 
+// @desc    Save/Unsave a video
+// @route   PUT /api/videos/:id/save
+// @access  Private
+const saveVideo = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    const isSaved = user.savedVideos.some(
+      (id) => id.toString() === req.params.id,
+    );
+
+    if (isSaved) {
+      // Unsave the video
+      user.savedVideos = user.savedVideos.filter(
+        (id) => id.toString() !== req.params.id,
+      );
+    } else {
+      // Save the video
+      user.savedVideos.push(req.params.id);
+    }
+
+    await user.save();
+
+    res.json({
+      saved: !isSaved,
+      savedCount: user.savedVideos.length,
+    });
+  } catch (error) {
+    console.error("Error saving video:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get saved videos
+// @route   GET /api/videos/saved
+// @access  Private
+const getSavedVideos = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: "savedVideos",
+      populate: {
+        path: "user",
+        select: "username profileImage",
+      },
+      options: { sort: { createdAt: -1 } },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user.savedVideos || []);
+  } catch (error) {
+    console.error("Error fetching saved videos:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getVideos,
   createVideo,
@@ -553,4 +630,6 @@ module.exports = {
   getFollowingVideos,
   likeComment,
   deleteComment,
+  saveVideo,
+  getSavedVideos,
 };

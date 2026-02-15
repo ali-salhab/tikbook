@@ -9,6 +9,8 @@ const {
   getFollowingVideos,
   likeComment,
   deleteComment,
+  saveVideo,
+  getSavedVideos,
 } = require("../controllers/videoController");
 const { protect } = require("../middleware/authMiddleware");
 const { videoUpload, imageUpload } = require("../middleware/uploadMiddleware");
@@ -17,7 +19,7 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(getVideos)
+  .get(protect, getVideos) // Changed to protected route to get savedVideos status
   .post(
     protect,
     videoUpload.fields([
@@ -27,8 +29,10 @@ router
     createVideo,
   );
 router.route("/following").get(protect, getFollowingVideos);
+router.route("/saved").get(protect, getSavedVideos);
 router.route("/user/:id").get(getUserVideos);
 router.route("/:id/like").put(protect, likeVideo);
+router.route("/:id/save").put(protect, saveVideo);
 router
   .route("/:id/comment")
   .post(protect, imageUpload.single("image"), commentVideo);

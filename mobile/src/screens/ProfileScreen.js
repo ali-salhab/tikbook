@@ -22,6 +22,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import videoService from "../services/videoService";
 
 const { width } = Dimensions.get("window");
 
@@ -36,6 +37,7 @@ const ProfileScreen = ({ navigation }) => {
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
+  const [savedVideos, setSavedVideos] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const netInfo = useNetInfo();
 
@@ -87,6 +89,24 @@ const ProfileScreen = ({ navigation }) => {
       }
     }, [userInfo, fetchProfile, fetchNotificationCount, netInfo.isConnected]),
   );
+
+  const fetchSavedVideos = useCallback(async () => {
+    if (netInfo.isConnected === false) return;
+    try {
+      const savedData = await videoService.getSavedVideos();
+      setSavedVideos(savedData || []);
+    } catch (e) {
+      console.log("❌ Error fetching saved videos:", e.message);
+      setSavedVideos([]);
+    }
+  }, [netInfo.isConnected]);
+
+  // Fetch saved videos when saved tab is selected
+  useEffect(() => {
+    if (activeTab === "saved" && userInfo) {
+      fetchSavedVideos();
+    }
+  }, [activeTab, userInfo, fetchSavedVideos]);
 
   const copyUserId = () => {
     if (userInfo?._id) {
@@ -221,7 +241,40 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         );
       case "saved":
-        return (
+        return savedVideos.length ? (
+          <View style={styles.gridContainer}>
+            {savedVideos.map((video) => {
+              const thumbnail = getVideoThumbnail(video);
+              return (
+                <TouchableOpacity
+                  key={video._id}
+                  style={styles.gridItem}
+                  onPress={() =>
+                    navigation.navigate("Home", { videoId: video._id })
+                  }
+                >
+                  {thumbnail ? (
+                    <Image
+                      source={{ uri: thumbnail }}
+                      style={styles.gridImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.gridPlaceholder}>
+                      <Ionicons name="videocam" size={32} color="#999" />
+                    </View>
+                  )}
+                  <View style={styles.viewsContainer}>
+                    <Ionicons name="play-outline" size={14} color="#FFF" />
+                    <Text style={styles.viewsText}>
+                      {video.views?.toString() || "0"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="bookmark-outline" size={64} color="#ccc" />
             <Text style={styles.emptyStateTitle}>لا توجد محفوظات</Text>

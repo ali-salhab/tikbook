@@ -15,6 +15,7 @@ import {
   Image,
   SafeAreaView,
   RefreshControl,
+  Share,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Video } from "expo-av";
@@ -28,6 +29,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import videoService from "../services/videoService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -81,6 +83,50 @@ const FriendsScreen = ({ navigation }) => {
   const handleComment = (video) => {
     setSelectedVideo(video);
     setCommentsVisible(true);
+  };
+
+  const handleShare = async (video) => {
+    try {
+      await Share.share({
+        message: `شاهد هذا الفيديو الرائع من @${video.user.username}: ${video.description}`,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleSave = async (videoId) => {
+    // Optimistic update
+    setFriendsVideos((prevVideos) =>
+      prevVideos.map((video) => {
+        if (video._id === videoId) {
+          return {
+            ...video,
+            isSaved: !video.isSaved,
+          };
+        }
+        return video;
+      }),
+    );
+
+    // Send to backend
+    try {
+      await videoService.saveVideo(videoId);
+    } catch (error) {
+      console.log("Error saving video:", error);
+      // Revert on error
+      setFriendsVideos((prevVideos) =>
+        prevVideos.map((video) => {
+          if (video._id === videoId) {
+            return {
+              ...video,
+              isSaved: !video.isSaved,
+            };
+          }
+          return video;
+        }),
+      );
+    }
   };
 
   const closeComments = () => {
@@ -197,11 +243,21 @@ const FriendsScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="bookmark-outline" size={35} color="#FFF" />
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleSave(item._id)}
+            >
+              <Ionicons
+                name={item.isSaved ? "bookmark" : "bookmark-outline"}
+                size={35}
+                color="#FFF"
+              />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleShare(item)}
+            >
               <Ionicons name="arrow-redo-sharp" size={35} color="#FFF" />
             </TouchableOpacity>
           </View>
