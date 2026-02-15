@@ -2,6 +2,8 @@ const Badge = require("../models/Badge");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
+const Notification = require("../models/Notification");
+const { sendNotificationToUser } = require("./pushNotificationController");
 
 // @desc    Get all available badges
 // @route   GET /api/badges
@@ -226,7 +228,34 @@ const giftBadge = async (req, res) => {
     // Populate and return
     await user.populate("ownedBadges.badge ownedBackgrounds.badge");
 
-    // TODO: Send notification to user about the gift
+    // Send notification to user about the gift
+    try {
+      const notification = new Notification({
+        user: user._id,
+        type: "badge_gift",
+        message: `تم إهداؤك ${badge.name}! اضغط للعرض`,
+        data: {
+          badgeId: badge._id,
+          badgeName: badge.name,
+          badgeImage: badge.imageUrl,
+          screen: "MyBadges",
+        },
+      });
+      await notification.save();
+      console.log(`✅ Badge gift notification created for ${user.username}`);
+
+      // Send push notification
+      await sendNotificationToUser(
+        user._id,
+        `تم إهداؤك ${badge.name}! اضغط لرؤية شارتك الجديدة 🎁`,
+        "هدية جديدة!",
+        { screen: "MyBadges", badgeId: badge._id.toString() },
+      );
+      console.log(`✅ Push notification sent to ${user.username}`);
+    } catch (notifError) {
+      console.error("Error sending badge gift notification:", notifError);
+      // Don't fail the whole request if notification fails
+    }
 
     res.json({
       success: true,

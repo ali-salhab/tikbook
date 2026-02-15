@@ -45,12 +45,14 @@ const verificationRequestSchema = mongoose.Schema(
     websiteUrl: {
       type: String,
     },
-    // Verification documents
-    idDocument: {
-      type: String, // URL to uploaded ID/passport
+    // Verification documents (Both required)
+    idDocumentFront: {
+      type: String, // URL to front of ID/passport
+      required: true,
     },
-    proofDocument: {
-      type: String, // URL to additional proof
+    idDocumentBack: {
+      type: String, // URL to back of ID/passport
+      required: true,
     },
     // Request status
     status: {

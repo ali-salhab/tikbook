@@ -28,6 +28,10 @@ const notificationSchema = mongoose.Schema(
       type: String,
       required: false, // Optional message for admin/system notifications
     },
+    data: {
+      type: mongoose.Schema.Types.Mixed,
+      required: false, // Optional data for navigation and additional info
+    },
     read: {
       type: Boolean,
       default: false,

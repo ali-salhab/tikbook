@@ -1,6 +1,7 @@
 const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
+const { sendNotificationToUser } = require("./pushNotificationController");
 
 // @desc    Submit verification request
 // @route   POST /api/verification/request
@@ -16,9 +17,16 @@ const submitVerificationRequest = async (req, res) => {
       twitterUrl,
       facebookUrl,
       websiteUrl,
-      idDocument,
-      proofDocument,
+      idDocumentFront,
+      idDocumentBack,
     } = req.body;
+
+    // Validate required ID documents
+    if (!idDocumentFront || !idDocumentBack) {
+      return res.status(400).json({
+        message: "يجب تحميل صورتي الهوية (الوجه الأمامي والخلفي)",
+      });
+    }
 
     // Check if user already has pending request
     const existingRequest = await VerificationRequest.findOne({
@@ -50,8 +58,8 @@ const submitVerificationRequest = async (req, res) => {
       twitterUrl,
       facebookUrl,
       websiteUrl,
-      idDocument,
-      proofDocument,
+      idDocumentFront,
+      idDocumentBack,
     });
 
     res.status(201).json({
@@ -141,13 +149,25 @@ const approveVerificationRequest = async (req, res) => {
     await user.save();
 
     // Send notification to user
-    await Notification.create({
+    const notification = await Notification.create({
       user: verificationRequest.user,
       type: "verification_approved",
       message: "تم قبول طلب التوثيق الخاص بك! حسابك الآن موثق ✓",
       title: "طلب التوثيق مقبول",
       read: false,
     });
+
+    // Send push notification
+    try {
+      await sendNotificationToUser(
+        verificationRequest.user,
+        "تم قبول طلب التوثيق الخاص بك! حسابك الآن موثق ✓",
+        "مبروك! تم توثيق حسابك",
+        { screen: "Profile" },
+      );
+    } catch (pushError) {
+      console.error("Error sending push notification:", pushError);
+    }
 
     res.json({
       message: "Verification request approved successfully",
@@ -197,13 +217,29 @@ const rejectVerificationRequest = async (req, res) => {
     await verificationRequest.save();
 
     // Send notification to user
-    await Notification.create({
+    const notification = await Notification.create({
       user: verificationRequest.user,
       type: "verification_rejected",
       message: `تم رفض طلب التوثيق الخاص بك. السبب: ${rejectionReason}`,
       title: "طلب التوثيق مرفوض",
       read: false,
+      data: {
+        rejectionReason,
+        screen: "VerificationRequest",
+      },
     });
+
+    // Send push notification
+    try {
+      await sendNotificationToUser(
+        verificationRequest.user,
+        `تم رفض طلب التوثيق. السبب: ${rejectionReason}`,
+        "طلب التوثيق مرفوض",
+        { screen: "VerificationRequest", rejectionReason },
+      );
+    } catch (pushError) {
+      console.error("Error sending push notification:", pushError);
+    }
 
     res.json({
       message: "Verification request rejected",
