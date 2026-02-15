@@ -113,7 +113,12 @@ export const notificationListener = (navigationRef) => {
       console.log("Notification tapped with data:", data);
 
       if (data?.screen && navigationRef?.isReady()) {
-        navigationRef.navigate(data.screen, data.params);
+        // Handle LiveRoom navigation with roomId
+        if (data.screen === "LiveRoom" && data.roomId) {
+          navigationRef.navigate("LiveRoom", { roomId: data.roomId });
+        } else {
+          navigationRef.navigate(data.screen, data.params || {});
+        }
       }
     });
 

@@ -9,13 +9,20 @@ import {
   Alert,
   Modal,
   ImageBackground,
+  Dimensions,
+  TextInput,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
+import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import io from "socket.io-client";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+
+const { width, height } = Dimensions.get("window");
 
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
@@ -27,20 +34,51 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [roomBackground, setRoomBackground] = useState(null);
   const socketRef = useRef(null);
+  const joinSoundRef = useRef(null);
 
   useEffect(() => {
     loadCurrentUser();
     joinRoom();
     setupSocket();
+    loadJoinSound();
 
     return () => {
       leaveRoom();
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
+      if (joinSoundRef.current) {
+        joinSoundRef.current.unloadAsync();
+      }
     };
   }, []);
+
+  const loadJoinSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        {
+          uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+        },
+        { shouldPlay: false, volume: 0.5 },
+      );
+      joinSoundRef.current = sound;
+    } catch (error) {
+      console.log("Could not load join sound:", error);
+    }
+  };
+
+  const playJoinSound = async () => {
+    try {
+      if (joinSoundRef.current) {
+        await joinSoundRef.current.replayAsync();
+      }
+    } catch (error) {
+      console.log("Could not play join sound:", error);
+    }
+  };
 
   const loadCurrentUser = async () => {
     try {
@@ -62,6 +100,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     // Listen for live room events
     socketRef.current.on("liveroom:user_joined", ({ user }) => {
       fetchRoomData();
+      playJoinSound();
     });
 
     socketRef.current.on("liveroom:user_left", ({ userId }) => {
@@ -259,47 +298,179 @@ const LiveRoomScreen = ({ route, navigation }) => {
     ]);
   };
 
+  const handleChangeBackground = async () => {
+    if (!isHost) return;
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please grant access to your photos");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [9, 16],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setRoomBackground(result.assets[0].uri);
+      Alert.alert("Success", "Background changed successfully!");
+    }
+  };
+
+  const handleRemoveSpeaker = async (userId) => {
+    if (!isHost) return;
+
+    Alert.alert(
+      "Remove Speaker",
+      "Are you sure you want to remove this speaker?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await axios.post(
+                `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
+                { userId },
+                { headers: { Authorization: `Bearer ${userToken}` } },
+              );
+
+              if (response.data.success) {
+                fetchRoomData();
+                socketRef.current?.emit("liveroom:remove_speaker", {
+                  roomId,
+                  userId,
+                });
+              }
+            } catch (error) {
+              console.error("Error removing speaker:", error);
+              Alert.alert("Error", "Could not remove speaker");
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const isHost = currentUser && room?.host?._id === currentUser._id;
   const isSpeaker =
     currentUser && room?.speakers?.some((s) => s.user._id === currentUser._id);
 
-  const renderParticipant = ({ item, index }) => {
-    const isSpeaker = room?.speakers?.some((s) => s.user._id === item.user._id);
-    const speakerData = room?.speakers?.find(
-      (s) => s.user._id === item.user._id,
-    );
+  // Create 8 fixed seats with positions
+  const getSeatPositions = () => {
+    const centerX = width / 2;
+    const centerY = height * 0.4;
+    const radius = width * 0.32;
+
+    return [
+      { x: centerX, y: centerY - radius - 20, position: 1 }, // Top
+      { x: centerX + radius * 0.7, y: centerY - radius * 0.7, position: 2 }, // Top Right
+      { x: centerX + radius, y: centerY, position: 3 }, // Right
+      { x: centerX + radius * 0.7, y: centerY + radius * 0.7, position: 4 }, // Bottom Right
+      { x: centerX, y: centerY + radius + 20, position: 5 }, // Bottom
+      { x: centerX - radius * 0.7, y: centerY + radius * 0.7, position: 6 }, // Bottom Left
+      { x: centerX - radius, y: centerY, position: 7 }, // Left
+      { x: centerX - radius * 0.7, y: centerY - radius * 0.7, position: 8 }, // Top Left
+    ];
+  };
+
+  const renderSeat = (seatPosition, index) => {
+    const speaker = room?.speakers?.[index];
+    const isEmpty = !speaker;
 
     return (
-      <View style={styles.participantItem}>
-        <View style={styles.avatarContainer}>
-          <ProfileBadgeFrame
-            profileImage={item.user?.avatar || item.user?.profileImage}
-            badgeImage={item.user?.activeBadge?.imageUrl}
-            size={60}
-          />
-          {isSpeaker && (
-            <View
-              style={[
-                styles.micBadge,
-                speakerData?.isMuted && styles.micBadgeMuted,
-              ]}
-            >
-              <Ionicons
-                name={speakerData?.isMuted ? "mic-off" : "mic"}
-                size={12}
-                color="#fff"
-              />
+      <View
+        key={index}
+        style={[
+          styles.seatContainer,
+          {
+            position: "absolute",
+            left: seatPosition.x - 40,
+            top: seatPosition.y - 40,
+          },
+        ]}
+      >
+        {isEmpty ? (
+          <TouchableOpacity
+            style={styles.emptySeat}
+            onPress={() => {
+              console.log("Empty seat pressed", {
+                isHost,
+                isSpeaker,
+                handRaisedCount: room.handRaised?.length,
+              });
+              if (isHost && room.handRaised?.length > 0) {
+                handleMakeSpeaker(room.handRaised[0].user._id);
+              } else if (!isSpeaker && !isHost) {
+                handleRaiseHand();
+              } else if (isHost) {
+                Alert.alert(
+                  "No Hands Raised",
+                  "No listeners have raised their hand to speak",
+                );
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add" size={28} color="#666" />
+            <Text style={styles.seatNumber}>{seatPosition.position}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.occupiedSeat}
+            onPress={() => {
+              if (isHost && speaker.user._id !== currentUser._id) {
+                handleRemoveSpeaker(speaker.user._id);
+              }
+            }}
+            onLongPress={() => {
+              Alert.alert(
+                speaker.user?.username || "Speaker",
+                `Mic: ${speaker.isMuted ? "Muted" : "Unmuted"}\n${speaker.user?.isVerified ? "✓ Verified" : ""}`,
+              );
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.seatAvatarContainer}>
+              {speaker.user?.profileImage || speaker.user?.avatar ? (
+                <Image
+                  source={{
+                    uri: speaker.user?.profileImage || speaker.user?.avatar,
+                  }}
+                  style={styles.seatAvatar}
+                />
+              ) : (
+                <View style={styles.seatAvatarPlaceholder}>
+                  <Ionicons name="person" size={40} color="#666" />
+                </View>
+              )}
+              <View
+                style={[
+                  styles.micIndicator,
+                  speaker.isMuted && styles.micMuted,
+                ]}
+              >
+                <Ionicons
+                  name={speaker.isMuted ? "mic-off" : "mic"}
+                  size={14}
+                  color="#fff"
+                />
+              </View>
+              {speaker.user?.isVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={18} color="#1DA1F2" />
+                </View>
+              )}
             </View>
-          )}
-          {item.user?.isVerified && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
-            </View>
-          )}
-        </View>
-        <Text style={styles.participantName} numberOfLines={1}>
-          {item.user?.username}
-        </Text>
+            <Text style={styles.seatUsername} numberOfLines={1}>
+              {speaker.user?.username}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -317,138 +488,198 @@ const LiveRoomScreen = ({ route, navigation }) => {
     ...room.listeners.map((l) => ({ user: l.user, type: "listener" })),
   ];
 
+  const seatPositions = getSeatPositions();
+
   return (
-    <ImageBackground
-      source={{
-        uri:
-          room.host?.activeBackground?.imageUrl ||
-          room.backgroundImage ||
-          "https://via.placeholder.com/1080x1920/1a1a1a/ffffff?text=Live+Room",
-      }}
-      style={styles.container}
-      resizeMode="cover"
-    >
-      {/* Dark overlay for readability */}
-      <View style={styles.overlay} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+      <ImageBackground
+        source={{
+          uri:
+            roomBackground ||
+            room.host?.activeBackground?.imageUrl ||
+            room.backgroundImage ||
+            "https://via.placeholder.com/1080x1920/1a1a1a/ffffff?text=Live+Room",
+        }}
+        style={styles.container}
+        resizeMode="cover"
+      >
+        {/* Dark overlay for readability */}
+        <View style={styles.overlay} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-down" size={32} color="#fff" />
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <View style={styles.liveBadge}>
-            <MaterialCommunityIcons name="circle" size={8} color="#ff4444" />
-            <Text style={styles.liveText}>LIVE</Text>
-          </View>
-        </View>
-
-        {isHost && (
-          <TouchableOpacity onPress={handleEndRoom}>
-            <Ionicons name="close-circle" size={28} color="#ff4444" />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-down" size={32} color="#fff" />
           </TouchableOpacity>
-        )}
-      </View>
 
-      {/* Room Info */}
-      <View style={styles.roomInfo}>
-        <Text style={styles.roomTitle}>{room.title}</Text>
-        <Text style={styles.roomHost}>Hosted by @{room.host?.username}</Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="people" size={16} color="#999" />
-            <Text style={styles.statText}>{allParticipants.length}</Text>
+          <View style={styles.headerCenter}>
+            <View style={styles.liveBadge}>
+              <MaterialCommunityIcons name="circle" size={8} color="#ff4444" />
+              <Text style={styles.liveText}>LIVE</Text>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Ionicons name="mic" size={16} color="#999" />
-            <Text style={styles.statText}>{room.speakers?.length}</Text>
+
+          {isHost && (
+            <TouchableOpacity onPress={handleEndRoom}>
+              <Ionicons name="close-circle" size={28} color="#ff4444" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Room Info */}
+        <View style={styles.roomInfo}>
+          <Text style={styles.roomTitle}>{room.title}</Text>
+          <Text style={styles.roomHost}>Hosted by @{room.host?.username}</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Ionicons name="people" size={16} color="#999" />
+              <Text style={styles.statText}>{allParticipants.length}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="mic" size={16} color="#999" />
+              <Text style={styles.statText}>{room.speakers?.length}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Participants Grid */}
-      <FlatList
-        data={allParticipants}
-        renderItem={renderParticipant}
-        keyExtractor={(item, index) => `${item.user._id}-${index}`}
-        numColumns={4}
-        contentContainerStyle={styles.participantsList}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Hand Raised List (for host) */}
-      {isHost && room.handRaised?.length > 0 && (
-        <View style={styles.handRaisedContainer}>
-          <Text style={styles.handRaisedTitle}>
-            Hand Raised ({room.handRaised.length})
-          </Text>
-          <FlatList
-            horizontal
-            data={room.handRaised}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.handRaisedItem}
-                onPress={() => handleMakeSpeaker(item.user._id)}
-              >
-                <Image
-                  source={{
-                    uri: item.user?.avatar || "https://via.placeholder.com/40",
-                  }}
-                  style={styles.handRaisedAvatar}
-                />
-                <Ionicons
-                  name="hand-right"
-                  size={16}
-                  color="#ffaa00"
-                  style={styles.handIcon}
-                />
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => item.user._id}
-            showsHorizontalScrollIndicator={false}
-          />
-        </View>
-      )}
-
-      {/* Controls */}
-      <View style={styles.controls}>
-        {isSpeaker && (
-          <TouchableOpacity
-            style={[styles.controlButton, isMuted && styles.mutedButton]}
-            onPress={handleToggleMute}
-          >
-            <Ionicons
-              name={isMuted ? "mic-off" : "mic"}
-              size={24}
-              color="#fff"
+        {/* Host/Room Info Center */}
+        <View style={styles.centerInfoContainer}>
+          <View style={styles.hostAvatarContainer}>
+            <ProfileBadgeFrame
+              profileImage={room.host?.avatar || room.host?.profileImage}
+              badgeImage={room.host?.activeBadge?.imageUrl}
+              size={100}
             />
-          </TouchableOpacity>
+            {room.host?.isVerified && (
+              <View style={styles.hostVerifiedBadge}>
+                <Ionicons name="checkmark-circle" size={22} color="#1DA1F2" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.hostName}>@{room.host?.username}</Text>
+          <View style={styles.centerStats}>
+            <View style={styles.centerStatItem}>
+              <Ionicons name="people" size={18} color="#fff" />
+              <Text style={styles.centerStatText}>
+                {allParticipants.length}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 8 Seats in Circle */}
+        <View style={styles.seatsContainer}>
+          {seatPositions.map((pos, idx) => renderSeat(pos, idx))}
+        </View>
+
+        {/* Listeners List at Bottom */}
+        {room.listeners?.length > 0 && (
+          <View style={styles.listenersContainer}>
+            <FlatList
+              horizontal
+              data={room.listeners}
+              renderItem={({ item }) => (
+                <View style={styles.listenerItem}>
+                  <Image
+                    source={{
+                      uri:
+                        item.user?.avatar || "https://via.placeholder.com/40",
+                    }}
+                    style={styles.listenerAvatar}
+                  />
+                </View>
+              )}
+              keyExtractor={(item, index) =>
+                `listener-${item.user._id}-${index}`
+              }
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
         )}
 
-        {!isSpeaker && !isHost && (
+        {/* Hand Raised List (for host) */}
+        {isHost && room.handRaised?.length > 0 && (
+          <View style={styles.handRaisedContainer}>
+            <Text style={styles.handRaisedTitle}>
+              Hand Raised ({room.handRaised.length})
+            </Text>
+            <FlatList
+              horizontal
+              data={room.handRaised}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.handRaisedItem}
+                  onPress={() => handleMakeSpeaker(item.user._id)}
+                >
+                  <Image
+                    source={{
+                      uri:
+                        item.user?.avatar || "https://via.placeholder.com/40",
+                    }}
+                    style={styles.handRaisedAvatar}
+                  />
+                  <Ionicons
+                    name="hand-right"
+                    size={16}
+                    color="#ffaa00"
+                    style={styles.handIcon}
+                  />
+                </TouchableOpacity>
+              )}
+              keyExtractor={(item) => item.user._id}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
+        )}
+
+        {/* Controls */}
+        <View style={styles.controls}>
+          {isSpeaker && (
+            <TouchableOpacity
+              style={[styles.controlButton, isMuted && styles.mutedButton]}
+              onPress={handleToggleMute}
+            >
+              <Ionicons
+                name={isMuted ? "mic-off" : "mic"}
+                size={24}
+                color="#fff"
+              />
+            </TouchableOpacity>
+          )}
+
+          {!isSpeaker && !isHost && (
+            <TouchableOpacity
+              style={[
+                styles.controlButton,
+                isHandRaised && styles.handRaisedButton,
+              ]}
+              onPress={handleRaiseHand}
+            >
+              <Ionicons name="hand-right" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+
+          {isHost && (
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleChangeBackground}
+            >
+              <Ionicons name="image" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            style={[
-              styles.controlButton,
-              isHandRaised && styles.handRaisedButton,
-            ]}
-            onPress={handleRaiseHand}
+            style={styles.leaveButton}
+            onPress={() => {
+              leaveRoom();
+              navigation.goBack();
+            }}
           >
-            <Ionicons name="hand-right" size={24} color="#fff" />
+            <Text style={styles.leaveButtonText}>Leave</Text>
           </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={styles.leaveButton}
-          onPress={() => {
-            leaveRoom();
-            navigation.goBack();
-          }}
-        >
-          <Text style={styles.leaveButtonText}>Leave</Text>
-        </TouchableOpacity>
-      </View>
-    </ImageBackground>
+        </View>
+      </ImageBackground>
+    </SafeAreaView>
   );
 };
 
@@ -527,49 +758,149 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#999",
   },
-  participantsList: {
-    paddingHorizontal: 8,
-  },
-  participantItem: {
-    width: "25%",
+  centerInfoContainer: {
+    position: "absolute",
+    top: height * 0.25,
+    width: width,
     alignItems: "center",
-    padding: 8,
+    zIndex: 1,
   },
-  avatarContainer: {
+  hostAvatarContainer: {
     position: "relative",
+    marginBottom: 12,
+  },
+  hostVerifiedBadge: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: "#000",
+    borderRadius: 12,
+  },
+  hostName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 8,
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#2a2a2a",
+  centerStats: {
+    flexDirection: "row",
+    gap: 16,
   },
-  micBadge: {
+  centerStatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  centerStatText: {
+    fontSize: 14,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  seatsContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  seatContainer: {
+    width: 80,
+    height: 100,
+    alignItems: "center",
+  },
+  emptySeat: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  seatNumber: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
+    bottom: -20,
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "bold",
+  },
+  occupiedSeat: {
+    alignItems: "center",
+  },
+  seatAvatarContainer: {
+    position: "relative",
+    marginBottom: 4,
+  },
+  seatAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#2a2a2a",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  seatAvatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#2a2a2a",
+    borderWidth: 2,
+    borderColor: "#666",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  micIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
     backgroundColor: "#4CAF50",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#000",
   },
-  micBadgeMuted: {
+  micMuted: {
     backgroundColor: "#ff4444",
   },
   verifiedBadge: {
     position: "absolute",
-    top: 0,
-    right: 0,
+    top: 2,
+    right: 2,
+    backgroundColor: "#000",
+    borderRadius: 10,
   },
-  participantName: {
-    fontSize: 12,
+  seatUsername: {
+    fontSize: 11,
     color: "#fff",
     textAlign: "center",
+    maxWidth: 80,
+    fontWeight: "500",
+  },
+  listenersContainer: {
+    position: "absolute",
+    bottom: 100,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  listenerItem: {
+    marginRight: 8,
+  },
+  listenerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#2a2a2a",
+    borderWidth: 2,
+    borderColor: "#000",
   },
   handRaisedContainer: {
     backgroundColor: "#1a1a1a",

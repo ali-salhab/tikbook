@@ -1,5 +1,7 @@
 const LiveRoom = require("../models/LiveRoom");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
+const { sendNotificationToUser } = require("./pushNotificationController");
 const { v4: uuidv4 } = require("uuid");
 
 // Create a new live room
@@ -45,6 +47,44 @@ exports.createLiveRoom = async (req, res) => {
       .populate("host", "username avatar isVerified")
       .populate("speakers.user", "username avatar isVerified")
       .populate("listeners.user", "username avatar isVerified");
+
+    // Send notifications to all followers
+    try {
+      const host = await User.findById(req.user.id).select(
+        "followers username",
+      );
+      if (host && host.followers && host.followers.length > 0) {
+        const notificationPromises = host.followers.map(async (followerId) => {
+          // Create notification in database
+          const notification = new Notification({
+            user: followerId,
+            type: "live_room_started",
+            message: `${host.username} بدأ غرفة صوتية! انضم الآن 🎙️`,
+            data: {
+              screen: "LiveRoom",
+              roomId: roomId,
+            },
+          });
+          await notification.save();
+
+          // Send push notification
+          await sendNotificationToUser(
+            followerId,
+            "غرفة صوتية مباشرة 🎙️",
+            `${host.username} بدأ غرفة صوتية! انضم الآن`,
+            {
+              screen: "LiveRoom",
+              roomId: roomId,
+            },
+          );
+        });
+
+        await Promise.allSettled(notificationPromises);
+      }
+    } catch (notifError) {
+      console.error("Error sending follower notifications:", notifError);
+      // Don't fail room creation if notifications fail
+    }
 
     res.status(201).json({
       success: true,

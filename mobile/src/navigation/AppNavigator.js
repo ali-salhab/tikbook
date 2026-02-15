@@ -337,11 +337,22 @@ const AppNavigator = () => {
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {showOnboarding ? (
-            <Stack.Screen
-              name="Onboarding"
-              component={OnboardingScreen}
-              options={{ gestureEnabled: false }}
-            />
+            <>
+              <Stack.Screen
+                name="Onboarding"
+                component={OnboardingScreen}
+                options={{ gestureEnabled: false }}
+              />
+              {/* Add Auth screens so onboarding can navigate to them */}
+              <Stack.Screen name="Auth">
+                {(props) => <LoginScreen {...props} />}
+              </Stack.Screen>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="OTP" component={OTPScreen} />
+              {/* Add MainTabs in case user is logged in */}
+              <Stack.Screen name="MainTabs" component={HomeTabs} />
+            </>
           ) : userToken ? (
             <>
               <Stack.Screen name="MainTabs" component={HomeTabs} />

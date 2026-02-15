@@ -323,23 +323,18 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
-          {/* User ID with Copy */}
+          {/* User ID with Copy - Smaller Version */}
           {userInfo?._id && (
             <TouchableOpacity
               style={styles.userIdContainer}
               onPress={copyUserId}
               activeOpacity={0.7}
             >
-              <Text style={styles.userIdLabel}>معرف المستخدم: </Text>
+              <Ionicons name="copy-outline" size={12} color="#888" />
               <Text style={styles.userIdText} numberOfLines={1}>
-                {userInfo._id}
+                {userInfo._id.substring(0, 8)}...
+                {userInfo._id.substring(userInfo._id.length - 4)}
               </Text>
-              <Ionicons
-                name="copy-outline"
-                size={16}
-                color="#666"
-                style={styles.copyIcon}
-              />
             </TouchableOpacity>
           )}
 
@@ -370,15 +365,12 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-              <Ionicons name="log-out-outline" size={20} color="#FE2C55" />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.editProfileButton}
               onPress={() => navigation.navigate("EditProfile", { profile })}
             >
               <Feather name="edit-2" size={20} color="#000" />
+              <Text style={styles.buttonLabel}>تعديل</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -390,6 +382,7 @@ const ProfileScreen = ({ navigation }) => {
                 size={20}
                 color="#00BFFF"
               />
+              <Text style={styles.buttonLabel}>توثيق</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -397,15 +390,7 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => navigation.navigate("MyBadges")}
             >
               <Ionicons name="medal-outline" size={20} color="#FFD700" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.studioButton}>
-              <Text style={styles.studioButtonText}>TikTok Studio</Text>
-              <MaterialCommunityIcons
-                name="magic-staff"
-                size={16}
-                color="#FE2C55"
-              />
+              <Text style={styles.buttonLabel}>الإطارات</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -581,67 +566,47 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     marginBottom: 10,
-  },
-  logoutButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#f1f1f1",
-    borderRadius: 4,
     justifyContent: "center",
-    alignItems: "center",
-    minWidth: 44,
   },
   editProfileButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#f1f1f1",
-    borderRadius: 4,
-    justifyContent: "center",
-    alignItems: "center",
-    minWidth: 44,
-  },
-  verificationButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#f1f1f1",
-    borderRadius: 4,
-    justifyContent: "center",
-    alignItems: "center",
-    minWidth: 44,
-  },
-  badgeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#f1f1f1",
-    borderRadius: 4,
-    justifyContent: "center",
-    alignItems: "center",
-    minWidth: 44,
-  },
-  verificationButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#E6F7FF",
-    borderRadius: 4,
-    justifyContent: "center",
-    alignItems: "center",
-    minWidth: 44,
-  },
-  studioButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: "#f1f1f1",
-    borderRadius: 4,
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: "center",
   },
-  studioButtonText: {
-    fontSize: 14,
+  verificationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#E6F7FF",
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: "center",
+  },
+  badgeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#FFF9E6",
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: "center",
+  },
+  buttonLabel: {
+    fontSize: 12,
     fontWeight: "600",
-    color: "#000",
+    color: "#333",
   },
   tabsContainer: {
     flexDirection: "row",

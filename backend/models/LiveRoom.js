@@ -91,7 +91,7 @@ const liveRoomSchema = new mongoose.Schema(
     },
     maxSpeakers: {
       type: Number,
-      default: 20,
+      default: 8,
     },
     totalViewers: {
       type: Number,

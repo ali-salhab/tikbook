@@ -9,7 +9,10 @@ import {
   Pressable,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -81,11 +84,24 @@ const OnboardingScreen = ({ navigation }) => {
   };
 
   const finishOnboarding = async () => {
-    await AsyncStorage.setItem("hasSeenOnboarding", "true");
-    if (userToken) {
-      navigation.replace("MainTabs");
-    } else {
-      navigation.replace("Auth");
+    try {
+      await AsyncStorage.setItem("hasSeenOnboarding", "true");
+      // Force a small delay to ensure AsyncStorage write completes
+      setTimeout(() => {
+        if (userToken) {
+          navigation.replace("MainTabs");
+        } else {
+          navigation.replace("Auth");
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error finishing onboarding:", error);
+      // Fallback: navigate anyway
+      if (userToken) {
+        navigation.replace("MainTabs");
+      } else {
+        navigation.replace("Auth");
+      }
     }
   };
 
@@ -95,13 +111,13 @@ const OnboardingScreen = ({ navigation }) => {
         x.value,
         [(index - 1) * width, index * width, (index + 1) * width],
         [0.5, 1, 0.5],
-        Extrapolate.CLAMP
+        Extrapolate.CLAMP,
       );
       const opacity = interpolate(
         x.value,
         [(index - 1) * width, index * width, (index + 1) * width],
         [0, 1, 0],
-        Extrapolate.CLAMP
+        Extrapolate.CLAMP,
       );
       return {
         transform: [{ scale }],
@@ -117,9 +133,32 @@ const OnboardingScreen = ({ navigation }) => {
             style={styles.iconCircle}
           >
             {/* Layered Icons for Glitch Effect */}
-            <Ionicons name={item.icon} size={100} color="#00F2EA" style={{ position: 'absolute', transform: [{ translateX: -2 }, { translateY: -2 }], opacity: 0.7 }} />
-            <Ionicons name={item.icon} size={100} color="#FE2C55" style={{ position: 'absolute', transform: [{ translateX: 2 }, { translateY: 2 }], opacity: 0.7 }} />
-            <Ionicons name={item.icon} size={100} color="#FFF" style={{ zIndex: 10 }} />
+            <Ionicons
+              name={item.icon}
+              size={100}
+              color="#00F2EA"
+              style={{
+                position: "absolute",
+                transform: [{ translateX: -2 }, { translateY: -2 }],
+                opacity: 0.7,
+              }}
+            />
+            <Ionicons
+              name={item.icon}
+              size={100}
+              color="#FE2C55"
+              style={{
+                position: "absolute",
+                transform: [{ translateX: 2 }, { translateY: 2 }],
+                opacity: 0.7,
+              }}
+            />
+            <Ionicons
+              name={item.icon}
+              size={100}
+              color="#FFF"
+              style={{ zIndex: 10 }}
+            />
           </LinearGradient>
         </Animated.View>
         <View style={styles.textContainer}>
@@ -139,31 +178,28 @@ const OnboardingScreen = ({ navigation }) => {
               x.value,
               [(i - 1) * width, i * width, (i + 1) * width],
               [8, 24, 8],
-              Extrapolate.CLAMP
+              Extrapolate.CLAMP,
             );
             const opacityAnim = interpolate(
               x.value,
               [(i - 1) * width, i * width, (i + 1) * width],
               [0.4, 1, 0.4],
-              Extrapolate.CLAMP
+              Extrapolate.CLAMP,
             );
             const colorAnim = interpolate(
               x.value,
               [(i - 1) * width, i * width, (i + 1) * width],
               [0, 1, 0],
-              Extrapolate.CLAMP
+              Extrapolate.CLAMP,
             );
             return {
               width: widthAnim,
               opacity: opacityAnim,
-              backgroundColor: colorAnim > 0.5 ? '#FE2C55' : '#888',
+              backgroundColor: colorAnim > 0.5 ? "#FE2C55" : "#888",
             };
           });
           return (
-            <Animated.View
-              key={i}
-              style={[styles.dot, animatedDotStyle]}
-            />
+            <Animated.View key={i} style={[styles.dot, animatedDotStyle]} />
           );
         })}
       </View>
@@ -181,7 +217,9 @@ const OnboardingScreen = ({ navigation }) => {
       <Animated.FlatList
         ref={flatListRef}
         data={slides}
-        renderItem={({ item, index }) => <RenderItem item={item} index={index} />}
+        renderItem={({ item, index }) => (
+          <RenderItem item={item} index={index} />
+        )}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -195,7 +233,6 @@ const OnboardingScreen = ({ navigation }) => {
 
       {/* Safe Area controls */}
       <SafeAreaView style={styles.safeFooter} edges={["bottom"]}>
-
         <Pagination />
 
         <LinearGradient
@@ -208,12 +245,23 @@ const OnboardingScreen = ({ navigation }) => {
             <Text style={styles.nextButtonText}>
               {currentIndex === slides.length - 1 ? "ابدأ" : "التالي"}
             </Text>
-            <Ionicons name={currentIndex === slides.length - 1 ? "checkmark" : "arrow-forward"} size={20} color="#FFF" />
+            <Ionicons
+              name={
+                currentIndex === slides.length - 1
+                  ? "checkmark"
+                  : "arrow-forward"
+              }
+              size={20}
+              color="#FFF"
+            />
           </TouchableOpacity>
         </LinearGradient>
 
         {currentIndex < slides.length - 1 && (
-          <TouchableOpacity onPress={finishOnboarding} style={styles.skipButton}>
+          <TouchableOpacity
+            onPress={finishOnboarding}
+            style={styles.skipButton}
+          >
             <Text style={styles.skipButtonText}>تخطي</Text>
           </TouchableOpacity>
         )}
@@ -228,24 +276,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   backgroundGlowTop: {
-    position: 'absolute',
+    position: "absolute",
     top: -100,
     left: -50,
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: '#00F2EA',
+    backgroundColor: "#00F2EA",
     opacity: 0.1,
     transform: [{ scale: 1.5 }],
   },
   backgroundGlowBottom: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -100,
     right: -50,
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: '#FE2C55',
+    backgroundColor: "#FE2C55",
     opacity: 0.1,
     transform: [{ scale: 1.5 }],
   },
@@ -256,21 +304,21 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   iconCircle: {
     width: 180,
     height: 180,
     borderRadius: 90,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: "rgba(255,255,255,0.1)",
   },
   textContainer: {
     alignItems: "center",
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   title: {
     fontSize: 28,
@@ -288,13 +336,13 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   safeFooter: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 30,
     paddingBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   paginationContainer: {
     flexDirection: "row",
@@ -310,14 +358,14 @@ const styles = StyleSheet.create({
   },
   nextButtonGradient: {
     borderRadius: 30,
-    width: '100%',
+    width: "100%",
     marginBottom: 15,
   },
   nextButton: {
-    flexDirection: 'row',
+    flexDirection: "row",
     height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 10,
   },
   nextButtonText: {
@@ -331,7 +379,7 @@ const styles = StyleSheet.create({
   skipButtonText: {
     color: "#666",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
