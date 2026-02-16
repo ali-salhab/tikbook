@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback } from "react";
+import React, { useContext, useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -30,6 +30,7 @@ const ProfileScreen = ({ navigation }) => {
   const {
     logout,
     userInfo,
+    userToken,
     BASE_URL,
     notificationCount,
     fetchNotificationCount,
@@ -44,11 +45,16 @@ const ProfileScreen = ({ navigation }) => {
   const fetchProfile = useCallback(async () => {
     if (netInfo.isConnected === false) return;
     try {
-      const res = await axios.get(`${BASE_URL}/users/${userInfo._id}`);
+      const config = {
+        headers: { Authorization: `Bearer ${userToken}` },
+      };
+
+      const res = await axios.get(`${BASE_URL}/users/${userInfo._id}`, config);
 
       // Fetch user's videos
       const videosRes = await axios.get(
         `${BASE_URL}/videos/user/${userInfo._id}`,
+        config,
       );
       const userVideos = videosRes.data || [];
       const likesCount = userVideos.reduce(
@@ -63,10 +69,13 @@ const ProfileScreen = ({ navigation }) => {
       setVideos(userVideos);
     } catch (e) {
       console.log("❌ Error fetching profile:", e.message);
+      if (e.response && e.response.status === 401) {
+        console.log("Authentication failed - logging out might be needed");
+      }
       setProfile(null);
       setVideos([]);
     }
-  }, [userInfo, BASE_URL]);
+  }, [userInfo, userToken, BASE_URL]);
 
   useFocusEffect(
     useCallback(() => {
