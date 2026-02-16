@@ -43,6 +43,7 @@ import { AuthContext } from "../context/AuthContext";
 import RoomManagementModal from "../components/RoomManagementModal";
 import AnimatedGift from "../components/AnimatedGift";
 import FloatingComments from "../components/FloatingComments";
+import GiftPanel from "../components/GiftPanel";
 
 // Get screen dimensions
 const { width, height } = Dimensions.get("window");
@@ -63,6 +64,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [showManagementModal, setShowManagementModal] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  // Gift State for Panel
+  const [giftReceiver, setGiftReceiver] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [joinedAgora, setJoinedAgora] = useState(false);
 
@@ -435,6 +439,44 @@ const LiveRoomScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleSendGiftRequest = async ({ gift, quantity, totalCost }) => {
+    // Determine receiver: default to host if not specified
+    const receiver = room?.host;
+    if (!receiver) {
+      Alert.alert("Error", "No host available to send gift to");
+      return;
+    }
+
+    try {
+      // 1. Call API to process transaction
+      const response = await axios.post(
+        `${BASE_URL}/gifts/send`,
+        {
+          giftId: gift._id,
+          receiverId: receiver._id,
+          context: "live_room",
+          contextId: roomId,
+          quantity: quantity,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+
+      if (response.data.success) {
+        // 2. Emit socket event so everyone sees the animation
+        socketRef.current?.emit("liveroom:send_gift", {
+          roomId,
+          gift: gift,
+          sender: userInfo,
+        });
+
+        setShowGiftModal(false);
+      }
+    } catch (error) {
+      console.error("Gift send error:", error);
+      Alert.alert("Error", "Failed to send gift. Check your balance.");
+    }
+  };
+
   // ─── UI COMPONENTS ───────────────────────────────────────────────────────────
 
   const Header = () => (
@@ -725,27 +767,41 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {!showInput && <BottomBar />}
 
         {showInput && (
-          <View
-            style={[styles.inputContainer, { paddingBottom: insets.bottom }]}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 100,
+            }}
           >
-            <TextInput
-              ref={inputRef}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Say something..."
-              placeholderTextColor="#AAA"
-              style={styles.input}
-              onSubmitEditing={handleSendMessage}
-              returnKeyType="send"
-              autoFocus
-            />
-            <TouchableOpacity onPress={handleSendMessage}>
-              <Ionicons name="send" size={24} color="#00BFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowInput(false)}>
-              <Ionicons name="close-circle" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
+            <View
+              style={[
+                styles.inputContainer,
+                { paddingBottom: Platform.OS === "ios" ? insets.bottom : 0 },
+              ]}
+            >
+              <TextInput
+                ref={inputRef}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Say something..."
+                placeholderTextColor="#AAA"
+                style={styles.input}
+                onSubmitEditing={handleSendMessage}
+                returnKeyType="send"
+                autoFocus
+              />
+              <TouchableOpacity onPress={handleSendMessage}>
+                <Ionicons name="send" size={24} color="#00BFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowInput(false)}>
+                <Ionicons name="close-circle" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
         )}
       </ImageBackground>
 
@@ -754,6 +810,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
         onClose={() => setShowManagementModal(false)}
         roomId={roomId}
         isHost={room?.host?._id === userInfo?._id}
+      />
+
+      <GiftPanel
+        visible={showGiftModal}
+        onClose={() => setShowGiftModal(false)}
+        onSendGift={handleSendGiftRequest}
+        userBalance={userInfo?.walletBalance || 0}
       />
     </View>
   );

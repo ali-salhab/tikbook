@@ -62,7 +62,16 @@ const HomeScreen = ({ navigation }) => {
     setLoading(true);
     try {
       console.log("📹 Fetching videos from:", `${BASE_URL}/videos`);
-      const res = await axios.get(`${BASE_URL}/videos`, { timeout: 20000 }); // Increased timeout
+
+      const config = {};
+      if (userToken) {
+        config.headers = { Authorization: `Bearer ${userToken}` };
+      }
+
+      const res = await axios.get(`${BASE_URL}/videos`, {
+        ...config,
+        timeout: 20000,
+      });
       console.log("✅ Videos fetched:", res.data.length);
 
       // Map videos and ensure URLs are absolute
@@ -93,7 +102,7 @@ const HomeScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [netInfo.isConnected, BASE_URL]);
+  }, [netInfo.isConnected, BASE_URL, userToken]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -392,11 +392,16 @@ const ProfileScreen = ({ navigation }) => {
               onPress={copyUserId}
               activeOpacity={0.7}
             >
-              <Ionicons name="copy-outline" size={12} color="#888" />
-              <Text style={styles.userIdText} numberOfLines={1}>
-                {userInfo._id.substring(0, 8)}...
-                {userInfo._id.substring(userInfo._id.length - 4)}
+              <Text style={styles.userIdLabel}>ID: </Text>
+              <Text style={styles.userIdText}>
+                {userInfo._id ? userInfo._id.slice(-8).toUpperCase() : ""}
               </Text>
+              <Ionicons
+                name="copy-outline"
+                size={12}
+                color="#888"
+                style={{ marginLeft: 4 }}
+              />
             </TouchableOpacity>
           )}
 
@@ -573,25 +578,22 @@ const styles = StyleSheet.create({
   userIdContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    backgroundColor: "transparent",
+    paddingVertical: 2,
+    paddingHorizontal: 0,
     marginBottom: 16,
-    maxWidth: "70%",
     alignSelf: "center",
   },
   userIdLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#888",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
   userIdText: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#333",
     fontFamily: "monospace",
-    flex: 1,
-    marginRight: 6,
+    fontWeight: "bold",
   },
   copyIcon: {
     marginLeft: 4,

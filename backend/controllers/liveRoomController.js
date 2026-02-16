@@ -2,7 +2,10 @@ const LiveRoom = require("../models/LiveRoom");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { sendNotificationToUser } = require("./pushNotificationController");
+const { uploadToCloudinary } = require("../services/cloudinaryService");
 const { v4: uuidv4 } = require("uuid");
+const fs = require("fs");
+const path = require("path");
 
 // Create a new live room
 exports.createLiveRoom = async (req, res) => {
@@ -12,9 +15,28 @@ exports.createLiveRoom = async (req, res) => {
       description,
       category,
       isPrivate,
-      coverImage,
-      scheduledFor,
+      scheduledFor, // Assuming duplicate property from body
     } = req.body;
+
+    let coverImage = req.body.coverImage || "";
+
+    // Check if file was uploaded
+    if (req.file) {
+      try {
+        const secureUrl = await uploadToCloudinary(
+          req.file.path,
+          "live-covers",
+          "image",
+        );
+        coverImage = secureUrl;
+        // Clean up local temp file
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (error) {
+        console.error("Failed to upload cover image:", error);
+      }
+    }
 
     if (!title) {
       return res.status(400).json({ message: "Title is required" });

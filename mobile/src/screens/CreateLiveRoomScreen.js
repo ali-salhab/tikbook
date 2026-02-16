@@ -10,9 +10,11 @@ import {
   ActivityIndicator,
   ImageBackground,
   Dimensions,
+  Image,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import axios from "axios";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { BASE_URL } from "../config/api";
@@ -28,6 +30,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
   const [category, setCategory] = useState("chat");
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [coverImage, setCoverImage] = useState(null);
 
   // Visual polish: Categories with gradient colors
   const categories = [
@@ -64,6 +67,20 @@ const CreateLiveRoomScreen = ({ navigation }) => {
     { id: "other", name: "Other", icon: "apps", color: ["#808080", "#696969"] },
   ];
 
+  const pickImage = async () => {
+    // No permissions request is necessary for launching the image library
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setCoverImage(result.assets[0].uri);
+    }
+  };
+
   const handleCreateRoom = async () => {
     if (!title.trim()) {
       Alert.alert("Required", "Please enter a room title");
@@ -72,16 +89,35 @@ const CreateLiveRoomScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
+      const formData = new FormData();
+      formData.append("title", title.trim());
+      formData.append("description", description.trim());
+      formData.append("category", category);
+      formData.append("isPrivate", String(isPrivate));
+
+      if (coverImage) {
+        const localUri = coverImage;
+        const filename = localUri.split('/').pop();
+
+        // Infer the type of the image
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+
+        formData.append("coverImage", {
+          uri: localUri,
+          name: filename,
+          type,
+        });
+      }
+
       const response = await axios.post(
         `${BASE_URL}/live-rooms/create`,
+        formData,
         {
-          title: title.trim(),
-          description: description.trim(),
-          category,
-          isPrivate,
-        },
-        {
-          headers: { Authorization: `Bearer ${userToken}` },
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+            "Content-Type": "multipart/form-data",
+          },
         },
       );
 
@@ -130,30 +166,49 @@ const CreateLiveRoomScreen = ({ navigation }) => {
           contentContainerStyle={styles.content}
         >
           {/* Room Cover Preview */}
-          <View style={styles.coverPreview}>
-            <View style={styles.coverPlaceholder}>
-              <Ionicons
-                name="image-outline"
-                size={40}
-                color="rgba(255,255,255,0.5)"
-              />
-              <Text style={styles.coverText}>Add Cover</Text>
+          <TouchableOpacity onPress={pickImage} activeOpacity={0.9}>
+            <View style={styles.coverPreview}>
+              {coverImage && (
+                <Image
+                  source={{ uri: coverImage }}
+                  style={[
+                    StyleSheet.absoluteFill,
+                    { width: "100%", height: "100%" },
+                  ]}
+                  resizeMode="cover"
+                />
+              )}
+
+              {!coverImage && (
+                <View style={styles.coverPlaceholder}>
+                  <Ionicons
+                    name="image-outline"
+                    size={40}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.coverText}>Add Cover</Text>
+                </View>
+              )}
+
+              {/* Spacer so the input stays at the bottom whether image exists or not */}
+              {coverImage && <View style={{ flex: 1 }} />}
+
+              <BlurView
+                intensity={20}
+                tint="dark"
+                style={styles.titleInputContainer}
+              >
+                <TextInput
+                  style={styles.titleInput}
+                  placeholder="Enter Room Title"
+                  placeholderTextColor="rgba(255,255,255,0.6)"
+                  value={title}
+                  onChangeText={setTitle}
+                  maxLength={50}
+                />
+              </BlurView>
             </View>
-            <BlurView
-              intensity={20}
-              tint="dark"
-              style={styles.titleInputContainer}
-            >
-              <TextInput
-                style={styles.titleInput}
-                placeholder="Enter Room Title"
-                placeholderTextColor="rgba(255,255,255,0.6)"
-                value={title}
-                onChangeText={setTitle}
-                maxLength={50}
-              />
-            </BlurView>
-          </View>
+          </TouchableOpacity>
 
           {/* Tags / Category */}
           <Text style={styles.sectionLabel}>Select Channel</Text>
