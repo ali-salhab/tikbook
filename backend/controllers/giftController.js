@@ -188,6 +188,14 @@ exports.getGiftHistory = async (req, res) => {
 exports.createGift = async (req, res) => {
   try {
     const { name, price, animationType: rawAnimationType } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Gift name is required",
+      });
+    }
+
     let animationUrl = "";
     let thumbnailUrl = "";
 
@@ -211,23 +219,32 @@ exports.createGift = async (req, res) => {
     }
 
     // Determine animation type
-    let animationType = rawAnimationType;
-    if (req.file.originalname.endsWith(".json")) {
+    let animationType = "lottie";
+    const originalName = req.file.originalname.toLowerCase();
+
+    if (originalName.endsWith(".json")) {
       animationType = "lottie";
-    } else if (req.file.originalname.endsWith(".gif")) {
+    } else if (originalName.endsWith(".gif")) {
       animationType = "gif";
+    } else if (originalName.endsWith(".svga")) {
+      animationType = "svga";
+    } else if (
+      rawAnimationType &&
+      ["lottie", "gif", "svga"].includes(rawAnimationType)
+    ) {
+      animationType = rawAnimationType;
     }
 
     const giftData = {
       name,
-      nameAr: name, // Default Arabic name to English name
-      price: parseInt(price),
+      nameAr: req.body.nameAr || name, // Default Arabic name to English name
+      price: parseInt(price) || 1,
       animationUrl,
       thumbnailUrl,
-      animationType: ["lottie", "gif", "svga"].includes(animationType)
-        ? animationType
-        : "lottie",
+      animationType,
       isActive: true,
+      category: req.body.category || "basic",
+      duration: parseInt(req.body.duration) || 3,
     };
 
     const gift = await Gift.create(giftData);
@@ -239,12 +256,16 @@ exports.createGift = async (req, res) => {
   } catch (error) {
     console.error("Error creating gift:", error);
     if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {
+        console.error("Error deleting temp file:", e);
+      }
     }
     res.status(500).json({
       success: false,
-      message: "Failed to create gift",
-      error: error.message,
+      message: error.message || "Failed to create gift",
+      error: error,
     });
   }
 };
@@ -253,7 +274,28 @@ exports.createGift = async (req, res) => {
 exports.updateGift = async (req, res) => {
   try {
     const { id } = req.params;
-    const gift = await Gift.findByIdAndUpdate(id, req.body, { new: true });
+    let updateData = { ...req.body };
+
+    if (req.file) {
+      const uploadedUrl = await uploadToCloudinary(
+        req.file.path,
+        "gifts",
+        "auto",
+      );
+      updateData.animationUrl = uploadedUrl;
+      updateData.thumbnailUrl = uploadedUrl;
+
+      // Determine animation type
+      if (req.file.originalname.toLowerCase().endsWith(".json")) {
+        updateData.animationType = "lottie";
+      } else if (req.file.originalname.toLowerCase().endsWith(".gif")) {
+        updateData.animationType = "gif";
+      }
+
+      fs.unlinkSync(req.file.path);
+    }
+
+    const gift = await Gift.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!gift) {
       return res.status(404).json({
@@ -268,9 +310,14 @@ exports.updateGift = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating gift:", error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
+    }
     res.status(500).json({
       success: false,
-      message: "Failed to update gift",
+      message: error.message || "Failed to update gift",
     });
   }
 };
