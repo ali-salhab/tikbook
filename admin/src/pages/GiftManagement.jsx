@@ -2,23 +2,19 @@ import React, { useEffect, useState } from "react";
 import { api, API_URL } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
-import "../styles/BadgeManagement.css"; // Reuse Badge styles for now
+import "../styles/GiftManagement.css";
+import LottiePreview from "../components/LottiePreview";
 import {
   FiUpload,
-  FiEdit,
   FiTrash2,
   FiGift,
   FiX,
-  FiCheck,
-  FiImage,
 } from "react-icons/fi";
 
 const GiftManagement = ({ onLogout }) => {
   const [gifts, setGifts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedGift, setSelectedGift] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
   const navigate = useNavigate();
@@ -29,7 +25,6 @@ const GiftManagement = ({ onLogout }) => {
     price: 10,
     type: "image", // image, lottie, frame
     imageFile: null,
-    animationType: "none", // none, lottie, gif
   });
 
   useEffect(() => {
@@ -56,9 +51,13 @@ const GiftManagement = ({ onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       setFormData({ ...formData, imageFile: file });
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
+      if (file.name.endsWith(".json") || file.type === "application/json") {
+          setImagePreview(null);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result);
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -76,7 +75,7 @@ const GiftManagement = ({ onLogout }) => {
     data.append("image", formData.imageFile);
     data.append(
       "animationType",
-      formData.imageFile.name.endsWith("json") ? "lottie" : "image",
+      formData.imageFile.name.endsWith(".json") ? "lottie" : "image",
     );
 
     try {
@@ -94,7 +93,6 @@ const GiftManagement = ({ onLogout }) => {
         price: 10,
         type: "image",
         imageFile: null,
-        animationType: "none",
       });
       setImagePreview(null);
     } catch (error) {
@@ -118,7 +116,7 @@ const GiftManagement = ({ onLogout }) => {
 
   return (
     <AdminLayout title="إدارة الهدايا" onLogout={onLogout}>
-      <div className="badge-management-container">
+      <div className="gift-management-container">
         <div className="header-actions">
           <button
             className="create-btn"
@@ -131,32 +129,39 @@ const GiftManagement = ({ onLogout }) => {
         {loading ? (
           <div className="loading-spinner">جاري التحميل...</div>
         ) : (
-          <div className="badges-grid">
+          <div className="gifts-grid">
             {gifts.map((gift) => (
-              <div key={gift._id} className="badge-card">
-                <div className="badge-image-container">
-                  <img
-                    src={gift.thumbnailUrl || gift.animationUrl}
-                    alt={gift.name}
-                    className="badge-image"
-                  />
+              <div key={gift._id} className="gift-card">
+                <div className="gift-image-container">
+                    {gift.animationType === "lottie" ? (
+                        <div className="lottie-container">
+                             <LottiePreview url={gift.animationUrl} />
+                        </div>
+                    ) : (
+                        <img
+                            src={gift.thumbnailUrl || gift.animationUrl}
+                            alt={gift.name}
+                            className="gift-image"
+                        />
+                    )}
                   {gift.animationType === "lottie" && (
-                    <span className="badge-type-tag">3D / Lottie</span>
+                    <span className="gift-type-tag">Lottie</span>
                   )}
                 </div>
-                <div className="badge-info">
+                <div className="gift-info">
                   <h3>{gift.name}</h3>
-                  <p className="badge-price">
-                    <FiGift /> {gift.price} عملة
-                  </p>
-                </div>
-                <div className="badge-actions">
-                  <button
-                    className="icon-btn delete"
-                    onClick={() => handleDeleteGift(gift._id)}
-                  >
-                    <FiTrash2 />
-                  </button>
+                  <div className="gift-meta">
+                    <span className="gift-price">
+                        <FiGift /> {gift.price} عملة
+                    </span>
+                    <button
+                        className="delete-btn"
+                        onClick={() => handleDeleteGift(gift._id)}
+                        title="حذف"
+                    >
+                        <FiTrash2 />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -175,7 +180,7 @@ const GiftManagement = ({ onLogout }) => {
                   <FiX />
                 </button>
               </div>
-              <form onSubmit={handleCreateGift}>
+              <form onSubmit={handleCreateGift} className="gift-form">
                 <div className="form-group">
                   <label>اسم الهدية</label>
                   <input
@@ -184,7 +189,7 @@ const GiftManagement = ({ onLogout }) => {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    padding="10px"
+                    placeholder="أدخل اسم الهدية..."
                     required
                   />
                 </div>
@@ -201,7 +206,7 @@ const GiftManagement = ({ onLogout }) => {
                 </div>
                 <div className="form-group">
                   <label>صورة الهدية أو ملف Lottie (JSON)</label>
-                  <div className="file-upload">
+                  <div className="file-upload-wrapper">
                     <input
                       type="file"
                       id="gift-upload"
@@ -209,19 +214,28 @@ const GiftManagement = ({ onLogout }) => {
                       onChange={handleImageChange}
                       hidden
                     />
-                    <label htmlFor="gift-upload" className="upload-label">
-                      <FiUpload /> اختر ملف
+                    <label htmlFor="gift-upload" className="upload-btn">
+                      <FiUpload /> اختر ملف الهدية
                     </label>
                   </div>
-                  {imagePreview && (
-                    <div className="image-preview">
-                      <img src={imagePreview} alt="Preview" />
-                    </div>
-                  )}
-                  {formData.imageFile && <p>{formData.imageFile.name}</p>}
+                  
+                  <div className="preview-section">
+                    {imagePreview ? (
+                        <div className="image-preview">
+                            <img src={imagePreview} alt="Preview" />
+                        </div>
+                    ) : formData.imageFile && (formData.imageFile.name.endsWith(".json") || formData.imageFile.type === "application/json") ? (
+                        <div className="lottie-preview-box">
+                             <LottiePreview file={formData.imageFile} />
+                        </div>
+                    ) : null}
+                    {formData.imageFile && (
+                        <p className="file-name">{formData.imageFile.name}</p>
+                    )}
+                  </div>
                 </div>
                 <button type="submit" className="submit-btn">
-                  حفظ
+                  حفظ الهدية
                 </button>
               </form>
             </div>
