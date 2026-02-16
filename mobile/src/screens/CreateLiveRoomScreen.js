@@ -97,7 +97,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
 
       if (coverImage) {
         const localUri = coverImage;
-        const filename = localUri.split('/').pop();
+        const filename = localUri.split("/").pop();
 
         // Infer the type of the image
         const match = /\.(\w+)$/.exec(filename);

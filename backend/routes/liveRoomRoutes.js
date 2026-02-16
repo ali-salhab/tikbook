@@ -28,7 +28,12 @@ router.get("/", getActiveLiveRooms);
 router.get("/:roomId", getLiveRoom);
 
 // Protected routes
-router.post("/create", protect, imageUpload.single("coverImage"), createLiveRoom);
+router.post(
+  "/create",
+  protect,
+  imageUpload.single("coverImage"),
+  createLiveRoom,
+);
 router.post("/:roomId/join", protect, joinLiveRoom);
 router.post("/:roomId/leave", protect, leaveLiveRoom);
 router.post("/:roomId/raise-hand", protect, raiseHand);
