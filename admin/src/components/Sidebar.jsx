@@ -68,6 +68,12 @@ const Sidebar = ({ onLogout }) => {
       path: "/badges",
     },
     {
+      id: "gifts",
+      label: "الهدايا",
+      icon: FiGift,
+      path: "/gifts",
+    },
+    {
       id: "payments",
       label: "المدفوعات",
       icon: FiCreditCard,

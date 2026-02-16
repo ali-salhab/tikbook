@@ -8,11 +8,18 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  ImageBackground,
+  Dimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const { width, height } = Dimensions.get("window");
 
 const CreateLiveRoomScreen = ({ navigation }) => {
   const { userToken } = React.useContext(AuthContext);
@@ -22,18 +29,44 @@ const CreateLiveRoomScreen = ({ navigation }) => {
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Visual polish: Categories with gradient colors
   const categories = [
-    { id: "music", name: "Music", icon: "musical-notes" },
-    { id: "chat", name: "Chat", icon: "chatbubbles" },
-    { id: "gaming", name: "Gaming", icon: "game-controller" },
-    { id: "education", name: "Education", icon: "school" },
-    { id: "business", name: "Business", icon: "briefcase" },
-    { id: "other", name: "Other", icon: "apps" },
+    {
+      id: "music",
+      name: "Music",
+      icon: "musical-notes",
+      color: ["#FF1493", "#C71585"],
+    },
+    {
+      id: "chat",
+      name: "Chat",
+      icon: "chatbubbles",
+      color: ["#00BFFF", "#1E90FF"],
+    },
+    {
+      id: "gaming",
+      name: "Gaming",
+      icon: "game-controller",
+      color: ["#32CD32", "#228B22"],
+    },
+    {
+      id: "education",
+      name: "Education",
+      icon: "school",
+      color: ["#FFD700", "#DAA520"],
+    },
+    {
+      id: "business",
+      name: "Business",
+      icon: "briefcase",
+      color: ["#A020F0", "#800080"],
+    },
+    { id: "other", name: "Other", icon: "apps", color: ["#808080", "#696969"] },
   ];
 
   const handleCreateRoom = async () => {
     if (!title.trim()) {
-      Alert.alert("Error", "Please enter a room title");
+      Alert.alert("Required", "Please enter a room title");
       return;
     }
 
@@ -68,69 +101,83 @@ const CreateLiveRoomScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={28} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Live Room</Text>
-        <View style={{ width: 28 }} />
-      </View>
+    <ImageBackground
+      source={{
+        uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop",
+      }}
+      style={styles.backgroundImage}
+      blurRadius={30}
+    >
+      <LinearGradient
+        colors={["rgba(0,0,0,0.4)", "#000"]}
+        style={styles.gradientOverlay}
+      />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Title */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Room Title *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter room title..."
-            placeholderTextColor="#666"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={50}
-          />
-          <Text style={styles.helperText}>{title.length}/50</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.closeButton}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Create Live Room</Text>
+          <View style={{ width: 40 }} />
         </View>
 
-        {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="What's this room about?"
-            placeholderTextColor="#666"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            maxLength={200}
-          />
-          <Text style={styles.helperText}>{description.length}/200</Text>
-        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+        >
+          {/* Room Cover Preview */}
+          <View style={styles.coverPreview}>
+            <View style={styles.coverPlaceholder}>
+              <Ionicons
+                name="image-outline"
+                size={40}
+                color="rgba(255,255,255,0.5)"
+              />
+              <Text style={styles.coverText}>Add Cover</Text>
+            </View>
+            <BlurView
+              intensity={20}
+              tint="dark"
+              style={styles.titleInputContainer}
+            >
+              <TextInput
+                style={styles.titleInput}
+                placeholder="Enter Room Title"
+                placeholderTextColor="rgba(255,255,255,0.6)"
+                value={title}
+                onChangeText={setTitle}
+                maxLength={50}
+              />
+            </BlurView>
+          </View>
 
-        {/* Category */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Category</Text>
+          {/* Tags / Category */}
+          <Text style={styles.sectionLabel}>Select Channel</Text>
           <View style={styles.categoriesGrid}>
             {categories.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
-                style={[
-                  styles.categoryButton,
-                  category === cat.id && styles.categoryButtonActive,
-                ]}
                 onPress={() => setCategory(cat.id)}
+                style={styles.categoryWrapper}
               >
-                <Ionicons
-                  name={cat.icon}
-                  size={24}
-                  color={category === cat.id ? "#fff" : "#666"}
-                />
+                <LinearGradient
+                  colors={
+                    category === cat.id
+                      ? cat.color
+                      : ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]
+                  }
+                  style={styles.categoryButton}
+                >
+                  <Ionicons name={cat.icon} size={20} color="#FFF" />
+                </LinearGradient>
                 <Text
                   style={[
-                    styles.categoryButtonText,
-                    category === cat.id && styles.categoryButtonTextActive,
+                    styles.categoryText,
+                    category === cat.id && styles.categoryTextActive,
                   ]}
                 >
                   {cat.name}
@@ -138,207 +185,204 @@ const CreateLiveRoomScreen = ({ navigation }) => {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
 
-        {/* Privacy */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.privacyRow}
-            onPress={() => setIsPrivate(!isPrivate)}
-          >
-            <View style={styles.privacyInfo}>
+          {/* Privacy Toggle */}
+          <View style={styles.privacyContainer}>
+            <View style={styles.privacyLeft}>
               <Ionicons
-                name={isPrivate ? "lock-closed" : "globe"}
-                size={24}
-                color="#fff"
+                name={isPrivate ? "lock-closed" : "globe-outline"}
+                size={22}
+                color="#FFF"
               />
-              <View style={styles.privacyText}>
+              <View>
                 <Text style={styles.privacyTitle}>
                   {isPrivate ? "Private Room" : "Public Room"}
                 </Text>
-                <Text style={styles.privacyDescription}>
-                  {isPrivate
-                    ? "Only invited users can join"
-                    : "Anyone can discover and join"}
+                <Text style={styles.privacySub}>
+                  {isPrivate ? "Invite only" : "Anyone can join"}
                 </Text>
               </View>
             </View>
-            <View style={[styles.toggle, isPrivate && styles.toggleActive]}>
-              <View
-                style={[
-                  styles.toggleThumb,
-                  isPrivate && styles.toggleThumbActive,
-                ]}
+            <TouchableOpacity onPress={() => setIsPrivate(!isPrivate)}>
+              <Ionicons
+                name={isPrivate ? "toggle" : "toggle-outline"}
+                size={36}
+                color={isPrivate ? "#FF4444" : "#FFF"}
               />
-            </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Start Button */}
+          <TouchableOpacity
+            onPress={handleCreateRoom}
+            disabled={loading}
+            style={styles.startBtnContainer}
+          >
+            <LinearGradient
+              colors={["#FF1493", "#C71585"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.startButton}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.startText}>Go Live</Text>
+                  <Ionicons name="radio-outline" size={20} color="#FFF" />
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
-
-        {/* Create Button */}
-        <TouchableOpacity
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
-          onPress={handleCreateRoom}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="radio" size={20} color="#fff" />
-              <Text style={styles.createButtonText}>Start Live Room</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+  gradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#000",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1a1a1a",
+    paddingVertical: 10,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
   },
   headerTitle: {
-    fontSize: 18,
+    color: "#FFF",
+    fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
   },
   content: {
+    padding: 20,
+    paddingBottom: 50,
+  },
+  coverPreview: {
+    height: 180,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 30,
+    overflow: "hidden",
+    justifyContent: "space-between",
+  },
+  coverPlaceholder: {
     flex: 1,
-    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
   },
-  section: {
-    marginTop: 24,
+  coverText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 14,
   },
-  label: {
+  titleInputContainer: {
+    padding: 15,
+  },
+  titleInput: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFF",
+  },
+  sectionLabel: {
+    color: "#FFF",
     fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#fff",
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
-  helperText: {
-    fontSize: 12,
-    color: "#666",
-    textAlign: "right",
-    marginTop: 6,
+    marginBottom: 15,
   },
   categoriesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 15,
+    justifyContent: "space-between",
+    marginBottom: 30,
+  },
+  categoryWrapper: {
+    alignItems: "center",
+    width: "30%",
+    marginBottom: 10,
   },
   categoryButton: {
-    width: "31%",
-    aspectRatio: 1,
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  categoryButtonActive: {
-    backgroundColor: "#ff4444",
-    borderColor: "#ff4444",
-  },
-  categoryButtonText: {
+  categoryText: {
+    color: "rgba(255,255,255,0.5)",
     fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
   },
-  categoryButtonTextActive: {
-    color: "#fff",
+  categoryTextActive: {
+    color: "#FFF",
+    fontWeight: "bold",
   },
-  privacyRow: {
+  privacyContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#1a1a1a",
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 40,
   },
-  privacyInfo: {
+  privacyLeft: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    gap: 12,
-  },
-  privacyText: {
-    flex: 1,
+    gap: 15,
   },
   privacyTitle: {
-    fontSize: 16,
+    color: "#FFF",
+    fontSize: 15,
     fontWeight: "600",
-    color: "#fff",
-    marginBottom: 4,
   },
-  privacyDescription: {
-    fontSize: 13,
-    color: "#666",
+  privacySub: {
+    color: "#CCC",
+    fontSize: 12,
   },
-  toggle: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#333",
-    padding: 2,
+  startBtnContainer: {
+    marginTop: 20,
   },
-  toggleActive: {
-    backgroundColor: "#ff4444",
-  },
-  toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-  },
-  toggleThumbActive: {
-    marginLeft: 22,
-  },
-  createButton: {
+  startButton: {
     flexDirection: "row",
-    backgroundColor: "#ff4444",
-    padding: 18,
-    borderRadius: 12,
+    height: 55,
+    borderRadius: 27.5,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 32,
-    gap: 8,
+    gap: 10,
+    shadowColor: "#FF1493",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  createButtonDisabled: {
-    opacity: 0.6,
-  },
-  createButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  startText: {
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
 

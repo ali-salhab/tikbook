@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -6,46 +6,76 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  ActivityIndicator,
+  Dimensions,
   RefreshControl,
+  ScrollView,
+  StatusBar,
+  ImageBackground,
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import {
+  Ionicons,
+  MaterialIcons,
+  Feather,
+  FontAwesome5,
+} from "@expo/vector-icons";
 import axios from "axios";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width } = Dimensions.get("window");
+
+const MOCK_STORIES = [
+  { id: 1, name: "eman", avatar: "https://i.pravatar.cc/150?u=1" },
+  { id: 2, name: "User2", avatar: "https://i.pravatar.cc/150?u=2" },
+  { id: 3, name: "User3", avatar: "https://i.pravatar.cc/150?u=3" },
+  { id: 4, name: "User4", avatar: "https://i.pravatar.cc/150?u=4" },
+  { id: 5, name: "User5", avatar: "https://i.pravatar.cc/150?u=5" },
+];
+
+const MOCK_FILTERS = [
+  { id: "destinations", name: "الوجهات", icon: "star", color: "#4CAF50" }, // Green
+  {
+    id: "saudi",
+    name: "المملكة العربية السعودية",
+    icon: "flag",
+    color: "#196F3D",
+  }, // KSA Flag logic simplified
+  { id: "uae", name: "الإمارات", icon: "flag", color: "#000" },
+  { id: "egypt", name: "مصر", icon: "flag", color: "#CE1126" },
+];
 
 const LiveRoomsListScreen = ({ navigation }) => {
-  const { userToken } = React.useContext(AuthContext);
+  const { userToken } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   const [liveRooms, setLiveRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  const categories = [
-    { id: "all", name: "All", icon: "apps" },
-    { id: "music", name: "Music", icon: "musical-notes" },
-    { id: "chat", name: "Chat", icon: "chatbubbles" },
-    { id: "gaming", name: "Gaming", icon: "game-controller" },
-    { id: "education", name: "Education", icon: "school" },
-    { id: "business", name: "Business", icon: "briefcase" },
-  ];
+  const [activeTab, setActiveTab] = useState("popular"); // 'all', 'nearby', 'popular'
+  const [activeFilter, setActiveFilter] = useState("all");
 
   useEffect(() => {
     fetchLiveRooms();
-  }, [selectedCategory]);
+  }, [activeTab]);
 
   const fetchLiveRooms = async () => {
     try {
+      // In a real app, you would pass activeTab to the API
       const response = await axios.get(`${BASE_URL}/live-rooms`, {
-        params: { category: selectedCategory },
+        params: { category: "all" }, // Default to all for now
         headers: { Authorization: `Bearer ${userToken}` },
       });
 
       if (response.data.success) {
         setLiveRooms(response.data.data);
+      } else {
+        // Fallback or mock if empty
+        setLiveRooms([]);
       }
     } catch (error) {
       console.error("Error fetching live rooms:", error);
+      // setLiveRooms([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,140 +95,192 @@ const LiveRoomsListScreen = ({ navigation }) => {
     navigation.navigate("LiveRoom", { roomId: room.roomId });
   };
 
-  const renderCategoryItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryChip,
-        selectedCategory === item.id && styles.categoryChipActive,
-      ]}
-      onPress={() => setSelectedCategory(item.id)}
-    >
-      <Ionicons
-        name={item.icon}
-        size={18}
-        color={selectedCategory === item.id ? "#fff" : "#666"}
-      />
-      <Text
-        style={[
-          styles.categoryText,
-          selectedCategory === item.id && styles.categoryTextActive,
-        ]}
-      >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
+  // ─── RENDER HELPERS ─────────────────────────────────────────────────────────
+
+  const renderHeader = () => (
+    <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
+      {/* Left Icon (Home/Green House) */}
+      <TouchableOpacity style={styles.iconButton} onPress={handleCreateRoom}>
+        <View style={styles.createButtonContainer}>
+          <Ionicons name="add" size={16} color="#FFF" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Center Tabs */}
+      <View style={styles.tabsContainer}>
+        {["الكل", "المجاورون", "شعبي"].map((tab) => {
+          const tabKey =
+            tab === "شعبي" ? "popular" : tab === "المجاورون" ? "nearby" : "all";
+          const isActive = activeTab === tabKey;
+          return (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tabKey)}
+              style={styles.tabItem}
+            >
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab}
+              </Text>
+              {isActive && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Right Icon (Search) */}
+      <TouchableOpacity style={styles.iconButton}>
+        <Ionicons name="search" size={24} color="#333" />
+      </TouchableOpacity>
+    </View>
   );
 
-  const renderLiveRoomItem = ({ item }) => {
-    const participantCount =
-      item.speakers?.length + item.listeners?.length || 0;
+  const renderStories = () => (
+    <View style={styles.storiesSection}>
+      <View style={styles.storiesHeader}>
+        <TouchableOpacity style={styles.viewAllButton}>
+          <Ionicons name="chevron-back" size={16} color="#999" />
+          <Text style={styles.viewAllText}>الكل</Text>
+        </TouchableOpacity>
+        <Text style={styles.storiesTitle}>قد تكون مهتما</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.storiesList}
+      >
+        {MOCK_STORIES.map((story) => (
+          <TouchableOpacity key={story.id} style={styles.storyItem}>
+            <View style={styles.storyAvatarContainer}>
+              <Image
+                source={{ uri: story.avatar }}
+                style={styles.storyAvatar}
+              />
+              <View style={styles.liveBadgeSmall}>
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+            </View>
+            <Text style={styles.storyName} numberOfLines={1}>
+              {story.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  const renderFilters = () => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.filterScroll}
+      contentContainerStyle={styles.filterContent}
+    >
+      {MOCK_FILTERS.map((filter) => (
+        <TouchableOpacity key={filter.id} style={styles.filterChip}>
+          {filter.id === "destinations" ? (
+            <View
+              style={[
+                styles.filterIconContainer,
+                { backgroundColor: "#D4EDDA" },
+              ]}
+            >
+              <FontAwesome5 name="star" size={12} color="#28A745" />
+            </View>
+          ) : (
+            <Text size={16} style={{ marginRight: 4 }}>
+              🇸🇦
+            </Text> // Placeholder for flags
+          )}
+          <Text style={styles.filterText}>{filter.name}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+
+  const renderRoomItem = ({ item }) => {
+    // Generate random stats for demo purposes if not present
+    const viewers =
+      item.participantCount || Math.floor(Math.random() * 200) + 50;
+    const category = item.category || "عشوائي";
 
     return (
       <TouchableOpacity
         style={styles.roomCard}
         onPress={() => handleJoinRoom(item)}
+        activeOpacity={0.9}
       >
-        {/* Host Image */}
-        <Image
+        <ImageBackground
           source={{
-            uri: item.host?.avatar || "https://via.placeholder.com/100",
+            uri: item.host?.avatar || "https://via.placeholder.com/300",
           }}
-          style={styles.hostImage}
-        />
+          style={styles.roomImage}
+          imageStyle={{ borderRadius: 12 }}
+        >
+          {/* Overlay Gradient */}
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.6)"]}
+            style={styles.cardGradient}
+          />
 
-        {/* Live Badge */}
-        <View style={styles.liveBadge}>
-          <MaterialIcons name="circle" size={8} color="#ff4444" />
-          <Text style={styles.liveText}>LIVE</Text>
-        </View>
+          {/* Top Left Badge (Viewers) */}
+          <View style={styles.viewerBadge}>
+            <Ionicons name="person" size={10} color="#FFF" />
+            <Text style={styles.viewerCount}>{viewers}</Text>
+          </View>
 
-        {/* Room Info */}
-        <View style={styles.roomInfo}>
-          <View style={styles.roomHeader}>
-            <Text style={styles.roomTitle} numberOfLines={1}>
-              {item.title}
+          {/* Special Banner (Optional) */}
+          {Math.random() > 0.7 && (
+            <View style={styles.specialBanner}>
+              <Text style={styles.specialBannerText}>LUDO</Text>
+            </View>
+          )}
+
+          {/* Bottom Info */}
+          <View style={styles.cardBottom}>
+            <Text style={styles.hostName} numberOfLines={1}>
+              {item.host?.username || "Unknown"}
             </Text>
-            {item.host?.isVerified && (
-              <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" />
-            )}
-          </View>
-
-          <Text style={styles.hostName} numberOfLines={1}>
-            @{item.host?.username}
-          </Text>
-
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Ionicons name="people" size={14} color="#666" />
-              <Text style={styles.statText}>{participantCount}</Text>
-            </View>
-
-            <View style={styles.statItem}>
-              <Ionicons name="mic" size={14} color="#666" />
-              <Text style={styles.statText}>{item.speakers?.length || 0}</Text>
-            </View>
-
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.category}</Text>
+            <View style={styles.categoryPill}>
+              <Text style={styles.categoryText}>{category}</Text>
             </View>
           </View>
-        </View>
+        </ImageBackground>
+
+        {/* Caption below card */}
+        <Text style={styles.roomCaption} numberOfLines={1}>
+          {item.title || "انضم للمشاهدة الآن!"}
+        </Text>
       </TouchableOpacity>
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#ff4444" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Live Rooms</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleCreateRoom}
-        >
-          <Ionicons name="add-circle" size={28} color="#ff4444" />
-        </TouchableOpacity>
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      {renderHeader()}
 
-      {/* Categories */}
-      <FlatList
-        data={categories}
-        renderItem={renderCategoryItem}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoriesList}
-        contentContainerStyle={styles.categoriesContent}
-      />
-
-      {/* Live Rooms Grid */}
       <FlatList
         data={liveRooms}
-        renderItem={renderLiveRoomItem}
+        renderItem={renderRoomItem}
         keyExtractor={(item) => item._id}
         numColumns={2}
-        contentContainerStyle={styles.roomsList}
-        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <>
+            {renderStories()}
+            {renderFilters()}
+          </>
+        }
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={styles.columnWrapper}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="radio" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>No live rooms available</Text>
-            <Text style={styles.emptySubtext}>
-              Be the first to start a room!
-            </Text>
-          </View>
+          !loading && (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>لا يوجد بث مباشر حالياً</Text>
+            </View>
+          )
         }
       />
     </View>
@@ -208,152 +290,246 @@ const LiveRoomsListScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#F8F8F8",
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
-  },
-  header: {
+  headerContainer: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: 10,
+    backgroundColor: "#FFF",
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
+  iconButton: {
+    padding: 8,
   },
-  createButton: {
+  createButtonContainer: {
+    backgroundColor: "#2ECC71", // Green add button
     padding: 4,
+    borderRadius: 8,
   },
-  categoriesList: {
-    maxHeight: 50,
+  tabsContainer: {
+    flexDirection: "row-reverse", // Arabic alignment
+    gap: 20,
   },
-  categoriesContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  categoryChip: {
-    flexDirection: "row",
+  tabItem: {
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 4,
-    borderRadius: 20,
-    backgroundColor: "#1a1a1a",
-    gap: 6,
+    paddingVertical: 6,
   },
-  categoryChipActive: {
-    backgroundColor: "#ff4444",
-  },
-  categoryText: {
-    fontSize: 14,
+  tabText: {
+    fontSize: 16,
     color: "#666",
-    fontWeight: "600",
+    fontWeight: "500",
   },
-  categoryTextActive: {
-    color: "#fff",
-  },
-  roomsList: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-  },
-  roomCard: {
-    flex: 1,
-    margin: 8,
-    borderRadius: 16,
-    backgroundColor: "#1a1a1a",
-    overflow: "hidden",
-  },
-  hostImage: {
-    width: "100%",
-    height: 140,
-    backgroundColor: "#2a2a2a",
-  },
-  liveBadge: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  liveText: {
-    color: "#fff",
-    fontSize: 11,
+  tabTextActive: {
+    color: "#000",
     fontWeight: "bold",
+    fontSize: 17,
   },
-  roomInfo: {
-    padding: 12,
+  tabIndicator: {
+    height: 3,
+    width: 20,
+    backgroundColor: "#2ECC71", // Green indicator
+    marginTop: 4,
+    borderRadius: 2,
   },
-  roomHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  roomTitle: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: "#fff",
-    flex: 1,
-  },
-  hostName: {
-    fontSize: 13,
-    color: "#999",
+
+  // Stories
+  storiesSection: {
+    backgroundColor: "#FFF",
+    paddingVertical: 12,
     marginBottom: 8,
   },
-  statsRow: {
+  storiesHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  storiesTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FF4081", // Pinkish as in screenshot
+  },
+  viewAllButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
   },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  statText: {
+  viewAllText: {
     fontSize: 12,
     color: "#999",
   },
-  categoryBadge: {
-    marginLeft: "auto",
+  storiesList: {
+    paddingHorizontal: 12,
+    flexDirection: "row-reverse", // RTL list
+  },
+  storyItem: {
+    alignItems: "center",
+    marginHorizontal: 8,
+    width: 60,
+  },
+  storyAvatarContainer: {
+    position: "relative",
+    marginBottom: 4,
+  },
+  storyAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: "#FF4081", // Pink border
+  },
+  liveBadgeSmall: {
+    position: "absolute",
+    bottom: -2,
+    alignSelf: "center",
+    backgroundColor: "#FF4081",
+    paddingHorizontal: 4,
+    borderRadius: 4,
+  },
+  liveBadgeText: {
+    color: "#FFF",
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  storyName: {
+    fontSize: 11,
+    color: "#333",
+    textAlign: "center",
+  },
+
+  // Filters
+  filterScroll: {
+    marginBottom: 12,
+  },
+  filterContent: {
+    paddingHorizontal: 12,
+    flexDirection: "row-reverse", // RTL
+  },
+  filterChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#EEE",
+  },
+  filterText: {
+    fontSize: 13,
+    color: "#333",
+    marginRight: 6,
+  },
+  filterIconContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Rooms Grid
+  listContent: {
+    paddingBottom: 80,
+  },
+  columnWrapper: {
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    flexDirection: "row-reverse", // RTL Grid
+  },
+  roomCard: {
+    width: (width - 32) / 2,
+    marginBottom: 16,
+  },
+  roomImage: {
+    width: "100%",
+    height: 200, // Taller image
+    borderRadius: 12,
+    justifyContent: "space-between",
+    overflow: "hidden",
+  },
+  cardGradient: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+  },
+  viewerBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
+    zIndex: 1,
+  },
+  viewerCount: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  specialBanner: {
+    position: "absolute",
+    top: 30,
+    left: 0,
+    backgroundColor: "#FFD700", // Gold/Yellow
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 8,
-    backgroundColor: "#2a2a2a",
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    zIndex: 1,
   },
-  categoryBadgeText: {
+  specialBannerText: {
+    color: "#000",
     fontSize: 10,
-    color: "#999",
-    textTransform: "capitalize",
+    fontWeight: "bold",
+  },
+  cardBottom: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    padding: 8,
+  },
+  hostName: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "bold",
+    flex: 1,
+    textAlign: "right",
+    marginRight: 4,
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  categoryPill: {
+    backgroundColor: "#2ECC71", // Green pill
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  categoryText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  roomCaption: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#333",
+    textAlign: "right", // Arabic
+    fontWeight: "500",
   },
   emptyContainer: {
+    padding: 40,
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
   },
   emptyText: {
-    fontSize: 18,
-    color: "#666",
-    marginTop: 16,
-    fontWeight: "600",
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#444",
-    marginTop: 8,
+    color: "#999",
+    fontSize: 16,
   },
 });
 

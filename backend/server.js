@@ -205,11 +205,19 @@ io.on("connection", (socket) => {
 
   // Send gift in live room
   socket.on("liveroom:send_gift", ({ roomId, gift, sender }) => {
-    console.log(`Gift sent in room ${roomId} by ${sender.username}`);
-
     io.to(`liveroom:${roomId}`).emit("liveroom:gift_received", {
       gift,
       sender,
+      timestamp: new Date(),
+    });
+  });
+
+  // Chat message in live room
+  socket.on("liveroom:send_message", ({ roomId, message, user }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:message_received", {
+      message,
+      user,
+      id: Date.now().toString(),
       timestamp: new Date(),
     });
   });

@@ -1,197 +1,295 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   Image,
-  Alert,
-  Modal,
-  ImageBackground,
   Dimensions,
+  ImageBackground,
+  StatusBar,
+  Animated,
+  Alert,
+  Platform,
   TextInput,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
-import * as ImagePicker from "expo-image-picker";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  Feather,
+  MaterialIcons,
+  FontAwesome5,
+} from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
 import io from "socket.io-client";
-import { BASE_URL } from "../config/api";
-import { AuthContext } from "../context/AuthContext";
-import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
-import RoomManagementModal from "../components/RoomManagementModal";
-import MusicPlayerControl from "../components/MusicPlayerControl";
-import liveRoomService from "../services/liveRoomService";
+import {
+  createAgoraRtcEngine,
+  ChannelProfileType,
+  ClientRoleType,
+} from "react-native-agora";
+import { Permission, PermissionsAndroid } from "react-native";
 
+import { BASE_URL, AGORA_APP_ID } from "../config/api";
+import { AuthContext } from "../context/AuthContext";
+import RoomManagementModal from "../components/RoomManagementModal";
+import AnimatedGift from "../components/AnimatedGift";
+import FloatingComments from "../components/FloatingComments";
+
+// Get screen dimensions
 const { width, height } = Dimensions.get("window");
+const SEAT_SIZE = 60;
+const HOST_SIZE = 100;
 
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
 const LiveRoomScreen = ({ route, navigation }) => {
-  const { userToken, userInfo } = React.useContext(AuthContext);
+  const { userToken, userInfo } = useContext(AuthContext);
   const { roomId } = route.params;
+  const insets = useSafeAreaInsets();
+
+  // State
   const [room, setRoom] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Default to muted
   const [isHandRaised, setIsHandRaised] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
-  const [roomBackground, setRoomBackground] = useState(null);
-  const [showMusicPlayer, setShowMusicPlayer] = useState(false);
   const [showManagementModal, setShowManagementModal] = useState(false);
-  const [musicPlayer, setMusicPlayer] = useState({
-    isPlaying: false,
-    currentTrack: "",
-    trackName: "",
-    volume: 50,
-  });
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [joinedAgora, setJoinedAgora] = useState(false);
+
+  // Chat & Gifts
+  const [messages, setMessages] = useState([]);
+  const [activeGift, setActiveGift] = useState(null);
+  const [activeGifts, setActiveGifts] = useState([]); // Array of { id, gift, sender }
+  const [inputText, setInputText] = useState("");
+  const [showInput, setShowInput] = useState(false);
+  const inputRef = useRef(null);
+
+  // Animation Values
+  const glowAnim = useRef(new Animated.Value(1)).current;
+
+  // Refs
   const socketRef = useRef(null);
-  const joinSoundRef = useRef(null);
+  const agoraEngineRef = useRef(null);
+
+  // ─── EFFECTS ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     loadCurrentUser();
-    joinRoom();
-    setupSocket();
-    loadJoinSound();
+    setupRoom();
+    startGlowAnimation();
 
     return () => {
-      leaveRoom();
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-      if (joinSoundRef.current) {
-        joinSoundRef.current.unloadAsync();
-      }
+      cleanup();
     };
   }, []);
 
-  const loadJoinSound = async () => {
+  const loadCurrentUser = () => {
+    if (userInfo) setCurrentUser(userInfo);
+  };
+
+  const startGlowAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1.2,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  };
+
+  const setupRoom = async () => {
+    await requestPermissions();
+    await joinRoomBackend(); // Join via API to get room details
+    // setupSocket() called inside joinRoomBackend after room is fetched
+  };
+
+  const requestPermissions = async () => {
+    if (Platform.OS === "android") {
+      await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      ]);
+    }
+  };
+
+  const cleanup = async () => {
+    await leaveRoomBackend();
+    if (socketRef.current) socketRef.current.disconnect();
+    if (agoraEngineRef.current) {
+      agoraEngineRef.current.leaveChannel();
+      agoraEngineRef.current.release();
+    }
+  };
+
+  // ─── AGORA LOGIC ─────────────────────────────────────────────────────────────
+
+  const initAgora = async (channelName, uid, isHostOrSpeaker) => {
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        {
-          uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
-        },
-        { shouldPlay: false, volume: 0.5 },
+      if (!AGORA_APP_ID) {
+        console.warn("Agora App ID missing");
+        return;
+      }
+
+      const engine = createAgoraRtcEngine();
+      agoraEngineRef.current = engine;
+
+      engine.initialize({ appId: AGORA_APP_ID });
+      engine.enableAudio();
+
+      // Set Channel Profile to Live Broadcasting
+      engine.setChannelProfile(
+        ChannelProfileType.ChannelProfileLiveBroadcasting,
       );
-      joinSoundRef.current = sound;
-    } catch (error) {
-      console.log("Could not load join sound:", error);
+
+      // Set Client Role
+      // Hosts/Speakers are Broadcasters, Listeners are Audience
+      const role = isHostOrSpeaker
+        ? ClientRoleType.ClientRoleBroadcaster
+        : ClientRoleType.ClientRoleAudience;
+      engine.setClientRole(role);
+
+      // Listener handles
+      engine.addListener("onJoinChannelSuccess", (connection, elapsed) => {
+        console.log("Successfully joined Agora channel:", connection.channelId);
+        setJoinedAgora(true);
+      });
+
+      engine.addListener("onUserJoined", (connection, remoteUid, elapsed) => {
+        console.log("Remote user joined:", remoteUid);
+      });
+
+      engine.addListener("onUserOffline", (connection, remoteUid, reason) => {
+        console.log("Remote user left:", remoteUid);
+      });
+
+      // Join Channel
+      // Note: Using null token implies App ID only authentication (development mode)
+      // For production, fetch token from your backend
+      const token = null;
+
+      // Use numeric ID for Agora if possible, or 0 to let Agora assign one.
+      // However, to map users on UI, we usually need a consistent ID.
+      // Assuming uid is a number or 0. If MongoDB _id (string), we might pass 0 and map via headers/signaling.
+      // For simplicity here: passing 0 (Agora assigns UID)
+      engine.joinChannel(token, channelName, 0, {});
+
+      // Set Initial Mute State
+      engine.muteLocalAudioStream(true); // Always start muted
+      setIsMuted(true);
+    } catch (e) {
+      console.error("Agora Init Error:", e);
     }
   };
 
-  const playJoinSound = async () => {
-    try {
-      if (joinSoundRef.current) {
-        await joinSoundRef.current.replayAsync();
-      }
-    } catch (error) {
-      console.log("Could not play join sound:", error);
+  const updateAgoraRole = async (isBroadcaster) => {
+    if (!agoraEngineRef.current) return;
+
+    const role = isBroadcaster
+      ? ClientRoleType.ClientRoleBroadcaster
+      : ClientRoleType.ClientRoleAudience;
+    agoraEngineRef.current.setClientRole(role);
+
+    if (isBroadcaster) {
+      // If becoming a speaker/host, obey current mute state
+      agoraEngineRef.current.muteLocalAudioStream(isMuted);
     }
   };
 
-  const loadCurrentUser = async () => {
-    try {
-      if (userInfo) {
-        setCurrentUser(userInfo);
-      }
-    } catch (error) {
-      console.error("Error loading user:", error);
+  const toggleAgoraMute = (muted) => {
+    if (agoraEngineRef.current) {
+      agoraEngineRef.current.muteLocalAudioStream(muted);
     }
+    setIsMuted(muted);
   };
 
-  const setupSocket = () => {
+  // ─── BACKEND & SOCKET LOGIC ──────────────────────────────────────────────────
+
+  const setupSocket = (roomData) => {
     socketRef.current = io(SOCKET_URL);
 
-    socketRef.current.on("connect", () => {
-      console.log("Socket connected");
+    // Join Socket Room
+    socketRef.current.emit("liveroom:join", {
+      roomId,
+      userId: userInfo._id,
+      user: userInfo,
     });
 
-    // Listen for live room events
-    socketRef.current.on("liveroom:user_joined", ({ user }) => {
-      fetchRoomData();
-      playJoinSound();
-    });
-
-    socketRef.current.on("liveroom:user_left", ({ userId }) => {
-      fetchRoomData();
-    });
-
+    socketRef.current.on("liveroom:user_joined", () => fetchRoomData());
     socketRef.current.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();
+      if (user._id === userInfo._id) {
+        Alert.alert("You are now a speaker!");
+        updateAgoraRole(true);
+      }
     });
 
     socketRef.current.on("liveroom:speaker_removed", ({ userId }) => {
       fetchRoomData();
-      if (currentUser && userId === currentUser._id) {
-        Alert.alert("Notice", "You have been removed as a speaker");
-      }
-    });
-
-    socketRef.current.on("liveroom:hand_raised", ({ user }) => {
-      fetchRoomData();
-    });
-
-    socketRef.current.on("liveroom:mute_toggled", ({ userId, isMuted }) => {
-      fetchRoomData();
-    });
-
-    socketRef.current.on("liveroom:user_kicked", ({ userId, kickedBy }) => {
-      if (currentUser && userId === currentUser._id) {
-        Alert.alert("تم طردك", `تم طردك من الغرفة بواسطة ${kickedBy}`, [
-          {
-            text: "حسناً",
-            onPress: () => navigation.goBack(),
-          },
-        ]);
-      } else {
-        fetchRoomData();
+      if (userId === userInfo._id) {
+        Alert.alert("You have been moved to listeners");
+        updateAgoraRole(false);
+        setIsMuted(true);
+        toggleAgoraMute(true);
       }
     });
 
     socketRef.current.on(
-      "liveroom:user_banned",
-      ({ userId, bannedBy, reason }) => {
-        if (currentUser && userId === currentUser._id) {
-          Alert.alert(
-            "تم حظرك",
-            `تم حظرك من الغرفة بواسطة ${bannedBy}${reason ? `\n\nالسبب: ${reason}` : ""}`,
-            [
-              {
-                text: "حسناً",
-                onPress: () => navigation.goBack(),
-              },
-            ],
-          );
-        } else {
-          fetchRoomData();
-        }
+      "liveroom:mute_toggled",
+      ({ userId, isMuted: muted }) => {
+        fetchRoomData(); // Update UI icons
       },
     );
 
-    socketRef.current.on("liveroom:moderator_assigned", ({ userId }) => {
-      if (currentUser && userId === currentUser._id) {
-        Alert.alert("تهانينا", "تم تعيينك كمسؤول في هذه الغرفة");
-      }
-      fetchRoomData();
-    });
-
-    socketRef.current.on(
-      "liveroom:music_updated",
-      ({ musicPlayer: updatedMusicPlayer }) => {
-        setMusicPlayer(updatedMusicPlayer);
-      },
-    );
-
+    socketRef.current.on("liveroom:hand_raised", () => fetchRoomData());
     socketRef.current.on("liveroom:ended", () => {
       Alert.alert("Room Ended", "The host has ended this live room", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     });
+
+    // Chat & Gift Listeners
+    socketRef.current.on("liveroom:message_received", (msgData) => {
+      setMessages((prev) => [...prev, msgData].slice(-30));
+    });
+
+    socketRef.current.on("liveroom:gift_received", ({ gift, sender }) => {
+      // Add to animated queue
+      const giftId = Date.now().toString() + Math.random();
+      setActiveGifts((prev) => [...prev, { id: giftId, gift, sender }]);
+
+      // Add to chat as system message
+      setMessages((prev) =>
+        [
+          ...prev,
+          {
+            id: giftId,
+            user: sender,
+            message: `sent a ${gift.name}!`,
+            isSystem: true,
+            giftUrl: gift.thumbnailUrl,
+          },
+        ].slice(-30),
+      );
+    });
   };
 
-  const joinRoom = async () => {
+  const joinRoomBackend = async () => {
     try {
       const response = await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/join`,
@@ -201,15 +299,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       if (response.data.success) {
         setRoom(response.data.data);
+        const rData = response.data.data;
 
-        // Emit socket event
-        if (userInfo) {
-          socketRef.current?.emit("liveroom:join", {
-            roomId,
-            userId: userInfo._id,
-            user: userInfo,
-          });
-        }
+        // Initialize Agora
+        const isHost = rData.host._id === userInfo._id;
+        const isSpeaker = rData.speakers.some(
+          (s) => s.user._id === userInfo._id,
+        );
+
+        initAgora(
+          rData.agoraChannelName || `room_${roomId}`,
+          0,
+          isHost || isSpeaker,
+        );
+        setupSocket(rData);
       }
     } catch (error) {
       console.error("Error joining room:", error);
@@ -225,7 +328,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
       const response = await axios.get(`${BASE_URL}/live-rooms/${roomId}`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-
       if (response.data.success) {
         setRoom(response.data.data);
       }
@@ -234,7 +336,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     }
   };
 
-  const leaveRoom = async () => {
+  const leaveRoomBackend = async () => {
     try {
       await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/leave`,
@@ -242,16 +344,64 @@ const LiveRoomScreen = ({ route, navigation }) => {
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
-      if (currentUser) {
-        socketRef.current?.emit("liveroom:leave", {
+      // Notify socket
+      if (socketRef.current) {
+        socketRef.current.emit("liveroom:leave", {
           roomId,
-          userId: currentUser._id,
-          user: currentUser,
+          userId: userInfo._id,
         });
       }
     } catch (error) {
       console.error("Error leaving room:", error);
     }
+  };
+
+  const handleToggleMute = async () => {
+    const newMuteState = !isMuted;
+
+    // Update Agora
+    toggleAgoraMute(newMuteState);
+
+    // Update Backend/UI
+    try {
+      await axios.post(
+        `${BASE_URL}/live-rooms/${roomId}/toggle-mute`,
+        {},
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+
+      socketRef.current?.emit("liveroom:toggle_mute", {
+        roomId,
+        userId: userInfo._id,
+        isMuted: newMuteState,
+      });
+    } catch (error) {
+      console.error("Error/Mute sync:", error);
+    }
+  };
+
+  const handleSendMessage = () => {
+    if (!inputText.trim()) return;
+
+    if (socketRef.current) {
+      socketRef.current.emit("liveroom:send_message", {
+        roomId,
+        message: inputText.trim(),
+        user: userInfo,
+      });
+    }
+
+    setInputText("");
+    setShowInput(false);
+    Keyboard.dismiss();
+  };
+
+  const handleRemoveGift = (id) => {
+    setActiveGifts((prev) => prev.filter((g) => g.id !== id));
+  };
+
+  const handleRemoveComment = (id) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
   };
 
   const handleRaiseHand = async () => {
@@ -265,7 +415,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         setIsHandRaised(false);
         socketRef.current?.emit("liveroom:lower_hand", {
           roomId,
-          userId: currentUser._id,
+          userId: userInfo._id,
         });
       } else {
         await axios.post(
@@ -274,637 +424,338 @@ const LiveRoomScreen = ({ route, navigation }) => {
           { headers: { Authorization: `Bearer ${userToken}` } },
         );
         setIsHandRaised(true);
+        Alert.alert("Hand Raised", "Host has been notified.");
         socketRef.current?.emit("liveroom:raise_hand", {
           roomId,
-          userId: currentUser._id,
-          user: currentUser,
+          userId: userInfo._id,
         });
       }
     } catch (error) {
-      console.error("Error toggling hand:", error);
-      Alert.alert("Error", error.response?.data?.message || "Action failed");
+      Alert.alert("Error", "Failed to raise hand");
     }
   };
 
-  const handleToggleMute = async () => {
-    try {
-      const response = await axios.post(
-        `${BASE_URL}/live-rooms/${roomId}/toggle-mute`,
-        {},
-        { headers: { Authorization: `Bearer ${userToken}` } },
-      );
+  // ─── UI COMPONENTS ───────────────────────────────────────────────────────────
 
-      if (response.data.success) {
-        setIsMuted(response.data.isMuted);
-        socketRef.current?.emit("liveroom:toggle_mute", {
-          roomId,
-          userId: currentUser._id,
-          isMuted: response.data.isMuted,
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling mute:", error);
-      Alert.alert("Error", error.response?.data?.message || "Action failed");
-    }
-  };
+  const Header = () => (
+    <View style={[styles.header, { marginTop: insets.top }]}>
+      <TouchableOpacity
+        style={styles.powerButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Feather name="power" size={20} color="#FFF" />
+      </TouchableOpacity>
 
-  const handleMakeSpeaker = async (userId) => {
-    try {
-      const response = await axios.post(
-        `${BASE_URL}/live-rooms/${roomId}/make-speaker`,
-        { userId },
-        { headers: { Authorization: `Bearer ${userToken}` } },
-      );
+      <View style={styles.roomInfoContainer}>
+        <MaterialCommunityIcons
+          name="broadcast"
+          size={16}
+          color="#00F2EA"
+          style={{ marginRight: 4 }}
+        />
+        <Text style={styles.roomTitle}>{room?.title || "Live Room"}</Text>
+      </View>
 
-      if (response.data.success) {
-        fetchRoomData();
-        const user = room.handRaised.find((h) => h.user._id === userId)?.user;
-        socketRef.current?.emit("liveroom:make_speaker", {
-          roomId,
-          userId,
-          user,
-        });
-      }
-    } catch (error) {
-      console.error("Error making speaker:", error);
-      Alert.alert("Error", error.response?.data?.message || "Action failed");
-    }
-  };
+      <View style={styles.userCountBadge}>
+        <Ionicons name="person" size={12} color="#FFF" />
+        <Text style={styles.userCountText}>{room?.listeners?.length || 0}</Text>
+      </View>
 
-  const handleEndRoom = () => {
-    Alert.alert("End Live Room", "Are you sure you want to end this room?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "End Room",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await axios.post(
-              `${BASE_URL}/live-rooms/${roomId}/end`,
-              {},
-              { headers: { Authorization: `Bearer ${userToken}` } },
-            );
+      <View style={styles.topUserCard}>
+        <Image
+          source={{
+            uri:
+              userInfo?.profileImage ||
+              userInfo?.avatar ||
+              "https://i.pravatar.cc/100",
+          }}
+          style={styles.topUserAvatar}
+        />
+        <View style={styles.topUserInfo}>
+          <Text style={styles.topUserName} numberOfLines={1}>
+            {userInfo?.username || "Guest"}
+          </Text>
+          <Text style={styles.topUserId}>
+            ID:{userInfo?._id ? userInfo._id.slice(-6).toUpperCase() : "..."}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.followButtonSmall}>
+          <Feather name="plus" size={12} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
-            socketRef.current?.emit("liveroom:end", { roomId });
-            navigation.goBack();
-          } catch (error) {
-            console.error("Error ending room:", error);
-            Alert.alert("Error", "Could not end room");
-          }
-        },
-      },
-    ]);
-  };
+  const HostAvatar = () => (
+    <View style={styles.hostContainer}>
+      <Animated.View
+        style={[styles.glowRing, { transform: [{ scale: glowAnim }] }]}
+      />
+      <View style={styles.hostImageWrapper}>
+        <Image
+          source={{
+            uri:
+              room?.host?.avatar ||
+              room?.host?.profileImage ||
+              "https://i.pravatar.cc/300",
+          }}
+          style={styles.hostImage}
+        />
+        <View style={styles.verifiedBadge}>
+          <MaterialIcons name="check" size={12} color="#FFF" />
+        </View>
+      </View>
 
-  const handleChangeBackground = async () => {
-    if (!isHost) return;
+      <View style={styles.hostNameContainer}>
+        <Text style={styles.hostName}>{room?.host?.username || "Host"}</Text>
+        <TouchableOpacity style={styles.followPill}>
+          <Feather name="plus" size={14} color="#000" />
+          <Text style={styles.followText}>Follow</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Required", "Please grant access to your photos");
-      return;
-    }
+  const Seat = ({ index, speaker }) => {
+    const user = speaker?.user;
+    return (
+      <View style={styles.seatContainer}>
+        <View style={styles.seatCircle}>
+          {user ? (
+            <Image
+              source={{
+                uri:
+                  user.profileImage ||
+                  user.avatar ||
+                  "https://i.pravatar.cc/150",
+              }}
+              style={styles.seatImage}
+            />
+          ) : (
+            <Feather
+              name="plus"
+              size={24}
+              color="#FFF"
+              style={{ opacity: 0.7 }}
+            />
+          )}
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [9, 16],
-      quality: 0.8,
-    });
+          <View style={styles.seatNumberBadge}>
+            <Text style={styles.seatNumberText}>{index + 1}</Text>
+          </View>
 
-    if (!result.canceled && result.assets[0]) {
-      setRoomBackground(result.assets[0].uri);
-      Alert.alert("Success", "Background changed successfully!");
-    }
-  };
-
-  const handleRemoveSpeaker = async (userId) => {
-    if (!isHost) return;
-
-    Alert.alert(
-      "Remove Speaker",
-      "Are you sure you want to remove this speaker?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await axios.post(
-                `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
-                { userId },
-                { headers: { Authorization: `Bearer ${userToken}` } },
-              );
-
-              if (response.data.success) {
-                fetchRoomData();
-                socketRef.current?.emit("liveroom:remove_speaker", {
-                  roomId,
-                  userId,
-                });
-              }
-            } catch (error) {
-              console.error("Error removing speaker:", error);
-              Alert.alert("Error", "Could not remove speaker");
-            }
-          },
-        },
-      ],
+          {speaker?.isMuted && (
+            <View style={styles.mutedBadge}>
+              <Ionicons name="mic-off" size={10} color="#FFF" />
+            </View>
+          )}
+        </View>
+        <Text style={styles.seatUserName} numberOfLines={1}>
+          {user ? user.username : index + 1}
+        </Text>
+      </View>
     );
   };
 
-  const isHost = currentUser && room?.host?._id === currentUser._id;
-  const isSpeaker =
-    currentUser && room?.speakers?.some((s) => s.user._id === currentUser._id);
-  const isModerator =
-    currentUser &&
-    room?.moderators?.some((m) => m.user._id === currentUser._id);
-
-  // Room management handlers
-  const handleKickUser = async (userId) => {
-    try {
-      const response = await liveRoomService.kickUser(room._id, userId);
-      if (response.success) {
-        socketRef.current?.emit("liveroom:kick_user", {
-          roomId: room._id,
-          userId,
-          kickedBy: userInfo.username,
-        });
-        Alert.alert("تم", "تم طرد المستخدم بنجاح");
-        joinRoom(); // Refresh room data
-      }
-    } catch (error) {
-      console.error("Error kicking user:", error);
-      Alert.alert("خطأ", "فشل في طرد المستخدم");
-    }
-  };
-
-  const handleBanUser = async (userId, reason) => {
-    try {
-      const response = await liveRoomService.banUser(room._id, userId, reason);
-      if (response.success) {
-        socketRef.current?.emit("liveroom:ban_user", {
-          roomId: room._id,
-          userId,
-          bannedBy: userInfo.username,
-          reason,
-        });
-        Alert.alert("تم", "تم حظر المستخدم بنجاح");
-        joinRoom();
-      }
-    } catch (error) {
-      console.error("Error banning user:", error);
-      Alert.alert("خطأ", "فشل في حظر المستخدم");
-    }
-  };
-
-  const handleUnbanUser = async (userId) => {
-    try {
-      const response = await liveRoomService.unbanUser(room._id, userId);
-      if (response.success) {
-        Alert.alert("تم", "تم إلغاء حظر المستخدم");
-        joinRoom();
-      }
-    } catch (error) {
-      console.error("Error unbanning user:", error);
-      Alert.alert("خطأ", "فشل في إلغاء الحظر");
-    }
-  };
-
-  const handleAssignModerator = async (userId) => {
-    try {
-      const response = await liveRoomService.assignModerator(room._id, userId);
-      if (response.success) {
-        socketRef.current?.emit("liveroom:assign_moderator", {
-          roomId: room._id,
-          userId,
-          assignedBy: userInfo.username,
-        });
-        Alert.alert("تم", "تم تعيين المستخدم كمسؤول");
-        joinRoom();
-      }
-    } catch (error) {
-      console.error("Error assigning moderator:", error);
-      Alert.alert("خطأ", "فشل في تعيين المسؤول");
-    }
-  };
-
-  const handleRemoveModerator = async (userId) => {
-    try {
-      const response = await liveRoomService.removeModerator(room._id, userId);
-      if (response.success) {
-        socketRef.current?.emit("liveroom:remove_moderator", {
-          roomId: room._id,
-          userId,
-        });
-        Alert.alert("تم", "تم إزالة المسؤول");
-        joinRoom();
-      }
-    } catch (error) {
-      console.error("Error removing moderator:", error);
-      Alert.alert("خطأ", "فشل في إزالة المسؤول");
-    }
-  };
-
-  const handleControlMusic = async (action, trackUrl, trackName, volume) => {
-    try {
-      const response = await liveRoomService.controlMusic(room._id, {
-        action,
-        trackUrl,
-        trackName,
-        volume,
-      });
-
-      if (response.success) {
-        setMusicPlayer(response.musicPlayer);
-
-        socketRef.current?.emit("liveroom:music_control", {
-          roomId: room._id,
-          action,
-          musicPlayer: response.musicPlayer,
-        });
-      }
-    } catch (error) {
-      console.error("Error controlling music:", error);
-      Alert.alert("خطأ", "فشل في التحكم في الموسيقى");
-    }
-  };
-
-  // Create 8 fixed seats with positions
-  const getSeatPositions = () => {
-    const centerX = width / 2;
-    const centerY = height * 0.4;
-    const radius = width * 0.32;
-
-    return [
-      { x: centerX, y: centerY - radius - 20, position: 1 }, // Top
-      { x: centerX + radius * 0.7, y: centerY - radius * 0.7, position: 2 }, // Top Right
-      { x: centerX + radius, y: centerY, position: 3 }, // Right
-      { x: centerX + radius * 0.7, y: centerY + radius * 0.7, position: 4 }, // Bottom Right
-      { x: centerX, y: centerY + radius + 20, position: 5 }, // Bottom
-      { x: centerX - radius * 0.7, y: centerY + radius * 0.7, position: 6 }, // Bottom Left
-      { x: centerX - radius, y: centerY, position: 7 }, // Left
-      { x: centerX - radius * 0.7, y: centerY - radius * 0.7, position: 8 }, // Top Left
-    ];
-  };
-
-  const renderSeat = (seatPosition, index) => {
-    const speaker = room?.speakers?.[index];
-    const isEmpty = !speaker;
+  const SeatGrid = () => {
+    const speakers = room?.speakers || [];
+    const slots = Array(8)
+      .fill(null)
+      .map((_, i) => speakers[i] || null);
 
     return (
-      <View
-        key={index}
-        style={[
-          styles.seatContainer,
-          {
-            position: "absolute",
-            left: seatPosition.x - 40,
-            top: seatPosition.y - 40,
-          },
-        ]}
-      >
-        {isEmpty ? (
-          <TouchableOpacity
-            style={styles.emptySeat}
-            onPress={() => {
-              console.log("Empty seat pressed", {
-                isHost,
-                isSpeaker,
-                handRaisedCount: room.handRaised?.length,
-              });
-              if (isHost && room.handRaised?.length > 0) {
-                handleMakeSpeaker(room.handRaised[0].user._id);
-              } else if (!isSpeaker && !isHost) {
-                handleRaiseHand();
-              } else if (isHost) {
-                Alert.alert(
-                  "No Hands Raised",
-                  "No listeners have raised their hand to speak",
-                );
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="add" size={28} color="#666" />
-            <Text style={styles.seatNumber}>{seatPosition.position}</Text>
+      <View style={styles.gridContainer}>
+        <View style={styles.seatRow}>
+          {[0, 1, 2, 3].map((i) => (
+            <Seat key={i} index={3 - i} speaker={slots[3 - i]} />
+          ))}
+        </View>
+        <View style={styles.seatRow}>
+          {[4, 5, 6, 7].map((i) => (
+            <Seat key={i} index={7 - (i - 4)} speaker={slots[7 - (i - 4)]} />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const BottomBar = () => {
+    // Check if current user is speaker or host
+    const isHost = room?.host?._id === currentUser?._id;
+    const isSpeaker = room?.speakers?.some(
+      (s) => s.user._id === currentUser?._id,
+    );
+    const isSpeakerOrHost = isHost || isSpeaker;
+
+    return (
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={styles.bottomLeftActions}>
+          <TouchableOpacity style={styles.levelBadge}>
+            <FontAwesome5 name="shield-alt" size={12} color="#FFF" />
+            <Text style={styles.levelText}>LV1</Text>
           </TouchableOpacity>
-        ) : (
+        </View>
+
+        <View style={styles.bottomRightActions}>
+          {isSpeakerOrHost ? (
+            <TouchableOpacity
+              style={styles.iconActionBtn}
+              onPress={handleToggleMute}
+            >
+              <Ionicons
+                name={isMuted ? "mic-off" : "mic"}
+                size={24}
+                color={isMuted ? "#FF4444" : "#FFF"}
+              />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.iconActionBtn}
+              onPress={handleRaiseHand}
+            >
+              <Ionicons
+                name={isHandRaised ? "hand-right" : "hand-right-outline"}
+                size={24}
+                color={isHandRaised ? "#FFFF00" : "#FFF"}
+              />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            style={styles.occupiedSeat}
+            style={styles.iconActionBtn}
             onPress={() => {
-              if (isHost && speaker.user._id !== currentUser._id) {
-                handleRemoveSpeaker(speaker.user._id);
-              }
+              setShowInput(true);
+              setTimeout(() => inputRef.current?.focus(), 100);
             }}
-            onLongPress={() => {
-              Alert.alert(
-                speaker.user?.username || "Speaker",
-                `Mic: ${speaker.isMuted ? "Muted" : "Unmuted"}\n${speaker.user?.isVerified ? "✓ Verified" : ""}`,
-              );
-            }}
-            activeOpacity={0.8}
           >
-            <View style={styles.seatAvatarContainer}>
-              {speaker.user?.profileImage || speaker.user?.avatar ? (
-                <Image
-                  source={{
-                    uri: speaker.user?.profileImage || speaker.user?.avatar,
-                  }}
-                  style={styles.seatAvatar}
-                />
-              ) : (
-                <View style={styles.seatAvatarPlaceholder}>
-                  <Ionicons name="person" size={40} color="#666" />
-                </View>
-              )}
-              <View
-                style={[
-                  styles.micIndicator,
-                  speaker.isMuted && styles.micMuted,
-                ]}
-              >
-                <Ionicons
-                  name={speaker.isMuted ? "mic-off" : "mic"}
-                  size={14}
-                  color="#fff"
-                />
-              </View>
-              {speaker.user?.isVerified && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={18} color="#1DA1F2" />
-                </View>
-              )}
-            </View>
-            <Text style={styles.seatUsername} numberOfLines={1}>
-              {speaker.user?.username}
-            </Text>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={24}
+              color="#FFF"
+            />
           </TouchableOpacity>
-        )}
+
+          <TouchableOpacity
+            style={styles.giftButton}
+            onPress={() => setShowGiftModal(true)}
+          >
+            <LinearGradient
+              colors={["#A020F0", "#FF00FF"]}
+              style={styles.giftButtonGradient}
+            >
+              <Ionicons name="gift" size={24} color="#FFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconActionBtn}
+            onPress={() => setShowManagementModal(true)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
 
   if (loading || !room) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.loadingText}>Loading room...</Text>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text style={{ color: "#FFF" }}>Loading...</Text>
       </View>
     );
   }
 
-  const allParticipants = [
-    ...room.speakers.map((s) => ({ user: s.user, type: "speaker" })),
-    ...room.listeners.map((l) => ({ user: l.user, type: "listener" })),
-  ];
-
-  const seatPositions = getSeatPositions();
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
       <ImageBackground
         source={{
-          uri:
-            roomBackground ||
-            room.host?.activeBackground?.imageUrl ||
-            room.backgroundImage ||
-            "https://via.placeholder.com/1080x1920/1a1a1a/ffffff?text=Live+Room",
+          uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop",
         }}
-        style={styles.container}
-        resizeMode="cover"
+        style={styles.backgroundImage}
+        blurRadius={5}
       >
-        {/* Dark overlay for readability */}
-        <View style={styles.overlay} />
+        <LinearGradient
+          colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.8)", "#000"]}
+          style={styles.gradientOverlay}
+        />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-down" size={32} color="#fff" />
-          </TouchableOpacity>
+        <SafeAreaView style={styles.contentContainer} edges={["left", "right"]}>
+          <Header />
 
-          <View style={styles.headerCenter}>
-            <View style={styles.liveBadge}>
-              <MaterialCommunityIcons name="circle" size={8} color="#ff4444" />
-              <Text style={styles.liveText}>LIVE</Text>
+          <View style={styles.currencyBar}>
+            <View style={styles.currencyItem}>
+              <Text style={styles.currencyText}>Rec</Text>
+              <Ionicons name="recording" size={14} color="#FF4444" />
+            </View>
+            <View style={styles.currencyItem}>
+              <Text style={styles.currencyText}>Gift</Text>
+              <Ionicons name="gift" size={14} color="#D8BFD8" />
             </View>
           </View>
 
-          {isHost && (
-            <TouchableOpacity onPress={handleEndRoom}>
-              <Ionicons name="close-circle" size={28} color="#ff4444" />
+          <HostAvatar />
+
+          <SeatGrid />
+
+          {/* Floating Comments Overlay */}
+          <FloatingComments
+            comments={messages}
+            removeComment={handleRemoveComment}
+          />
+
+          {/* Animated Gifts Overlay */}
+          {activeGifts.map((data) => (
+            <AnimatedGift
+              key={data.id}
+              gift={data.gift}
+              sender={data.sender}
+              onComplete={() => handleRemoveGift(data.id)}
+            />
+          ))}
+        </SafeAreaView>
+
+        {!showInput && <BottomBar />}
+
+        {showInput && (
+          <View
+            style={[styles.inputContainer, { paddingBottom: insets.bottom }]}
+          >
+            <TextInput
+              ref={inputRef}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Say something..."
+              placeholderTextColor="#AAA"
+              style={styles.input}
+              onSubmitEditing={handleSendMessage}
+              returnKeyType="send"
+              autoFocus
+            />
+            <TouchableOpacity onPress={handleSendMessage}>
+              <Ionicons name="send" size={24} color="#00BFFF" />
             </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Room Info */}
-        <View style={styles.roomInfo}>
-          <Text style={styles.roomTitle}>{room.title}</Text>
-          <Text style={styles.roomHost}>Hosted by @{room.host?.username}</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Ionicons name="people" size={16} color="#999" />
-              <Text style={styles.statText}>{allParticipants.length}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="mic" size={16} color="#999" />
-              <Text style={styles.statText}>{room.speakers?.length}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Host/Room Info Center */}
-        <View style={styles.centerInfoContainer}>
-          <View style={styles.hostAvatarContainer}>
-            <ProfileBadgeFrame
-              profileImage={room.host?.avatar || room.host?.profileImage}
-              badgeImage={room.host?.activeBadge?.imageUrl}
-              size={100}
-            />
-            {room.host?.isVerified && (
-              <View style={styles.hostVerifiedBadge}>
-                <Ionicons name="checkmark-circle" size={22} color="#1DA1F2" />
-              </View>
-            )}
-          </View>
-          <Text style={styles.hostName}>@{room.host?.username}</Text>
-          <View style={styles.centerStats}>
-            <View style={styles.centerStatItem}>
-              <Ionicons name="people" size={18} color="#fff" />
-              <Text style={styles.centerStatText}>
-                {allParticipants.length}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 8 Seats in Circle */}
-        <View style={styles.seatsContainer}>
-          {seatPositions.map((pos, idx) => renderSeat(pos, idx))}
-        </View>
-
-        {/* Listeners List at Bottom */}
-        {room.listeners?.length > 0 && (
-          <View style={styles.listenersContainer}>
-            <FlatList
-              horizontal
-              data={room.listeners}
-              renderItem={({ item }) => (
-                <View style={styles.listenerItem}>
-                  <Image
-                    source={{
-                      uri:
-                        item.user?.avatar || "https://via.placeholder.com/40",
-                    }}
-                    style={styles.listenerAvatar}
-                  />
-                </View>
-              )}
-              keyExtractor={(item, index) =>
-                `listener-${item.user._id}-${index}`
-              }
-              showsHorizontalScrollIndicator={false}
-            />
+            <TouchableOpacity onPress={() => setShowInput(false)}>
+              <Ionicons name="close-circle" size={24} color="#FFF" />
+            </TouchableOpacity>
           </View>
         )}
-
-        {/* Hand Raised List (for host) */}
-        {isHost && room.handRaised?.length > 0 && (
-          <View style={styles.handRaisedContainer}>
-            <Text style={styles.handRaisedTitle}>
-              Hand Raised ({room.handRaised.length})
-            </Text>
-            <FlatList
-              horizontal
-              data={room.handRaised}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.handRaisedItem}
-                  onPress={() => handleMakeSpeaker(item.user._id)}
-                >
-                  <Image
-                    source={{
-                      uri:
-                        item.user?.avatar || "https://via.placeholder.com/40",
-                    }}
-                    style={styles.handRaisedAvatar}
-                  />
-                  <Ionicons
-                    name="hand-right"
-                    size={16}
-                    color="#ffaa00"
-                    style={styles.handIcon}
-                  />
-                </TouchableOpacity>
-              )}
-              keyExtractor={(item) => item.user._id}
-              showsHorizontalScrollIndicator={false}
-            />
-          </View>
-        )}
-
-        {/* Controls */}
-        <View style={styles.controls}>
-          {isSpeaker && (
-            <TouchableOpacity
-              style={[styles.controlButton, isMuted && styles.mutedButton]}
-              onPress={handleToggleMute}
-            >
-              <Ionicons
-                name={isMuted ? "mic-off" : "mic"}
-                size={24}
-                color="#fff"
-              />
-            </TouchableOpacity>
-          )}
-
-          {!isSpeaker && !isHost && (
-            <TouchableOpacity
-              style={[
-                styles.controlButton,
-                isHandRaised && styles.handRaisedButton,
-              ]}
-              onPress={handleRaiseHand}
-            >
-              <Ionicons name="hand-right" size={24} color="#fff" />
-            </TouchableOpacity>
-          )}
-
-          {isHost && (
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={handleChangeBackground}
-            >
-              <Ionicons name="image" size={24} color="#fff" />
-            </TouchableOpacity>
-          )}
-
-          {/* Music Player Button */}
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={() => setShowMusicPlayer(true)}
-          >
-            <Ionicons
-              name="musical-notes"
-              size={24}
-              color={musicPlayer?.isPlaying ? "#FFD700" : "#fff"}
-            />
-          </TouchableOpacity>
-
-          {/* Room Management Button (Host & Moderators only) */}
-          {(isHost || isModerator) && (
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={() => setShowManagementModal(true)}
-            >
-              <Ionicons name="settings" size={24} color="#fff" />
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={styles.leaveButton}
-            onPress={() => {
-              leaveRoom();
-              navigation.goBack();
-            }}
-          >
-            <Text style={styles.leaveButtonText}>Leave</Text>
-          </TouchableOpacity>
-        </View>
       </ImageBackground>
 
-      {/* Room Management Modal */}
       <RoomManagementModal
         visible={showManagementModal}
         onClose={() => setShowManagementModal(false)}
-        participants={[
-          ...(room?.speakers?.map((s) => ({ user: s.user, type: "speaker" })) ||
-            []),
-          ...(room?.listeners?.map((l) => ({
-            user: l.user,
-            type: "listener",
-          })) || []),
-        ]}
-        moderators={room?.moderators || []}
-        bannedUsers={room?.bannedUsers || []}
-        isHost={isHost}
-        currentUserId={currentUser?._id}
-        onKickUser={handleKickUser}
-        onBanUser={handleBanUser}
-        onUnbanUser={handleUnbanUser}
-        onAssignModerator={handleAssignModerator}
-        onRemoveModerator={handleRemoveModerator}
+        roomId={roomId}
+        isHost={room?.host?._id === userInfo?._id}
       />
-
-      {/* Music Player Control */}
-      <MusicPlayerControl
-        visible={showMusicPlayer}
-        onClose={() => setShowMusicPlayer(false)}
-        musicPlayer={musicPlayer}
-        onControlMusic={handleControlMusic}
-        isHost={isHost}
-      />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -913,283 +764,317 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  centerContainer: {
+  backgroundImage: {
+    width: width,
+    height: height,
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
   },
-  loadingText: {
-    color: "#fff",
-    fontSize: 16,
+  gradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  contentContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
+    height: 60,
   },
-  headerCenter: {
-    flex: 1,
+  powerButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  liveBadge: {
+  roomInfoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 68, 68, 0.2)",
+    backgroundColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  liveText: {
-    color: "#ff4444",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  roomInfo: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    alignItems: "center",
+    borderRadius: 20,
+    position: "absolute",
+    left: width / 2 - 60,
   },
   roomTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  roomHost: {
-    fontSize: 14,
-    color: "#999",
-    marginBottom: 12,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statText: {
-    fontSize: 14,
-    color: "#999",
-  },
-  centerInfoContainer: {
-    position: "absolute",
-    top: height * 0.25,
-    width: width,
-    alignItems: "center",
-    zIndex: 1,
-  },
-  hostAvatarContainer: {
-    position: "relative",
-    marginBottom: 12,
-  },
-  hostVerifiedBadge: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    backgroundColor: "#000",
-    borderRadius: 12,
-  },
-  hostName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  centerStats: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  centerStatItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  centerStatText: {
-    fontSize: 14,
-    color: "#fff",
+    color: "#FFF",
     fontWeight: "600",
+    fontSize: 14,
   },
-  seatsContainer: {
-    flex: 1,
-    position: "relative",
-  },
-  seatContainer: {
-    width: 80,
-    height: 100,
-    alignItems: "center",
-  },
-  emptySeat: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.2)",
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  seatNumber: {
+  userCountBadge: {
     position: "absolute",
-    bottom: -20,
+    left: 80,
+    top: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  userCountText: {
+    color: "#FFF",
     fontSize: 12,
-    color: "#666",
     fontWeight: "bold",
   },
-  occupiedSeat: {
+  topUserCard: {
+    flexDirection: "row-reverse",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    padding: 4,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  seatAvatarContainer: {
-    position: "relative",
-    marginBottom: 4,
-  },
-  seatAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#2a2a2a",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  seatAvatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#2a2a2a",
-    borderWidth: 2,
-    borderColor: "#666",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  micIndicator: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    backgroundColor: "#4CAF50",
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  micMuted: {
-    backgroundColor: "#ff4444",
-  },
-  verifiedBadge: {
-    position: "absolute",
-    top: 2,
-    right: 2,
-    backgroundColor: "#000",
-    borderRadius: 10,
-  },
-  seatUsername: {
-    fontSize: 11,
-    color: "#fff",
-    textAlign: "center",
-    maxWidth: 80,
-    fontWeight: "500",
-  },
-  listenersContainer: {
-    position: "absolute",
-    bottom: 100,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  listenerItem: {
-    marginRight: 8,
-  },
-  listenerAvatar: {
+  topUserAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#2a2a2a",
+    borderWidth: 1,
+    borderColor: "#FFF",
+  },
+  topUserInfo: {
+    marginHorizontal: 8,
+    alignItems: "flex-end",
+    maxWidth: 80,
+  },
+  topUserName: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 12,
+    textAlign: "right",
+  },
+  topUserId: {
+    color: "#CCC",
+    fontSize: 10,
+  },
+  followButtonSmall: {
+    backgroundColor: "#00BFFF",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  currencyBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    marginTop: 10,
+    gap: 8,
+  },
+  currencyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  currencyText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  hostContainer: {
+    alignItems: "center",
+    marginTop: 40,
+  },
+  hostImageWrapper: {
+    width: HOST_SIZE,
+    height: HOST_SIZE,
+    borderRadius: HOST_SIZE / 2,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  hostImage: {
+    width: HOST_SIZE - 4,
+    height: HOST_SIZE - 4,
+    borderRadius: (HOST_SIZE - 4) / 2,
+  },
+  glowRing: {
+    position: "absolute",
+    width: HOST_SIZE + 30,
+    height: HOST_SIZE + 30,
+    borderRadius: (HOST_SIZE + 30) / 2,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    zIndex: -1,
+  },
+  verifiedBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#2ECC71",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
     borderColor: "#000",
   },
-  handRaisedContainer: {
-    backgroundColor: "#1a1a1a",
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-  },
-  handRaisedTitle: {
-    color: "#ffaa00",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  handRaisedItem: {
-    marginRight: 12,
-    position: "relative",
-  },
-  handRaisedAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#2a2a2a",
-  },
-  handIcon: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    backgroundColor: "#000",
-    borderRadius: 10,
-    padding: 2,
-  },
-  controls: {
-    flexDirection: "row",
-    justifyContent: "center",
+  hostNameContainer: {
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 16,
-    backgroundColor: "#1a1a1a",
+    marginTop: -10,
+    zIndex: 1,
   },
-  controlButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#333",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  mutedButton: {
-    backgroundColor: "#ff4444",
-  },
-  handRaisedButton: {
-    backgroundColor: "#ffaa00",
-  },
-  leaveButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 28,
-    backgroundColor: "#ff4444",
-  },
-  leaveButtonText: {
-    color: "#fff",
+  hostName: {
+    color: "#FFF",
+    fontWeight: "bold",
     fontSize: 16,
-    fontWeight: "600",
+    marginTop: 16,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  followPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginTop: 8,
+    gap: 4,
+  },
+  followText: {
+    color: "#000",
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+  gridContainer: {
+    marginTop: 40,
+    paddingHorizontal: 20,
+  },
+  seatRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  seatContainer: {
+    alignItems: "center",
+    width: SEAT_SIZE + 10,
+  },
+  seatCircle: {
+    width: SEAT_SIZE,
+    height: SEAT_SIZE,
+    borderRadius: SEAT_SIZE / 2,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  seatImage: {
+    width: SEAT_SIZE,
+    height: SEAT_SIZE,
+    borderRadius: SEAT_SIZE / 2,
+  },
+  seatNumberBadge: {
+    position: "absolute",
+    bottom: -6,
+    backgroundColor: "transparent",
+  },
+  seatNumberText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "bold",
+    opacity: 0.8,
+  },
+  seatUserName: {
+    color: "#FFF",
+    fontSize: 10,
+    marginTop: 8,
+    textAlign: "center",
+    opacity: 0.9,
+  },
+  mutedBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#FF4444",
+    padding: 2,
+    borderRadius: 8,
+  },
+  bottomBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  bottomLeftActions: {
+    gap: 12,
+  },
+  levelBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2ECC71",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  levelText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  bottomRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  iconActionBtn: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  giftButton: {
+    marginBottom: 4,
+  },
+  giftButtonGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.8)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
+  input: {
+    flex: 1,
+    color: "#FFF",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 10,
   },
 });
 

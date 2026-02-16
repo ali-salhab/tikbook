@@ -1,7 +1,27 @@
-import React from "react";
-import { View, Image, StyleSheet } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Image, StyleSheet, Animated, Easing } from "react-native";
 
 const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (badgeImage) {
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 8000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ).start();
+    }
+  }, [badgeImage]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
   const styles = StyleSheet.create({
     container: {
       width: size,
@@ -41,9 +61,9 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
 
       {/* Badge Frame Overlay - Transparent PNG */}
       {badgeImage && (
-        <Image
+        <Animated.Image
           source={{ uri: badgeImage }}
-          style={styles.badgeFrame}
+          style={[styles.badgeFrame, { transform: [{ rotate: spin }] }]}
           resizeMode="contain"
         />
       )}
