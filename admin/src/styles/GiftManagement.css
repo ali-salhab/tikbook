@@ -66,6 +66,7 @@
   justify-content: center;
   padding: 16px;
   position: relative;
+  overflow: hidden;
 }
 
 .gift-image {
@@ -77,6 +78,14 @@
 .lottie-container {
   width: 100%;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lottie-container > div {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .gift-type-tag {
@@ -94,6 +103,9 @@
 .gift-info {
   padding: 16px;
   border-top: 1px solid #f3f4f6;
+  position: relative;
+  z-index: 10;
+  background-color: white;
 }
 
 .gift-info h3 {
