@@ -92,7 +92,8 @@ const GiftManagement = ({ onLogout }) => {
       setImagePreview(null);
     } catch (error) {
       console.error("Error creating gift:", error);
-      alert("Failed to create gift");
+      const message = error.response?.data?.message || "Failed to create gift";
+      alert(message);
     }
   };
 

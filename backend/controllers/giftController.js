@@ -3,6 +3,8 @@ const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const { LiveRoom } = require("../models/LiveRoom");
+const { uploadToCloudinary } = require("../services/cloudinaryService");
+const fs = require("fs");
 
 // Get all active gifts
 exports.getGifts = async (req, res) => {
@@ -185,16 +187,64 @@ exports.getGiftHistory = async (req, res) => {
 // Admin: Create a gift
 exports.createGift = async (req, res) => {
   try {
-    const gift = await Gift.create(req.body);
+    const { name, price, animationType: rawAnimationType } = req.body;
+    let animationUrl = "";
+    let thumbnailUrl = "";
+
+    if (req.file) {
+      // Upload to Cloudinary
+      const uploadedUrl = await uploadToCloudinary(
+        req.file.path,
+        "gifts",
+        "auto",
+      );
+      animationUrl = uploadedUrl;
+      thumbnailUrl = uploadedUrl; // Use same for thumbnail if it's Lottie or Gif
+
+      // Clean up local file
+      fs.unlinkSync(req.file.path);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Gift file is required",
+      });
+    }
+
+    // Determine animation type
+    let animationType = rawAnimationType;
+    if (req.file.originalname.endsWith(".json")) {
+      animationType = "lottie";
+    } else if (req.file.originalname.endsWith(".gif")) {
+      animationType = "gif";
+    }
+
+    const giftData = {
+      name,
+      nameAr: name, // Default Arabic name to English name
+      price: parseInt(price),
+      animationUrl,
+      thumbnailUrl,
+      animationType: ["lottie", "gif", "svga"].includes(animationType)
+        ? animationType
+        : "lottie",
+      isActive: true,
+    };
+
+    const gift = await Gift.create(giftData);
+
     res.status(201).json({
       success: true,
       gift,
     });
   } catch (error) {
     console.error("Error creating gift:", error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     res.status(500).json({
       success: false,
       message: "Failed to create gift",
+      error: error.message,
     });
   }
 };
