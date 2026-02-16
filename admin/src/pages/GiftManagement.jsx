@@ -4,12 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import "../styles/GiftManagement.css";
 import LottiePreview from "../components/LottiePreview";
-import {
-  FiUpload,
-  FiTrash2,
-  FiGift,
-  FiX,
-} from "react-icons/fi";
+import { FiUpload, FiTrash2, FiGift, FiX } from "react-icons/fi";
 
 const GiftManagement = ({ onLogout }) => {
   const [gifts, setGifts] = useState([]);
@@ -52,7 +47,7 @@ const GiftManagement = ({ onLogout }) => {
     if (file) {
       setFormData({ ...formData, imageFile: file });
       if (file.name.endsWith(".json") || file.type === "application/json") {
-          setImagePreview(null);
+        setImagePreview(null);
       } else {
         const reader = new FileReader();
         reader.onloadend = () => setImagePreview(reader.result);
@@ -133,17 +128,17 @@ const GiftManagement = ({ onLogout }) => {
             {gifts.map((gift) => (
               <div key={gift._id} className="gift-card">
                 <div className="gift-image-container">
-                    {gift.animationType === "lottie" ? (
-                        <div className="lottie-container">
-                             <LottiePreview url={gift.animationUrl} />
-                        </div>
-                    ) : (
-                        <img
-                            src={gift.thumbnailUrl || gift.animationUrl}
-                            alt={gift.name}
-                            className="gift-image"
-                        />
-                    )}
+                  {gift.animationType === "lottie" ? (
+                    <div className="lottie-container">
+                      <LottiePreview url={gift.animationUrl} />
+                    </div>
+                  ) : (
+                    <img
+                      src={gift.thumbnailUrl || gift.animationUrl}
+                      alt={gift.name}
+                      className="gift-image"
+                    />
+                  )}
                   {gift.animationType === "lottie" && (
                     <span className="gift-type-tag">Lottie</span>
                   )}
@@ -152,14 +147,14 @@ const GiftManagement = ({ onLogout }) => {
                   <h3>{gift.name}</h3>
                   <div className="gift-meta">
                     <span className="gift-price">
-                        <FiGift /> {gift.price} عملة
+                      <FiGift /> {gift.price} عملة
                     </span>
                     <button
-                        className="delete-btn"
-                        onClick={() => handleDeleteGift(gift._id)}
-                        title="حذف"
+                      className="delete-btn"
+                      onClick={() => handleDeleteGift(gift._id)}
+                      title="حذف"
                     >
-                        <FiTrash2 />
+                      <FiTrash2 />
                     </button>
                   </div>
                 </div>
@@ -218,19 +213,21 @@ const GiftManagement = ({ onLogout }) => {
                       <FiUpload /> اختر ملف الهدية
                     </label>
                   </div>
-                  
+
                   <div className="preview-section">
                     {imagePreview ? (
-                        <div className="image-preview">
-                            <img src={imagePreview} alt="Preview" />
-                        </div>
-                    ) : formData.imageFile && (formData.imageFile.name.endsWith(".json") || formData.imageFile.type === "application/json") ? (
-                        <div className="lottie-preview-box">
-                             <LottiePreview file={formData.imageFile} />
-                        </div>
+                      <div className="image-preview">
+                        <img src={imagePreview} alt="Preview" />
+                      </div>
+                    ) : formData.imageFile &&
+                      (formData.imageFile.name.endsWith(".json") ||
+                        formData.imageFile.type === "application/json") ? (
+                      <div className="lottie-preview-box">
+                        <LottiePreview file={formData.imageFile} />
+                      </div>
                     ) : null}
                     {formData.imageFile && (
-                        <p className="file-name">{formData.imageFile.name}</p>
+                      <p className="file-name">{formData.imageFile.name}</p>
                     )}
                   </div>
                 </div>
