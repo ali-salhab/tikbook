@@ -46,9 +46,17 @@ const GiftManagement = ({ onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       setFormData({ ...formData, imageFile: file });
+
+      // Check if it's a Lottie JSON file
       if (file.name.endsWith(".json") || file.type === "application/json") {
         setImagePreview(null);
-      } else {
+      }
+      // Check if it's a video file
+      else if (file.type.startsWith("video/")) {
+        setImagePreview(null); // Video preview handled separately
+      }
+      // Otherwise it's an image
+      else {
         const reader = new FileReader();
         reader.onloadend = () => setImagePreview(reader.result);
         reader.readAsDataURL(file);
@@ -68,10 +76,17 @@ const GiftManagement = ({ onLogout }) => {
     data.append("price", formData.price);
     data.append("type", formData.type);
     data.append("image", formData.imageFile);
-    data.append(
-      "animationType",
-      formData.imageFile.name.endsWith(".json") ? "lottie" : "image",
-    );
+
+    // Auto-detect animation type
+    let animationType = "image";
+    if (formData.imageFile.name.endsWith(".json")) {
+      animationType = "lottie";
+    } else if (formData.imageFile.name.endsWith(".gif")) {
+      animationType = "gif";
+    } else if (formData.imageFile.type.startsWith("video/")) {
+      animationType = "video";
+    }
+    data.append("animationType", animationType);
 
     try {
       await api.post("/gifts/admin/create", data, {
@@ -133,6 +148,15 @@ const GiftManagement = ({ onLogout }) => {
                     <div className="lottie-container">
                       <LottiePreview url={gift.animationUrl} />
                     </div>
+                  ) : gift.animationType === "video" ? (
+                    <video
+                      src={gift.animationUrl}
+                      className="gift-image"
+                      loop
+                      muted
+                      autoPlay
+                      style={{ objectFit: "cover" }}
+                    />
                   ) : (
                     <img
                       src={gift.thumbnailUrl || gift.animationUrl}
@@ -142,6 +166,14 @@ const GiftManagement = ({ onLogout }) => {
                   )}
                   {gift.animationType === "lottie" && (
                     <span className="gift-type-tag">Lottie</span>
+                  )}
+                  {gift.animationType === "video" && (
+                    <span
+                      className="gift-type-tag"
+                      style={{ backgroundColor: "#FF4444" }}
+                    >
+                      Video
+                    </span>
                   )}
                 </div>
                 <div className="gift-info">
@@ -201,17 +233,17 @@ const GiftManagement = ({ onLogout }) => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>صورة الهدية أو ملف Lottie (JSON)</label>
+                  <label>صورة/فيديو الهدية أو ملف Lottie (JSON)</label>
                   <div className="file-upload-wrapper">
                     <input
                       type="file"
                       id="gift-upload"
-                      accept="image/*,.json"
+                      accept="image/*,.json,video/*,.mp4,.mov"
                       onChange={handleImageChange}
                       hidden
                     />
                     <label htmlFor="gift-upload" className="upload-btn">
-                      <FiUpload /> اختر ملف الهدية
+                      <FiUpload /> اختر ملف الهدية (صورة/فيديو/Lottie)
                     </label>
                   </div>
 
@@ -225,6 +257,19 @@ const GiftManagement = ({ onLogout }) => {
                         formData.imageFile.type === "application/json") ? (
                       <div className="lottie-preview-box">
                         <LottiePreview file={formData.imageFile} />
+                      </div>
+                    ) : formData.imageFile &&
+                      formData.imageFile.type.startsWith("video/") ? (
+                      <div className="video-preview-box">
+                        <video
+                          src={URL.createObjectURL(formData.imageFile)}
+                          controls
+                          style={{
+                            maxWidth: "200px",
+                            maxHeight: "200px",
+                            borderRadius: "8px",
+                          }}
+                        />
                       </div>
                     ) : null}
                     {formData.imageFile && (

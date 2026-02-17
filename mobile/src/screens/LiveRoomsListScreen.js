@@ -26,26 +26,6 @@ import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
 
-const MOCK_STORIES = [
-  { id: 1, name: "eman", avatar: "https://i.pravatar.cc/150?u=1" },
-  { id: 2, name: "User2", avatar: "https://i.pravatar.cc/150?u=2" },
-  { id: 3, name: "User3", avatar: "https://i.pravatar.cc/150?u=3" },
-  { id: 4, name: "User4", avatar: "https://i.pravatar.cc/150?u=4" },
-  { id: 5, name: "User5", avatar: "https://i.pravatar.cc/150?u=5" },
-];
-
-const MOCK_FILTERS = [
-  { id: "destinations", name: "الوجهات", icon: "star", color: "#4CAF50" }, // Green
-  {
-    id: "saudi",
-    name: "المملكة العربية السعودية",
-    icon: "flag",
-    color: "#196F3D",
-  }, // KSA Flag logic simplified
-  { id: "uae", name: "الإمارات", icon: "flag", color: "#000" },
-  { id: "egypt", name: "مصر", icon: "flag", color: "#CE1126" },
-];
-
 const LiveRoomsListScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
@@ -264,12 +244,6 @@ const LiveRoomsListScreen = ({ navigation }) => {
         renderItem={renderRoomItem}
         keyExtractor={(item) => item._id}
         numColumns={2}
-        ListHeaderComponent={
-          <>
-            {renderStories()}
-            {renderFilters()}
-          </>
-        }
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.columnWrapper}
         refreshControl={

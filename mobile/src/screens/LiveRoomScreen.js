@@ -44,6 +44,7 @@ import RoomManagementModal from "../components/RoomManagementModal";
 import AnimatedGift from "../components/AnimatedGift";
 import FloatingComments from "../components/FloatingComments";
 import GiftPanel from "../components/GiftPanel";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 // Get screen dimensions
 const { width, height } = Dimensions.get("window");
@@ -504,14 +505,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
       </View>
 
       <View style={styles.topUserCard}>
-        <Image
-          source={{
-            uri:
-              userInfo?.profileImage ||
-              userInfo?.avatar ||
-              "https://i.pravatar.cc/100",
-          }}
-          style={styles.topUserAvatar}
+        <ProfileBadgeFrame
+          profileImage={
+            userInfo?.profileImage ||
+            userInfo?.avatar ||
+            "https://i.pravatar.cc/100"
+          }
+          badgeImage={userInfo?.activeBadge?.imageUrl}
+          size={40}
         />
         <View style={styles.topUserInfo}>
           <Text style={styles.topUserName} numberOfLines={1}>
@@ -534,14 +535,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
         style={[styles.glowRing, { transform: [{ scale: glowAnim }] }]}
       />
       <View style={styles.hostImageWrapper}>
-        <Image
-          source={{
-            uri:
-              room?.host?.avatar ||
-              room?.host?.profileImage ||
-              "https://i.pravatar.cc/300",
-          }}
-          style={styles.hostImage}
+        <ProfileBadgeFrame
+          profileImage={
+            room?.host?.avatar ||
+            room?.host?.profileImage ||
+            "https://i.pravatar.cc/300"
+          }
+          badgeImage={room?.host?.activeBadge?.imageUrl}
+          size={HOST_SIZE}
         />
         <View style={styles.verifiedBadge}>
           <MaterialIcons name="check" size={12} color="#FFF" />
@@ -768,7 +769,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
         {showInput && (
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === "ios" ? "padding" : "padding"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             style={{
               position: "absolute",
               bottom: 0,
@@ -780,7 +782,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             <View
               style={[
                 styles.inputContainer,
-                { paddingBottom: Platform.OS === "ios" ? insets.bottom : 0 },
+                { paddingBottom: Platform.OS === "ios" ? insets.bottom : 10 },
               ]}
             >
               <TextInput

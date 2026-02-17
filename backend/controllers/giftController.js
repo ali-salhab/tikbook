@@ -200,14 +200,28 @@ exports.createGift = async (req, res) => {
     let thumbnailUrl = "";
 
     if (req.file) {
-      // Upload to Cloudinary
-      const uploadedUrl = await uploadToCloudinary(
-        req.file.path,
-        "gifts",
-        "auto",
-      );
-      animationUrl = uploadedUrl;
-      thumbnailUrl = uploadedUrl; // Use same for thumbnail if it's Lottie or Gif
+      const originalName = req.file.originalname.toLowerCase();
+      const isVideo =
+        originalName.endsWith(".mp4") ||
+        originalName.endsWith(".mov") ||
+        originalName.endsWith(".avi") ||
+        originalName.endsWith(".mkv") ||
+        req.file.mimetype.startsWith("video/");
+
+      if (isVideo) {
+        // Upload video to Cloudinary
+        animationUrl = await uploadToCloudinary(
+          req.file.path,
+          "gifts",
+          "video",
+        );
+        // Generate video thumbnail from Cloudinary (first frame)
+        thumbnailUrl = animationUrl.replace(/\.(mp4|mov|avi|mkv)$/i, ".jpg");
+      } else {
+        // Upload image/lottie to Cloudinary
+        animationUrl = await uploadToCloudinary(req.file.path, "gifts", "auto");
+        thumbnailUrl = animationUrl; // Use same for thumbnail if it's Lottie or Gif
+      }
 
       // Clean up local file
       fs.unlinkSync(req.file.path);
@@ -229,8 +243,15 @@ exports.createGift = async (req, res) => {
     } else if (originalName.endsWith(".svga")) {
       animationType = "svga";
     } else if (
+      originalName.endsWith(".mp4") ||
+      originalName.endsWith(".mov") ||
+      originalName.endsWith(".avi") ||
+      originalName.endsWith(".mkv")
+    ) {
+      animationType = "video";
+    } else if (
       rawAnimationType &&
-      ["lottie", "gif", "svga"].includes(rawAnimationType)
+      ["lottie", "gif", "svga", "video"].includes(rawAnimationType)
     ) {
       animationType = rawAnimationType;
     }
@@ -277,19 +298,42 @@ exports.updateGift = async (req, res) => {
     let updateData = { ...req.body };
 
     if (req.file) {
-      const uploadedUrl = await uploadToCloudinary(
-        req.file.path,
-        "gifts",
-        "auto",
-      );
-      updateData.animationUrl = uploadedUrl;
-      updateData.thumbnailUrl = uploadedUrl;
+      const originalName = req.file.originalname.toLowerCase();
+      const isVideo =
+        originalName.endsWith(".mp4") ||
+        originalName.endsWith(".mov") ||
+        originalName.endsWith(".avi") ||
+        originalName.endsWith(".mkv") ||
+        req.file.mimetype.startsWith("video/");
 
-      // Determine animation type
-      if (req.file.originalname.toLowerCase().endsWith(".json")) {
-        updateData.animationType = "lottie";
-      } else if (req.file.originalname.toLowerCase().endsWith(".gif")) {
-        updateData.animationType = "gif";
+      if (isVideo) {
+        // Upload video to Cloudinary
+        updateData.animationUrl = await uploadToCloudinary(
+          req.file.path,
+          "gifts",
+          "video",
+        );
+        // Generate video thumbnail
+        updateData.thumbnailUrl = updateData.animationUrl.replace(
+          /\.(mp4|mov|avi|mkv)$/i,
+          ".jpg",
+        );
+        updateData.animationType = "video";
+      } else {
+        const uploadedUrl = await uploadToCloudinary(
+          req.file.path,
+          "gifts",
+          "auto",
+        );
+        updateData.animationUrl = uploadedUrl;
+        updateData.thumbnailUrl = uploadedUrl;
+
+        // Determine animation type
+        if (originalName.endsWith(".json")) {
+          updateData.animationType = "lottie";
+        } else if (originalName.endsWith(".gif")) {
+          updateData.animationType = "gif";
+        }
       }
 
       fs.unlinkSync(req.file.path);

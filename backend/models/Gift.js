@@ -23,7 +23,7 @@ const giftSchema = new mongoose.Schema(
     // Animation type
     animationType: {
       type: String,
-      enum: ["lottie", "gif", "svga"],
+      enum: ["lottie", "gif", "svga", "video"],
       default: "lottie",
     },
     // Gift price in coins

@@ -1,7 +1,8 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../config/api";
 
-const API_URL = "http://192.168.1.4:5000/api/gifts";
+const API_URL = `${BASE_URL}/gifts`;
 
 // Get auth token
 const getToken = async () => {

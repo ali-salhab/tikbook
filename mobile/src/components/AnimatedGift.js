@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { View, StyleSheet, Dimensions, Text, Image } from "react-native";
 import LottieView from "lottie-react-native";
+import { Video } from "expo-av";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,18 +19,46 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.5);
   const translateY = useSharedValue(50);
+  const rotateX = useSharedValue(0);
+  const rotateY = useSharedValue(0);
+  const glowOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Entrance animation
+    // 3D Entrance animation with rotation
     opacity.value = withTiming(1, { duration: 300 });
-    scale.value = withSpring(isCombo ? 1.5 : 1, {
-      damping: 10,
-      stiffness: 100,
-    });
+    scale.value = withSequence(
+      withSpring(isCombo ? 1.8 : 1.2, {
+        damping: 8,
+        stiffness: 100,
+      }),
+      withSpring(isCombo ? 1.5 : 1, {
+        damping: 10,
+        stiffness: 100,
+      }),
+    );
     translateY.value = withTiming(0, {
       duration: 400,
       easing: Easing.out(Easing.cubic),
     });
+
+    // 3D Rotation for depth effect
+    rotateX.value = withSequence(
+      withTiming(15, { duration: 300 }),
+      withTiming(-5, { duration: 200 }),
+      withTiming(0, { duration: 200 }),
+    );
+    rotateY.value = withSequence(
+      withTiming(15, { duration: 300 }),
+      withTiming(-15, { duration: 400 }),
+      withTiming(0, { duration: 300 }),
+    );
+
+    // Pulsing glow effect
+    glowOpacity.value = withSequence(
+      withTiming(0.8, { duration: 400 }),
+      withTiming(0.3, { duration: 600 }),
+      withTiming(0.6, { duration: 400 }),
+    );
 
     // Auto complete after gift duration
     const timer = setTimeout(
@@ -48,12 +77,27 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         runOnJS(onComplete)();
       }
     });
-    scale.value = withTiming(0.5, { duration: 500 });
+    scale.value = withTiming(0.3, { duration: 500 });
+    translateY.value = withTiming(-100, {
+      duration: 500,
+      easing: Easing.in(Easing.cubic),
+    });
+    rotateY.value = withTiming(180, { duration: 500 });
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+    transform: [
+      { scale: scale.value },
+      { translateY: translateY.value },
+      { perspective: 1000 },
+      { rotateX: `${rotateX.value}deg` },
+      { rotateY: `${rotateY.value}deg` },
+    ],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
   }));
 
   const renderAnimation = () => {
@@ -81,6 +125,21 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           resizeMode="contain"
         />
       );
+    } else if (gift.animationType === "video") {
+      return (
+        <Video
+          source={{ uri: gift.animationUrl }}
+          style={[
+            styles.videoAnimation,
+            gift.fullScreen && styles.fullScreenAnimation,
+          ]}
+          resizeMode="contain"
+          shouldPlay
+          isLooping={false}
+          isMuted={false}
+          volume={0.8}
+        />
+      );
     }
     return null;
   };
@@ -97,6 +156,9 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           gift.fullScreen && styles.fullScreenWrapper,
         ]}
       >
+        {/* Glow effect behind animation */}
+        <Animated.View style={[styles.glowBackground, glowStyle]} />
+
         {renderAnimation()}
 
         {/* Sender Info */}
@@ -116,10 +178,10 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           </View>
         </View>
 
-        {/* Combo Badge */}
+        {/* Combo Badge with enhanced animation */}
         {isCombo && (
           <View style={styles.comboBadge}>
-            <Text style={styles.comboText}>COMBO!</Text>
+            <Text style={styles.comboText}>🔥 COMBO! 🔥</Text>
           </View>
         )}
       </Animated.View>
@@ -160,9 +222,27 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
   },
+  videoAnimation: {
+    width: 300,
+    height: 300,
+    borderRadius: 12,
+    backgroundColor: "#000",
+  },
   fullScreenAnimation: {
     width: width * 0.9,
     height: height * 0.6,
+  },
+  glowBackground: {
+    position: "absolute",
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    backgroundColor: "#FFD700",
+    shadowColor: "#FFD700",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 40,
+    elevation: 20,
   },
   senderInfo: {
     flexDirection: "row",
@@ -205,18 +285,28 @@ const styles = StyleSheet.create({
   },
   comboBadge: {
     position: "absolute",
-    top: -20,
+    top: -30,
     right: -20,
     backgroundColor: "#FF4444",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 25,
     transform: [{ rotate: "15deg" }],
+    shadowColor: "#FF4444",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: "#FFD700",
   },
   comboText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
+    textShadowColor: "rgba(0,0,0,0.75)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });
 

@@ -64,26 +64,29 @@ const videoUpload = multer({
   },
 });
 
-// Gift upload configuration (Images and Lottie JSON)
+// Gift upload configuration (Images, Videos, and Lottie JSON)
 const giftUpload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit (for videos)
   },
   fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png|gif|webp|json/;
+    const filetypes = /jpeg|jpg|png|gif|webp|json|mp4|mov|avi|mkv/;
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase(),
     );
     const isImage = file.mimetype.startsWith("image/");
+    const isVideo = file.mimetype.startsWith("video/");
     const isJson =
       file.mimetype === "application/json" ||
       file.originalname.endsWith(".json");
 
-    if (extname || isImage || isJson) {
+    if (extname || isImage || isJson || isVideo) {
       return cb(null, true);
     }
-    return cb(new Error("الملف يجب أن يكون صورة أو ملف Lottie (JSON)!"));
+    return cb(
+      new Error("الملف يجب أن يكون صورة، فيديو، أو ملف Lottie (JSON)!"),
+    );
   },
 });
 

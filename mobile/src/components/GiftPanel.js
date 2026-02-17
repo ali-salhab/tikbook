@@ -114,7 +114,9 @@ const GiftPanel = ({
         disabled={!canAfford}
       >
         {/* Gift Image/Icon */}
-        {item.animationType === "lottie" || item.animationType === "gif" ? (
+        {item.animationType === "lottie" ||
+        item.animationType === "gif" ||
+        item.animationType === "video" ? (
           <Image
             source={{ uri: item.thumbnailUrl }}
             style={styles.giftImage}
@@ -122,6 +124,13 @@ const GiftPanel = ({
           />
         ) : (
           <Text style={styles.giftEmoji}>{item.thumbnailUrl}</Text>
+        )}
+
+        {/* Video indicator badge */}
+        {item.animationType === "video" && (
+          <View style={styles.videoIndicator}>
+            <Ionicons name="play-circle" size={20} color="#FFF" />
+          </View>
         )}
 
         {/* Gift Info */}
@@ -388,6 +397,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 8,
     fontWeight: "bold",
+  },
+  videoIndicator: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -10 }, { translateY: -10 }],
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 15,
+    padding: 2,
   },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
