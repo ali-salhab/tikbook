@@ -13,3 +13,4 @@ mobile/android/.gradle/
 mobile/ios/Pods/
 mobile/ios/build/
 backend/config/firebase-service-account.json
+backend/config/*firebase*.json

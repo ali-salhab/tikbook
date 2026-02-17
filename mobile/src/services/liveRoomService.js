@@ -5,7 +5,7 @@ import { BASE_URL } from "../config/api";
 const API_URL = `${BASE_URL}/live-rooms`;
 
 const getToken = async () => {
-  return await AsyncStorage.getItem("token");
+  return await AsyncStorage.getItem("userToken");
 };
 
 const liveRoomService = {

@@ -6,7 +6,7 @@ const API_URL = `${BASE_URL}/videos`;
 
 // Get auth token
 const getToken = async () => {
-  return await AsyncStorage.getItem("token");
+  return await AsyncStorage.getItem("userToken");
 };
 
 const videoService = {
