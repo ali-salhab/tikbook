@@ -30,7 +30,7 @@ exports.getGifts = async (req, res) => {
 // Send a gift
 exports.sendGift = async (req, res) => {
   try {
-    const senderId = req.user.userId;
+    const senderId = req.user._id;
     const { giftId, receiverId, context, contextId, quantity = 1 } = req.body;
 
     // Validate inputs
@@ -143,7 +143,7 @@ exports.sendGift = async (req, res) => {
 // Get gift history for a user
 exports.getGiftHistory = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user._id;
     const { type = "all", page = 1, limit = 20 } = req.query;
 
     let query = {};
