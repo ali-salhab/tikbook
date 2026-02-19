@@ -17,6 +17,8 @@ import {
   TouchableWithoutFeedback,
   ScrollView,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
+import { Audio } from "expo-av";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -77,7 +79,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [activeGifts, setActiveGifts] = useState([]); // Array of { id, gift, sender }
   const [inputText, setInputText] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const [userBalance, setUserBalance] = useState(0);
   const inputRef = useRef(null);
+
+  // Music State
+  const [sound, setSound] = useState(null);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
 
   // Animation Values
   const glowAnim = useRef(new Animated.Value(1)).current;
@@ -90,6 +97,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     loadCurrentUser();
+    loadUserBalance();
     setupRoom();
     startGlowAnimation();
 
@@ -100,6 +108,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const loadCurrentUser = () => {
     if (userInfo) setCurrentUser(userInfo);
+  };
+
+  const loadUserBalance = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/wallet`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      if (response.data?.balance !== undefined) {
+        setUserBalance(response.data.balance);
+      }
+    } catch (error) {
+      console.error("Error loading balance:", error);
+      setUserBalance(0);
+    }
   };
 
   const startGlowAnimation = () => {
@@ -385,6 +407,54 @@ const LiveRoomScreen = ({ route, navigation }) => {
     }
   };
 
+  const handlePickMusic = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        copyToCacheDirectory: false,
+      });
+
+      if (result.canceled) return;
+
+      const { assets } = result;
+      if (!assets || assets.length === 0) return;
+
+      const { uri } = assets[0];
+
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync({ uri });
+      setSound(newSound);
+      setIsPlayingMusic(true);
+
+      await newSound.playAsync();
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          setIsPlayingMusic(false);
+          setSound(null);
+        }
+      });
+
+      // Notify viewers logic? (Requires Agora custom audio source or simple chat message)
+      Alert.alert(
+        "Playing Music",
+        "Music started locally. Streaming depends on device capabilities.",
+      );
+    } catch (error) {
+      console.error("Music Error:", error);
+      Alert.alert("Error", "Failed to play music");
+    }
+  };
+
+  const handleStopMusic = async () => {
+    if (sound) {
+      await sound.stopAsync();
+      setIsPlayingMusic(false);
+    }
+  };
+
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
 
@@ -463,6 +533,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
       );
 
       if (response.data.success) {
+        // Update user balance
+        if (response.data.senderBalance !== undefined) {
+          setUserBalance(response.data.senderBalance);
+        }
+
         // 2. Emit socket event so everyone sees the animation
         socketRef.current?.emit("liveroom:send_gift", {
           roomId,
@@ -474,7 +549,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error("Gift send error:", error);
-      Alert.alert("Error", "Failed to send gift. Check your balance.");
+      Alert.alert("Balance Error", "Insufficient balance to send gift.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Recharge",
+          onPress: () => {
+            setShowGiftModal(false);
+            navigation.navigate("WalletScreen");
+          },
+        },
+      ]);
     }
   };
 
@@ -666,6 +750,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
           <TouchableOpacity
             style={styles.iconActionBtn}
+            onPress={handlePickMusic}
+          >
+            <Ionicons
+              name={isPlayingMusic ? "musical-notes" : "musical-note-outline"}
+              size={24}
+              color={isPlayingMusic ? "#00FF00" : "#FFF"}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconActionBtn}
             onPress={() => {
               setShowInput(true);
               setTimeout(() => inputRef.current?.focus(), 100);
@@ -719,9 +814,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <StatusBar barStyle="light-content" />
 
       <ImageBackground
-        source={{
-          uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop",
-        }}
+        source={
+          room?.backgroundImage
+            ? { uri: room.backgroundImage }
+            : {
+                uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop",
+              }
+        }
         style={styles.backgroundImage}
         blurRadius={5}
       >
@@ -769,8 +868,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
         {showInput && (
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "padding"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 20}
             style={{
               position: "absolute",
               bottom: 0,
@@ -818,7 +917,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
         visible={showGiftModal}
         onClose={() => setShowGiftModal(false)}
         onSendGift={handleSendGiftRequest}
-        userBalance={userInfo?.walletBalance || 0}
+        userBalance={userBalance}
+        onRecharge={() => {
+          setShowGiftModal(false);
+          navigation.navigate("WalletScreen");
+        }}
       />
     </View>
   );

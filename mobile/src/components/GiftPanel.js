@@ -22,6 +22,7 @@ const GiftPanel = ({
   onSendGift,
   receiverId,
   userBalance,
+  onRecharge,
 }) => {
   const [gifts, setGifts] = useState([]);
   const [selectedGift, setSelectedGift] = useState(null);
@@ -80,7 +81,7 @@ const GiftPanel = ({
             text: "شحن الرصيد",
             onPress: () => {
               onClose();
-              // Navigate to wallet screen
+              if (onRecharge) onRecharge();
             },
           },
         ],
@@ -164,7 +165,7 @@ const GiftPanel = ({
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={() => {}}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
@@ -174,10 +175,14 @@ const GiftPanel = ({
               <Ionicons name="close" size={28} color="#000" />
             </TouchableOpacity>
             <Text style={styles.title}>إرسال هدية</Text>
-            <View style={styles.balanceContainer}>
+            <TouchableOpacity
+              onPress={onRecharge}
+              style={styles.balanceContainer}
+            >
               <Ionicons name="diamond" size={16} color="#FFD700" />
               <Text style={styles.balanceText}>{userBalance}</Text>
-            </View>
+              <Ionicons name="add-circle" size={16} color="#4CAF50" />
+            </TouchableOpacity>
           </View>
 
           {/* Categories */}
