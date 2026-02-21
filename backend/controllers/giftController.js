@@ -42,7 +42,7 @@ exports.sendGift = async (req, res) => {
     }
 
     // Check if sender and receiver are different
-    if (senderId === receiverId) {
+    if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({
         success: false,
         message: "Cannot send gifts to yourself",
@@ -62,13 +62,19 @@ exports.sendGift = async (req, res) => {
     const totalCoins = gift.price * quantity;
 
     // Get sender's wallet
-    const senderWallet = await Wallet.findOne({ user: senderId });
-    if (!senderWallet || senderWallet.balance < totalCoins) {
+    let senderWallet = await Wallet.findOne({ user: senderId });
+
+    // Create wallet if it doesn't exist (e.g. new user)
+    if (!senderWallet) {
+      senderWallet = await Wallet.create({ user: senderId, balance: 0 });
+    }
+
+    if (senderWallet.balance < totalCoins) {
       return res.status(400).json({
         success: false,
         message: "Insufficient coins",
         required: totalCoins,
-        balance: senderWallet?.balance || 0,
+        balance: senderWallet.balance,
       });
     }
 

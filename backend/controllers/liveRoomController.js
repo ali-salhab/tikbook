@@ -629,8 +629,7 @@ exports.updateMusic = async (req, res) => {
 
 // End live room (host only)
 exports.endLiveRoom = async (req, res) => {
-  // ... existing code ...
-    try {
+  try {
     const { roomId } = req.params;
     const userId = req.user.id;
 
@@ -670,11 +669,27 @@ exports.kickUser = async (req, res) => {
     if (!liveRoom) return res.status(404).json({ message: "Room not found" });
 
     const isHost = liveRoom.host.toString() === requesterId;
-    const isMod = liveRoom.moderators.some(m => m.user.toString() === requesterId);
+    const isMod = liveRoom.moderators.some(
+      (m) => m.user.toString() === requesterId,
+    );
 
-    if (!isHost && !isMod) return res.status(403).json({ message: "Unauthorized" });
+    if (!isHost && !isMod)
+      return res.status(403).json({ message: "Unauthorized" });
 
-    liveRoom.removeParticipant(userId);
+    // Remove from speakers
+    liveRoom.speakers = liveRoom.speakers.filter(
+      (s) => s.user.toString() !== userId,
+    );
+
+    // Remove from listeners
+    liveRoom.listeners = liveRoom.listeners.filter(
+      (l) => l.user.toString() !== userId,
+    );
+    // Remove from hand raised
+    liveRoom.handRaised = liveRoom.handRaised.filter(
+      (h) => h.user.toString() !== userId,
+    );
+
     await liveRoom.save();
 
     res.json({ success: true, message: "User kicked" });
@@ -686,83 +701,27 @@ exports.kickUser = async (req, res) => {
 // Unban user
 exports.unbanUser = async (req, res) => {
   try {
-     const { roomId } = req.params;
-     const { userId } = req.body;
-     const requesterId = req.user.id;
- 
-     const liveRoom = await LiveRoom.findOne({ roomId });
-     if (!liveRoom) return res.status(404).json({ message: "Room not found" });
-     
-     const isHost = liveRoom.host.toString() === requesterId;
-     const isMod = liveRoom.moderators.some(m => m.user.toString() === requesterId);
-     if (!isHost && !isMod) return res.status(403).json({ message: "Unauthorized" });
-
-     liveRoom.bannedUsers = liveRoom.bannedUsers.filter(b => b.user.toString() !== userId);
-     await liveRoom.save();
-     
-     res.json({ success: true, message: "User unbanned" });
-  } catch (error) {
-     res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// Kick user from room (host or moderator)
-exports.kickUser = async (req, res) => {
-  try {
     const { roomId } = req.params;
     const { userId } = req.body;
-    const kickerId = req.user.id;
+    const requesterId = req.user.id;
 
     const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
 
-    if (!liveRoom) {
-      return res.status(404).json({ message: "Live room not found" });
-    }
-
-    // Check if kicker is host or moderator
-    const isHost = liveRoom.host.toString() === kickerId.toString();
-    const isModerator = liveRoom.moderators.some(
-      (m) => m.user.toString() === kickerId.toString(),
+    const isHost = liveRoom.host.toString() === requesterId;
+    const isMod = liveRoom.moderators.some(
+      (m) => m.user.toString() === requesterId,
     );
+    if (!isHost && !isMod)
+      return res.status(403).json({ message: "Unauthorized" });
 
-    if (!isHost && !isModerator) {
-      return res
-        .status(403)
-        .json({ message: "Only host or moderators can kick users" });
-    }
-
-    // Cannot kick the host
-    if (userId === liveRoom.host.toString()) {
-      return res.status(400).json({ message: "Cannot kick the host" });
-    }
-
-    // Remove from speakers
-    liveRoom.speakers = liveRoom.speakers.filter(
-      (s) => s.user.toString() !== userId,
+    liveRoom.bannedUsers = liveRoom.bannedUsers.filter(
+      (b) => b.user.toString() !== userId,
     );
-
-    // Remove from listeners
-    liveRoom.listeners = liveRoom.listeners.filter(
-      (l) => l.user.toString() !== userId,
-    );
-
-    // Remove from hand raised
-    liveRoom.handRaised = liveRoom.handRaised.filter(
-      (h) => h.user.toString() !== userId,
-    );
-
     await liveRoom.save();
 
-    res.json({
-      success: true,
-      message: "User kicked successfully",
-    });
+    res.json({ success: true, message: "User unbanned" });
   } catch (error) {
-    console.error("Error kicking user:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

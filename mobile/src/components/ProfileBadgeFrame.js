@@ -1,54 +1,37 @@
 import React, { useEffect, useRef } from "react";
-import { View, Image, StyleSheet, Animated, Easing } from "react-native";
+import { View, Image, StyleSheet, Animated } from "react-native"; // Removed Easing, animation not desired for frame typically
 
 const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (badgeImage) {
-      Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 8000,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      ).start();
-    }
-  }, [badgeImage]);
-
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
+  // Styles based on size
+  const imageSize = size;
+  const badgeSize = size * 1.35; // Frame is typically slightly larger than avatar
 
   const styles = StyleSheet.create({
     container: {
-      width: size,
-      height: size,
+      width: badgeSize, // Container fits the badge
+      height: badgeSize,
       position: "relative",
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "transparent",
     },
     profileImage: {
-      width: size * 0.72,
-      height: size * 0.72,
-      borderRadius: (size * 0.72) / 2,
+      width: imageSize,
+      height: imageSize,
+      borderRadius: imageSize / 2,
       backgroundColor: "#ddd",
+      position: "absolute", // Center it
     },
     badgeFrame: {
       position: "absolute",
-      width: size * 1.4,
-      height: size * 1.4,
-      top: -size * 0.2,
-      left: -size * 0.2,
+      width: badgeSize,
+      height: badgeSize,
+      zIndex: 1, // On top
     },
   });
 
   return (
     <View style={styles.container}>
-      {/* Profile Image */}
+      {/* Profile Image - Centered and Circular */}
       {profileImage ? (
         <Image
           source={{ uri: profileImage }}
@@ -59,11 +42,11 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100 }) => {
         <View style={styles.profileImage} />
       )}
 
-      {/* Badge Frame Overlay - Transparent PNG */}
+      {/* Badge/Frame Overlay - Static Image */}
       {badgeImage && (
-        <Animated.Image
+        <Image
           source={{ uri: badgeImage }}
-          style={[styles.badgeFrame, { transform: [{ rotate: spin }] }]}
+          style={styles.badgeFrame}
           resizeMode="contain"
         />
       )}
