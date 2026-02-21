@@ -124,38 +124,28 @@ const liveRoomSchema = new mongoose.Schema(
       },
     ],
     // Permissions settings for the room
-     permissions: {
+    permissions: {
       canChat: { type: Boolean, default: true },
       canSendGifts: { type: Boolean, default: true },
       requestToSpeak: { type: Boolean, default: true },
     },
     // Music Player State
-     musicPlayer: {
+    musicPlayer: {
       currentSongUrl: { type: String, default: "" },
       title: { type: String, default: "" },
       isPlaying: { type: Boolean, default: false },
       volume: { type: Number, default: 50 },
-      queuedSongs: [{
+      queuedSongs: [
+        {
           title: String,
           url: String,
-      }],
+        },
+      ],
     },
-      },
-      currentTrack: {
-        type: String,
-        default: "",
-      },
-      trackName: {
-        type: String,
-        default: "",
-      },
-      volume: {
-        type: Number,
-        default: 50,
-        min: 0,
-        max: 100,
-      },
-    },
+    // Adding legacy support or cleanup based on previous schema version if needed,
+    // but likely 'currentTrack' was part of an old structure that got moved or duplicated.
+    // I will remove the stray closing brace/bracket and fields that might be redundant if musicPlayer covers them.
+
     maxParticipants: {
       type: Number,
       default: 1000,
