@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { Gift, GiftTransaction } = require("../models/Gift");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
@@ -49,6 +50,22 @@ exports.sendGift = async (req, res) => {
       });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(receiverId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid receiver ID format",
+      });
+    }
+
+    // Validate receiver exists
+    const receiverExists = await User.exists({ _id: receiverId });
+    if (!receiverExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Receiver not found",
+      });
+    }
+
     // Get gift details
     const gift = await Gift.findById(giftId);
     if (!gift || !gift.isActive) {
@@ -94,25 +111,34 @@ exports.sendGift = async (req, res) => {
     senderWallet.balance -= totalCoins;
     await senderWallet.save();
 
-    // Add to receiver
+    // Add to receiver's earnings (since it's a gift)
+    receiverWallet.earnings = (receiverWallet.earnings || 0) + receiverEarnings;
+    // Also update balance if that's the desired behavior, but typically gifts go to earnings
+    // For now keeping balance update as well to match previous logic, or just earnings?
+    // Let's stick to balance to be safe with existing frontend expectations,
+    // but typically this should be earnings.
+    // The previous code did receiverWallet.balance += receiverEarnings.
+    // I will keep updating balance to avoid breaking changes,
+    // but ensure earnings is also tracked if the schema supports it.
     receiverWallet.balance += receiverEarnings;
     await receiverWallet.save();
 
-    // Create transactions
+    // Create transactions for sender
     await Transaction.create({
       user: senderId,
       type: "gift_sent",
       amount: -totalCoins,
-      description: `Sent ${gift.name} x${quantity} to ${receiverId}`,
-      balanceAfter: senderWallet.balance,
+      relatedUser: receiverId,
+      description: `Sent ${gift.name} x${quantity} to user ${receiverId}`,
     });
 
+    // Create transaction for receiver
     await Transaction.create({
       user: receiverId,
       type: "gift_received",
       amount: receiverEarnings,
-      description: `Received ${gift.name} x${quantity} from ${senderId}`,
-      balanceAfter: receiverWallet.balance,
+      relatedUser: senderId,
+      description: `Received ${gift.name} x${quantity} from user ${senderId}`,
     });
 
     // Create gift transaction record
@@ -121,7 +147,7 @@ exports.sendGift = async (req, res) => {
       receiver: receiverId,
       gift: giftId,
       context,
-      contextId,
+      contextId: contextId || null,
       quantity,
       totalCoins,
     });

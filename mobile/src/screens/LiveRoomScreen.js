@@ -555,7 +555,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           text: "Recharge",
           onPress: () => {
             setShowGiftModal(false);
-            navigation.navigate("WalletScreen");
+            navigation.navigate("Wallet");
           },
         },
       ]);
@@ -920,7 +920,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         userBalance={userBalance}
         onRecharge={() => {
           setShowGiftModal(false);
-          navigation.navigate("WalletScreen");
+          navigation.navigate("Wallet");
         }}
       />
     </View>
