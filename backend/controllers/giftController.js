@@ -206,114 +206,69 @@ exports.createGift = async (req, res) => {
     let thumbnailUrl = "";
     let soundUrl = "";
 
-    // Handle uploaded files
+    // Handle uploaded files (supports new multi-file upload)
     if (req.files) {
-      if (req.files.animation) {
+      if (req.files.animation && req.files.animation[0]) {
         const result = await uploadToCloudinary(
           req.files.animation[0].path,
           "gifts/animations",
           "raw",
         );
         animationUrl = result;
+        // Cleanup
+        try {
+          fs.unlinkSync(req.files.animation[0].path);
+        } catch (e) {}
       }
-      if (req.files.thumbnail) {
+      if (req.files.thumbnail && req.files.thumbnail[0]) {
         const result = await uploadToCloudinary(
           req.files.thumbnail[0].path,
           "gifts/thumbnails",
           "image",
         );
         thumbnailUrl = result;
+        // Cleanup
+        try {
+          fs.unlinkSync(req.files.thumbnail[0].path);
+        } catch (e) {}
       }
-      if (req.files.sound) {
+      if (req.files.sound && req.files.sound[0]) {
         const result = await uploadToCloudinary(
           req.files.sound[0].path,
           "gifts/sounds",
           "video",
-        ); // utilizing video resource type for audio often works better in cloudinary or 'raw'
+        );
         soundUrl = result;
+        try {
+          fs.unlinkSync(req.files.sound[0].path);
+        } catch (e) {}
       }
+    } else if (req.file) {
+      // Fallback for single file upload (legacy)
+      const result = await uploadToCloudinary(req.file.path, "gifts", "auto");
+      animationUrl = result;
+      thumbnailUrl = result; // Use same for thumbnail
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
     }
 
-    const gift = new Gift({
+    if (!animationUrl) {
+      return res.status(400).json({ message: "Animation file is required" });
+    }
+
+    const gift = await Gift.create({
       name,
-      price,
+      nameAr: req.body.nameAr || name,
+      price: parseInt(price) || 10,
       animationType: rawAnimationType || "lottie",
       animationUrl,
-      thumbnailUrl,
+      thumbnailUrl: thumbnailUrl || animationUrl,
       soundUrl,
-      // ... existing fields
-    });
-
-    if (req.file) {
-      const originalName = req.file.originalname.toLowerCase();
-      const isVideo =
-        originalName.endsWith(".mp4") ||
-        originalName.endsWith(".mov") ||
-        originalName.endsWith(".avi") ||
-        originalName.endsWith(".mkv") ||
-        req.file.mimetype.startsWith("video/");
-
-      if (isVideo) {
-        // Upload video to Cloudinary
-        animationUrl = await uploadToCloudinary(
-          req.file.path,
-          "gifts",
-          "video",
-        );
-        // Generate video thumbnail from Cloudinary (first frame)
-        thumbnailUrl = animationUrl.replace(/\.(mp4|mov|avi|mkv)$/i, ".jpg");
-      } else {
-        // Upload image/lottie to Cloudinary
-        animationUrl = await uploadToCloudinary(req.file.path, "gifts", "auto");
-        thumbnailUrl = animationUrl; // Use same for thumbnail if it's Lottie or Gif
-      }
-
-      // Clean up local file
-      fs.unlinkSync(req.file.path);
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Gift file is required",
-      });
-    }
-
-    // Determine animation type
-    let animationType = "lottie";
-    const originalName = req.file.originalname.toLowerCase();
-
-    if (originalName.endsWith(".json")) {
-      animationType = "lottie";
-    } else if (originalName.endsWith(".gif")) {
-      animationType = "gif";
-    } else if (originalName.endsWith(".svga")) {
-      animationType = "svga";
-    } else if (
-      originalName.endsWith(".mp4") ||
-      originalName.endsWith(".mov") ||
-      originalName.endsWith(".avi") ||
-      originalName.endsWith(".mkv")
-    ) {
-      animationType = "video";
-    } else if (
-      rawAnimationType &&
-      ["lottie", "gif", "svga", "video"].includes(rawAnimationType)
-    ) {
-      animationType = rawAnimationType;
-    }
-
-    const giftData = {
-      name,
-      nameAr: req.body.nameAr || name, // Default Arabic name to English name
-      price: parseInt(price) || 1,
-      animationUrl,
-      thumbnailUrl,
-      animationType,
       isActive: true,
       category: req.body.category || "basic",
       duration: parseInt(req.body.duration) || 3,
-    };
-
-    const gift = await Gift.create(giftData);
+    });
 
     res.status(201).json({
       success: true,
@@ -321,13 +276,6 @@ exports.createGift = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating gift:", error);
-    if (req.file && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (e) {
-        console.error("Error deleting temp file:", e);
-      }
-    }
     res.status(500).json({
       success: false,
       message: error.message || "Failed to create gift",
