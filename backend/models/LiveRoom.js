@@ -106,7 +106,7 @@ const liveRoomSchema = new mongoose.Schema(
         },
       },
     ],
-    // Moderators - can help manage the room
+    // Moderators/Supervisors with admin-like permissions
     moderators: [
       {
         user: {
@@ -123,11 +123,23 @@ const liveRoomSchema = new mongoose.Schema(
         },
       },
     ],
-    // Music player settings
-    musicPlayer: {
-      isPlaying: {
-        type: Boolean,
-        default: false,
+    // Permissions settings for the room
+     permissions: {
+      canChat: { type: Boolean, default: true },
+      canSendGifts: { type: Boolean, default: true },
+      requestToSpeak: { type: Boolean, default: true },
+    },
+    // Music Player State
+     musicPlayer: {
+      currentSongUrl: { type: String, default: "" },
+      title: { type: String, default: "" },
+      isPlaying: { type: Boolean, default: false },
+      volume: { type: Number, default: 50 },
+      queuedSongs: [{
+          title: String,
+          url: String,
+      }],
+    },
       },
       currentTrack: {
         type: String,

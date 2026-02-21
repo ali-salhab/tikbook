@@ -1,31 +1,37 @@
 import React, { useEffect, useState } from "react";
-import { api, API_URL } from "../config/api";
+import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
-import "../styles/GiftManagement.css";
-import LottiePreview from "../components/LottiePreview";
-import { FiUpload, FiTrash2, FiGift, FiX } from "react-icons/fi";
+import "../styles/GiftManagement.css"; 
+// import LottiePreview from "../components/LottiePreview"; // Optional if we just show file name for simplicity
+import { FiUpload, FiTrash2, FiGift, FiX, FiMusic, FiImage, FiBox } from "react-icons/fi";
 
 const GiftManagement = ({ onLogout }) => {
   const [gifts, setGifts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
-
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
 
   const [formData, setFormData] = useState({
     name: "",
     price: 10,
-    type: "image", // image, lottie, frame
-    imageFile: null,
+    type: "lottie", // Default
+    animationFile: null,
+    thumbnailFile: null,
+    soundFile: null,
+  });
+
+  const [previews, setPreviews] = useState({
+    animation: null,
+    thumbnail: null,
+    sound: null
   });
 
   useEffect(() => {
     if (!token) navigate("/");
     else fetchGifts();
-  }, []);
+  }, [token, navigate]);
 
   const fetchGifts = async () => {
     setLoading(true);
@@ -42,51 +48,55 @@ const GiftManagement = ({ onLogout }) => {
     }
   };
 
-  const handleImageChange = (e) => {
+  const handleFileChange = (e, fileType) => {
     const file = e.target.files[0];
-    if (file) {
-      setFormData({ ...formData, imageFile: file });
+    if (!file) return;
 
-      // Check if it's a Lottie JSON file
-      if (file.name.endsWith(".json") || file.type === "application/json") {
-        setImagePreview(null);
-      }
-      // Check if it's a video file
-      else if (file.type.startsWith("video/")) {
-        setImagePreview(null); // Video preview handled separately
-      }
-      // Otherwise it's an image
-      else {
-        const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result);
-        reader.readAsDataURL(file);
-      }
+    // Update form data
+    setFormData(prev => {
+        const newData = { ...prev };
+        if (fileType === "animation") newData.animationFile = file;
+        if (fileType === "thumbnail") newData.thumbnailFile = file;
+        if (fileType === "sound") newData.soundFile = file;
+        
+        // Auto-detect type if animation
+        if (fileType === "animation") {
+             if (file.name.endsWith(".json")) newData.type = "lottie";
+             else if (file.name.match(/\.(mp4|mov|avi|mkv)$/i)) newData.type = "video";
+             else if (file.name.match(/\.(glb|gltf)$/i)) newData.type = "glb";
+        }
+        return newData;
+    });
+
+    // Create preview
+    if (fileType === "thumbnail" || fileType === "animation" && file.type.startsWith("video/")) {
+         const reader = new FileReader();
+         reader.onloadend = () => {
+             setPreviews(prev => ({ ...prev, [fileType]: reader.result }));
+         };
+         reader.readAsDataURL(file);
+    } else {
+         // For non-previewable files (GLB, Lottie JSON, Audio), just show name or clear preview
+         setPreviews(prev => ({ ...prev, [fileType]: file.name }));
     }
   };
 
   const handleCreateGift = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.imageFile) {
-      alert("Please fill name and upload an image/animation");
+    if (!formData.name || !formData.animationFile || !formData.thumbnailFile) {
+      alert("Please provide name, animation file, and thumbnail file.");
       return;
     }
 
     const data = new FormData();
     data.append("name", formData.name);
     data.append("price", formData.price);
-    data.append("type", formData.type);
-    data.append("image", formData.imageFile);
-
-    // Auto-detect animation type
-    let animationType = "image";
-    if (formData.imageFile.name.endsWith(".json")) {
-      animationType = "lottie";
-    } else if (formData.imageFile.name.endsWith(".gif")) {
-      animationType = "gif";
-    } else if (formData.imageFile.type.startsWith("video/")) {
-      animationType = "video";
+    data.append("animationType", formData.type);
+    data.append("animation", formData.animationFile);
+    data.append("thumbnail", formData.thumbnailFile);
+    if (formData.soundFile) {
+        data.append("sound", formData.soundFile);
     }
-    data.append("animationType", animationType);
 
     try {
       await api.post("/gifts/admin/create", data, {
@@ -98,17 +108,19 @@ const GiftManagement = ({ onLogout }) => {
       alert("Gift created successfully!");
       setShowCreateModal(false);
       fetchGifts();
+      // Reset form
       setFormData({
         name: "",
         price: 10,
-        type: "image",
-        imageFile: null,
+        type: "lottie",
+        animationFile: null,
+        thumbnailFile: null,
+        soundFile: null,
       });
-      setImagePreview(null);
+      setPreviews({ animation: null, thumbnail: null, sound: null });
     } catch (error) {
       console.error("Error creating gift:", error);
-      const message = error.response?.data?.message || "Failed to create gift";
-      alert(message);
+      alert("Failed to create gift");
     }
   };
 
@@ -120,8 +132,7 @@ const GiftManagement = ({ onLogout }) => {
       });
       fetchGifts();
     } catch (error) {
-      console.error("Error deleting gift:", error);
-      alert("Failed to delete gift");
+       alert("Failed to delete gift");
     }
   };
 
@@ -129,10 +140,7 @@ const GiftManagement = ({ onLogout }) => {
     <AdminLayout title="إدارة الهدايا" onLogout={onLogout}>
       <div className="gift-management-container">
         <div className="header-actions">
-          <button
-            className="create-btn"
-            onClick={() => setShowCreateModal(true)}
-          >
+          <button className="create-btn" onClick={() => setShowCreateModal(true)}>
             <FiGift /> إضافة هدية جديدة
           </button>
         </div>
@@ -144,49 +152,19 @@ const GiftManagement = ({ onLogout }) => {
             {gifts.map((gift) => (
               <div key={gift._id} className="gift-card">
                 <div className="gift-image-container">
-                  {gift.animationType === "lottie" ? (
-                    <div className="lottie-container">
-                      <LottiePreview url={gift.animationUrl} />
-                    </div>
-                  ) : gift.animationType === "video" ? (
-                    <video
-                      src={gift.animationUrl}
-                      className="gift-image"
-                      loop
-                      muted
-                      autoPlay
-                      style={{ objectFit: "cover" }}
-                    />
-                  ) : (
-                    <img
-                      src={gift.thumbnailUrl || gift.animationUrl}
-                      alt={gift.name}
-                      className="gift-image"
-                    />
-                  )}
-                  {gift.animationType === "lottie" && (
-                    <span className="gift-type-tag">Lottie</span>
-                  )}
-                  {gift.animationType === "video" && (
-                    <span
-                      className="gift-type-tag"
-                      style={{ backgroundColor: "#FF4444" }}
-                    >
-                      Video
-                    </span>
-                  )}
+                   <img 
+                    src={gift.thumbnailUrl} 
+                    alt={gift.name} 
+                    className="gift-thumbnail" 
+                    style={{width: "100%", height: "150px", objectFit: "cover"}}
+                   />
+                   <span className="gift-type-tag">{gift.animationType}</span>
                 </div>
                 <div className="gift-info">
                   <h3>{gift.name}</h3>
-                  <div className="gift-meta">
-                    <span className="gift-price">
-                      <FiGift /> {gift.price} عملة
-                    </span>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteGift(gift._id)}
-                      title="حذف"
-                    >
+                   <div className="gift-meta">
+                    <span className="gift-price"><FiGift /> {gift.price}</span>
+                    <button className="delete-btn" onClick={() => handleDeleteGift(gift._id)}>
                       <FiTrash2 />
                     </button>
                   </div>
@@ -201,85 +179,42 @@ const GiftManagement = ({ onLogout }) => {
             <div className="modal-content">
               <div className="modal-header">
                 <h2>إضافة هدية جديدة</h2>
-                <button
-                  className="close-btn"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  <FiX />
-                </button>
+                <button className="close-btn" onClick={() => setShowCreateModal(false)}><FiX /></button>
               </div>
               <form onSubmit={handleCreateGift} className="gift-form">
                 <div className="form-group">
                   <label>اسم الهدية</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="أدخل اسم الهدية..."
-                    required
-                  />
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
                 </div>
                 <div className="form-group">
-                  <label>السعر (عملة)</label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
-                    required
-                  />
+                  <label>السعر</label>
+                  <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} required />
                 </div>
+                
                 <div className="form-group">
-                  <label>صورة/فيديو الهدية أو ملف Lottie (JSON)</label>
-                  <div className="file-upload-wrapper">
-                    <input
-                      type="file"
-                      id="gift-upload"
-                      accept="image/*,.json,video/*,.mp4,.mov"
-                      onChange={handleImageChange}
-                      hidden
-                    />
-                    <label htmlFor="gift-upload" className="upload-btn">
-                      <FiUpload /> اختر ملف الهدية (صورة/فيديو/Lottie)
-                    </label>
-                  </div>
+                     <label><FiBox /> ملف الحركة (Lottie, MP4, GLB)</label>
+                     <input type="file" onChange={(e) => handleFileChange(e, "animation")} accept=".json,.mp4,.mov,.glb,.gltf" />
+                     {formData.type === "video" && previews.animation && (
+                         <video src={previews.animation} controls style={{height: 100, marginTop: 10}} />
+                     )}
+                     {(formData.type === "lottie" || formData.type === "glb") && previews.animation && (
+                         <div style={{marginTop: 5, fontSize: "0.9em", color: "#666"}}>Selected: {previews.animation}</div>
+                     )}
+                </div>
 
-                  <div className="preview-section">
-                    {imagePreview ? (
-                      <div className="image-preview">
-                        <img src={imagePreview} alt="Preview" />
-                      </div>
-                    ) : formData.imageFile &&
-                      (formData.imageFile.name.endsWith(".json") ||
-                        formData.imageFile.type === "application/json") ? (
-                      <div className="lottie-preview-box">
-                        <LottiePreview file={formData.imageFile} />
-                      </div>
-                    ) : formData.imageFile &&
-                      formData.imageFile.type.startsWith("video/") ? (
-                      <div className="video-preview-box">
-                        <video
-                          src={URL.createObjectURL(formData.imageFile)}
-                          controls
-                          style={{
-                            maxWidth: "200px",
-                            maxHeight: "200px",
-                            borderRadius: "8px",
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                    {formData.imageFile && (
-                      <p className="file-name">{formData.imageFile.name}</p>
-                    )}
-                  </div>
+                <div className="form-group">
+                     <label><FiImage /> صورة مصغرة (Thumb)</label>
+                     <input type="file" onChange={(e) => handleFileChange(e, "thumbnail")} accept="image/*" required />
+                     {previews.thumbnail && <img src={previews.thumbnail} style={{height: 80, marginTop: 10}} alt="Preview"/>}
                 </div>
-                <button type="submit" className="submit-btn">
-                  حفظ الهدية
-                </button>
+
+                <div className="form-group">
+                     <label><FiMusic /> صوت (Optional)</label>
+                     <input type="file" onChange={(e) => handleFileChange(e, "sound")} accept="audio/*" />
+                     {previews.sound && <div style={{marginTop: 5, fontSize: "0.9em"}}>{previews.sound}</div>}
+                </div>
+
+                <button type="submit" className="submit-btn">حفظ الهدية</button>
               </form>
             </div>
           </div>
@@ -290,3 +225,4 @@ const GiftManagement = ({ onLogout }) => {
 };
 
 export default GiftManagement;
+

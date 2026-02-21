@@ -471,9 +471,166 @@ exports.getMyLiveRooms = async (req, res) => {
   }
 };
 
+// Add moderator (Host only)
+exports.addModerator = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const hostId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    if (liveRoom.host.toString() !== hostId) {
+      return res.status(403).json({ message: "Only host can add moderators" });
+    }
+
+    if (liveRoom.moderators.some((m) => m.user.toString() === userId)) {
+      return res.status(400).json({ message: "User is already a moderator" });
+    }
+
+    liveRoom.moderators.push({
+      user: userId,
+      assignedBy: hostId,
+      assignedAt: new Date(),
+    });
+    await liveRoom.save();
+
+    res.json({ success: true, message: "Moderator added" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Remove moderator (Host only)
+exports.removeModerator = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const hostId = req.user.id; // Corrected from req.user._id to req.user.id based on other methods
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    if (liveRoom.host.toString() !== hostId) {
+      return res
+        .status(403)
+        .json({ message: "Only host can remove moderators" });
+    }
+
+    liveRoom.moderators = liveRoom.moderators.filter(
+      (m) => m.user.toString() !== userId,
+    );
+    await liveRoom.save();
+
+    res.json({ success: true, message: "Moderator removed" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Ban user (Host or Moderator)
+exports.banUser = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId, reason } = req.body;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId;
+    const isMod = liveRoom.moderators.some(
+      (m) => m.user.toString() === requesterId,
+    );
+
+    if (!isHost && !isMod) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    // Prevent banning host or other mods (optional rule)
+    if (liveRoom.host.toString() === userId) {
+      return res.status(400).json({ message: "Cannot ban the host" });
+    }
+
+    liveRoom.bannedUsers.push({
+      user: userId,
+      bannedBy: requesterId,
+      reason,
+      bannedAt: new Date(),
+    });
+
+    // Remove from room
+    liveRoom.removeParticipant(userId);
+
+    await liveRoom.save();
+    res.json({ success: true, message: "User banned" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Update Room Permissions (Host/Mod)
+exports.updatePermissions = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { permissions } = req.body; // { canChat: false, etc }
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId;
+    const isMod = liveRoom.moderators.some(
+      (m) => m.user.toString() === requesterId,
+    );
+
+    if (!isHost && !isMod)
+      return res.status(403).json({ message: "Unauthorized" });
+
+    liveRoom.permissions = { ...liveRoom.permissions, ...permissions };
+    await liveRoom.save();
+
+    res.json({ success: true, data: liveRoom.permissions });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Update Music Player (Host/Mod)
+exports.updateMusic = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { songUrl, isPlaying, volume, title } = req.body;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    // Check perms
+    const isHost = liveRoom.host.toString() === requesterId;
+    const isMod = liveRoom.moderators.some(
+      (m) => m.user.toString() === requesterId,
+    );
+    if (!isHost && !isMod)
+      return res.status(403).json({ message: "Unauthorized" });
+
+    if (songUrl !== undefined) liveRoom.musicPlayer.currentSongUrl = songUrl;
+    if (title !== undefined) liveRoom.musicPlayer.title = title;
+    if (isPlaying !== undefined) liveRoom.musicPlayer.isPlaying = isPlaying;
+    if (volume !== undefined) liveRoom.musicPlayer.volume = volume;
+
+    await liveRoom.save();
+    res.json({ success: true, data: liveRoom.musicPlayer });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // End live room (host only)
 exports.endLiveRoom = async (req, res) => {
-  try {
+  // ... existing code ...
+    try {
     const { roomId } = req.params;
     const userId = req.user.id;
 
@@ -498,6 +655,57 @@ exports.endLiveRoom = async (req, res) => {
     });
   } catch (error) {
     console.error("Error ending live room:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Kick user (Host/Mod) - Removes from room but doesn't ban
+exports.kickUser = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId } = req.body;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId;
+    const isMod = liveRoom.moderators.some(m => m.user.toString() === requesterId);
+
+    if (!isHost && !isMod) return res.status(403).json({ message: "Unauthorized" });
+
+    liveRoom.removeParticipant(userId);
+    await liveRoom.save();
+
+    res.json({ success: true, message: "User kicked" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Unban user
+exports.unbanUser = async (req, res) => {
+  try {
+     const { roomId } = req.params;
+     const { userId } = req.body;
+     const requesterId = req.user.id;
+ 
+     const liveRoom = await LiveRoom.findOne({ roomId });
+     if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+     
+     const isHost = liveRoom.host.toString() === requesterId;
+     const isMod = liveRoom.moderators.some(m => m.user.toString() === requesterId);
+     if (!isHost && !isMod) return res.status(403).json({ message: "Unauthorized" });
+
+     liveRoom.bannedUsers = liveRoom.bannedUsers.filter(b => b.user.toString() !== userId);
+     await liveRoom.save();
+     
+     res.json({ success: true, message: "User unbanned" });
+  } catch (error) {
+     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

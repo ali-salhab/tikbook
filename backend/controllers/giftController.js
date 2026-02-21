@@ -198,6 +198,45 @@ exports.createGift = async (req, res) => {
 
     let animationUrl = "";
     let thumbnailUrl = "";
+    let soundUrl = "";
+
+    // Handle uploaded files
+    if (req.files) {
+      if (req.files.animation) {
+        const result = await uploadToCloudinary(
+          req.files.animation[0].path,
+          "gifts/animations",
+          "raw",
+        );
+        animationUrl = result;
+      }
+      if (req.files.thumbnail) {
+        const result = await uploadToCloudinary(
+          req.files.thumbnail[0].path,
+          "gifts/thumbnails",
+          "image",
+        );
+        thumbnailUrl = result;
+      }
+      if (req.files.sound) {
+        const result = await uploadToCloudinary(
+          req.files.sound[0].path,
+          "gifts/sounds",
+          "video",
+        ); // utilizing video resource type for audio often works better in cloudinary or 'raw'
+        soundUrl = result;
+      }
+    }
+
+    const gift = new Gift({
+      name,
+      price,
+      animationType: rawAnimationType || "lottie",
+      animationUrl,
+      thumbnailUrl,
+      soundUrl,
+      // ... existing fields
+    });
 
     if (req.file) {
       const originalName = req.file.originalname.toLowerCase();

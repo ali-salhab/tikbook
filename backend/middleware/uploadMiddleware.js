@@ -64,28 +64,34 @@ const videoUpload = multer({
   },
 });
 
-// Gift upload configuration (Images, Videos, and Lottie JSON)
+// Gift upload configuration (Images, Videos, Lottie JSON, 3D Models, and Audio)
 const giftUpload = multer({
   storage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit (for videos)
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png|gif|webp|json|mp4|mov|avi|mkv/;
+    const filetypes =
+      /jpeg|jpg|png|gif|webp|json|mp4|mov|avi|mkv|glb|gltf|mp3|wav|ogg|m4a/;
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase(),
     );
     const isImage = file.mimetype.startsWith("image/");
     const isVideo = file.mimetype.startsWith("video/");
+    const isAudio = file.mimetype.startsWith("audio/");
     const isJson =
       file.mimetype === "application/json" ||
       file.originalname.endsWith(".json");
+    const is3D =
+      file.originalname.endsWith(".glb") || file.originalname.endsWith(".gltf");
 
-    if (extname || isImage || isJson || isVideo) {
+    if (extname || isImage || isJson || isVideo || isAudio || is3D) {
       return cb(null, true);
     }
     return cb(
-      new Error("الملف يجب أن يكون صورة، فيديو، أو ملف Lottie (JSON)!"),
+      new Error(
+        "الملف يجب أن يكون صورة، فيديو، صوت، ملف 3D (GLB/GLTF)، أو ملف Lottie (JSON)!",
+      ),
     );
   },
 });

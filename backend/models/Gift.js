@@ -23,8 +23,13 @@ const giftSchema = new mongoose.Schema(
     // Animation type
     animationType: {
       type: String,
-      enum: ["lottie", "gif", "svga", "video"],
+      enum: ["lottie", "gif", "svga", "video", "glb"],
       default: "lottie",
+    },
+    // Sound effect URL (optional, e.g. for roaring lion)
+    soundUrl: {
+      type: String,
+      default: "",
     },
     // Gift price in coins
     price: {

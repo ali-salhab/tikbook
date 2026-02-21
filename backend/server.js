@@ -222,6 +222,31 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Music Player Sync
+  socket.on("liveroom:music_update", ({ roomId, state }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:music_synced", {
+      state,
+      timestamp: new Date(),
+    });
+  });
+
+  // Permissions / User Management Sync
+  socket.on("liveroom:permission_update", ({ roomId, permissions }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:permissions_changed", {
+      permissions,
+      timestamp: new Date(),
+    });
+  });
+
+  socket.on("liveroom:user_banned", ({ roomId, userId, reason }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:user_banned", {
+      userId,
+      reason,
+      timestamp: new Date(),
+    });
+    // Force kick logic on client side would listen to this
+  });
+
   // Kick user from room
   socket.on("liveroom:kick_user", ({ roomId, userId, kickedBy }) => {
     console.log(`User ${userId} kicked from room ${roomId} by ${kickedBy}`);

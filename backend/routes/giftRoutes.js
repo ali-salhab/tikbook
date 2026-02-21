@@ -19,8 +19,26 @@ router.post("/send", protect, sendGift);
 router.get("/history", protect, getGiftHistory);
 
 // Admin routes (add admin middleware later)
-router.post("/admin/create", protect, giftUpload.single("image"), createGift);
-router.put("/admin/:id", protect, giftUpload.single("image"), updateGift);
+router.post(
+  "/admin/create",
+  protect,
+  giftUpload.fields([
+    { name: "animation", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 },
+    { name: "sound", maxCount: 1 },
+  ]),
+  createGift,
+);
+router.put(
+  "/admin/:id",
+  protect,
+  giftUpload.fields([
+    { name: "animation", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 },
+    { name: "sound", maxCount: 1 },
+  ]),
+  updateGift,
+);
 router.delete("/admin/:id", protect, deleteGift);
 
 module.exports = router;
