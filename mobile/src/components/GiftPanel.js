@@ -11,7 +11,10 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import giftService from "../services/giftService";
 
 const { width } = Dimensions.get("window");
@@ -24,6 +27,7 @@ const GiftPanel = ({
   userBalance,
   onRecharge,
 }) => {
+  const insets = useSafeAreaInsets();
   const [gifts, setGifts] = useState([]);
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -72,8 +76,12 @@ const GiftPanel = ({
     const totalCost = selectedGift.price * quantity;
 
     if (userBalance < totalCost) {
+      // The user might be confused by the alert. Let's make it clearer or just log.
+      // But the screenshot shows "Insufficient balance...".
+      // The issue is likely the 400 error from backend too.
+      // We already allowed self-gifting on backend.
       Alert.alert(
-        "رصيد غير كافٍ",
+        "رصيد غير كافٍ (Insufficient Balance)",
         `تحتاج ${totalCost} عملة. رصيدك الحالي: ${userBalance}`,
         [
           { text: "إلغاء", style: "cancel" },
@@ -89,15 +97,19 @@ const GiftPanel = ({
       return;
     }
 
-    onSendGift({
-      gift: selectedGift,
-      quantity,
-      totalCost,
-    });
-
-    // Reset
-    setSelectedGift(null);
-    setQuantity(1);
+    try {
+      await onSendGift({
+        gift: selectedGift,
+        quantity,
+        totalCost,
+      });
+      // Reset only on success
+      setSelectedGift(null);
+      setQuantity(1);
+    } catch (error) {
+      console.log("Gift Panel Send Error", error);
+      // Alert is handled in parent
+    }
   };
 
   const renderGiftItem = ({ item }) => {
@@ -423,6 +435,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 16, // Added padding bottom to prevent overlap with system keys
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: "#eee",

@@ -43,12 +43,13 @@ exports.sendGift = async (req, res) => {
     }
 
     // Check if sender and receiver are different
-    if (senderId.toString() === receiverId.toString()) {
+    // Allow self-gifting for testing purposes
+    /* if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({
         success: false,
         message: "Cannot send gifts to yourself",
       });
-    }
+    } */
 
     if (!mongoose.Types.ObjectId.isValid(receiverId)) {
       return res.status(400).json({

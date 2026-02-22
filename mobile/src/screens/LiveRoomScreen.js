@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
+import Slider from "@react-native-community/slider";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -85,6 +86,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // Music State
   const [sound, setSound] = useState(null);
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [musicDuration, setMusicDuration] = useState(0);
+  const [musicPosition, setMusicPosition] = useState(0);
 
   // Animation Values
   const glowAnim = useRef(new Animated.Value(1)).current;
@@ -431,6 +434,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       await newSound.playAsync();
       newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          setMusicDuration(status.durationMillis || 0);
+          setMusicPosition(status.positionMillis || 0);
+          setIsPlayingMusic(status.isPlaying);
+        }
         if (status.didJustFinish) {
           setIsPlayingMusic(false);
           setSound(null);
@@ -451,8 +459,32 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const handleStopMusic = async () => {
     if (sound) {
       await sound.stopAsync();
+      await sound.unloadAsync();
+      setSound(null);
       setIsPlayingMusic(false);
     }
+  };
+
+  const handleToggleMusic = async () => {
+    if (sound) {
+      if (isPlayingMusic) {
+        await sound.pauseAsync();
+      } else {
+        await sound.playAsync();
+      }
+    }
+  };
+
+  const handleSeekMusic = async (value) => {
+    if (sound) {
+      await sound.setPositionAsync(value);
+    }
+  };
+
+  const formatTime = (millis) => {
+    const minutes = Math.floor(millis / 60000);
+    const seconds = ((millis % 60000) / 1000).toFixed(0);
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
   const handleSendMessage = () => {
@@ -864,12 +896,48 @@ const LiveRoomScreen = ({ route, navigation }) => {
           ))}
         </SafeAreaView>
 
+        {sound && (
+          <View style={styles.musicPlayerContainer}>
+            <Text style={styles.musicTimeText}>
+              {formatTime(musicPosition || 0)}
+            </Text>
+            <Slider
+              style={{ flex: 1, height: 40 }}
+              minimumValue={0}
+              maximumValue={musicDuration || 1}
+              value={musicPosition || 0}
+              onSlidingComplete={handleSeekMusic}
+              minimumTrackTintColor="#00F2EA"
+              maximumTrackTintColor="#FFFFFF"
+              thumbTintColor="#00F2EA"
+            />
+            <Text style={styles.musicTimeText}>
+              {formatTime(musicDuration || 0)}
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleToggleMusic}
+              style={{ marginHorizontal: 10 }}
+            >
+              <Ionicons
+                name={isPlayingMusic ? "pause" : "play"}
+                size={24}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleStopMusic}>
+              <Ionicons name="close" size={24} color="#FF4444" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {!showInput && <BottomBar />}
 
         {showInput && (
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 20}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
             style={{
               position: "absolute",
               bottom: 0,
@@ -1202,6 +1270,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "bold",
   },
+  musicPlayerContainer: {
+    position: "absolute",
+    bottom: 100, // Above bottom bar
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 20,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 50,
+  },
+  musicTimeText: {
+    color: "#FFF",
+    fontSize: 12,
+    width: 35,
+    textAlign: "center",
+  },
   bottomRightActions: {
     flexDirection: "row",
     alignItems: "center",
@@ -1229,11 +1315,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.8)",
     paddingVertical: 10,
     paddingHorizontal: 16,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
+    width: "100%",
   },
   input: {
     flex: 1,
