@@ -936,8 +936,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
         {showInput && (
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
             style={{
               position: "absolute",
               bottom: 0,

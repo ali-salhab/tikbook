@@ -15,6 +15,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import giftService from "../services/giftService";
 
 const { width } = Dimensions.get("window");

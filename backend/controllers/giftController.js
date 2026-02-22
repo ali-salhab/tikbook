@@ -147,7 +147,7 @@ exports.sendGift = async (req, res) => {
       sender: senderId,
       receiver: receiverId,
       gift: giftId,
-      context,
+      context: context === "live_room" ? "live" : context, // Map live_room to live
       contextId: contextId || null,
       quantity,
       totalCoins,
