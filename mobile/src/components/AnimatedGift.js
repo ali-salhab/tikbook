@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { View, StyleSheet, Dimensions, Text, Image } from "react-native";
 import LottieView from "lottie-react-native";
-import { Video } from "expo-av";
+import { Video, Audio } from "expo-av";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,6 +16,7 @@ const { width, height } = Dimensions.get("window");
 
 const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const lottieRef = useRef(null);
+  const soundRef = useRef(null);
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.5);
   const translateY = useSharedValue(50);
@@ -24,8 +25,22 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const glowOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // 3D Entrance animation with rotation
-    opacity.value = withTiming(1, { duration: 300 });
+    // Play sound effect if gift has one
+    if (gift.soundUrl) {
+      (async () => {
+        try {
+          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: gift.soundUrl },
+            { shouldPlay: true, volume: 1.0 },
+          );
+          soundRef.current = sound;
+          sound.setOnPlaybackStatusUpdate((s) => {
+            if (s.didJustFinish) sound.unloadAsync().catch(() => {});
+          });
+        } catch (_) {}
+      })();
+    }
     scale.value = withSequence(
       withSpring(isCombo ? 1.8 : 1.2, {
         damping: 8,
@@ -41,7 +56,8 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       easing: Easing.out(Easing.cubic),
     });
 
-    // 3D Rotation for depth effect
+    // 3D Entrance animation with rotation
+    opacity.value = withTiming(1, { duration: 300 });
     rotateX.value = withSequence(
       withTiming(15, { duration: 300 }),
       withTiming(-5, { duration: 200 }),
@@ -53,14 +69,14 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       withTiming(0, { duration: 300 }),
     );
 
-    // Pulsing glow effect
+    // 3D Rotation for depth effect
     glowOpacity.value = withSequence(
       withTiming(0.8, { duration: 400 }),
       withTiming(0.3, { duration: 600 }),
       withTiming(0.6, { duration: 400 }),
     );
 
-    // Auto complete after gift duration
+    // Pulsing glow effect
     const timer = setTimeout(
       () => {
         exitAnimation();
@@ -68,7 +84,10 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       (gift.duration || 3) * 1000,
     );
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
+    };
   }, []);
 
   const exitAnimation = () => {
@@ -126,18 +145,24 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         />
       );
     } else if (gift.animationType === "video") {
+      // Full-screen video gifts (like TikTok lion):
+      // The video should be shot on a black background.
+      // We use blendMode "screen" so black pixels become transparent.
       return (
         <Video
           source={{ uri: gift.animationUrl }}
           style={[
             styles.videoAnimation,
-            gift.fullScreen && styles.fullScreenAnimation,
+            gift.fullScreen && styles.fullScreenVideo,
           ]}
-          resizeMode="contain"
+          resizeMode={gift.fullScreen ? "cover" : "contain"}
           shouldPlay
           isLooping={false}
-          isMuted={false}
-          volume={0.8}
+          isMuted={!!gift.soundUrl} // mute video if we have a separate sound file
+          volume={gift.soundUrl ? 0 : 1.0}
+          onPlaybackStatusUpdate={(status) => {
+            if (status.didJustFinish) exitAnimation();
+          }}
         />
       );
     }
@@ -149,6 +174,13 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       style={[styles.container, gift.fullScreen && styles.fullScreenContainer]}
       pointerEvents="none"
     >
+      {/* For fullScreen video: render the video BELOW the wrapper so it fills screen */}
+      {gift.fullScreen && gift.animationType === "video" && (
+        <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+          {renderAnimation()}
+        </Animated.View>
+      )}
+
       <Animated.View
         style={[
           styles.animationWrapper,
@@ -156,29 +188,32 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           gift.fullScreen && styles.fullScreenWrapper,
         ]}
       >
-        {/* Glow effect behind animation */}
-        <Animated.View style={[styles.glowBackground, glowStyle]} />
+        {/* Glow effect — skip for fullScreen video (already fills screen) */}
+        {!(gift.fullScreen && gift.animationType === "video") && (
+          <Animated.View style={[styles.glowBackground, glowStyle]} />
+        )}
 
-        {renderAnimation()}
+        {/* Non-fullScreen video / lottie / gif */}
+        {!(gift.fullScreen && gift.animationType === "video") &&
+          renderAnimation()}
 
         {/* Sender Info */}
         <View style={styles.senderInfo}>
           <Image
-            source={{ uri: sender.profileImage || sender.avatar }}
+            source={{ uri: sender?.profileImage || sender?.avatar }}
             style={styles.senderAvatar}
           />
           <View style={styles.senderTextContainer}>
             <Text style={styles.senderName} numberOfLines={1}>
-              {sender.username}
+              {sender?.username}
             </Text>
             <View style={styles.giftNameRow}>
-              <Text style={styles.giftIcon}>{gift.thumbnailUrl}</Text>
               <Text style={styles.giftName}>{gift.nameAr || gift.name}</Text>
             </View>
           </View>
         </View>
 
-        {/* Combo Badge with enhanced animation */}
+        {/* Combo Badge */}
         {isCombo && (
           <View style={styles.comboBadge}>
             <Text style={styles.comboText}>🔥 COMBO! 🔥</Text>
@@ -226,7 +261,14 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 12,
-    backgroundColor: "#000",
+  },
+  fullScreenVideo: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width,
+    height,
+    borderRadius: 0,
   },
   fullScreenAnimation: {
     width: width * 0.9,

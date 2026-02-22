@@ -236,15 +236,29 @@ exports.createGift = async (req, res) => {
     // Handle uploaded files (supports new multi-file upload)
     if (req.files) {
       if (req.files.animation && req.files.animation[0]) {
+        const file = req.files.animation[0];
+        const mime = file.mimetype || "";
+        const ext = file.originalname.toLowerCase();
+        // Choose Cloudinary resource_type correctly
+        const isVideo =
+          mime.startsWith("video/") ||
+          ext.endsWith(".mp4") ||
+          ext.endsWith(".webm") ||
+          ext.endsWith(".mov");
+        const isImage =
+          mime.startsWith("image/") ||
+          ext.endsWith(".gif") ||
+          ext.endsWith(".webp");
+        const resourceType = isVideo ? "video" : isImage ? "image" : "raw"; // raw = Lottie JSON
         const result = await uploadToCloudinary(
-          req.files.animation[0].path,
+          file.path,
           "gifts/animations",
-          "raw",
+          resourceType,
         );
         animationUrl = result;
         // Cleanup
         try {
-          fs.unlinkSync(req.files.animation[0].path);
+          fs.unlinkSync(file.path);
         } catch (e) {}
       }
       if (req.files.thumbnail && req.files.thumbnail[0]) {
@@ -295,6 +309,10 @@ exports.createGift = async (req, res) => {
       isActive: true,
       category: req.body.category || "basic",
       duration: parseInt(req.body.duration) || 3,
+      fullScreen:
+        req.body.fullScreen === "true" || req.body.fullScreen === true,
+      comboEnabled: req.body.comboEnabled !== "false",
+      sortOrder: parseInt(req.body.sortOrder) || 0,
     });
 
     res.status(201).json({

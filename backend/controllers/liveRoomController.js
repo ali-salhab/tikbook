@@ -66,9 +66,17 @@ exports.createLiveRoom = async (req, res) => {
     await liveRoom.save();
 
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
-      .populate("host", "username avatar isVerified")
-      .populate("speakers.user", "username avatar isVerified")
-      .populate("listeners.user", "username avatar isVerified");
+      .populate({
+        path: "host",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate({
+        path: "speakers.user",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate("listeners.user", "username profileImage isVerified");
 
     // Send notifications to all followers
     try {
@@ -129,8 +137,16 @@ exports.getActiveLiveRooms = async (req, res) => {
     }
 
     const liveRooms = await LiveRoom.find(query)
-      .populate("host", "username avatar isVerified")
-      .populate("speakers.user", "username avatar isVerified")
+      .populate({
+        path: "host",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate({
+        path: "speakers.user",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -156,10 +172,18 @@ exports.getLiveRoom = async (req, res) => {
     const { roomId } = req.params;
 
     const liveRoom = await LiveRoom.findOne({ roomId })
-      .populate("host", "username avatar isVerified bio")
-      .populate("speakers.user", "username avatar isVerified bio")
-      .populate("listeners.user", "username avatar isVerified")
-      .populate("handRaised.user", "username avatar isVerified");
+      .populate({
+        path: "host",
+        select: "username profileImage activeBadge isVerified bio",
+        populate: { path: "activeBadge" },
+      })
+      .populate({
+        path: "speakers.user",
+        select: "username profileImage activeBadge isVerified bio",
+        populate: { path: "activeBadge" },
+      })
+      .populate("listeners.user", "username profileImage isVerified")
+      .populate("handRaised.user", "username profileImage isVerified");
 
     if (!liveRoom) {
       return res.status(404).json({ message: "Live room not found" });
@@ -201,10 +225,18 @@ exports.joinLiveRoom = async (req, res) => {
 
     if (alreadySpeaker || alreadyListener) {
       const populatedRoom = await LiveRoom.findById(liveRoom._id)
-        .populate("host", "username avatar isVerified")
-        .populate("speakers.user", "username avatar isVerified")
-        .populate("listeners.user", "username avatar isVerified")
-        .populate("handRaised.user", "username avatar isVerified");
+        .populate({
+          path: "host",
+          select: "username profileImage activeBadge isVerified",
+          populate: { path: "activeBadge" },
+        })
+        .populate({
+          path: "speakers.user",
+          select: "username profileImage activeBadge isVerified",
+          populate: { path: "activeBadge" },
+        })
+        .populate("listeners.user", "username profileImage isVerified")
+        .populate("handRaised.user", "username profileImage isVerified");
 
       return res.json({
         success: true,
@@ -218,10 +250,18 @@ exports.joinLiveRoom = async (req, res) => {
     await liveRoom.save();
 
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
-      .populate("host", "username avatar isVerified")
-      .populate("speakers.user", "username avatar isVerified")
-      .populate("listeners.user", "username avatar isVerified")
-      .populate("handRaised.user", "username avatar isVerified");
+      .populate({
+        path: "host",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate({
+        path: "speakers.user",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate("listeners.user", "username profileImage isVerified")
+      .populate("handRaised.user", "username profileImage isVerified");
 
     res.json({
       success: true,
@@ -298,7 +338,7 @@ exports.raiseHand = async (req, res) => {
 
     const populatedRoom = await LiveRoom.findById(liveRoom._id).populate(
       "handRaised.user",
-      "username avatar isVerified",
+      "username profileImage isVerified",
     );
 
     res.json({
@@ -364,9 +404,13 @@ exports.makeSpeaker = async (req, res) => {
     await liveRoom.save();
 
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
-      .populate("speakers.user", "username avatar isVerified")
-      .populate("listeners.user", "username avatar isVerified")
-      .populate("handRaised.user", "username avatar isVerified");
+      .populate({
+        path: "speakers.user",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate("listeners.user", "username profileImage isVerified")
+      .populate("handRaised.user", "username profileImage isVerified");
 
     res.json({
       success: true,
@@ -406,8 +450,12 @@ exports.removeSpeaker = async (req, res) => {
     await liveRoom.save();
 
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
-      .populate("speakers.user", "username avatar isVerified")
-      .populate("listeners.user", "username avatar isVerified");
+      .populate({
+        path: "speakers.user",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
+      .populate("listeners.user", "username profileImage isVerified");
 
     res.json({
       success: true,
@@ -457,7 +505,11 @@ exports.getMyLiveRooms = async (req, res) => {
     const userId = req.user.id;
 
     const liveRooms = await LiveRoom.find({ host: userId })
-      .populate("host", "username avatar isVerified")
+      .populate({
+        path: "host",
+        select: "username profileImage activeBadge isVerified",
+        populate: { path: "activeBadge" },
+      })
       .sort({ createdAt: -1 })
       .limit(20);
 

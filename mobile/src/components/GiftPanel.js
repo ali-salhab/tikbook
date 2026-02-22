@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     width: (width - 64) / 4,
     aspectRatio: 1,
     margin: 4,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "transparent",
     borderRadius: 12,
     padding: 8,
     alignItems: "center",
@@ -373,21 +373,22 @@ const styles = StyleSheet.create({
   },
   selectedGift: {
     borderColor: "#FE2C55",
-    backgroundColor: "#FFF0F5",
+    backgroundColor: "rgba(254,44,85,0.12)",
   },
   disabledGift: {
     opacity: 0.5,
   },
   giftImage: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
+    backgroundColor: "transparent",
   },
   giftEmoji: {
     fontSize: 32,
   },
   giftName: {
     fontSize: 11,
-    color: "#333",
+    color: "#EEE",
     marginTop: 4,
     textAlign: "center",
   },
