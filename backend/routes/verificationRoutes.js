@@ -10,9 +10,18 @@ const {
   getVerificationStats,
 } = require("../controllers/verificationController");
 const { protect, admin } = require("../middleware/authMiddleware");
+const { imageUpload } = require("../middleware/uploadMiddleware");
 
 // User routes
-router.post("/request", protect, submitVerificationRequest);
+router.post(
+  "/request",
+  protect,
+  imageUpload.fields([
+    { name: "idDocumentFront", maxCount: 1 },
+    { name: "idDocumentBack", maxCount: 1 },
+  ]),
+  submitVerificationRequest,
+);
 router.get("/my-requests", protect, getMyVerificationRequests);
 
 // Admin routes

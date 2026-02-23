@@ -2,6 +2,8 @@ const VerificationRequest = require("../models/VerificationRequest");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { sendNotificationToUser } = require("./pushNotificationController");
+const { uploadToCloudinary } = require("../services/cloudinaryService");
+const fs = require("fs");
 
 // @desc    Submit verification request
 // @route   POST /api/verification/request
@@ -17,9 +19,37 @@ const submitVerificationRequest = async (req, res) => {
       twitterUrl,
       facebookUrl,
       websiteUrl,
-      idDocumentFront,
-      idDocumentBack,
     } = req.body;
+
+    // Upload ID document images to Cloudinary
+    let idDocumentFront = "";
+    let idDocumentBack = "";
+
+    if (req.files?.idDocumentFront?.[0]) {
+      const file = req.files.idDocumentFront[0];
+      try {
+        idDocumentFront = await uploadToCloudinary(
+          file.path,
+          "verification-ids",
+          "image",
+        );
+      } finally {
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      }
+    }
+
+    if (req.files?.idDocumentBack?.[0]) {
+      const file = req.files.idDocumentBack[0];
+      try {
+        idDocumentBack = await uploadToCloudinary(
+          file.path,
+          "verification-ids",
+          "image",
+        );
+      } finally {
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      }
+    }
 
     // Validate required ID documents
     if (!idDocumentFront || !idDocumentBack) {

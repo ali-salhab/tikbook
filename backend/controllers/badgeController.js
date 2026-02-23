@@ -49,8 +49,10 @@ const getMyBadges = async (req, res) => {
 
     res.json({
       success: true,
-      ownedBadges: user.ownedBadges,
-      ownedBackgrounds: user.ownedBackgrounds,
+      ownedBadges: user.ownedBadges.filter((item) => item.badge != null),
+      ownedBackgrounds: user.ownedBackgrounds.filter(
+        (item) => item.badge != null,
+      ),
       activeBadge: user.activeBadge,
       activeBackground: user.activeBackground,
     });

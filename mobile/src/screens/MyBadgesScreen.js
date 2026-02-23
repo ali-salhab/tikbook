@@ -196,8 +196,9 @@ const MyBadgesScreen = ({ navigation }) => {
     );
   };
 
-  const currentBadges =
-    activeTab === "frames" ? myBadges.ownedBadges : myBadges.ownedBackgrounds;
+  const currentBadges = (
+    activeTab === "frames" ? myBadges.ownedBadges : myBadges.ownedBackgrounds
+  ).filter((item) => item.badge != null);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -245,7 +246,8 @@ const MyBadgesScreen = ({ navigation }) => {
               activeTab === "frames" && styles.activeTabText,
             ]}
           >
-            Frames ({myBadges.ownedBadges.length})
+            Frames ({myBadges.ownedBadges.filter((i) => i.badge != null).length}
+            )
           </Text>
         </TouchableOpacity>
 
@@ -264,7 +266,8 @@ const MyBadgesScreen = ({ navigation }) => {
               activeTab === "backgrounds" && styles.activeTabText,
             ]}
           >
-            Backgrounds ({myBadges.ownedBackgrounds.length})
+            Backgrounds (
+            {myBadges.ownedBackgrounds.filter((i) => i.badge != null).length})
           </Text>
         </TouchableOpacity>
       </View>

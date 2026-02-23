@@ -10,9 +10,11 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
@@ -20,6 +22,8 @@ import axios from "axios";
 const VerificationRequestScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
+  const [idFrontImage, setIdFrontImage] = useState(null);
+  const [idBackImage, setIdBackImage] = useState(null);
   const [formData, setFormData] = useState({
     fullName: userInfo?.fullName || "",
     category: "",
@@ -43,6 +47,26 @@ const VerificationRequestScreen = ({ navigation }) => {
     { label: "أخرى", value: "other" },
   ];
 
+  const pickIdImage = async (side) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("تنبيه", "يجب السماح بالوصول لمكتبة الصور");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      if (side === "front") {
+        setIdFrontImage(result.assets[0]);
+      } else {
+        setIdBackImage(result.assets[0]);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     // Validation
     if (!formData.fullName.trim()) {
@@ -61,25 +85,48 @@ const VerificationRequestScreen = ({ navigation }) => {
       Alert.alert("خطأ", "يرجى كتابة وصف لا يقل عن 50 حرف");
       return;
     }
+    if (!idFrontImage) {
+      Alert.alert("خطأ", "يرجى إضافة صورة الوجه الأمامي للهوية");
+      return;
+    }
+    if (!idBackImage) {
+      Alert.alert("خطأ", "يرجى إضافة صورة الوجه الخلفي للهوية");
+      return;
+    }
 
     setLoading(true);
     try {
+      const data = new FormData();
+      data.append("fullName", formData.fullName);
+      data.append("category", formData.category);
+      data.append(
+        "followersCount",
+        String(parseInt(formData.followersCount) || 0),
+      );
+      data.append("description", formData.description);
+      data.append("instagramUrl", formData.instagramHandle);
+      data.append("twitterUrl", formData.twitterHandle);
+      data.append("youtubeUrl", formData.youtubeChannel);
+      data.append("websiteUrl", formData.websiteUrl);
+      data.append("idDocumentFront", {
+        uri: idFrontImage.uri,
+        type: "image/jpeg",
+        name: "id_front.jpg",
+      });
+      data.append("idDocumentBack", {
+        uri: idBackImage.uri,
+        type: "image/jpeg",
+        name: "id_back.jpg",
+      });
+
       const response = await axios.post(
         `${BASE_URL}/verification/request`,
+        data,
         {
-          fullName: formData.fullName,
-          category: formData.category,
-          followersCount: parseInt(formData.followersCount) || 0,
-          description: formData.description,
-          socialMediaLinks: {
-            instagram: formData.instagramHandle,
-            twitter: formData.twitterHandle,
-            youtube: formData.youtubeChannel,
-            website: formData.websiteUrl,
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+            "Content-Type": "multipart/form-data",
           },
-        },
-        {
-          headers: { Authorization: `Bearer ${userToken}` },
         },
       );
 
@@ -294,6 +341,75 @@ const VerificationRequestScreen = ({ navigation }) => {
                 keyboardType="url"
               />
             </View>
+
+            {/* ID Documents */}
+            <View style={styles.sectionHeader}>
+              <Ionicons name="id-card-outline" size={20} color="#000" />
+              <Text style={styles.sectionTitle}>صور الهوية الشخصية</Text>
+              <Text style={styles.required}> *</Text>
+            </View>
+            <Text style={styles.hint}>
+              يجب رفع صورة واضحة للوجه الأمامي والخلفي لبطاقة الهوية أو جواز
+              السفر
+            </Text>
+
+            <View style={styles.idRow}>
+              {/* Front */}
+              <TouchableOpacity
+                style={[styles.idCard, idFrontImage && styles.idCardSelected]}
+                onPress={() => pickIdImage("front")}
+              >
+                {idFrontImage ? (
+                  <Image
+                    source={{ uri: idFrontImage.uri }}
+                    style={styles.idPreview}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <>
+                    <Ionicons name="camera-outline" size={32} color="#999" />
+                    <Text style={styles.idCardLabel}>الوجه الأمامي</Text>
+                  </>
+                )}
+                {idFrontImage && (
+                  <View style={styles.idDoneTag}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color="#00C875"
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Back */}
+              <TouchableOpacity
+                style={[styles.idCard, idBackImage && styles.idCardSelected]}
+                onPress={() => pickIdImage("back")}
+              >
+                {idBackImage ? (
+                  <Image
+                    source={{ uri: idBackImage.uri }}
+                    style={styles.idPreview}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <>
+                    <Ionicons name="camera-outline" size={32} color="#999" />
+                    <Text style={styles.idCardLabel}>الوجه الخلفي</Text>
+                  </>
+                )}
+                {idBackImage && (
+                  <View style={styles.idDoneTag}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color="#00C875"
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Submit Button */}
@@ -481,6 +597,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     lineHeight: 18,
+  },
+  idRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+  idCard: {
+    flex: 1,
+    height: 130,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E5E5E5",
+    borderStyle: "dashed",
+    backgroundColor: "#F9F9F9",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
+  },
+  idCardSelected: {
+    borderColor: "#00C875",
+    borderStyle: "solid",
+  },
+  idCardLabel: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 8,
+    fontWeight: "500",
+  },
+  idPreview: {
+    width: "100%",
+    height: "100%",
+  },
+  idDoneTag: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "#fff",
+    borderRadius: 10,
   },
 });
 

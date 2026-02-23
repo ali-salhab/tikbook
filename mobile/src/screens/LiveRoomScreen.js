@@ -83,7 +83,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [showInput, setShowInput] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  // Animated.Value instead of useState — updates instantly without a re-render
+  // cycle, so the input bar jumps above the keyboard in the same frame.
+  const keyboardAnim = useRef(new Animated.Value(0)).current;
+  const lastKeyboardHeight = useRef(0);
 
   // ── Gifts ────────────────────────────────────────────────────────────────────
   const [activeGifts, setActiveGifts] = useState([]);
@@ -114,12 +117,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
     loadTapSound();
     fetchFreshCurrentUser();
 
-    // Track keyboard height to position the input field above the keyboard
+    // Track keyboard height — use Animated.Value so position updates
+    // in the same frame without a setState re-render cycle.
+    const defaultBottom = Math.max(insets.bottom, 16) + 4;
+    keyboardAnim.setValue(defaultBottom);
+
     const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
+      const h = e.endCoordinates.height;
+      lastKeyboardHeight.current = h;
+      keyboardAnim.setValue(h);
     });
     const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
+      keyboardAnim.setValue(defaultBottom);
     });
 
     return () => {
@@ -446,8 +455,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const handleOpenInput = () => {
     playTap();
+    // Pre-position immediately with the last known keyboard height so there
+    // is no visible jump on the 2nd+ open (keyboard height is already known).
+    if (lastKeyboardHeight.current > 0) {
+      keyboardAnim.setValue(lastKeyboardHeight.current);
+    }
     setShowInput(true);
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setTimeout(() => inputRef.current?.focus(), 60);
   };
 
   const handleCloseInput = () => {
@@ -1126,55 +1140,50 @@ const LiveRoomScreen = ({ route, navigation }) => {
   };
 
   // ─── CHAT INPUT (keyboard-aware — always mounted to avoid focus flicker) ────────
+  // JSX variable (NOT a component function); uses Animated.Value for bottom so
+  // position updates in the same frame as the keyboard — no re-render lag.
 
-  const ChatInputBar = () => {
-    // Always rendered; display:none when not active prevents remount/focus issues
-    const bottomOffset =
-      keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 16) + 4;
-    return (
-      <View
-        style={[
-          styles.chatBar,
-          { bottom: bottomOffset, display: showInput ? "flex" : "none" },
-        ]}
-        pointerEvents={showInput ? "auto" : "none"}
+  const chatInputBar = (
+    <Animated.View
+      style={[
+        styles.chatBar,
+        { bottom: keyboardAnim, display: showInput ? "flex" : "none" },
+      ]}
+      pointerEvents={showInput ? "auto" : "none"}
+    >
+      <TextInput
+        ref={inputRef}
+        value={inputText}
+        onChangeText={setInputText}
+        placeholder="اكتب تعليقاً..."
+        placeholderTextColor="#999"
+        style={styles.chatField}
+        onSubmitEditing={handleSendMessage}
+        returnKeyType="send"
+        blurOnSubmit={false}
+        multiline={false}
+        autoCorrect={false}
+        spellCheck={false}
+      />
+      <TouchableOpacity
+        onPress={() => {
+          playTap();
+          handleSendMessage();
+        }}
+        style={styles.sendBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <TextInput
-          ref={inputRef}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="اكتب تعليقاً..."
-          placeholderTextColor="#999"
-          style={styles.chatField}
-          onSubmitEditing={() => {
-            handleSendMessage();
-          }}
-          returnKeyType="send"
-          blurOnSubmit={false}
-          multiline={false}
-          autoCorrect={false}
-          spellCheck={false}
-        />
-        <TouchableOpacity
-          onPress={() => {
-            playTap();
-            handleSendMessage();
-          }}
-          style={styles.sendBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="send" size={20} color="#00BFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleCloseInput}
-          style={styles.closeChatBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="close-circle" size={20} color="#AAA" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
+        <Ionicons name="send" size={20} color="#00BFFF" />
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={handleCloseInput}
+        style={styles.closeChatBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="close-circle" size={20} color="#AAA" />
+      </TouchableOpacity>
+    </Animated.View>
+  );
 
   // ─── LOADING SCREEN ──────────────────────────────────────────────────────────
 
@@ -1296,7 +1305,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <BottomBar />
 
       {/* Chat input — always mounted, shown/hidden via display prop */}
-      <ChatInputBar />
+      {chatInputBar}
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
       {musicPlayerModal}

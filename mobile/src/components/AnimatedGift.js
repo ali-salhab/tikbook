@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Dimensions, Text, Image } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  Text,
+  Image,
+  TouchableOpacity,
+} from "react-native";
 import LottieView from "lottie-react-native";
 import { Video, Audio } from "expo-av";
 import Animated, {
@@ -17,15 +24,14 @@ const { width, height } = Dimensions.get("window");
 const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const lottieRef = useRef(null);
   const soundRef = useRef(null);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.5);
-  const translateY = useSharedValue(50);
-  const rotateX = useSharedValue(0);
-  const rotateY = useSharedValue(0);
-  const glowOpacity = useSharedValue(0);
 
+  // Shared values — used by both render paths
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.6);
+  const translateY = useSharedValue(60);
+
+  // ── Play optional separate sound ──────────────────────────────────────────
   useEffect(() => {
-    // Play sound effect if gift has one
     if (gift.soundUrl) {
       (async () => {
         try {
@@ -41,84 +47,107 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         } catch (_) {}
       })();
     }
-    scale.value = withSequence(
-      withSpring(isCombo ? 1.8 : 1.2, {
-        damping: 8,
-        stiffness: 100,
-      }),
-      withSpring(isCombo ? 1.5 : 1, {
-        damping: 10,
-        stiffness: 100,
-      }),
-    );
-    translateY.value = withTiming(0, {
-      duration: 400,
-      easing: Easing.out(Easing.cubic),
-    });
 
-    // 3D Entrance animation with rotation
-    opacity.value = withTiming(1, { duration: 300 });
-    rotateX.value = withSequence(
-      withTiming(15, { duration: 300 }),
-      withTiming(-5, { duration: 200 }),
-      withTiming(0, { duration: 200 }),
-    );
-    rotateY.value = withSequence(
-      withTiming(15, { duration: 300 }),
-      withTiming(-15, { duration: 400 }),
-      withTiming(0, { duration: 300 }),
-    );
+    const isVideo = gift.animationType === "video";
+    const duration = (gift.duration || 3) * 1000;
 
-    // 3D Rotation for depth effect
-    glowOpacity.value = withSequence(
-      withTiming(0.8, { duration: 400 }),
-      withTiming(0.3, { duration: 600 }),
-      withTiming(0.6, { duration: 400 }),
-    );
-
-    // Pulsing glow effect
-    const timer = setTimeout(
-      () => {
-        exitAnimation();
-      },
-      (gift.duration || 3) * 1000,
-    );
+    if (isVideo && gift.fullScreen) {
+      // TikTok-style: just fade in — exit is triggered when video finishes
+      opacity.value = withTiming(1, { duration: 350 });
+    } else {
+      // Standard gift: spring entrance
+      opacity.value = withTiming(1, { duration: 300 });
+      scale.value = withSequence(
+        withSpring(isCombo ? 1.8 : 1.2, { damping: 8, stiffness: 100 }),
+        withSpring(isCombo ? 1.5 : 1.0, { damping: 10, stiffness: 100 }),
+      );
+      translateY.value = withTiming(0, {
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+      });
+      const timer = setTimeout(exitAnimation, duration);
+      return () => {
+        clearTimeout(timer);
+        if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
+      };
+    }
 
     return () => {
-      clearTimeout(timer);
       if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
     };
   }, []);
 
+  // ── Exit ──────────────────────────────────────────────────────────────────
   const exitAnimation = () => {
-    opacity.value = withTiming(0, { duration: 500 }, (finished) => {
-      if (finished && onComplete) {
-        runOnJS(onComplete)();
-      }
+    opacity.value = withTiming(0, { duration: 450 }, (done) => {
+      if (done && onComplete) runOnJS(onComplete)();
     });
-    scale.value = withTiming(0.3, { duration: 500 });
-    translateY.value = withTiming(-100, {
-      duration: 500,
+    scale.value = withTiming(0.4, { duration: 450 });
+    translateY.value = withTiming(-80, {
+      duration: 450,
       easing: Easing.in(Easing.cubic),
     });
-    rotateY.value = withTiming(180, { duration: 500 });
   };
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  // ── Animated styles ───────────────────────────────────────────────────────
+  // Full-screen video: ONLY opacity (no scale/translate so the video isn't distorted)
+  const videoFadeStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { scale: scale.value },
-      { translateY: translateY.value },
-      { perspective: 1000 },
-      { rotateX: `${rotateX.value}deg` },
-      { rotateY: `${rotateY.value}deg` },
-    ],
   }));
 
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
+  // Standard gifts: full entrance animation
+  const standardStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
   }));
 
+  // ── FULL-SCREEN VIDEO (TikTok style) ─────────────────────────────────────
+  if (gift.fullScreen && gift.animationType === "video") {
+    return (
+      <Animated.View
+        style={[styles.tiktokContainer, videoFadeStyle]}
+        pointerEvents="none"
+      >
+        {/* Video fills screen */}
+        <Video
+          source={{ uri: gift.animationUrl }}
+          style={styles.tiktokVideo}
+          resizeMode="cover"
+          shouldPlay
+          isLooping={false}
+          isMuted={!!gift.soundUrl}
+          volume={gift.soundUrl ? 0 : 1.0}
+          onPlaybackStatusUpdate={(status) => {
+            if (status.didJustFinish) exitAnimation();
+          }}
+        />
+
+        {/* Dark gradient at bottom so sender info is readable */}
+        <View style={styles.tiktokGradient} />
+
+        {/* Sender info — bottom left like TikTok */}
+        <View style={styles.tiktokSender}>
+          <Image
+            source={{ uri: sender?.profileImage || sender?.avatar }}
+            style={styles.tiktokAvatar}
+          />
+          <View>
+            <Text style={styles.tiktokUsername}>{sender?.username}</Text>
+            <Text style={styles.tiktokGiftLabel}>
+              🎁 {gift.nameAr || gift.name}
+            </Text>
+          </View>
+        </View>
+
+        {/* Gift name — top center */}
+        <View style={styles.tiktokTitleWrap}>
+          <Text style={styles.tiktokTitle}>{gift.nameAr || gift.name}</Text>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  // ── STANDARD GIFT (lottie / gif / small video) ────────────────────────────
   const renderAnimation = () => {
     if (gift.animationType === "lottie") {
       return (
@@ -127,41 +156,31 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           source={{ uri: gift.animationUrl }}
           autoPlay
           loop={false}
-          style={[
-            styles.lottieAnimation,
-            gift.fullScreen && styles.fullScreenAnimation,
-          ]}
+          style={[styles.lottieAnim, gift.fullScreen && styles.largeAnim]}
         />
       );
-    } else if (gift.animationType === "gif") {
+    }
+    if (gift.animationType === "gif") {
       return (
         <Image
           source={{ uri: gift.animationUrl }}
-          style={[
-            styles.gifAnimation,
-            gift.fullScreen && styles.fullScreenAnimation,
-          ]}
+          style={[styles.gifAnim, gift.fullScreen && styles.largeAnim]}
           resizeMode="contain"
         />
       );
-    } else if (gift.animationType === "video") {
-      // Full-screen video gifts (like TikTok lion):
-      // The video should be shot on a black background.
-      // We use blendMode "screen" so black pixels become transparent.
+    }
+    if (gift.animationType === "video") {
       return (
         <Video
           source={{ uri: gift.animationUrl }}
-          style={[
-            styles.videoAnimation,
-            gift.fullScreen && styles.fullScreenVideo,
-          ]}
-          resizeMode={gift.fullScreen ? "cover" : "contain"}
+          style={styles.smallVideoAnim}
+          resizeMode="contain"
           shouldPlay
           isLooping={false}
-          isMuted={!!gift.soundUrl} // mute video if we have a separate sound file
+          isMuted={!!gift.soundUrl}
           volume={gift.soundUrl ? 0 : 1.0}
-          onPlaybackStatusUpdate={(status) => {
-            if (status.didJustFinish) exitAnimation();
+          onPlaybackStatusUpdate={(s) => {
+            if (s.didJustFinish) exitAnimation();
           }}
         />
       );
@@ -170,53 +189,32 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   };
 
   return (
-    <View
-      style={[styles.container, gift.fullScreen && styles.fullScreenContainer]}
-      pointerEvents="none"
-    >
-      {/* For fullScreen video: render the video BELOW the wrapper so it fills screen */}
-      {gift.fullScreen && gift.animationType === "video" && (
-        <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-          {renderAnimation()}
-        </Animated.View>
-      )}
+    <View style={styles.standardContainer} pointerEvents="none">
+      <Animated.View style={[styles.card, standardStyle]}>
+        {/* Glow halo */}
+        <View style={styles.glow} />
 
-      <Animated.View
-        style={[
-          styles.animationWrapper,
-          animatedStyle,
-          gift.fullScreen && styles.fullScreenWrapper,
-        ]}
-      >
-        {/* Glow effect — skip for fullScreen video (already fills screen) */}
-        {!(gift.fullScreen && gift.animationType === "video") && (
-          <Animated.View style={[styles.glowBackground, glowStyle]} />
-        )}
+        {/* Animation */}
+        {renderAnimation()}
 
-        {/* Non-fullScreen video / lottie / gif */}
-        {!(gift.fullScreen && gift.animationType === "video") &&
-          renderAnimation()}
-
-        {/* Sender Info */}
-        <View style={styles.senderInfo}>
+        {/* Sender row */}
+        <View style={styles.senderRow}>
           <Image
             source={{ uri: sender?.profileImage || sender?.avatar }}
             style={styles.senderAvatar}
           />
-          <View style={styles.senderTextContainer}>
+          <View>
             <Text style={styles.senderName} numberOfLines={1}>
               {sender?.username}
             </Text>
-            <View style={styles.giftNameRow}>
-              <Text style={styles.giftName}>{gift.nameAr || gift.name}</Text>
-            </View>
+            <Text style={styles.giftName}>{gift.nameAr || gift.name}</Text>
           </View>
         </View>
 
-        {/* Combo Badge */}
+        {/* Combo badge */}
         {isCombo && (
           <View style={styles.comboBadge}>
-            <Text style={styles.comboText}>🔥 COMBO! 🔥</Text>
+            <Text style={styles.comboText}>🔥 COMBO!</Text>
           </View>
         )}
       </Animated.View>
@@ -224,131 +222,153 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   );
 };
 
+/* ─────────────────────────── styles ─────────────────────────── */
 const styles = StyleSheet.create({
-  container: {
+  // ── TikTok full-screen ───────────────────────────────────────────────────
+  tiktokContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2000,
+    backgroundColor: "#000",
+  },
+  tiktokVideo: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  tiktokGradient: {
     position: "absolute",
-    top: height * 0.15,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.35,
+    background: "linear-gradient(transparent, rgba(0,0,0,0.75))",
+    // React Native doesn't support CSS gradients — use backgroundColor trick:
+    backgroundColor: "transparent",
+  },
+  tiktokSender: {
+    position: "absolute",
+    bottom: 90,
+    left: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  tiktokAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "#FFD700",
+  },
+  tiktokUsername: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+  },
+  tiktokGiftLabel: {
+    color: "#FFD700",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  tiktokTitleWrap: {
+    position: "absolute",
+    top: 60,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  tiktokTitle: {
+    color: "#FFF",
+    fontSize: 28,
+    fontWeight: "900",
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 8,
+    letterSpacing: 1,
+  },
+
+  // ── Standard gift ────────────────────────────────────────────────────────
+  standardContainer: {
+    position: "absolute",
+    top: height * 0.12,
     left: 0,
     right: 0,
     alignItems: "center",
     zIndex: 1000,
   },
-  fullScreenContainer: {
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-  },
-  animationWrapper: {
+  card: {
     alignItems: "center",
   },
-  fullScreenWrapper: {
-    width: width,
-    height: height,
-    justifyContent: "center",
-  },
-  lottieAnimation: {
-    width: 300,
-    height: 300,
-  },
-  gifAnimation: {
-    width: 300,
-    height: 300,
-  },
-  videoAnimation: {
-    width: 300,
-    height: 300,
-    borderRadius: 12,
-  },
-  fullScreenVideo: {
+  glow: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    width,
-    height,
-    borderRadius: 0,
-  },
-  fullScreenAnimation: {
-    width: width * 0.9,
-    height: height * 0.6,
-  },
-  glowBackground: {
-    position: "absolute",
-    width: 350,
-    height: 350,
-    borderRadius: 175,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     backgroundColor: "#FFD700",
+    opacity: 0.18,
     shadowColor: "#FFD700",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 40,
+    shadowOpacity: 0.9,
+    shadowRadius: 50,
     elevation: 20,
   },
-  senderInfo: {
+  lottieAnim: { width: 260, height: 260 },
+  gifAnim: { width: 260, height: 260 },
+  smallVideoAnim: { width: 260, height: 260, borderRadius: 12 },
+  largeAnim: { width: width * 0.85, height: height * 0.5 },
+  senderRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.7)",
+    gap: 10,
+    marginTop: 14,
+    backgroundColor: "rgba(0,0,0,0.72)",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 25,
-    marginTop: 12,
-    gap: 10,
   },
   senderAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 2,
     borderColor: "#FFD700",
   },
-  senderTextContainer: {
-    gap: 2,
-  },
   senderName: {
-    color: "#fff",
+    color: "#FFF",
     fontSize: 14,
-    fontWeight: "bold",
-    maxWidth: 150,
-  },
-  giftNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  giftIcon: {
-    fontSize: 16,
+    fontWeight: "700",
+    maxWidth: 160,
   },
   giftName: {
     color: "#FFD700",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
+    marginTop: 2,
   },
   comboBadge: {
     position: "absolute",
-    top: -30,
-    right: -20,
+    top: -28,
+    right: -16,
     backgroundColor: "#FF4444",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 25,
-    transform: [{ rotate: "15deg" }],
-    shadowColor: "#FF4444",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 15,
-    elevation: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    transform: [{ rotate: "12deg" }],
     borderWidth: 2,
     borderColor: "#FFD700",
   },
   comboText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    textShadowColor: "rgba(0,0,0,0.75)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "800",
   },
 });
 

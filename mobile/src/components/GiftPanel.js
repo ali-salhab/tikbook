@@ -16,6 +16,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import LottieView from "lottie-react-native";
 import giftService from "../services/giftService";
 
 const { width } = Dimensions.get("window");
@@ -116,7 +117,9 @@ const GiftPanel = ({
   const renderGiftItem = ({ item }) => {
     const isSelected = selectedGift?._id === item._id;
     const canAfford = userBalance >= item.price;
+    const isLottie = item.animationType === "lottie";
     const hasThumb = item.thumbnailUrl && item.thumbnailUrl.startsWith("http");
+    const hasAnim = item.animationUrl && item.animationUrl.startsWith("http");
 
     return (
       <TouchableOpacity
@@ -128,8 +131,15 @@ const GiftPanel = ({
         onPress={() => setSelectedGift(isSelected ? null : item)}
         activeOpacity={0.75}
       >
-        {/* Thumbnail — always render as Image; fallback to icon */}
-        {hasThumb ? (
+        {/* Thumbnail */}
+        {isLottie && hasAnim ? (
+          <LottieView
+            source={{ uri: item.animationUrl }}
+            autoPlay
+            loop
+            style={styles.giftImage}
+          />
+        ) : hasThumb ? (
           <Image
             source={{ uri: item.thumbnailUrl }}
             style={styles.giftImage}
