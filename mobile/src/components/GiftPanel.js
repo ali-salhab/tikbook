@@ -114,8 +114,9 @@ const GiftPanel = ({
   };
 
   const renderGiftItem = ({ item }) => {
-    const isSelected = selectedGift?.id === item.id;
+    const isSelected = selectedGift?._id === item._id;
     const canAfford = userBalance >= item.price;
+    const hasThumb = item.thumbnailUrl && item.thumbnailUrl.startsWith("http");
 
     return (
       <TouchableOpacity
@@ -124,49 +125,58 @@ const GiftPanel = ({
           isSelected && styles.selectedGift,
           !canAfford && styles.disabledGift,
         ]}
-        onPress={() => setSelectedGift(item)}
-        disabled={!canAfford}
+        onPress={() => setSelectedGift(isSelected ? null : item)}
+        activeOpacity={0.75}
       >
-        {/* Gift Image/Icon */}
-        {item.animationType === "lottie" ||
-        item.animationType === "gif" ||
-        item.animationType === "video" ? (
+        {/* Thumbnail — always render as Image; fallback to icon */}
+        {hasThumb ? (
           <Image
             source={{ uri: item.thumbnailUrl }}
             style={styles.giftImage}
             resizeMode="contain"
           />
         ) : (
-          <Text style={styles.giftEmoji}>{item.thumbnailUrl}</Text>
-        )}
-
-        {/* Video indicator badge */}
-        {item.animationType === "video" && (
-          <View style={styles.videoIndicator}>
-            <Ionicons name="play-circle" size={20} color="#FFF" />
+          <View style={styles.giftPlaceholder}>
+            <Ionicons name="gift" size={28} color="#DDD" />
           </View>
         )}
 
-        {/* Gift Info */}
+        {/* Video badge */}
+        {item.animationType === "video" && (
+          <View style={styles.videoIndicator}>
+            <Ionicons name="play-circle" size={16} color="#FFF" />
+          </View>
+        )}
+
+        {/* Full-screen badge */}
+        {item.fullScreen && (
+          <View style={styles.fullscreenBadge}>
+            <Ionicons name="expand" size={9} color="#FFF" />
+          </View>
+        )}
+
+        {/* Name */}
         <Text style={styles.giftName} numberOfLines={1}>
           {item.nameAr || item.name}
         </Text>
+
+        {/* Price */}
         <View style={styles.priceRow}>
-          <Ionicons name="diamond" size={12} color="#FFD700" />
+          <Ionicons name="diamond" size={10} color="#FFD700" />
           <Text style={styles.giftPrice}>{item.price}</Text>
         </View>
 
-        {/* VIP Badge */}
+        {/* VIP badge */}
         {item.category === "vip" && (
           <View style={styles.vipBadge}>
             <Text style={styles.vipText}>VIP</Text>
           </View>
         )}
 
-        {/* Not Affordable Overlay */}
+        {/* Lock overlay */}
         {!canAfford && (
           <View style={styles.lockOverlay}>
-            <Ionicons name="lock-closed" size={20} color="#fff" />
+            <Ionicons name="lock-closed" size={18} color="#fff" />
           </View>
         )}
       </TouchableOpacity>
@@ -362,9 +372,9 @@ const styles = StyleSheet.create({
     width: (width - 64) / 4,
     aspectRatio: 1,
     margin: 4,
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 12,
-    padding: 8,
+    padding: 6,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -382,6 +392,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     backgroundColor: "transparent",
+  },
+  giftPlaceholder: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
   },
   giftEmoji: {
     fontSize: 32,

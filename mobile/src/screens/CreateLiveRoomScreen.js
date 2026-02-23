@@ -8,436 +8,532 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  ImageBackground,
-  Dimensions,
   Image,
+  Dimensions,
+  StatusBar,
 } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
+
+const CATEGORIES = [
+  {
+    id: "chat",
+    name: "دردشة",
+    icon: "chatbubbles",
+    color: ["#00BFFF", "#1E90FF"],
+  },
+  {
+    id: "music",
+    name: "موسيقى",
+    icon: "musical-notes",
+    color: ["#FF1493", "#C71585"],
+  },
+  {
+    id: "gaming",
+    name: "ألعاب",
+    icon: "game-controller",
+    color: ["#00FF7F", "#228B22"],
+  },
+  {
+    id: "education",
+    name: "تعليم",
+    icon: "school",
+    color: ["#FFD700", "#DAA520"],
+  },
+  {
+    id: "business",
+    name: "أعمال",
+    icon: "briefcase",
+    color: ["#A020F0", "#6A0DAD"],
+  },
+  { id: "other", name: "أخرى", icon: "apps", color: ["#FF6B35", "#E84855"] },
+];
 
 const CreateLiveRoomScreen = ({ navigation }) => {
   const { userToken } = React.useContext(AuthContext);
+  const insets = useSafeAreaInsets();
+
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [category, setCategory] = useState("chat");
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [coverImage, setCoverImage] = useState(null);
 
-  // Visual polish: Categories with gradient colors
-  const categories = [
-    {
-      id: "music",
-      name: "Music",
-      icon: "musical-notes",
-      color: ["#FF1493", "#C71585"],
-    },
-    {
-      id: "chat",
-      name: "Chat",
-      icon: "chatbubbles",
-      color: ["#00BFFF", "#1E90FF"],
-    },
-    {
-      id: "gaming",
-      name: "Gaming",
-      icon: "game-controller",
-      color: ["#32CD32", "#228B22"],
-    },
-    {
-      id: "education",
-      name: "Education",
-      icon: "school",
-      color: ["#FFD700", "#DAA520"],
-    },
-    {
-      id: "business",
-      name: "Business",
-      icon: "briefcase",
-      color: ["#A020F0", "#800080"],
-    },
-    { id: "other", name: "Other", icon: "apps", color: ["#808080", "#696969"] },
-  ];
-
   const pickImage = async () => {
-    // No permissions request is necessary for launching the image library
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.8,
     });
-
-    if (!result.canceled) {
-      setCoverImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setCoverImage(result.assets[0].uri);
   };
 
   const handleCreateRoom = async () => {
     if (!title.trim()) {
-      Alert.alert("Required", "Please enter a room title");
+      Alert.alert("مطلوب", "يرجى إدخال عنوان للغرفة");
       return;
     }
-
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("title", title.trim());
-      formData.append("description", description.trim());
       formData.append("category", category);
       formData.append("isPrivate", String(isPrivate));
 
       if (coverImage) {
-        const localUri = coverImage;
-        const filename = localUri.split("/").pop();
-
-        // Infer the type of the image
+        const filename = coverImage.split("/").pop();
         const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image`;
-
+        const type = match ? `image/${match[1]}` : "image/jpeg";
         formData.append("coverImage", {
-          uri: localUri,
+          uri: coverImage,
           name: filename,
           type,
         });
       }
 
-      const response = await axios.post(
-        `${BASE_URL}/live-rooms/create`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${userToken}`,
-            "Content-Type": "multipart/form-data",
-          },
+      const res = await axios.post(`${BASE_URL}/live-rooms/create`, formData, {
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "multipart/form-data",
         },
-      );
+      });
 
-      if (response.data.success) {
-        const roomId = response.data.data.roomId;
-        navigation.replace("LiveRoom", { roomId });
+      if (res.data.success) {
+        navigation.replace("LiveRoom", { roomId: res.data.data.roomId });
       }
-    } catch (error) {
-      console.error("Error creating room:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Could not create room",
-      );
+    } catch (err) {
+      Alert.alert("خطأ", err.response?.data?.message || "تعذّر إنشاء الغرفة");
     } finally {
       setLoading(false);
     }
   };
 
+  const selectedCat = CATEGORIES.find((c) => c.id === category);
+
   return (
-    <ImageBackground
-      source={{
-        uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop",
-      }}
-      style={styles.backgroundImage}
-      blurRadius={30}
-    >
-      <LinearGradient
-        colors={["rgba(0,0,0,0.4)", "#000"]}
-        style={styles.gradientOverlay}
+    <View style={styles.root}>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
       />
 
-      <SafeAreaView style={styles.container}>
+      {/* Blurred cover preview in background */}
+      {coverImage && (
+        <Image
+          source={{ uri: coverImage }}
+          style={StyleSheet.absoluteFill}
+          blurRadius={18}
+        />
+      )}
+      <LinearGradient
+        colors={
+          coverImage
+            ? ["rgba(0,0,0,0.5)", "rgba(0,0,0,0.78)", "#000"]
+            : ["#0D0D1A", "#130D26", "#0A0A14"]
+        }
+        style={StyleSheet.absoluteFill}
+      />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 30 },
+        ]}
+      >
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.closeButton}
+            style={styles.backBtn}
           >
-            <Ionicons name="close" size={24} color="#fff" />
+            <Feather name="x" size={20} color="#FFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Live Room</Text>
+          <Text style={styles.headerTitle}>إنشاء غرفة بث</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
+        {/* Cover card */}
+        <TouchableOpacity
+          activeOpacity={0.88}
+          onPress={pickImage}
+          style={styles.coverCard}
         >
-          {/* Room Cover Preview */}
-          <TouchableOpacity onPress={pickImage} activeOpacity={0.9}>
-            <View style={styles.coverPreview}>
-              {coverImage && (
-                <Image
-                  source={{ uri: coverImage }}
-                  style={[
-                    StyleSheet.absoluteFill,
-                    { width: "100%", height: "100%" },
-                  ]}
-                  resizeMode="cover"
-                />
-              )}
-
-              {!coverImage && (
-                <View style={styles.coverPlaceholder}>
-                  <Ionicons
-                    name="image-outline"
-                    size={40}
-                    color="rgba(255,255,255,0.5)"
-                  />
-                  <Text style={styles.coverText}>Add Cover</Text>
-                </View>
-              )}
-
-              {/* Spacer so the input stays at the bottom whether image exists or not */}
-              {coverImage && <View style={{ flex: 1 }} />}
-
-              <BlurView
-                intensity={20}
-                tint="dark"
-                style={styles.titleInputContainer}
-              >
-                <TextInput
-                  style={styles.titleInput}
-                  placeholder="Enter Room Title"
-                  placeholderTextColor="rgba(255,255,255,0.6)"
-                  value={title}
-                  onChangeText={setTitle}
-                  maxLength={50}
-                />
-              </BlurView>
+          {coverImage ? (
+            <>
+              <Image
+                source={{ uri: coverImage }}
+                style={styles.coverImage}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.72)"]}
+                style={styles.coverGradient}
+              />
+              <View style={styles.changeCoverBtn}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+                <Text style={styles.changeCoverText}>تغيير الغلاف</Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.coverEmpty}>
+              <View style={styles.cameraCircle}>
+                <Ionicons name="camera-outline" size={32} color="#FFF" />
+              </View>
+              <Text style={styles.coverEmptyTitle}>إضافة صورة غلاف</Text>
+              <Text style={styles.coverEmptyHint}>
+                اضغط لاختيار صورة للغرفة
+              </Text>
             </View>
-          </TouchableOpacity>
+          )}
+          {/* LIVE badge */}
+          <View style={styles.liveBadge}>
+            <MaterialCommunityIcons name="broadcast" size={10} color="#FFF" />
+            <Text style={styles.liveBadgeText}>LIVE</Text>
+          </View>
+        </TouchableOpacity>
 
-          {/* Tags / Category */}
-          <Text style={styles.sectionLabel}>Select Channel</Text>
-          <View style={styles.categoriesGrid}>
-            {categories.map((cat) => (
+        {/* Title input */}
+        <BlurView intensity={18} tint="dark" style={styles.inputWrap}>
+          <Ionicons
+            name="pencil-outline"
+            size={18}
+            color="rgba(255,255,255,0.5)"
+          />
+          <TextInput
+            style={styles.titleInput}
+            placeholder="عنوان الغرفة…"
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={50}
+          />
+          {title.length > 0 && (
+            <TouchableOpacity onPress={() => setTitle("")}>
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color="rgba(255,255,255,0.4)"
+              />
+            </TouchableOpacity>
+          )}
+        </BlurView>
+
+        {/* Category */}
+        <Text style={styles.sectionLabel}>اختر القناة</Text>
+        <View style={styles.catGrid}>
+          {CATEGORIES.map((cat) => {
+            const active = category === cat.id;
+            return (
               <TouchableOpacity
                 key={cat.id}
                 onPress={() => setCategory(cat.id)}
-                style={styles.categoryWrapper}
+                activeOpacity={0.75}
+                style={styles.catItem}
               >
-                <LinearGradient
-                  colors={
-                    category === cat.id
-                      ? cat.color
-                      : ["rgba(255,255,255,0.1)", "rgba(255,255,255,0.05)"]
-                  }
-                  style={styles.categoryButton}
-                >
-                  <Ionicons name={cat.icon} size={20} color="#FFF" />
-                </LinearGradient>
+                {active ? (
+                  <LinearGradient colors={cat.color} style={styles.catCircle}>
+                    <Ionicons name={cat.icon} size={22} color="#FFF" />
+                  </LinearGradient>
+                ) : (
+                  <View style={[styles.catCircle, styles.catCircleInactive]}>
+                    <Ionicons
+                      name={cat.icon}
+                      size={22}
+                      color="rgba(255,255,255,0.55)"
+                    />
+                  </View>
+                )}
                 <Text
-                  style={[
-                    styles.categoryText,
-                    category === cat.id && styles.categoryTextActive,
-                  ]}
+                  style={[styles.catLabel, active && styles.catLabelActive]}
                 >
                   {cat.name}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            );
+          })}
+        </View>
 
-          {/* Privacy Toggle */}
-          <View style={styles.privacyContainer}>
-            <View style={styles.privacyLeft}>
+        {/* Privacy */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setIsPrivate(!isPrivate)}
+          style={styles.privacyRow}
+        >
+          <View style={styles.privacyLeft}>
+            <View
+              style={[
+                styles.privacyIcon,
+                isPrivate && { backgroundColor: "rgba(255,68,68,0.18)" },
+              ]}
+            >
               <Ionicons
                 name={isPrivate ? "lock-closed" : "globe-outline"}
-                size={22}
-                color="#FFF"
+                size={20}
+                color={isPrivate ? "#FF4444" : "#00F2EA"}
               />
-              <View>
-                <Text style={styles.privacyTitle}>
-                  {isPrivate ? "Private Room" : "Public Room"}
-                </Text>
-                <Text style={styles.privacySub}>
-                  {isPrivate ? "Invite only" : "Anyone can join"}
-                </Text>
-              </View>
             </View>
-            <TouchableOpacity onPress={() => setIsPrivate(!isPrivate)}>
-              <Ionicons
-                name={isPrivate ? "toggle" : "toggle-outline"}
-                size={36}
-                color={isPrivate ? "#FF4444" : "#FFF"}
-              />
-            </TouchableOpacity>
+            <View>
+              <Text style={styles.privacyTitle}>
+                {isPrivate ? "غرفة خاصة" : "غرفة عامة"}
+              </Text>
+              <Text style={styles.privacySub}>
+                {isPrivate ? "بالدعوة فقط" : "يمكن للجميع الانضمام"}
+              </Text>
+            </View>
           </View>
+          <View style={[styles.toggle, isPrivate && styles.toggleOn]}>
+            <View
+              style={[styles.toggleThumb, isPrivate && styles.toggleThumbOn]}
+            />
+          </View>
+        </TouchableOpacity>
 
-          {/* Start Button */}
-          <TouchableOpacity
-            onPress={handleCreateRoom}
-            disabled={loading}
-            style={styles.startBtnContainer}
+        {/* Go Live */}
+        <TouchableOpacity
+          onPress={handleCreateRoom}
+          disabled={loading}
+          activeOpacity={0.85}
+          style={styles.goLiveWrap}
+        >
+          <LinearGradient
+            colors={
+              selectedCat
+                ? [selectedCat.color[0], selectedCat.color[1], "#FF1493"]
+                : ["#FF1493", "#C71585"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.goLiveBtn}
           >
-            <LinearGradient
-              colors={["#FF1493", "#C71585"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.startButton}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <>
-                  <Text style={styles.startText}>Go Live</Text>
-                  <Ionicons name="radio-outline" size={20} color="#FFF" />
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </ImageBackground>
+            {loading ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <>
+                <MaterialCommunityIcons
+                  name="broadcast"
+                  size={22}
+                  color="#FFF"
+                />
+                <Text style={styles.goLiveText}>بدء البث المباشر</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: width,
-    height: height,
-  },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  container: {
-    flex: 1,
-  },
+  root: { flex: 1, backgroundColor: "#0D0D1A" },
+  scroll: { paddingHorizontal: 18 },
+
+  /* header */
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    justifyContent: "space-between",
+    marginBottom: 20,
   },
-  closeButton: {
+  backBtn: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  headerTitle: { color: "#FFF", fontSize: 17, fontWeight: "700" },
+
+  /* cover */
+  coverCard: {
+    height: 200,
     borderRadius: 20,
-  },
-  headerTitle: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 50,
-  },
-  coverPreview: {
-    height: 180,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    marginBottom: 30,
-    overflow: "hidden",
-    justifyContent: "space-between",
+    marginBottom: 16,
   },
-  coverPlaceholder: {
+  coverImage: { ...StyleSheet.absoluteFillObject },
+  coverGradient: { ...StyleSheet.absoluteFillObject },
+  coverEmpty: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
-  coverText: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 14,
-  },
-  titleInputContainer: {
-    padding: 15,
-  },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFF",
-  },
-  sectionLabel: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 15,
-  },
-  categoriesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 15,
-    justifyContent: "space-between",
-    marginBottom: 30,
-  },
-  categoryWrapper: {
-    alignItems: "center",
-    width: "30%",
-    marginBottom: 10,
-  },
-  categoryButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  cameraCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 4,
   },
-  categoryText: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
-  },
-  categoryTextActive: {
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  privacyContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 40,
-  },
-  privacyLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 15,
-  },
-  privacyTitle: {
-    color: "#FFF",
+  coverEmptyTitle: {
+    color: "rgba(255,255,255,0.8)",
     fontSize: 15,
     fontWeight: "600",
   },
-  privacySub: {
-    color: "#CCC",
-    fontSize: 12,
-  },
-  startBtnContainer: {
-    marginTop: 20,
-  },
-  startButton: {
+  coverEmptyHint: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+  changeCoverBtn: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
     flexDirection: "row",
-    height: 55,
-    borderRadius: 27.5,
-    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  changeCoverText: { color: "#FFF", fontSize: 12, fontWeight: "600" },
+  liveBadge: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FF1493",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  liveBadgeText: {
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+
+  /* input */
+  inputWrap: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    shadowColor: "#FF1493",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
+    borderRadius: 14,
+    overflow: "hidden",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 28,
   },
-  startText: {
+  titleInput: { flex: 1, fontSize: 16, color: "#FFF", fontWeight: "600" },
+
+  /* category */
+  sectionLabel: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 14,
+  },
+  catGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 28,
+  },
+  catItem: { width: (width - 36 - 48) / 3, alignItems: "center", gap: 6 },
+  catCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  catCircleInactive: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  catLabel: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
+  catLabelActive: { color: "#FFF", fontWeight: "700" },
+
+  /* privacy */
+  privacyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 32,
+  },
+  privacyLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  privacyIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(0,242,234,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  privacyTitle: { color: "#FFF", fontSize: 15, fontWeight: "600" },
+  privacySub: { color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 2 },
+  toggle: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    padding: 3,
+    justifyContent: "center",
+  },
+  toggleOn: { backgroundColor: "#FF4444" },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FFF",
+    alignSelf: "flex-start",
+  },
+  toggleThumbOn: { alignSelf: "flex-end" },
+
+  /* go live */
+  goLiveWrap: {
+    borderRadius: 30,
+    overflow: "hidden",
+    shadowColor: "#FF1493",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  goLiveBtn: {
+    height: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  goLiveText: {
     color: "#FFF",
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });
 

@@ -855,7 +855,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ─── MUSIC PLAYER MODAL ───────────────────────────────────────────────────────
 
-  const MusicPlayerModal = () => (
+  const musicPlayerModal = (
     <Modal
       visible={showMusicPlayer}
       transparent
@@ -939,7 +939,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ─── AUDIO PANEL MODAL ────────────────────────────────────────────────────────
 
-  const AudioPanelModal = () => (
+  const audioPanelModal = (
     <Modal
       visible={showAudioPanel}
       transparent
@@ -1029,67 +1029,65 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ─── HAND RAISE LIST MODAL ───────────────────────────────────────────────────
 
-  const HandRaiseModal = () => {
-    const raisers = room?.speakers?.filter((s) => s.handRaised) || [];
-    return (
-      <Modal
-        visible={showHandRaiseList}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowHandRaiseList(false)}
-      >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={() => setShowHandRaiseList(false)}
-        />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>
-            ✋ طلبات الكلام ({raisers.length})
-          </Text>
-          <ScrollView>
-            {raisers.length === 0 && (
-              <Text style={{ color: "#999", textAlign: "center", padding: 20 }}>
-                لا توجد طلبات
-              </Text>
-            )}
-            {raisers.map((s) => (
-              <View key={s.user._id} style={styles.raiserRow}>
-                <Image
-                  source={{
-                    uri: s.user.profileImage || s.user.avatar || null,
-                  }}
-                  style={styles.raiserAvatar}
-                />
-                <Text style={styles.raiserName}>{s.user.username}</Text>
-                <TouchableOpacity
-                  style={styles.approveBtn}
-                  onPress={async () => {
-                    try {
-                      await axios.post(
-                        `${BASE_URL}/live-rooms/${roomId}/add-speaker`,
-                        { userId: s.user._id },
-                        { headers: { Authorization: `Bearer ${userToken}` } },
-                      );
-                      fetchRoomData();
-                      socketRef.current?.emit("liveroom:add_speaker", {
-                        roomId,
-                        userId: s.user._id,
-                        user: s.user,
-                      });
-                    } catch (_) {}
-                  }}
-                >
-                  <Text style={styles.approveBtnText}>قبول</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </Modal>
-    );
-  };
+  const raisers = room?.speakers?.filter((s) => s.handRaised) || [];
+  const handRaiseModal = (
+    <Modal
+      visible={showHandRaiseList}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowHandRaiseList(false)}
+    >
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={() => setShowHandRaiseList(false)}
+      />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={styles.sheetHandle} />
+        <Text style={styles.sheetTitle}>
+          ✋ طلبات الكلام ({raisers.length})
+        </Text>
+        <ScrollView>
+          {raisers.length === 0 && (
+            <Text style={{ color: "#999", textAlign: "center", padding: 20 }}>
+              لا توجد طلبات
+            </Text>
+          )}
+          {raisers.map((s) => (
+            <View key={s.user._id} style={styles.raiserRow}>
+              <Image
+                source={{
+                  uri: s.user.profileImage || s.user.avatar || null,
+                }}
+                style={styles.raiserAvatar}
+              />
+              <Text style={styles.raiserName}>{s.user.username}</Text>
+              <TouchableOpacity
+                style={styles.approveBtn}
+                onPress={async () => {
+                  try {
+                    await axios.post(
+                      `${BASE_URL}/live-rooms/${roomId}/add-speaker`,
+                      { userId: s.user._id },
+                      { headers: { Authorization: `Bearer ${userToken}` } },
+                    );
+                    fetchRoomData();
+                    socketRef.current?.emit("liveroom:add_speaker", {
+                      roomId,
+                      userId: s.user._id,
+                      user: s.user,
+                    });
+                  } catch (_) {}
+                }}
+              >
+                <Text style={styles.approveBtnText}>قبول</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
 
   // ─── MINI MUSIC BAR ──────────────────────────────────────────────────────────
 
@@ -1206,26 +1204,56 @@ const LiveRoomScreen = ({ route, navigation }) => {
         backgroundColor="transparent"
       />
 
-      {/* Background */}
+      {/* Background — blurred cover image */}
       <ImageBackground
         source={
-          room?.backgroundImage
-            ? { uri: room.backgroundImage }
-            : {
-                uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?w=1000",
-              }
+          room?.coverImage
+            ? { uri: room.coverImage }
+            : room?.backgroundImage
+              ? { uri: room.backgroundImage }
+              : {
+                  uri: "https://images.unsplash.com/photo-1514525253440-b393452e8d26?w=1000",
+                }
         }
         style={StyleSheet.absoluteFill}
-        blurRadius={7}
+        blurRadius={8}
       />
       <LinearGradient
-        colors={["rgba(8,0,22,0.55)", "rgba(8,0,22,0.80)", "rgba(0,0,0,0.97)"]}
+        colors={["rgba(8,0,22,0.50)", "rgba(8,0,22,0.80)", "rgba(0,0,0,0.97)"]}
         style={StyleSheet.absoluteFill}
       />
 
       {/* Main content */}
       <View style={{ flex: 1 }}>
         <Header />
+
+        {/* Cover image banner — visible to all viewers */}
+        {room?.coverImage ? (
+          <View style={styles.coverBanner}>
+            <Image
+              source={{ uri: room.coverImage }}
+              style={styles.coverBannerImage}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.65)"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.coverBannerOverlay}>
+              <View style={styles.coverLivePill}>
+                <MaterialCommunityIcons
+                  name="broadcast"
+                  size={9}
+                  color="#FFF"
+                />
+                <Text style={styles.coverLiveText}>LIVE</Text>
+              </View>
+              <Text style={styles.coverBannerTitle} numberOfLines={1}>
+                {room?.title}
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* Currency bar */}
         <View style={styles.currencyBar}>
@@ -1271,9 +1299,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <ChatInputBar />
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
-      <MusicPlayerModal />
-      <AudioPanelModal />
-      <HandRaiseModal />
+      {musicPlayerModal}
+      {audioPanelModal}
+      {handRaiseModal}
 
       <RoomManagementModal
         visible={showManagementModal}
@@ -1372,6 +1400,47 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   coinText: { color: "#00F2EA", fontSize: 8 },
+
+  // ── Cover banner ─────────────────────────────────────────────────────────────
+  coverBanner: {
+    marginHorizontal: 14,
+    marginBottom: 6,
+    height: 80,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  coverBannerImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  coverBannerOverlay: {
+    position: "absolute",
+    bottom: 8,
+    left: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  coverLivePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#FF1493",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  coverLiveText: {
+    color: "#FFF",
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  coverBannerTitle: { color: "#FFF", fontSize: 13, fontWeight: "700", flex: 1 },
 
   // ── Currency bar ─────────────────────────────────────────────────────────────
   currencyBar: {
