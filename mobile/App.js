@@ -10,6 +10,7 @@ import {
 import { useNetInfo } from "@react-native-community/netinfo";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import Constants from "expo-constants";
+import SoundService from "./src/services/soundService";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -31,9 +32,8 @@ export default function App() {
         requestUserPermission().catch((e) =>
           console.warn("Permission request failed:", e),
         );
-
-        // Pre-load fonts, make any API calls you need to do here
-        // No async operations needed at this time.
+        // Pre-load all app sound effects from local assets
+        SoundService.preload().catch(() => {});
       } catch (e) {
         console.warn("Failed to initialize app resources:", e);
       } finally {

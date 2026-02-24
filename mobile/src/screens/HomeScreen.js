@@ -30,6 +30,7 @@ import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import videoService from "../services/videoService";
+import SoundService from "../services/soundService";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -305,6 +306,7 @@ const HomeScreen = ({ navigation }) => {
     };
 
     const onLikePress = () => {
+      SoundService.play("like");
       animateLike();
       handleLike(item._id);
     };
@@ -427,7 +429,10 @@ const HomeScreen = ({ navigation }) => {
           {/* Comment Button */}
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => handleComment(item)}
+            onPress={() => {
+              SoundService.play("tap");
+              handleComment(item);
+            }}
           >
             <Ionicons name="chatbubble-ellipses-sharp" size={35} color="#FFF" />
             <Text style={styles.actionText}>
@@ -438,7 +443,10 @@ const HomeScreen = ({ navigation }) => {
           {/* Bookmark Button */}
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => handleSave(item._id)}
+            onPress={() => {
+              SoundService.play("tap");
+              handleSave(item._id);
+            }}
           >
             <Ionicons
               name={item.isSaved ? "bookmark" : "bookmark-outline"}
@@ -450,7 +458,10 @@ const HomeScreen = ({ navigation }) => {
           {/* Share Button */}
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => handleShare(item)}
+            onPress={() => {
+              SoundService.play("tap");
+              handleShare(item);
+            }}
           >
             <Ionicons name="arrow-redo-sharp" size={35} color="#FFF" />
           </TouchableOpacity>

@@ -6,16 +6,20 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  I18nManager,
   Alert,
   Image,
+  Modal,
+  ActivityIndicator,
+  ScrollView,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
 import axios from "axios";
 
-// Enable RTL
 // Enable RTL logic moved to index.js
 
 const RegisterScreen = ({ navigation }) => {
@@ -24,102 +28,183 @@ const RegisterScreen = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    type: "",
+    errorCode: "",
+    statusCode: null,
+    timestamp: "",
+    endpoint: "",
+    technicalDetails: "",
+  });
   const { BASE_URL } = useContext(AuthContext);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 1000,
+      duration: 800,
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
 
+  const showError = (title, message, type = "server", extra = {}) => {
+    setErrorModal({
+      visible: true,
+      title,
+      message,
+      type,
+      errorCode: extra.errorCode || "ERROR",
+      statusCode: extra.statusCode || null,
+      timestamp: new Date().toISOString(),
+      endpoint: extra.endpoint || "/auth/send-otp",
+      technicalDetails: extra.technicalDetails || message,
+    });
+  };
+
   const handleRegister = async () => {
     if (!username || !email || !password) {
-      Alert.alert("خطأ", "يرجى ملء جميع الحقول");
+      showError(
+        "حقول مطلوبة",
+        "يرجى ملء جميع الحقول: الاسم والبريد الإلكتروني وكلمة المرور",
+        "validation",
+        { errorCode: "VALIDATION_REQUIRED" },
+      );
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert("خطأ", "يرجى إدخال بريد إلكتروني صحيح");
+      showError(
+        "بريد إلكتروني غير صحيح",
+        "يرجى إدخال عنوان بريد إلكتروني صحيح مثل: example@domain.com",
+        "validation",
+        { errorCode: "INVALID_EMAIL" },
+      );
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("خطأ", "كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+      showError(
+        "كلمة مرور قصيرة",
+        "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+        "validation",
+        { errorCode: "PASSWORD_TOO_SHORT" },
+      );
       return;
     }
 
     setLoading(true);
+    setShowTechnicalDetails(false);
     try {
       console.log("📤 Sending OTP to:", email);
       const sendRequest = async (base) =>
-        axios.post(
-          `${base}/auth/send-otp`,
-          { email },
-          { timeout: 60000 }, // 60 second timeout for cold starts
-        );
+        axios.post(`${base}/auth/send-otp`, { email }, { timeout: 60000 });
 
       let response;
       try {
         response = await sendRequest(BASE_URL);
       } catch (primaryErr) {
-        // Fallback to public Render URL if the computed BASE_URL isn't reachable (common on emulators / network issues)
         console.log(
-          "⚠️ Primary OTP request failed, retrying with Render URL...",
+          "⚠️ Primary OTP request failed, retrying...",
           primaryErr.message,
         );
         response = await sendRequest("https://tikbook-1cdb.onrender.com/api");
       }
 
       console.log("✅ OTP Sent:", response.data);
-
-      // Navigate to OTP screen
       navigation.navigate("OTP", {
         username,
         email,
         password,
-        devOtp: response.data.dev_otp, // Pass dev OTP if available
+        devOtp: response.data.dev_otp,
       });
 
-      // Show dev OTP alert after navigation
       if (response.data.dev_otp) {
         setTimeout(() => {
           Alert.alert(
             "⚠️ وضع التطوير",
-            `الخادم لم يتمكن من إرسال البريد عبر SMTP.\n\nرمز التحقق للاختبار:\n${response.data.dev_otp}\n\nانسخ هذا الرمز وأدخله في الشاشة التالية.`,
-            [
-              {
-                text: "حسناً",
-                style: "default",
-              },
-            ],
+            `رمز التحقق للاختبار:\n${response.data.dev_otp}\n\nأدخله في الشاشة التالية.`,
           );
         }, 500);
       }
     } catch (error) {
-      console.log("❌ OTP Send Request Failed:", error.message);
-      console.log("❌ OTP Error code:", error.code);
-      console.log("❌ OTP Error details:", error.toJSON?.());
-      if (error.response) {
-        console.log("❌ Server Error Data:", error.response.data);
-        console.log("❌ Server Status:", error.response.status);
-      } else if (error.request) {
-        console.log("❌ No Response Received (Network/Timeout)");
+      console.log("❌ OTP Send Failed:", error.message);
+      let title = "خطأ في إنشاء الحساب";
+      let message =
+        error.response?.data?.message ||
+        error.message ||
+        "فشل إرسال رمز التحقق";
+      let type = "server";
+      let errorCode = error.code || "UNKNOWN_ERROR";
+      const statusCode = error.response?.status || null;
+
+      let technicalDetails = `Error: ${error.message}\n`;
+      if (error.code) technicalDetails += `Code: ${error.code}\n`;
+      if (statusCode) technicalDetails += `Status: ${statusCode}\n`;
+      if (error.response?.data)
+        technicalDetails += `Response: ${JSON.stringify(error.response.data, null, 2)}\n`;
+      technicalDetails += `Timestamp: ${new Date().toISOString()}`;
+
+      if (
+        error.message?.includes("Network") ||
+        error.code === "ECONNABORTED" ||
+        error.code === "ENOTFOUND" ||
+        error.code === "ERR_NETWORK" ||
+        error.message?.includes("timeout")
+      ) {
+        type = "network";
+        title = "خطأ في الاتصال بالشبكة";
+        message =
+          "لا يمكن الوصول إلى الخادم. تحقق من اتصال الإنترنت الخاص بك والمحاولة مجدداً.";
+        errorCode = error.code || "ERR_NETWORK";
+      } else if (
+        statusCode === 409 ||
+        message.toLowerCase().includes("exist") ||
+        message.includes("مستخدم")
+      ) {
+        type = "credentials";
+        title = "الحساب موجود مسبقاً";
+        errorCode = "USER_EXISTS";
+      } else if (statusCode >= 500) {
+        type = "server";
+        title = "خطأ في الخادم";
+        message = "حدث خطأ على الخادم. الرجاء المحاولة مجدداً لاحقاً.";
+        errorCode = `SERVER_ERROR_${statusCode}`;
       }
 
-      Alert.alert(
-        "خطأ",
-        error.response?.data?.message ||
-          error.message ||
-          "فشل إرسال رمز التحقق",
-      );
+      showError(title, message, type, {
+        errorCode,
+        statusCode,
+        endpoint: "/auth/send-otp",
+        technicalDetails,
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyErrorDetails = async () => {
+    const details =
+      `خطأ في إنشاء الحساب\n\n` +
+      `العنوان: ${errorModal.title}\n` +
+      `الرسالة: ${errorModal.message}\n` +
+      `النوع: ${errorModal.type}\n` +
+      `رمز الخطأ: ${errorModal.errorCode}\n` +
+      `${errorModal.statusCode ? `رمز الحالة: ${errorModal.statusCode}\n` : ""}` +
+      `الوقت: ${errorModal.timestamp}\n` +
+      `نقطة النهاية: ${errorModal.endpoint}\n\n` +
+      `التفاصيل التقنية:\n${errorModal.technicalDetails}`;
+    await Clipboard.setStringAsync(details);
+    Alert.alert("تم النسخ", "تم نسخ تفاصيل الخطأ إلى الحافظة");
+  };
+
+  const retryRegister = () => {
+    setErrorModal({ ...errorModal, visible: false });
+    setTimeout(() => handleRegister(), 300);
   };
 
   const handleOAuthLogin = (provider) => {
@@ -127,138 +212,351 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Animated.View style={{ opacity: fadeAnim, alignItems: "center" }}>
-        <View style={styles.logo}>
-          <Image
-            source={require("../../assets/logo.jpg")}
-            style={styles.logoImage}
-            resizeMode="contain"
+    <SafeAreaView style={styles.container}>
+      <Animated.ScrollView
+        style={{ opacity: fadeAnim }}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!loading}
+        contentContainerStyle={{
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100%",
+          paddingHorizontal: 20,
+        }}
+      >
+        <Animated.View style={{ alignItems: "center" }}>
+          <View style={styles.logo}>
+            <Image
+              source={require("../../assets/logo.jpg")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+        </Animated.View>
+
+        <Text style={styles.title}>{i18n.t("signUpForTikBook")}</Text>
+        <Text style={styles.subtitle}>{i18n.t("createProfile")}</Text>
+
+        <View style={styles.inputContainer}>
+          <Ionicons
+            name="person-outline"
+            size={20}
+            color="#FE2C55"
+            style={styles.inputIcon}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={i18n.t("username")}
+            placeholderTextColor="#888"
+            value={username}
+            onChangeText={setUsername}
+            editable={!loading}
+            autoCapitalize="none"
           />
         </View>
-      </Animated.View>
-      <Text style={styles.title}>{i18n.t("signUpForTikBook")}</Text>
-      <Text style={styles.subtitle}>{i18n.t("createProfile")}</Text>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder={i18n.t("username")}
-          placeholderTextColor="#888"
-          value={username}
-          onChangeText={setUsername}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder={i18n.t("email")}
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder={i18n.t("password")}
-          placeholderTextColor="#888"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-        />
-        <TouchableOpacity
-          style={styles.eyeIcon}
-          onPress={() => setShowPassword(!showPassword)}
-        >
+        <View style={styles.inputContainer}>
           <Ionicons
-            name={showPassword ? "eye-off" : "eye"}
-            size={24}
-            color="#888"
+            name="mail-outline"
+            size={20}
+            color="#FE2C55"
+            style={styles.inputIcon}
           />
-        </TouchableOpacity>
-      </View>
+          <TextInput
+            style={styles.input}
+            placeholder={i18n.t("email")}
+            placeholderTextColor="#888"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            editable={!loading}
+          />
+        </View>
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleRegister}
-        disabled={loading}
+        <View style={styles.inputContainer}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color="#FE2C55"
+            style={styles.inputIcon}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={i18n.t("password")}
+            placeholderTextColor="#888"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            editable={!loading}
+          />
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+            disabled={loading}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off" : "eye"}
+              size={20}
+              color={loading ? "#666" : "#888"}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (!username || !email || !password || loading) &&
+              styles.buttonDisabled,
+          ]}
+          onPress={handleRegister}
+          disabled={!username || !email || !password || loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>{i18n.t("signUp")}</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>{i18n.t("alreadyHaveAccount")}</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Login")}
+            disabled={loading}
+          >
+            <Text style={[styles.link, loading && styles.linkDisabled]}>
+              {i18n.t("logIn")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.ScrollView>
+
+      {/* Error Modal */}
+      <Modal
+        visible={errorModal.visible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
       >
-        <Text style={styles.buttonText}>
-          {loading ? "جاري الإنشاء..." : i18n.t("signUp")}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.errorOverlay}>
+          <View style={styles.errorBox}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: "100%" }}
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  {
+                    backgroundColor:
+                      errorModal.type === "network"
+                        ? "rgba(255, 107, 107, 0.1)"
+                        : errorModal.type === "credentials"
+                          ? "rgba(255, 193, 7, 0.1)"
+                          : errorModal.type === "validation"
+                            ? "rgba(33, 150, 243, 0.1)"
+                            : "rgba(76, 175, 80, 0.1)",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    errorModal.type === "network"
+                      ? "cloud-offline"
+                      : errorModal.type === "credentials"
+                        ? "person-circle"
+                        : errorModal.type === "validation"
+                          ? "alert-circle"
+                          : "information-circle"
+                  }
+                  size={40}
+                  color={
+                    errorModal.type === "network"
+                      ? "#FF6B6B"
+                      : errorModal.type === "credentials"
+                        ? "#FFC107"
+                        : errorModal.type === "validation"
+                          ? "#2196F3"
+                          : "#4CAF50"
+                  }
+                />
+              </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>{i18n.t("alreadyHaveAccount")}</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-          <Text style={styles.link}>{i18n.t("logIn")}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+              <Text style={styles.errorTitle}>{errorModal.title}</Text>
+              <Text style={styles.errorMessage}>{errorModal.message}</Text>
+
+              <View style={styles.errorCodeContainer}>
+                <View style={styles.errorCodeBadge}>
+                  <Ionicons name="bug" size={14} color="#FF6B6B" />
+                  <Text style={styles.errorCodeText}>
+                    {errorModal.errorCode}
+                  </Text>
+                </View>
+                {errorModal.statusCode && (
+                  <View style={styles.errorCodeBadge}>
+                    <Ionicons
+                      name="information-circle"
+                      size={14}
+                      color="#FF6B6B"
+                    />
+                    <Text style={styles.errorCodeText}>
+                      HTTP {errorModal.statusCode}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {errorModal.type === "network" && (
+                <View style={styles.helpBox}>
+                  <Text style={styles.helpTitle}>اقتراحات:</Text>
+                  <Text style={styles.helpText}>
+                    • تحقق من اتصال الإنترنت الخاص بك
+                  </Text>
+                  <Text style={styles.helpText}>
+                    • حاول إعادة تشغيل الوي فاي أو البيانات الخلوية
+                  </Text>
+                  <Text style={styles.helpText}>• تأكد من أن الخادم متاح</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.technicalToggle}
+                onPress={() => setShowTechnicalDetails(!showTechnicalDetails)}
+              >
+                <Ionicons
+                  name={showTechnicalDetails ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#888"
+                />
+                <Text style={styles.technicalToggleText}>
+                  {showTechnicalDetails
+                    ? "إخفاء التفاصيل التقنية"
+                    : "عرض التفاصيل التقنية"}
+                </Text>
+              </TouchableOpacity>
+
+              {showTechnicalDetails && (
+                <View style={styles.technicalDetailsBox}>
+                  <View style={styles.technicalRow}>
+                    <Text style={styles.technicalLabel}>الوقت:</Text>
+                    <Text style={styles.technicalValue}>
+                      {new Date(errorModal.timestamp).toLocaleString("ar-EG")}
+                    </Text>
+                  </View>
+                  <View style={styles.technicalRow}>
+                    <Text style={styles.technicalLabel}>نقطة النهاية:</Text>
+                    <Text style={styles.technicalValue}>
+                      {errorModal.endpoint}
+                    </Text>
+                  </View>
+                  <View style={styles.technicalDivider} />
+                  <Text style={styles.technicalDetailsLabel}>
+                    التفاصيل الكاملة:
+                  </Text>
+                  <ScrollView
+                    style={styles.technicalDetailsScroll}
+                    nestedScrollEnabled
+                  >
+                    <Text style={styles.technicalDetailsContent}>
+                      {errorModal.technicalDetails}
+                    </Text>
+                  </ScrollView>
+                  <TouchableOpacity
+                    style={styles.copyButton}
+                    onPress={copyErrorDetails}
+                  >
+                    <Ionicons name="copy-outline" size={16} color="#FE2C55" />
+                    <Text style={styles.copyButtonText}>نسخ التفاصيل</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.errorButtonsContainer}>
+                {errorModal.type === "network" && (
+                  <TouchableOpacity
+                    style={[styles.errorButton, styles.retryButton]}
+                    onPress={retryRegister}
+                  >
+                    <Ionicons name="refresh" size={18} color="#FFF" />
+                    <Text style={styles.errorButtonText}>إعادة المحاولة</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[
+                    styles.errorButton,
+                    errorModal.type === "network" && styles.dismissButton,
+                  ]}
+                  onPress={() =>
+                    setErrorModal({ ...errorModal, visible: false })
+                  }
+                >
+                  <Text style={styles.errorButtonText}>
+                    {errorModal.type === "network" ? "إغلاق" : "فهمت"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    padding: 30,
     backgroundColor: "#000",
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 110,
+    height: 110,
     marginBottom: 30,
-    borderRadius: 60,
+    borderRadius: 55,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
-  },
-  logoImage: {
-    width: "100%",
-    height: "100%",
-  },
-  otpIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#1a1a1a",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
+    backgroundColor: "rgba(254, 44, 85, 0.1)",
     borderWidth: 2,
     borderColor: "#FE2C55",
   },
+  logoImage: { width: "100%", height: "100%" },
   title: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 8,
     textAlign: "center",
     color: "#FFF",
+    paddingHorizontal: 20,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#999",
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: 32,
     paddingHorizontal: 20,
-    lineHeight: 24,
+    lineHeight: 20,
   },
   inputContainer: {
+    width: "100%",
     marginBottom: 16,
     position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputIcon: {
+    position: "absolute",
+    left: 12,
+    zIndex: 1,
   },
   input: {
-    width: "100%",
+    flex: 1,
     height: 52,
     borderWidth: 1.5,
     borderColor: "#333",
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 50,
     backgroundColor: "#1a1a1a",
     fontSize: 16,
@@ -267,59 +565,198 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     position: "absolute",
-    left: 15,
-    top: 14,
+    right: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
   },
   button: {
     backgroundColor: "#FE2C55",
     height: 52,
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    width: "100%",
     marginTop: 10,
+    shadowColor: "#FE2C55",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buttonDisabled: {
+    backgroundColor: "rgba(254, 44, 85, 0.5)",
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 40,
+    marginBottom: 30,
+  },
+  footerText: { fontSize: 14, color: "#999" },
+  link: { fontSize: 14, color: "#FE2C55", fontWeight: "700", marginLeft: 5 },
+  linkDisabled: { opacity: 0.5 },
+
+  /* Error Modal */
+  errorOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  errorBox: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 20,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "#333",
+    width: "100%",
+    maxHeight: "85%",
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFF",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: "#CCC",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+    paddingHorizontal: 10,
+  },
+  errorCodeContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 20,
+    flexWrap: "wrap",
+  },
+  errorCodeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 107, 107, 0.3)",
+  },
+  errorCodeText: { color: "#FF6B6B", fontSize: 12, fontWeight: "600" },
+  helpBox: {
+    backgroundColor: "rgba(255, 193, 7, 0.1)",
+    borderLeftWidth: 4,
+    borderLeftColor: "#FFC107",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  helpTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFC107",
+    marginBottom: 8,
+  },
+  helpText: { fontSize: 12, color: "#CCC", marginBottom: 4, lineHeight: 16 },
+  technicalToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    marginBottom: 10,
+    gap: 8,
+  },
+  technicalToggleText: { color: "#888", fontSize: 13, fontWeight: "600" },
+  technicalDetailsBox: {
+    backgroundColor: "#0a0a0a",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  technicalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  technicalLabel: { color: "#888", fontSize: 12, fontWeight: "600" },
+  technicalValue: {
+    color: "#CCC",
+    fontSize: 12,
+    flex: 1,
+    textAlign: "left",
+    marginLeft: 10,
+  },
+  technicalDivider: { height: 1, backgroundColor: "#333", marginVertical: 12 },
+  technicalDetailsLabel: {
+    color: "#888",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  technicalDetailsScroll: { maxHeight: 150 },
+  technicalDetailsContent: {
+    color: "#999",
+    fontSize: 11,
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+    lineHeight: 16,
+  },
+  copyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(254, 44, 85, 0.1)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(254, 44, 85, 0.3)",
+  },
+  copyButtonText: { color: "#FE2C55", fontSize: 12, fontWeight: "600" },
+  errorButtonsContainer: { flexDirection: "row", gap: 10 },
+  errorButton: {
+    backgroundColor: "#FE2C55",
+    height: 52,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
     shadowColor: "#FE2C55",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
-  buttonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "bold",
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 40,
-  },
-  footerText: {
-    fontSize: 15,
-    color: "#999",
-  },
-  link: {
-    fontSize: 15,
-    color: "#FE2C55",
-    fontWeight: "bold",
-    marginLeft: 5,
-  },
-  resendContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 20,
-  },
-  resendText: {
-    fontSize: 15,
-    color: "#999",
-  },
-  resendLink: {
-    fontSize: 15,
-    color: "#FE2C55",
-    fontWeight: "bold",
-  },
+  retryButton: { backgroundColor: "#4CAF50", shadowColor: "#4CAF50" },
+  dismissButton: { backgroundColor: "#666", shadowColor: "#666" },
+  errorButtonText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
 });
 
 export default RegisterScreen;

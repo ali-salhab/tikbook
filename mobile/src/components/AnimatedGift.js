@@ -51,11 +51,11 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     const isVideo = gift.animationType === "video";
     const duration = (gift.duration || 3) * 1000;
 
-    if (isVideo && gift.fullScreen) {
-      // TikTok-style: just fade in — exit is triggered when video finishes
+    if (isVideo) {
+      // Full-screen video gift: fade in only — exit triggered when video finishes
       opacity.value = withTiming(1, { duration: 350 });
     } else {
-      // Standard gift: spring entrance
+      // Non-video gift: spring entrance + fixed-duration timer
       opacity.value = withTiming(1, { duration: 300 });
       scale.value = withSequence(
         withSpring(isCombo ? 1.8 : 1.2, { damping: 8, stiffness: 100 }),
@@ -102,13 +102,15 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   }));
 
   // ── FULL-SCREEN VIDEO (TikTok style) ─────────────────────────────────────
-  if (gift.fullScreen && gift.animationType === "video") {
+  // Any gift with animationType === "video" is rendered full-screen.
+  // The fullScreen flag on the gift is also respected as an opt-in.
+  if (gift.animationType === "video") {
     return (
       <Animated.View
         style={[styles.tiktokContainer, videoFadeStyle]}
         pointerEvents="none"
       >
-        {/* Video fills screen */}
+        {/* Video fills every pixel — no black bars */}
         <Video
           source={{ uri: gift.animationUrl }}
           style={styles.tiktokVideo}
@@ -228,7 +230,7 @@ const styles = StyleSheet.create({
   tiktokContainer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2000,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
   tiktokVideo: {
     ...StyleSheet.absoluteFillObject,

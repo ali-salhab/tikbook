@@ -92,7 +92,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    setIsLoading(true);
     try {
       console.log("🔐 Attempting login...", {
         email,
@@ -135,13 +134,10 @@ export const AuthProvider = ({ children }) => {
         e.response?.data?.message ||
           "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور",
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (username, email, password, otp) => {
-    setIsLoading(true);
     try {
       console.log("📝 Attempting registration...", { username, email });
       const res = await axios.post(
@@ -172,8 +168,6 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.log("❌ Register error:", e.response?.data || e.message);
       throw new Error(e.response?.data?.message || "فشل إنشاء الحساب");
-    } finally {
-      setIsLoading(false);
     }
   };
 

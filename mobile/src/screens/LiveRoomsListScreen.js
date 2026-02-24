@@ -11,13 +11,9 @@ import {
   ScrollView,
   StatusBar,
   ImageBackground,
+  TextInput,
 } from "react-native";
-import {
-  Ionicons,
-  MaterialIcons,
-  Feather,
-  FontAwesome5,
-} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
@@ -34,6 +30,16 @@ const LiveRoomsListScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("popular"); // 'all', 'nearby', 'popular'
   const [activeFilter, setActiveFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  const filteredRooms = searchText.trim()
+    ? liveRooms.filter(
+        (r) =>
+          r.host?.username?.toLowerCase().includes(searchText.toLowerCase()) ||
+          r.title?.toLowerCase().includes(searchText.toLowerCase()),
+      )
+    : liveRooms;
 
   useEffect(() => {
     fetchLiveRooms();
@@ -48,7 +54,9 @@ const LiveRoomsListScreen = ({ navigation }) => {
       });
 
       if (response.data.success) {
-        setLiveRooms(response.data.data);
+        setLiveRooms(
+          (response.data.data || []).filter((r) => r.status === "active"),
+        );
       } else {
         // Fallback or mock if empty
         setLiveRooms([]);
@@ -78,103 +86,81 @@ const LiveRoomsListScreen = ({ navigation }) => {
   // ─── RENDER HELPERS ─────────────────────────────────────────────────────────
 
   const renderHeader = () => (
-    <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
-      {/* Left Icon (Home/Green House) */}
-      <TouchableOpacity style={styles.iconButton} onPress={handleCreateRoom}>
-        <View style={styles.createButtonContainer}>
-          <Ionicons name="add" size={16} color="#FFF" />
+    <>
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
+        {/* Left Icon (Home/Green House) */}
+        <TouchableOpacity style={styles.iconButton} onPress={handleCreateRoom}>
+          <View style={styles.createButtonContainer}>
+            <Ionicons name="add" size={16} color="#FFF" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Center Tabs */}
+        <View style={styles.tabsContainer}>
+          {["الكل", "المجاورون", "شعبي"].map((tab) => {
+            const tabKey =
+              tab === "شعبي"
+                ? "popular"
+                : tab === "المجاورون"
+                  ? "nearby"
+                  : "all";
+            const isActive = activeTab === tabKey;
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tabKey)}
+                style={styles.tabItem}
+              >
+                <Text
+                  style={[styles.tabText, isActive && styles.tabTextActive]}
+                >
+                  {tab}
+                </Text>
+                {isActive && <View style={styles.tabIndicator} />}
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </TouchableOpacity>
 
-      {/* Center Tabs */}
-      <View style={styles.tabsContainer}>
-        {["الكل", "المجاورون", "شعبي"].map((tab) => {
-          const tabKey =
-            tab === "شعبي" ? "popular" : tab === "المجاورون" ? "nearby" : "all";
-          const isActive = activeTab === tabKey;
-          return (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tabKey)}
-              style={styles.tabItem}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab}
-              </Text>
-              {isActive && <View style={styles.tabIndicator} />}
+        {/* Right Icon (Search) */}
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => {
+            setShowSearch((v) => !v);
+            if (showSearch) setSearchText("");
+          }}
+        >
+          <Ionicons
+            name={showSearch ? "close" : "search"}
+            size={24}
+            color="#333"
+          />
+        </TouchableOpacity>
+      </View>
+      {showSearch && (
+        <View style={styles.searchBar}>
+          <Ionicons
+            name="search"
+            size={16}
+            color="#999"
+            style={{ marginRight: 6 }}
+          />
+          <TextInput
+            autoFocus
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="ابحث عن غرفة أو مضيف..."
+            placeholderTextColor="#999"
+            style={styles.searchInput}
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchText("")}>
+              <Ionicons name="close-circle" size={16} color="#ccc" />
             </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Right Icon (Search) */}
-      <TouchableOpacity style={styles.iconButton}>
-        <Ionicons name="search" size={24} color="#333" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderStories = () => (
-    <View style={styles.storiesSection}>
-      <View style={styles.storiesHeader}>
-        <TouchableOpacity style={styles.viewAllButton}>
-          <Ionicons name="chevron-back" size={16} color="#999" />
-          <Text style={styles.viewAllText}>الكل</Text>
-        </TouchableOpacity>
-        <Text style={styles.storiesTitle}>قد تكون مهتما</Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.storiesList}
-      >
-        {MOCK_STORIES.map((story) => (
-          <TouchableOpacity key={story.id} style={styles.storyItem}>
-            <View style={styles.storyAvatarContainer}>
-              <Image
-                source={{ uri: story.avatar }}
-                style={styles.storyAvatar}
-              />
-              <View style={styles.liveBadgeSmall}>
-                <Text style={styles.liveBadgeText}>LIVE</Text>
-              </View>
-            </View>
-            <Text style={styles.storyName} numberOfLines={1}>
-              {story.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-
-  const renderFilters = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.filterScroll}
-      contentContainerStyle={styles.filterContent}
-    >
-      {MOCK_FILTERS.map((filter) => (
-        <TouchableOpacity key={filter.id} style={styles.filterChip}>
-          {filter.id === "destinations" ? (
-            <View
-              style={[
-                styles.filterIconContainer,
-                { backgroundColor: "#D4EDDA" },
-              ]}
-            >
-              <FontAwesome5 name="star" size={12} color="#28A745" />
-            </View>
-          ) : (
-            <Text size={16} style={{ marginRight: 4 }}>
-              🇸🇦
-            </Text> // Placeholder for flags
           )}
-          <Text style={styles.filterText}>{filter.name}</Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+        </View>
+      )}
+    </>
   );
 
   const renderRoomItem = ({ item }) => {
@@ -191,8 +177,13 @@ const LiveRoomsListScreen = ({ navigation }) => {
       >
         <ImageBackground
           source={{
-            uri: item.host?.avatar || "https://via.placeholder.com/300",
+            uri:
+              item.host?.profileImage ||
+              item.host?.avatar ||
+              item.coverImage ||
+              null,
           }}
+          defaultSource={require("../../assets/icon.png")}
           style={styles.roomImage}
           imageStyle={{ borderRadius: 12 }}
         >
@@ -240,7 +231,7 @@ const LiveRoomsListScreen = ({ navigation }) => {
       {renderHeader()}
 
       <FlatList
-        data={liveRooms}
+        data={filteredRooms}
         renderItem={renderRoomItem}
         keyExtractor={(item) => item._id}
         numColumns={2}
@@ -504,6 +495,22 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#999",
     fontSize: 16,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0F0F0",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+    textAlign: "right",
   },
 });
 

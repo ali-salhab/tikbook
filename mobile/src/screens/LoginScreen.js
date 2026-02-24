@@ -292,27 +292,19 @@ const LoginScreen = ({ navigation }) => {
         </View>
       </Animated.ScrollView>
 
-      {/* Simple Loading Overlay - Spinner Only */}
-      {loading && (
-        <View style={styles.simpleLoadingOverlay}>
-          <ActivityIndicator size="large" color="#FE2C55" />
-        </View>
-      )}
-
       {/* Error Modal */}
       <Modal
         visible={errorModal.visible}
         transparent
-        animationType="slide"
+        animationType="fade"
         statusBarTranslucent
       >
         <View style={styles.errorOverlay}>
-          <ScrollView
-            style={styles.errorScrollView}
-            contentContainerStyle={styles.errorScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.errorBox}>
+          <View style={styles.errorBox}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: "100%" }}
+            >
               {/* Error Icon */}
               <View
                 style={[
@@ -464,8 +456,8 @@ const LoginScreen = ({ navigation }) => {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </ScrollView>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -604,41 +596,23 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  /* Simple Loading Overlay */
-  simpleLoadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 999,
-  },
-
   /* Error Modal */
   errorOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-  },
-  errorScrollView: {
-    flex: 1,
-  },
-  errorScrollContent: {
-    justifyContent: "flex-end",
-    minHeight: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
   },
   errorBox: {
     backgroundColor: "#1a1a1a",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     paddingVertical: 30,
     paddingHorizontal: 20,
     borderWidth: 1,
     borderColor: "#333",
-    borderBottomWidth: 0,
-    maxHeight: "90%",
+    width: "100%",
+    maxHeight: "85%",
   },
   iconContainer: {
     width: 80,

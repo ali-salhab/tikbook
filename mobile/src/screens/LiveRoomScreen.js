@@ -15,6 +15,7 @@ import {
   Modal,
   ScrollView,
   Keyboard,
+  KeyboardAvoidingView,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -44,6 +45,7 @@ import AnimatedGift from "../components/AnimatedGift";
 import FloatingComments from "../components/FloatingComments";
 import GiftPanel from "../components/GiftPanel";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import SoundService from "../services/soundService";
 
 const { width, height } = Dimensions.get("window");
 const SEAT_SIZE = 58;
@@ -83,10 +85,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [showInput, setShowInput] = useState(false);
-  // Animated.Value instead of useState — updates instantly without a re-render
-  // cycle, so the input bar jumps above the keyboard in the same frame.
-  const keyboardAnim = useRef(new Animated.Value(0)).current;
-  const lastKeyboardHeight = useRef(0);
 
   // ── Gifts ────────────────────────────────────────────────────────────────────
   const [activeGifts, setActiveGifts] = useState([]);
@@ -101,11 +99,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ── Animations ───────────────────────────────────────────────────────────────
   const glowAnim = useRef(new Animated.Value(1)).current;
 
+  // ── Speaker detection ────────────────────────────────────────────────────────
+  const [speakingUserIds, setSpeakingUserIds] = useState(new Set());
+  const agoraUidMapRef = useRef({}); // agoraUid (number) → userId (string)
+  const localAgoraUidRef = useRef(null);
+
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const socketRef = useRef(null);
   const agoraEngineRef = useRef(null);
   const inputRef = useRef(null);
-  const tapSoundRef = useRef(null);
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────────
 
@@ -114,30 +116,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
     loadUserBalance();
     setupRoom();
     startGlowAnimation();
-    loadTapSound();
+    SoundService.preload().catch(() => {});
     fetchFreshCurrentUser();
-
-    // Track keyboard height — use Animated.Value so position updates
-    // in the same frame without a setState re-render cycle.
-    const defaultBottom = Math.max(insets.bottom, 16) + 4;
-    keyboardAnim.setValue(defaultBottom);
-
-    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      const h = e.endCoordinates.height;
-      lastKeyboardHeight.current = h;
-      keyboardAnim.setValue(h);
-    });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      keyboardAnim.setValue(defaultBottom);
-    });
 
     return () => {
       cleanup();
-      showSub.remove();
-      hideSub.remove();
-      if (tapSoundRef.current) {
-        tapSoundRef.current.unloadAsync().catch(() => {});
-      }
     };
   }, []);
 
@@ -155,26 +138,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
     } catch (_) {}
   };
 
-  const loadTapSound = async () => {
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        {
-          uri: "https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3",
-        },
-        { shouldPlay: false, volume: 0.6 },
-      );
-      tapSoundRef.current = sound;
-    } catch (_) {}
+  const playGiftSound = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    SoundService.play("gift_receive");
   };
 
-  const playTap = async () => {
+  const playTap = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    try {
-      if (tapSoundRef.current) {
-        await tapSoundRef.current.setPositionAsync(0);
-        await tapSoundRef.current.playAsync();
-      }
-    } catch (_) {}
+    SoundService.play("tap");
   };
 
   const loadUserBalance = async () => {
@@ -248,6 +221,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       agoraEngineRef.current = engine;
       engine.initialize({ appId: AGORA_APP_ID });
       engine.enableAudio();
+      engine.enableAudioVolumeIndication(200, 3, false);
       engine.setChannelProfile(
         ChannelProfileType.ChannelProfileLiveBroadcasting,
       );
@@ -256,7 +230,33 @@ const LiveRoomScreen = ({ route, navigation }) => {
           ? ClientRoleType.ClientRoleBroadcaster
           : ClientRoleType.ClientRoleAudience,
       );
-      engine.addListener("onJoinChannelSuccess", () => setJoinedAgora(true));
+      engine.addListener("onJoinChannelSuccess", (connection) => {
+        const uid = connection?.localUid ?? 0;
+        localAgoraUidRef.current = uid;
+        // Broadcast our Agora UID so others can map it to our userId
+        socketRef.current?.emit("liveroom:agora_uid", {
+          roomId,
+          userId: userInfo._id,
+          agoraUid: uid,
+        });
+        setJoinedAgora(true);
+      });
+      engine.addListener("onAudioVolumeIndication", (connection, speakers) => {
+        const THRESHOLD = 30;
+        const nowSpeaking = new Set();
+        (speakers || []).forEach(({ uid, volume }) => {
+          if (volume >= THRESHOLD) {
+            if (uid === 0) {
+              // Local user
+              nowSpeaking.add(userInfo._id);
+            } else {
+              const userId = agoraUidMapRef.current[uid];
+              if (userId) nowSpeaking.add(userId);
+            }
+          }
+        });
+        setSpeakingUserIds(nowSpeaking);
+      });
       engine.joinChannel(null, channelName, 0, {});
       engine.muteLocalAudioStream(true);
     } catch (e) {
@@ -299,6 +299,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
 
     socket.on("liveroom:user_joined", fetchRoomData);
+    socket.on("liveroom:agora_uid", ({ userId, agoraUid }) => {
+      agoraUidMapRef.current[agoraUid] = userId;
+    });
     socket.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();
       if (user._id === userInfo._id) {
@@ -324,9 +327,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
     socket.on("liveroom:message_received", (msg) => {
       setMessages((prev) => [...prev, msg].slice(-50));
+      SoundService.play("notification");
     });
     socket.on("liveroom:gift_received", ({ gift, sender }) => {
       const id = `${Date.now()}${Math.random()}`;
+      playGiftSound();
       setActiveGifts((prev) => [...prev, { id, gift, sender }]);
       setMessages((prev) =>
         [
@@ -362,6 +367,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (res.data.success) {
         const rData = res.data.data;
         setRoom(rData);
+        SoundService.play("join");
         const isHost = rData.host._id === userInfo._id;
         const isSpeaker = rData.speakers?.some(
           (s) => s.user._id === userInfo._id,
@@ -374,7 +380,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
     } catch (err) {
       console.error("Join room error:", err);
-      Alert.alert("خطأ", "تعذّر الانضمام إلى الغرفة");
+      const msg = err?.response?.data?.message || "تعذّر الانضمام إلى الغرفة";
+      Alert.alert("خطأ", msg);
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -410,6 +417,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const next = !isMuted;
     setIsMuted(next);
     agoraEngineRef.current?.muteLocalAudioStream(next);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    SoundService.play(next ? "mic_off" : "mic_on");
     try {
       await axios.post(
         `${BASE_URL}/live-rooms/${roomId}/toggle-mute`,
@@ -445,6 +454,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const handleSendMessage = () => {
     const msg = inputText.trim();
     if (!msg) return;
+    SoundService.play("message");
     socketRef.current?.emit("liveroom:send_message", {
       roomId,
       message: msg,
@@ -455,13 +465,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const handleOpenInput = () => {
     playTap();
-    // Pre-position immediately with the last known keyboard height so there
-    // is no visible jump on the 2nd+ open (keyboard height is already known).
-    if (lastKeyboardHeight.current > 0) {
-      keyboardAnim.setValue(lastKeyboardHeight.current);
-    }
     setShowInput(true);
-    setTimeout(() => inputRef.current?.focus(), 60);
   };
 
   const handleCloseInput = () => {
@@ -491,6 +495,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (res.data.success) {
         if (res.data.senderBalance !== undefined)
           setUserBalance(res.data.senderBalance);
+        SoundService.play("gift_send");
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
         socketRef.current?.emit("liveroom:send_gift", {
           roomId,
           gift,
@@ -684,6 +692,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         freshUser?.activeBadge?.image ||
         null
       : user?.activeBadge?.imageUrl || user?.activeBadge?.image || null;
+    const isSpeaking = user && speakingUserIds.has(user._id);
 
     return (
       <View style={styles.seatWrap}>
@@ -691,6 +700,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           style={[
             styles.seatCircle,
             !speaker?.isMuted && user && styles.seatActive,
+            isSpeaking && styles.seatSpeaking,
           ]}
         >
           {user ? (
@@ -851,17 +861,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
               <Ionicons name="gift-outline" size={21} color="#FFF" />
             </LinearGradient>
           </TouchableOpacity>
-          {/* More */}
-          <TouchableOpacity
-            onPress={() => {
-              playTap();
-              setShowManagementModal(true);
-            }}
-          >
-            <View style={styles.actionCircle}>
-              <Ionicons name="ellipsis-horizontal" size={19} color="#FFF" />
-            </View>
-          </TouchableOpacity>
+          {/* More — owner only */}
+          {isHost && (
+            <TouchableOpacity
+              onPress={() => {
+                playTap();
+                setShowManagementModal(true);
+              }}
+            >
+              <View style={styles.actionCircle}>
+                <Ionicons name="ellipsis-horizontal" size={19} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -1139,50 +1151,63 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
   };
 
-  // ─── CHAT INPUT (keyboard-aware — always mounted to avoid focus flicker) ────────
-  // JSX variable (NOT a component function); uses Animated.Value for bottom so
-  // position updates in the same frame as the keyboard — no re-render lag.
+  // ─── CHAT INPUT (Modal + KeyboardAvoidingView so it always sits above keyboard) ──
 
   const chatInputBar = (
-    <Animated.View
-      style={[
-        styles.chatBar,
-        { bottom: keyboardAnim, display: showInput ? "flex" : "none" },
-      ]}
-      pointerEvents={showInput ? "auto" : "none"}
+    <Modal
+      visible={showInput}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={handleCloseInput}
     >
-      <TextInput
-        ref={inputRef}
-        value={inputText}
-        onChangeText={setInputText}
-        placeholder="اكتب تعليقاً..."
-        placeholderTextColor="#999"
-        style={styles.chatField}
-        onSubmitEditing={handleSendMessage}
-        returnKeyType="send"
-        blurOnSubmit={false}
-        multiline={false}
-        autoCorrect={false}
-        spellCheck={false}
-      />
-      <TouchableOpacity
-        onPress={() => {
-          playTap();
-          handleSendMessage();
-        }}
-        style={styles.sendBtn}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      <KeyboardAvoidingView
+        style={{ flex: 1, justifyContent: "flex-end" }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
       >
-        <Ionicons name="send" size={20} color="#00BFFF" />
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={handleCloseInput}
-        style={styles.closeChatBtn}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Ionicons name="close-circle" size={20} color="#AAA" />
-      </TouchableOpacity>
-    </Animated.View>
+        {/* Tap outside to close */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={handleCloseInput}
+        />
+        <View style={styles.chatBar}>
+          <TextInput
+            ref={inputRef}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="اكتب تعليقاً..."
+            placeholderTextColor="#999"
+            style={styles.chatField}
+            onSubmitEditing={handleSendMessage}
+            returnKeyType="send"
+            blurOnSubmit={false}
+            multiline={false}
+            autoCorrect={false}
+            spellCheck={false}
+            autoFocus
+          />
+          <TouchableOpacity
+            onPress={() => {
+              playTap();
+              handleSendMessage();
+            }}
+            style={styles.sendBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="send" size={20} color="#00BFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleCloseInput}
+            style={styles.closeChatBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close-circle" size={20} color="#AAA" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 
   // ─── LOADING SCREEN ──────────────────────────────────────────────────────────
@@ -1517,6 +1542,15 @@ const styles = StyleSheet.create({
     // No overflow:hidden — badge frames extend beyond the circle
   },
   seatActive: { borderColor: "#00BB55", borderWidth: 2 },
+  seatSpeaking: {
+    borderColor: "#00F2EA",
+    borderWidth: 3,
+    shadowColor: "#00F2EA",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 10,
+  },
   seatFrameWrap: {
     position: "absolute",
     justifyContent: "center",
@@ -1626,17 +1660,14 @@ const styles = StyleSheet.create({
 
   // ── Chat input ────────────────────────────────────────────────────────────────
   chatBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(4,0,16,0.95)",
+    backgroundColor: "rgba(4,0,16,0.97)",
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
+    paddingBottom: 16,
     borderTopWidth: 1,
     borderTopColor: "rgba(160,32,240,0.3)",
-    zIndex: 300,
   },
   chatField: {
     flex: 1,
