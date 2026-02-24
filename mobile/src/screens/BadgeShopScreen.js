@@ -58,10 +58,7 @@ const BadgeShopScreen = ({ navigation }) => {
 
   const handlePurchase = async (badge) => {
     if (badge.isExclusive) {
-      Alert.alert(
-        "شارة حصرية",
-        "هذه الشارة تُمنح من قِبل الإدارة فقط",
-      );
+      Alert.alert("شارة حصرية", "هذه الشارة تُمنح من قِبل الإدارة فقط");
       return;
     }
 
