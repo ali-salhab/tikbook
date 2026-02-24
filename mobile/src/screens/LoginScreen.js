@@ -102,9 +102,9 @@ const LoginScreen = ({ navigation }) => {
         err.message?.includes("fetch")
       ) {
         errorType = "network";
-        title = "خطأ في الاتصال بالشبكة";
+        title = "خطأ في الاتصال بالخادم";
         message =
-          "لا يمكن الوصول إلى الخادم. تحقق من اتصال الإنترنت الخاص بك والمحاولة مجدداً.";
+          "لا يمكن الوصول إلى الخادم. قد يكون الخادم في طور التشغيل (حتى 60 ثانية). جرب مرة أخرى.";
         errorCode = err.code || "ERR_NETWORK";
       }
       // Credentials errors
@@ -368,12 +368,13 @@ const LoginScreen = ({ navigation }) => {
                 <View style={styles.helpBox}>
                   <Text style={styles.helpTitle}>اقتراحات:</Text>
                   <Text style={styles.helpText}>
-                    • تحقق من اتصال الإنترنت الخاص بك
+                    • قد يكون الخادم في طور البدء (التجهيز البارد) — أعد
+                    المحاولة
                   </Text>
+                  <Text style={styles.helpText}>• تحقق من اتصال الإنترنت</Text>
                   <Text style={styles.helpText}>
-                    • حاول إعادة تشغيل الوي فاي أو البيانات الخلوية
+                    • جرب الاتصال بالواي فاي أو بيانات الهاتف
                   </Text>
-                  <Text style={styles.helpText}>• تأكد من أن الخادم متاح</Text>
                 </View>
               )}
 

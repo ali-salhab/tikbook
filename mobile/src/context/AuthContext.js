@@ -120,20 +120,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (e) {
       console.log("❌ Login error:", e.response?.data || e.message);
-      if (e.code === "ECONNABORTED" || e.message.includes("timeout")) {
-        throw new Error(
-          "انتهت المهلة. تحقق من اتصال الشبكة والتأكد من تشغيل الخادم.",
-        );
-      } else if (e.message === "Network Error") {
-        throw new Error(
-          "خطأ في الاتصال. تأكد من:\n1. تشغيل الخادم على المنفذ 5000\n2. اتصال الهاتف والكمبيوتر بنفس الشبكة\n3. عنوان IP صحيح: " +
-            BASE_URL,
-        );
-      }
-      throw new Error(
-        e.response?.data?.message ||
-          "فشل تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور",
-      );
+      // Re-throw original error so LoginScreen can categorize it properly
+      throw e;
     }
   };
 
@@ -167,7 +155,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (e) {
       console.log("❌ Register error:", e.response?.data || e.message);
-      throw new Error(e.response?.data?.message || "فشل إنشاء الحساب");
+      // Re-throw original error so RegisterScreen can categorize it properly
+      throw e;
     }
   };
 
