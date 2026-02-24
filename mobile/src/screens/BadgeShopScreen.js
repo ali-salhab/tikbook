@@ -41,7 +41,7 @@ const BadgeShopScreen = ({ navigation }) => {
       setBadges(response.badges || []);
     } catch (error) {
       console.error("Error loading badges:", error);
-      Alert.alert("Error", "Failed to load badges");
+      Alert.alert("خطأ", "فشل تحميل الشارات");
     } finally {
       setLoading(false);
     }
@@ -59,30 +59,30 @@ const BadgeShopScreen = ({ navigation }) => {
   const handlePurchase = async (badge) => {
     if (badge.isExclusive) {
       Alert.alert(
-        "Exclusive Badge",
-        "This badge can only be gifted by administrators",
+        "شارة حصرية",
+        "هذه الشارة تُمنح من قِبل الإدارة فقط",
       );
       return;
     }
 
     Alert.alert(
-      "Confirm Purchase",
-      `Purchase ${badge.name} for ${badge.price} diamonds?`,
+      "تأكيد الشراء",
+      `شراء "${badge.name}" مقابل ${badge.price} 💎؟`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "إلغاء", style: "cancel" },
         {
-          text: "Purchase",
+          text: "شراء",
           onPress: async () => {
             try {
               setPurchasing(badge._id);
               await badgeService.purchaseBadge(userToken, badge._id);
-              Alert.alert("Success", "Badge purchased successfully!");
+              Alert.alert("✅ تم الشراء", `تم شراء "${badge.name}" بنجاح!`);
               loadMyBadges();
               loadBadges();
             } catch (error) {
               const message =
-                error.response?.data?.message || "Failed to purchase badge";
-              Alert.alert("Error", message);
+                error.response?.data?.message || "فشل شراء الشارة، حاول مجدداً";
+              Alert.alert("خطأ", message);
             } finally {
               setPurchasing(null);
             }

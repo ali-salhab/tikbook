@@ -86,14 +86,14 @@ const purchaseBadge = async (req, res) => {
     if (!badge.isActive) {
       return res.status(400).json({
         success: false,
-        message: "Badge is not available for purchase",
+        message: "هذا الشارة غير متاح للشراء حالياً",
       });
     }
 
     if (badge.isExclusive) {
       return res.status(400).json({
         success: false,
-        message: "This badge can only be gifted by administrators",
+        message: "هذا الشارة حصري ويُمنح من قِبل الإدارة فقط",
       });
     }
 
@@ -106,16 +106,19 @@ const purchaseBadge = async (req, res) => {
     if (alreadyOwned) {
       return res.status(400).json({
         success: false,
-        message: "You already own this badge",
+        message: "أنت تملك هذا الشارة بالفعل",
       });
     }
 
-    // Check user's wallet balance
-    const wallet = await Wallet.findOne({ user: userId });
-    if (!wallet || wallet.balance < badge.price) {
+    // Check user's wallet balance (auto-create if missing)
+    let wallet = await Wallet.findOne({ user: userId });
+    if (!wallet) {
+      wallet = await Wallet.create({ user: userId, balance: 0 });
+    }
+    if (wallet.balance < badge.price) {
       return res.status(400).json({
         success: false,
-        message: "Insufficient balance",
+        message: `رصيدك غير كافٍ. تحتاج ${badge.price} 💎 ولديك ${wallet.balance} 💎`,
       });
     }
 

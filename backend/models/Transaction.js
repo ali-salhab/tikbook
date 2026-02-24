@@ -11,6 +11,7 @@ const transactionSchema = mongoose.Schema(
       type: String,
       enum: [
         "purchase",
+        "badge_purchase",
         "gift_sent",
         "gift_received",
         "withdrawal",
