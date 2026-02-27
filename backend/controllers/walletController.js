@@ -35,7 +35,7 @@ const sendGift = async (req, res) => {
   try {
     // 1. Check Sender Balance
     const senderWallet = await Wallet.findOne({ user: req.user._id }).session(
-      session
+      session,
     );
     if (!senderWallet || senderWallet.balance < amount) {
       await session.abortTransaction();
@@ -48,7 +48,7 @@ const sendGift = async (req, res) => {
 
     // 3. Add to Receiver (Earnings)
     let receiverWallet = await Wallet.findOne({ user: receiverId }).session(
-      session
+      session,
     );
     if (!receiverWallet) {
       receiverWallet = await Wallet.create([{ user: receiverId }], { session });
@@ -68,7 +68,7 @@ const sendGift = async (req, res) => {
           description: `Sent ${giftName}`,
         },
       ],
-      { session }
+      { session },
     );
 
     await Transaction.create(
@@ -81,7 +81,7 @@ const sendGift = async (req, res) => {
           description: `Received ${giftName}`,
         },
       ],
-      { session }
+      { session },
     );
 
     await session.commitTransaction();

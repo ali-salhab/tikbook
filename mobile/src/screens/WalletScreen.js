@@ -127,7 +127,7 @@ const WalletScreen = ({ navigation }) => {
           text: "تأكيد الدفع",
           onPress: () => processPayment(amount),
         },
-      ]
+      ],
     );
   };
 
@@ -141,7 +141,7 @@ const WalletScreen = ({ navigation }) => {
             amount: amount,
             transactionId: `MOCK-PAY-${Date.now()}`,
           },
-          { headers: { Authorization: `Bearer ${userToken}` } }
+          { headers: { Authorization: `Bearer ${userToken}` } },
         );
         setBalance(res.data.balance);
         setLoading(false);
@@ -180,7 +180,7 @@ const WalletScreen = ({ navigation }) => {
           phoneNumber: withdrawPhone.trim(),
           amount: amt,
         },
-        { headers: { Authorization: `Bearer ${userToken}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setWithdrawLoading(false);
       setWithdrawFullName("");
@@ -188,7 +188,7 @@ const WalletScreen = ({ navigation }) => {
       setWithdrawAmount("");
       Alert.alert(
         "تم الإرسال ✅",
-        `طلب سحب ${amt} عملة قيد المراجعة من قبل الأدمن\nسيتم التواصل معك عبر الهاتف: ${withdrawPhone}`
+        `طلب سحب ${amt} عملة قيد المراجعة من قبل الأدمن\nسيتم التواصل معك عبر الهاتف: ${withdrawPhone}`,
       );
     } catch (e) {
       setWithdrawLoading(false);
@@ -219,18 +219,34 @@ const WalletScreen = ({ navigation }) => {
       {/* Tabs */}
       <View style={styles.tabsRow}>
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === "recharge" && styles.tabBtnActive]}
+          style={[
+            styles.tabBtn,
+            activeTab === "recharge" && styles.tabBtnActive,
+          ]}
           onPress={() => setActiveTab("recharge")}
         >
-          <Text style={[styles.tabBtnText, activeTab === "recharge" && styles.tabBtnTextActive]}>
+          <Text
+            style={[
+              styles.tabBtnText,
+              activeTab === "recharge" && styles.tabBtnTextActive,
+            ]}
+          >
             شحن عملات
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === "withdraw" && styles.tabBtnActive]}
+          style={[
+            styles.tabBtn,
+            activeTab === "withdraw" && styles.tabBtnActive,
+          ]}
           onPress={() => setActiveTab("withdraw")}
         >
-          <Text style={[styles.tabBtnText, activeTab === "withdraw" && styles.tabBtnTextActive]}>
+          <Text
+            style={[
+              styles.tabBtnText,
+              activeTab === "withdraw" && styles.tabBtnTextActive,
+            ]}
+          >
             سحب أرباح
           </Text>
         </TouchableOpacity>
@@ -270,7 +286,8 @@ const WalletScreen = ({ navigation }) => {
                   key={pkg.id}
                   style={[
                     styles.packageCard,
-                    selectedPackage?.id === pkg.id && styles.selectedPackageCard,
+                    selectedPackage?.id === pkg.id &&
+                      styles.selectedPackageCard,
                   ]}
                   onPress={() => handleSelectPackage(pkg)}
                 >
@@ -287,7 +304,9 @@ const WalletScreen = ({ navigation }) => {
                 style={[
                   styles.packageCard,
                   styles.customAmountCard,
-                  !selectedPackage && customAmount ? styles.selectedPackageCard : {},
+                  !selectedPackage && customAmount
+                    ? styles.selectedPackageCard
+                    : {},
                 ]}
                 onPress={() => {}}
               >
@@ -313,13 +332,19 @@ const WalletScreen = ({ navigation }) => {
             <View style={styles.giftPromo}>
               <Ionicons name="gift" size={24} color="#FE2C55" />
               <Text style={styles.giftText}>
-                اشحن على الأقل بمقدار 1,000 عملة لمرتين أكثر كي تفتح هدايا مميزة {">"} 
+                اشحن على الأقل بمقدار 1,000 عملة لمرتين أكثر كي تفتح هدايا مميزة{" "}
+                {">"}
               </Text>
             </View>
           </ScrollView>
 
           {/* Footer */}
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View
+            style={[
+              styles.footer,
+              { paddingBottom: Math.max(insets.bottom, 16) },
+            ]}
+          >
             <View style={styles.paymentMethodRow}>
               <Text style={styles.paymentLabel}>طريقة الدفع</Text>
               <ScrollView
@@ -331,17 +356,25 @@ const WalletScreen = ({ navigation }) => {
                   <FontAwesome5 name="cc-visa" size={24} color="#1A1F71" />
                 </View>
                 <View style={styles.paymentIcon}>
-                  <FontAwesome5 name="cc-mastercard" size={24} color="#EB001B" />
+                  <FontAwesome5
+                    name="cc-mastercard"
+                    size={24}
+                    color="#EB001B"
+                  />
                 </View>
                 <View style={styles.paymentIcon}>
                   <FontAwesome5 name="mobile-alt" size={18} color="#E60000" />
                   <Text style={styles.paymentTextSmall}>Cash</Text>
                 </View>
                 <View style={[styles.paymentIcon, styles.paymentBadge]}>
-                  <Text style={[styles.paymentTextSmall, { color: "#1155cc" }]}>Fawry</Text>
+                  <Text style={[styles.paymentTextSmall, { color: "#1155cc" }]}>
+                    Fawry
+                  </Text>
                 </View>
                 <View style={[styles.paymentIcon, styles.paymentBadge]}>
-                  <Text style={[styles.paymentTextSmall, { color: "#555" }]}>Meeza</Text>
+                  <Text style={[styles.paymentTextSmall, { color: "#555" }]}>
+                    Meeza
+                  </Text>
                 </View>
               </ScrollView>
             </View>
@@ -350,23 +383,41 @@ const WalletScreen = ({ navigation }) => {
               {selectedPackage
                 ? selectedPackage.price
                 : customAmount
-                ? (parseInt(customAmount) * 0.605).toFixed(2)
-                : "0.00"}
+                  ? (parseInt(customAmount) * 0.605).toFixed(2)
+                  : "0.00"}
             </Text>
-            <TouchableOpacity style={styles.rechargeButton} onPress={handleRecharge}>
+            <TouchableOpacity
+              style={styles.rechargeButton}
+              onPress={handleRecharge}
+            >
               <Text style={styles.rechargeButtonText}>الشحن</Text>
             </TouchableOpacity>
           </View>
         </>
       ) : (
         /* ── Withdraw Tab ── */
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 30) }]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, 30) },
+          ]}
+        >
           {/* Earnings Balance Card */}
           <View style={styles.earningsCard}>
-            <MaterialCommunityIcons name="cash-multiple" size={32} color="#FE2C55" />
+            <MaterialCommunityIcons
+              name="cash-multiple"
+              size={32}
+              color="#FE2C55"
+            />
             <View style={{ marginRight: 12 }}>
               <Text style={styles.earningsLabel}>أرباحك المتاحة للسحب</Text>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+              <View
+                style={{
+                  flexDirection: "row-reverse",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
                 <Text style={styles.earningsAmount}>{earnings}</Text>
                 <CoinIcon size={18} />
               </View>
@@ -412,7 +463,10 @@ const WalletScreen = ({ navigation }) => {
             />
 
             <TouchableOpacity
-              style={[styles.rechargeButton, withdrawLoading && { opacity: 0.6 }]}
+              style={[
+                styles.rechargeButton,
+                withdrawLoading && { opacity: 0.6 },
+              ]}
               onPress={handleWithdrawSubmit}
               disabled={withdrawLoading}
             >
@@ -425,9 +479,14 @@ const WalletScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.withdrawInfoBox}>
-            <Ionicons name="information-circle-outline" size={18} color="#666" />
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color="#666"
+            />
             <Text style={styles.withdrawInfoText}>
-              سيتم مراجعة طلبك من قبل الإدارة وسيتم التواصل معك على رقم هاتفك المسجل خلال 24 – 48 ساعة.
+              سيتم مراجعة طلبك من قبل الإدارة وسيتم التواصل معك على رقم هاتفك
+              المسجل خلال 24 – 48 ساعة.
             </Text>
           </View>
         </ScrollView>

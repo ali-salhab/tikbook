@@ -42,8 +42,10 @@ router.post("/withdrawals/:id/approve", protect, admin, async (req, res) => {
     const { adminNote } = req.body;
 
     const withdrawalReq = await WithdrawalRequest.findById(req.params.id);
-    if (!withdrawalReq) return res.status(404).json({ message: "الطلب غير موجود" });
-    if (withdrawalReq.status !== "pending") return res.status(400).json({ message: "تم مراجعة هذا الطلب مسبقاً" });
+    if (!withdrawalReq)
+      return res.status(404).json({ message: "الطلب غير موجود" });
+    if (withdrawalReq.status !== "pending")
+      return res.status(400).json({ message: "تم مراجعة هذا الطلب مسبقاً" });
 
     // Deduct from earnings
     const wallet = await Wallet.findOne({ user: withdrawalReq.user });
@@ -78,8 +80,10 @@ router.post("/withdrawals/:id/reject", protect, admin, async (req, res) => {
     const { adminNote } = req.body;
 
     const withdrawalReq = await WithdrawalRequest.findById(req.params.id);
-    if (!withdrawalReq) return res.status(404).json({ message: "الطلب غير موجود" });
-    if (withdrawalReq.status !== "pending") return res.status(400).json({ message: "تم مراجعة هذا الطلب مسبقاً" });
+    if (!withdrawalReq)
+      return res.status(404).json({ message: "الطلب غير موجود" });
+    if (withdrawalReq.status !== "pending")
+      return res.status(400).json({ message: "تم مراجعة هذا الطلب مسبقاً" });
 
     withdrawalReq.status = "rejected";
     withdrawalReq.adminNote = adminNote || "";
