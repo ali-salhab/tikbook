@@ -70,8 +70,12 @@ const ChatScreen = ({ route, navigation }) => {
     try {
       await axios.post(
         `${BASE_URL}/wallet/gift`,
-        { receiverId: userId, amount: gift.price * quantity, giftName: gift.name },
-        { headers: { Authorization: `Bearer ${userToken}` } }
+        {
+          receiverId: userId,
+          amount: gift.price * quantity,
+          giftName: gift.name,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
       // Refresh balance
       const res = await axios.get(`${BASE_URL}/wallet`, {
@@ -82,11 +86,14 @@ const ChatScreen = ({ route, navigation }) => {
       const res2 = await axios.post(
         `${BASE_URL}/messages`,
         { receiverId: userId, text: `🎁 أرسلت هدية: ${gift.name}` },
-        { headers: { Authorization: `Bearer ${userToken}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setMessages((prev) => [...prev, res2.data]);
       socket.current?.emit("sendMessage", res2.data);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: true }),
+        80,
+      );
     } catch (e) {
       Alert.alert("خطأ", e?.response?.data?.message || "فشل إرسال الهدية");
     }
@@ -139,7 +146,7 @@ const ChatScreen = ({ route, navigation }) => {
       const res = await axios.post(
         `${BASE_URL}/messages`,
         { receiverId: userId, text: text.trim() },
-        { headers: { Authorization: `Bearer ${userToken}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setMessages((prev) => [...prev, res.data]);
       socket.current.emit("sendMessage", res.data);
@@ -148,7 +155,7 @@ const ChatScreen = ({ route, navigation }) => {
       // ensure list scrolls to show the new message
       setTimeout(
         () => flatListRef.current?.scrollToEnd({ animated: true }),
-        80
+        80,
       );
     } catch (e) {
       console.log("Error sending message:", e);
@@ -185,7 +192,7 @@ const ChatScreen = ({ route, navigation }) => {
       // scroll messages up when keyboard appears
       setTimeout(
         () => flatListRef.current?.scrollToEnd({ animated: true }),
-        80
+        80,
       );
     };
 
@@ -335,9 +342,15 @@ const ChatScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.chatHeaderUser} onPress={() => navigation.navigate("UserProfile", { userId })}>
+          <TouchableOpacity
+            style={styles.chatHeaderUser}
+            onPress={() => navigation.navigate("UserProfile", { userId })}
+          >
             {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.chatHeaderAvatar} />
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.chatHeaderAvatar}
+              />
             ) : (
               <View style={styles.chatHeaderAvatarPlaceholder}>
                 <Ionicons name="person" size={18} color="#CCC" />
@@ -345,7 +358,9 @@ const ChatScreen = ({ route, navigation }) => {
             )}
             <Text style={styles.chatHeaderTitle}>{username}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("UserProfile", { userId })}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("UserProfile", { userId })}
+          >
             <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -362,7 +377,7 @@ const ChatScreen = ({ route, navigation }) => {
                 inputHeight +
                 Math.max(
                   keyboardHeight,
-                  showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0
+                  showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0,
                 ) +
                 insets.bottom +
                 20,
@@ -398,7 +413,11 @@ const ChatScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.emojiButton}
-          onPress={() => { Keyboard.dismiss(); setShowEmojiPicker(false); setShowGiftPanel(true); }}
+          onPress={() => {
+            Keyboard.dismiss();
+            setShowEmojiPicker(false);
+            setShowGiftPanel(true);
+          }}
         >
           <Ionicons name="gift-outline" size={24} color="#FE2C55" />
         </TouchableOpacity>
@@ -417,7 +436,7 @@ const ChatScreen = ({ route, navigation }) => {
             setShowGiftPanel(false);
             setTimeout(
               () => flatListRef.current?.scrollToEnd({ animated: true }),
-              50
+              50,
             );
           }}
         />
@@ -437,7 +456,10 @@ const ChatScreen = ({ route, navigation }) => {
         onSendGift={handleSendGift}
         receiverId={userId}
         userBalance={userBalance}
-        onRecharge={() => { setShowGiftPanel(false); navigation.navigate("Wallet"); }}
+        onRecharge={() => {
+          setShowGiftPanel(false);
+          navigation.navigate("Wallet");
+        }}
       />
 
       {showEmojiPicker && (
