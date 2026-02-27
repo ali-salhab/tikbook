@@ -71,6 +71,13 @@ const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
           icon: "qr-code-outline",
           iconType: "Ionicons",
         },
+        {
+          id: "verification",
+          label: "توثيق الحساب",
+          icon: "shield-checkmark-outline",
+          iconType: "Ionicons",
+          onPress: () => navigation.navigate("VerificationRequest"),
+        },
       ],
     },
     {
@@ -111,7 +118,9 @@ const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
     >
       <Ionicons name="chevron-back" size={20} color="#ccc" />
       <View style={styles.itemContent}>
-        <Text style={[styles.itemLabel, item.color && { color: item.color }]}>{item.label}</Text>
+        <Text style={[styles.itemLabel, item.color && { color: item.color }]}>
+          {item.label}
+        </Text>
         <Ionicons name={item.icon} size={24} color={item.color || "#000"} />
       </View>
     </TouchableOpacity>
