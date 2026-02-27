@@ -92,7 +92,7 @@ const InboxScreen = ({ navigation }) => {
   const renderStoryItem = (item) => {
     if (item.type === "create") {
       return (
-        <TouchableOpacity style={styles.storyItem} key={item.id}>
+        <TouchableOpacity style={styles.storyItem} key={item.id} onPress={() => navigation.navigate("CreateStatus")}>
           <View style={styles.createStoryContainer}>
             {userInfo?.profileImage ? (
               <Image

@@ -36,6 +36,7 @@ import MapScreen from "../screens/MapScreen";
 import SplashScreen from "../screens/SplashScreen";
 import BadgeShopScreen from "../screens/BadgeShopScreen";
 import MyBadgesScreen from "../screens/MyBadgesScreen";
+import CreateStatusScreen from "../screens/CreateStatusScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -389,6 +390,7 @@ const AppNavigator = () => {
               <Stack.Screen name="Map" component={MapScreen} />
               <Stack.Screen name="BadgeShop" component={BadgeShopScreen} />
               <Stack.Screen name="MyBadges" component={MyBadgesScreen} />
+              <Stack.Screen name="CreateStatus" component={CreateStatusScreen} />
             </>
           ) : (
             <>

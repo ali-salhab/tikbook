@@ -25,6 +25,7 @@ import {
   ClientRoleType,
   RtcSurfaceView,
   VideoSourceType,
+  VideoRenderModeType,
 } from "react-native-agora";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL, AGORA_APP_ID } from "../config/api";
@@ -312,21 +313,21 @@ export default function LiveScreen({ navigation, route }) {
           remoteUsers.length === 0 ? (
             <RtcSurfaceView
               style={styles.fullScreenVideo}
-              canvas={{ uid: 0 }}
+              canvas={{ uid: 0, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
             />
           ) : (
             <View style={styles.splitScreenContainer}>
               <View style={styles.splitScreenItem}>
                 <RtcSurfaceView
                   style={styles.fullScreenVideo}
-                  canvas={{ uid: 0 }}
+                  canvas={{ uid: 0, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
                 />
               </View>
               {remoteUsers.map((uid) => (
                 <View key={uid} style={styles.splitScreenItem}>
                   <RtcSurfaceView
                     style={styles.fullScreenVideo}
-                    canvas={{ uid }}
+                    canvas={{ uid, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
                   />
                 </View>
               ))}
@@ -336,7 +337,7 @@ export default function LiveScreen({ navigation, route }) {
           remoteUsers.length === 1 ? (
             <RtcSurfaceView
               style={styles.fullScreenVideo}
-              canvas={{ uid: remoteUsers[0] }}
+              canvas={{ uid: remoteUsers[0], renderMode: VideoRenderModeType.VideoRenderModeHidden }}
             />
           ) : (
             <View style={styles.splitScreenContainer}>
@@ -344,7 +345,7 @@ export default function LiveScreen({ navigation, route }) {
                 <View key={uid} style={styles.splitScreenItem}>
                   <RtcSurfaceView
                     style={styles.fullScreenVideo}
-                    canvas={{ uid }}
+                    canvas={{ uid, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
                   />
                 </View>
               ))}
@@ -532,7 +533,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   videoContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#111",
+    backgroundColor: "#000",
   },
   fullScreenVideo: {
     flex: 1,
@@ -542,12 +543,12 @@ const styles = StyleSheet.create({
   splitScreenContainer: {
     flex: 1,
     flexDirection: "row",
-    flexWrap: "wrap",
+    height: height,
   },
   splitScreenItem: {
-    flex: 1,
-    aspectRatio: 0.6,
-    margin: 1,
+    width: width / 2,
+    height: height,
+    overflow: "hidden",
   },
   loadingContainer: {
     flex: 1,
