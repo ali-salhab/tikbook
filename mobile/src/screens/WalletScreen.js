@@ -45,10 +45,19 @@ const CoinIcon = ({ size = 20 }) => (
 const WalletScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { userToken, userInfo } = useContext(AuthContext);
+  const [activeTab, setActiveTab] = useState("recharge"); // 'recharge' | 'withdraw'
   const [balance, setBalance] = useState(0);
+  const [earnings, setEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
+
+  // Withdrawal form state
+  const [withdrawFullName, setWithdrawFullName] = useState("");
+  const [withdrawPhone, setWithdrawPhone] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [myWithdrawals, setMyWithdrawals] = useState([]);
 
   // Packages from screenshot
   const coinPackages = [
@@ -70,12 +79,17 @@ const WalletScreen = ({ navigation }) => {
       const res = await axios.get(`${BASE_URL}/wallet`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      setBalance(res.data.balance);
+      setBalance(res.data.balance ?? 0);
+      setEarnings(res.data.earnings ?? 0);
       setLoading(false);
     } catch (e) {
       console.error("Error fetching wallet:", e);
       setLoading(false);
     }
+  };
+
+  const fetchMyWithdrawals = async () => {
+    // We'll show the status from submission response
   };
 
   const handleSelectPackage = (pkg) => {
@@ -139,6 +153,50 @@ const WalletScreen = ({ navigation }) => {
     }, 1500);
   };
 
+  const handleWithdrawSubmit = async () => {
+    if (!withdrawFullName.trim()) {
+      Alert.alert("تنبيه", "الرجاء إدخال اسمك الكامل");
+      return;
+    }
+    if (!withdrawPhone.trim()) {
+      Alert.alert("تنبيه", "الرجاء إدخال رقم الهاتف");
+      return;
+    }
+    const amt = parseFloat(withdrawAmount);
+    if (!withdrawAmount || isNaN(amt) || amt <= 0) {
+      Alert.alert("تنبيه", "الرجاء إدخال مبلغ صحيح");
+      return;
+    }
+    if (amt > earnings) {
+      Alert.alert("خطأ", "المبلغ أكبر من أرباحك المتاحة");
+      return;
+    }
+    setWithdrawLoading(true);
+    try {
+      await axios.post(
+        `${BASE_URL}/wallet/withdraw`,
+        {
+          fullName: withdrawFullName.trim(),
+          phoneNumber: withdrawPhone.trim(),
+          amount: amt,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      setWithdrawLoading(false);
+      setWithdrawFullName("");
+      setWithdrawPhone("");
+      setWithdrawAmount("");
+      Alert.alert(
+        "تم الإرسال ✅",
+        `طلب سحب ${amt} عملة قيد المراجعة من قبل الأدمن\nسيتم التواصل معك عبر الهاتف: ${withdrawPhone}`
+      );
+    } catch (e) {
+      setWithdrawLoading(false);
+      const msg = e?.response?.data?.message || "حدث خطأ، حاول مرة أخرى";
+      Alert.alert("خطأ", msg);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.center}>
@@ -154,149 +212,226 @@ const WalletScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={28} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>احصل على عملات</Text>
+        <Text style={styles.headerTitle}>الرصيد</Text>
+        <View style={{ width: 28 }} />
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabsRow}>
         <TouchableOpacity
-          onPress={() => Alert.alert("سجل المعاملات", "قريباً")}
+          style={[styles.tabBtn, activeTab === "recharge" && styles.tabBtnActive]}
+          onPress={() => setActiveTab("recharge")}
         >
-          <Text style={styles.historyText}>عرض سجل المعاملات</Text>
+          <Text style={[styles.tabBtnText, activeTab === "recharge" && styles.tabBtnTextActive]}>
+            شحن عملات
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === "withdraw" && styles.tabBtnActive]}
+          onPress={() => setActiveTab("withdraw")}
+        >
+          <Text style={[styles.tabBtnText, activeTab === "withdraw" && styles.tabBtnTextActive]}>
+            سحب أرباح
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* User Info */}
-        <View style={styles.userInfoContainer}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              {/* Placeholder for avatar if no image */}
-              <Ionicons name="person-circle" size={40} color="#ccc" />
-            </View>
-            <View>
-              <Text style={styles.username}>
-                {userInfo?.username || "User"}
-              </Text>
-              <View style={styles.currentBalanceRow}>
-                <Text style={styles.currentBalanceText}>
-                  رصيد هدايا: $0.00 | LIVE: {balance}
-                </Text>
-                <CoinIcon size={14} />
+      {activeTab === "recharge" ? (
+        <>
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {/* User Info */}
+            <View style={styles.userInfoContainer}>
+              <View style={styles.userInfo}>
+                <View style={styles.avatarContainer}>
+                  <Ionicons name="person-circle" size={40} color="#ccc" />
+                </View>
+                <View>
+                  <Text style={styles.username}>
+                    {userInfo?.username || "User"}
+                  </Text>
+                  <View style={styles.currentBalanceRow}>
+                    <Text style={styles.currentBalanceText}>
+                      رصيدك: {balance}
+                    </Text>
+                    <CoinIcon size={14} />
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
-        </View>
 
-        <Text style={styles.promoText}>
-          الشحن: وفر حوالي 25% مع رسوم خدمة أقل للجهات الخارجية. ⓘ
-        </Text>
-
-        {/* Packages Grid */}
-        <View style={styles.gridContainer}>
-          {coinPackages.map((pkg) => (
-            <TouchableOpacity
-              key={pkg.id}
-              style={[
-                styles.packageCard,
-                selectedPackage?.id === pkg.id && styles.selectedPackageCard,
-              ]}
-              onPress={() => handleSelectPackage(pkg)}
-            >
-              <View style={styles.coinRow}>
-                <Text style={styles.coinAmount}>{pkg.coins}</Text>
-                <CoinIcon size={16} />
-              </View>
-              <Text style={styles.priceText}>ج.م. {pkg.price}</Text>
-            </TouchableOpacity>
-          ))}
-
-          {/* Custom Amount Box */}
-          <TouchableOpacity
-            style={[
-              styles.packageCard,
-              styles.customAmountCard,
-              !selectedPackage && customAmount
-                ? styles.selectedPackageCard
-                : {},
-            ]}
-            onPress={() => {}}
-          >
-            <View style={styles.coinRow}>
-              <TextInput
-                style={styles.customInput}
-                placeholder="مبلغ مخصص"
-                keyboardType="numeric"
-                value={customAmount}
-                onChangeText={handleCustomAmountChange}
-                placeholderTextColor="#999"
-              />
-              <CoinIcon size={16} />
-            </View>
-            <Text style={styles.priceText}>
-              {customAmount
-                ? `ج.م. ${(parseInt(customAmount || 0) * 0.605).toFixed(0)}`
-                : "---"}
+            <Text style={styles.promoText}>
+              الشحن: وفر حوالي 25% مع رسوم خدمة أقل للجهات الخارجية. ⓘ
             </Text>
-          </TouchableOpacity>
-        </View>
 
-        <View style={styles.giftPromo}>
-          <Ionicons name="gift" size={24} color="#FE2C55" />
-          <Text style={styles.giftText}>
-            اشحن على الأقل بمقدار 1,000 عملة لمرتين أكثر كي تفتح هدايا مميزة،
-            تنتهي الصلاحية بعد 5 س 39 د. {">"}
-          </Text>
-        </View>
-      </ScrollView>
+            {/* Packages Grid */}
+            <View style={styles.gridContainer}>
+              {coinPackages.map((pkg) => (
+                <TouchableOpacity
+                  key={pkg.id}
+                  style={[
+                    styles.packageCard,
+                    selectedPackage?.id === pkg.id && styles.selectedPackageCard,
+                  ]}
+                  onPress={() => handleSelectPackage(pkg)}
+                >
+                  <View style={styles.coinRow}>
+                    <Text style={styles.coinAmount}>{pkg.coins}</Text>
+                    <CoinIcon size={16} />
+                  </View>
+                  <Text style={styles.priceText}>ج.م. {pkg.price}</Text>
+                </TouchableOpacity>
+              ))}
 
-      {/* Footer */}
-      <View
-        style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}
-      >
-        <View style={styles.paymentMethodRow}>
-          <Text style={styles.paymentLabel}>طريقة الدفع</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.cardIcons}
-          >
-            <View style={styles.paymentIcon}>
-              <FontAwesome5 name="cc-visa" size={24} color="#1A1F71" />
+              {/* Custom Amount Box */}
+              <TouchableOpacity
+                style={[
+                  styles.packageCard,
+                  styles.customAmountCard,
+                  !selectedPackage && customAmount ? styles.selectedPackageCard : {},
+                ]}
+                onPress={() => {}}
+              >
+                <View style={styles.coinRow}>
+                  <TextInput
+                    style={styles.customInput}
+                    placeholder="مبلغ مخصص"
+                    keyboardType="numeric"
+                    value={customAmount}
+                    onChangeText={handleCustomAmountChange}
+                    placeholderTextColor="#999"
+                  />
+                  <CoinIcon size={16} />
+                </View>
+                <Text style={styles.priceText}>
+                  {customAmount
+                    ? `ج.م. ${(parseInt(customAmount || 0) * 0.605).toFixed(0)}`
+                    : "---"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.paymentIcon}>
-              <FontAwesome5 name="cc-mastercard" size={24} color="#EB001B" />
-            </View>
-            {/* Vodafone Cash */}
-            <View style={styles.paymentIcon}>
-              <FontAwesome5 name="mobile-alt" size={18} color="#E60000" />
-              <Text style={styles.paymentTextSmall}>Cash</Text>
-            </View>
-            {/* Fawry */}
-            <View style={[styles.paymentIcon, styles.paymentBadge]}>
-              <Text style={[styles.paymentTextSmall, { color: "#1155cc" }]}>
-                Fawry
-              </Text>
-            </View>
-            {/* Meeza */}
-            <View style={[styles.paymentIcon, styles.paymentBadge]}>
-              <Text style={[styles.paymentTextSmall, { color: "#555" }]}>
-                Meeza
+
+            <View style={styles.giftPromo}>
+              <Ionicons name="gift" size={24} color="#FE2C55" />
+              <Text style={styles.giftText}>
+                اشحن على الأقل بمقدار 1,000 عملة لمرتين أكثر كي تفتح هدايا مميزة {">"} 
               </Text>
             </View>
           </ScrollView>
-        </View>
-        <Text style={styles.totalText}>
-          الإجمالي: ج.م.{" "}
-          {selectedPackage
-            ? selectedPackage.price
-            : customAmount
-            ? (parseInt(customAmount) * 0.605).toFixed(2)
-            : "0.00"}
-        </Text>
-        <TouchableOpacity
-          style={styles.rechargeButton}
-          onPress={handleRecharge}
-        >
-          <Text style={styles.rechargeButtonText}>الشحن</Text>
-        </TouchableOpacity>
-      </View>
+
+          {/* Footer */}
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={styles.paymentMethodRow}>
+              <Text style={styles.paymentLabel}>طريقة الدفع</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.cardIcons}
+              >
+                <View style={styles.paymentIcon}>
+                  <FontAwesome5 name="cc-visa" size={24} color="#1A1F71" />
+                </View>
+                <View style={styles.paymentIcon}>
+                  <FontAwesome5 name="cc-mastercard" size={24} color="#EB001B" />
+                </View>
+                <View style={styles.paymentIcon}>
+                  <FontAwesome5 name="mobile-alt" size={18} color="#E60000" />
+                  <Text style={styles.paymentTextSmall}>Cash</Text>
+                </View>
+                <View style={[styles.paymentIcon, styles.paymentBadge]}>
+                  <Text style={[styles.paymentTextSmall, { color: "#1155cc" }]}>Fawry</Text>
+                </View>
+                <View style={[styles.paymentIcon, styles.paymentBadge]}>
+                  <Text style={[styles.paymentTextSmall, { color: "#555" }]}>Meeza</Text>
+                </View>
+              </ScrollView>
+            </View>
+            <Text style={styles.totalText}>
+              الإجمالي: ج.م.{" "}
+              {selectedPackage
+                ? selectedPackage.price
+                : customAmount
+                ? (parseInt(customAmount) * 0.605).toFixed(2)
+                : "0.00"}
+            </Text>
+            <TouchableOpacity style={styles.rechargeButton} onPress={handleRecharge}>
+              <Text style={styles.rechargeButtonText}>الشحن</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        /* ── Withdraw Tab ── */
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 30) }]}>
+          {/* Earnings Balance Card */}
+          <View style={styles.earningsCard}>
+            <MaterialCommunityIcons name="cash-multiple" size={32} color="#FE2C55" />
+            <View style={{ marginRight: 12 }}>
+              <Text style={styles.earningsLabel}>أرباحك المتاحة للسحب</Text>
+              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+                <Text style={styles.earningsAmount}>{earnings}</Text>
+                <CoinIcon size={18} />
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.withdrawNote}>
+            أدخل بياناتك وسيتواصل معك الأدمن لتحويل رصيدك
+          </Text>
+
+          {/* Form */}
+          <View style={styles.withdrawForm}>
+            <Text style={styles.inputLabel}>الاسم الكامل</Text>
+            <TextInput
+              style={styles.withdrawInput}
+              placeholder="أدخل اسمك الكامل"
+              placeholderTextColor="#999"
+              value={withdrawFullName}
+              onChangeText={setWithdrawFullName}
+              textAlign="right"
+            />
+
+            <Text style={styles.inputLabel}>رقم الهاتف</Text>
+            <TextInput
+              style={styles.withdrawInput}
+              placeholder="أدخل رقم هاتفك"
+              placeholderTextColor="#999"
+              value={withdrawPhone}
+              onChangeText={setWithdrawPhone}
+              keyboardType="phone-pad"
+              textAlign="right"
+            />
+
+            <Text style={styles.inputLabel}>المبلغ المراد سحبه (عملات)</Text>
+            <TextInput
+              style={styles.withdrawInput}
+              placeholder={`الحد الأقصى: ${earnings}`}
+              placeholderTextColor="#999"
+              value={withdrawAmount}
+              onChangeText={setWithdrawAmount}
+              keyboardType="numeric"
+              textAlign="right"
+            />
+
+            <TouchableOpacity
+              style={[styles.rechargeButton, withdrawLoading && { opacity: 0.6 }]}
+              onPress={handleWithdrawSubmit}
+              disabled={withdrawLoading}
+            >
+              {withdrawLoading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.rechargeButtonText}>إرسال طلب السحب</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.withdrawInfoBox}>
+            <Ionicons name="information-circle-outline" size={18} color="#666" />
+            <Text style={styles.withdrawInfoText}>
+              سيتم مراجعة طلبك من قبل الإدارة وسيتم التواصل معك على رقم هاتفك المسجل خلال 24 – 48 ساعة.
+            </Text>
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -497,6 +632,112 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  // ── Tabs ──
+  tabsRow: {
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  tabBtnActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#FE2C55",
+  },
+  tabBtnText: {
+    fontSize: 14,
+    color: "#999",
+    fontWeight: "600",
+  },
+  tabBtnTextActive: {
+    color: "#FE2C55",
+  },
+  // ── Withdraw ──
+  earningsCard: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    margin: 16,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0E6",
+    gap: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  earningsLabel: {
+    fontSize: 13,
+    color: "#666",
+    textAlign: "right",
+    marginBottom: 4,
+  },
+  earningsAmount: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  withdrawNote: {
+    fontSize: 13,
+    color: "#888",
+    textAlign: "center",
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  withdrawForm: {
+    backgroundColor: "#FFF",
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 16,
+    gap: 4,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  inputLabel: {
+    fontSize: 13,
+    color: "#444",
+    textAlign: "right",
+    marginTop: 12,
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  withdrawInput: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    backgroundColor: "#FAFAFA",
+    color: "#000",
+  },
+  withdrawInfoBox: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    backgroundColor: "#F0F0F0",
+    margin: 16,
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 10,
+    gap: 8,
+  },
+  withdrawInfoText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#666",
+    textAlign: "right",
+    lineHeight: 20,
   },
 });
 

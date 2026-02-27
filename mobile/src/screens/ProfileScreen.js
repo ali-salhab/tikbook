@@ -441,18 +441,6 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.verificationButton}
-              onPress={() => navigation.navigate("VerificationRequest")}
-            >
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={20}
-                color="#00BFFF"
-              />
-              <Text style={styles.buttonLabel}>توثيق</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.badgeButton}
               onPress={() => navigation.navigate("MyBadges")}
             >

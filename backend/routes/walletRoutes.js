@@ -5,6 +5,7 @@ const {
   sendGift,
   topUpWallet,
   createStripeIntent,
+  requestWithdrawal,
 } = require("../controllers/walletController");
 
 const router = express.Router();
@@ -28,6 +29,7 @@ router.get("/:userId", protect, async (req, res) => {
 router.post("/gift", protect, sendGift);
 router.post("/topup", protect, topUpWallet); // Secure this in prod!
 router.post("/stripe/intent", protect, createStripeIntent);
+router.post("/withdraw", protect, requestWithdrawal);
 
 // Admin route to add coins to user
 router.post("/add-coins", protect, admin, async (req, res) => {

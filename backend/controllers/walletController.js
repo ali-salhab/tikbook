@@ -121,7 +121,62 @@ const topUpWallet = async (req, res) => {
   }
 };
 
-module.exports = { getBalance, sendGift, topUpWallet };
+// @desc    Submit a withdrawal request
+// @route   POST /api/wallet/withdraw
+// @access  Private
+const requestWithdrawal = async (req, res) => {
+  try {
+    const { fullName, phoneNumber, amount } = req.body;
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ message: "الاسم الكامل مطلوب" });
+    }
+    if (!phoneNumber || !phoneNumber.trim()) {
+      return res.status(400).json({ message: "رقم الهاتف مطلوب" });
+    }
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ message: "المبلغ غير صحيح" });
+    }
+
+    const WithdrawalRequest = require("../models/WithdrawalRequest");
+    const wallet = await Wallet.findOne({ user: req.user._id });
+    if (!wallet) {
+      return res.status(400).json({ message: "لا يوجد محفظة" });
+    }
+
+    if (wallet.earnings < Number(amount)) {
+      return res.status(400).json({ message: "رصيدك غير كافٍ للسحب" });
+    }
+
+    // Check no pending request
+    const existing = await WithdrawalRequest.findOne({
+      user: req.user._id,
+      status: "pending",
+    });
+    if (existing) {
+      return res.status(400).json({
+        message: "لديك طلب سحب معلق بالفعل، انتظر موافقة الأدمن",
+      });
+    }
+
+    const request = await WithdrawalRequest.create({
+      user: req.user._id,
+      fullName: fullName.trim(),
+      phoneNumber: phoneNumber.trim(),
+      amount: Number(amount),
+      earningsAtRequest: wallet.earnings,
+    });
+
+    res.status(201).json({
+      message: "تم إرسال طلب السحب بنجاح، سيتم مراجعته من قبل الأدمن",
+      request,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getBalance, sendGift, topUpWallet, requestWithdrawal };
 
 // @desc    Create Stripe PaymentIntent for coins
 // @route   POST /api/wallet/stripe/intent
