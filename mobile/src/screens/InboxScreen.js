@@ -185,6 +185,12 @@ const InboxScreen = ({ navigation }) => {
   const ListHeader = () => (
     <View>
       {/* Stories Section */}
+      <View style={styles.storiesSectionHeader}>
+        <Text style={styles.storiesSectionTitle}>القصص</Text>
+        <TouchableOpacity>
+          <Text style={styles.storiesSectionMore}>شاهد الكل</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -195,6 +201,9 @@ const InboxScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Fixed Menu Items */}
+      <View style={styles.sectionDivider}>
+        <Text style={styles.sectionDividerText}>الرسائل</Text>
+      </View>
       <View style={styles.menuContainer}>
         <TouchableOpacity
           style={styles.menuItem}
@@ -399,8 +408,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 50,
   },
+  storiesSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  storiesSectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  storiesSectionMore: {
+    fontSize: 13,
+    color: "#FE2C55",
+  },
   storiesContainer: {
-    paddingVertical: 16,
+    paddingVertical: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: "#E5E5E5",
   },
@@ -522,6 +548,21 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: "#FE2C55",
+  },
+  sectionDivider: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#E5E5E5",
+    backgroundColor: "#FAFAFA",
+  },
+  sectionDividerText: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   conversationItem: {
     flexDirection: "row",

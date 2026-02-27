@@ -12,6 +12,7 @@ import {
   Keyboard,
   Alert,
   ScrollView,
+  Image,
 } from "react-native";
 import {
   SafeAreaView,
@@ -23,19 +24,23 @@ import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import i18n from "../i18n";
 import { BASE_URL } from "../config/api";
+import GiftPanel from "../components/GiftPanel";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
 
 const ChatScreen = ({ route, navigation }) => {
-  const { userId, username } = route?.params || {
+  const { userId, username, profileImage } = route?.params || {
     userId: null,
     username: null,
+    profileImage: null,
   };
   const { userToken, userInfo } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGiftPanel, setShowGiftPanel] = useState(false);
+  const [userBalance, setUserBalance] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [inputHeight, setInputHeight] = useState(60);
@@ -45,6 +50,47 @@ const ChatScreen = ({ route, navigation }) => {
   const EMOJI_PICKER_HEIGHT = 260;
   const insets = useSafeAreaInsets();
   const EMOJI_PICKER_BOTTOM = Math.max(insets.bottom || 0, 8);
+
+  // Fetch wallet balance for gift panel
+  useEffect(() => {
+    if (!userId) return;
+    const fetchBalance = async () => {
+      try {
+        const res = await axios.get(`${BASE_URL}/wallet`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        setUserBalance(res.data?.balance ?? 0);
+      } catch (_) {}
+    };
+    fetchBalance();
+  }, [userId]);
+
+  const handleSendGift = async (gift, quantity) => {
+    setShowGiftPanel(false);
+    try {
+      await axios.post(
+        `${BASE_URL}/wallet/gift`,
+        { receiverId: userId, amount: gift.price * quantity, giftName: gift.name },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      // Refresh balance
+      const res = await axios.get(`${BASE_URL}/wallet`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setUserBalance(res.data?.balance ?? 0);
+      // Send a gift message in chat
+      const res2 = await axios.post(
+        `${BASE_URL}/messages`,
+        { receiverId: userId, text: `🎁 أرسلت هدية: ${gift.name}` },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      setMessages((prev) => [...prev, res2.data]);
+      socket.current?.emit("sendMessage", res2.data);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+    } catch (e) {
+      Alert.alert("خطأ", e?.response?.data?.message || "فشل إرسال الهدية");
+    }
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -289,8 +335,17 @@ const ChatScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#FFF" />
           </TouchableOpacity>
-          <Text style={styles.chatHeaderTitle}>{username}</Text>
-          <TouchableOpacity>
+          <TouchableOpacity style={styles.chatHeaderUser} onPress={() => navigation.navigate("UserProfile", { userId })}>
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.chatHeaderAvatar} />
+            ) : (
+              <View style={styles.chatHeaderAvatarPlaceholder}>
+                <Ionicons name="person" size={18} color="#CCC" />
+              </View>
+            )}
+            <Text style={styles.chatHeaderTitle}>{username}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("UserProfile", { userId })}>
             <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -341,11 +396,17 @@ const ChatScreen = ({ route, navigation }) => {
         >
           <Ionicons name="happy-outline" size={24} color="#888" />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.emojiButton}
+          onPress={() => { Keyboard.dismiss(); setShowEmojiPicker(false); setShowGiftPanel(true); }}
+        >
+          <Ionicons name="gift-outline" size={24} color="#FE2C55" />
+        </TouchableOpacity>
         <TextInput
           style={styles.input}
           value={text}
           onChangeText={setText}
-          placeholder={i18n.t("addComment")}
+          placeholder="اكتب رسالة..."
           placeholderTextColor="#888"
           multiline
           maxLength={500}
@@ -353,7 +414,7 @@ const ChatScreen = ({ route, navigation }) => {
           onSubmitEditing={sendMessage}
           onFocus={() => {
             setShowEmojiPicker(false);
-            // ensure messages scroll to bottom when focusing input
+            setShowGiftPanel(false);
             setTimeout(
               () => flatListRef.current?.scrollToEnd({ animated: true }),
               50
@@ -369,6 +430,16 @@ const ChatScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
       {/* Emoji Picker anchored above bottom (behaves like YouTube) */}
+      {/* Gift Panel */}
+      <GiftPanel
+        visible={showGiftPanel}
+        onClose={() => setShowGiftPanel(false)}
+        onSendGift={handleSendGift}
+        receiverId={userId}
+        userBalance={userBalance}
+        onRecharge={() => { setShowGiftPanel(false); navigation.navigate("Wallet"); }}
+      />
+
       {showEmojiPicker && (
         <>
           <TouchableOpacity
@@ -599,6 +670,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#1F1F1F",
+  },
+  chatHeaderUser: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    justifyContent: "center",
+  },
+  chatHeaderAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  chatHeaderAvatarPlaceholder: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
   },
   chatHeaderTitle: {
     color: "#FFF",
