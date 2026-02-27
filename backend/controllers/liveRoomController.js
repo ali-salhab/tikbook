@@ -6,6 +6,7 @@ const { uploadToCloudinary } = require("../services/cloudinaryService");
 const { v4: uuidv4 } = require("uuid");
 const fs = require("fs");
 const path = require("path");
+const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
 
 // Create a new live room
 exports.createLiveRoom = async (req, res) => {
@@ -1034,6 +1035,38 @@ exports.controlMusic = async (req, res) => {
     });
   } catch (error) {
     console.error("Error controlling music:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Generate Agora RTC token for live room
+exports.getAgoraToken = async (req, res) => {
+  try {
+    const { channelName, role } = req.body;
+    const APP_ID = process.env.AGORA_APP_ID;
+    const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
+
+    if (!channelName) {
+      return res.status(400).json({ message: "channelName is required" });
+    }
+    if (!APP_ID || !APP_CERTIFICATE) {
+      return res.status(500).json({ message: "Agora configuration missing on server" });
+    }
+
+    const rtcRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const privilegeExpiredTs = Math.floor(Date.now() / 1000) + 3600;
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      APP_ID,
+      APP_CERTIFICATE,
+      channelName,
+      0,
+      rtcRole,
+      privilegeExpiredTs
+    );
+
+    res.json({ token });
+  } catch (error) {
+    console.error("Error generating Agora token:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

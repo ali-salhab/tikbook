@@ -257,8 +257,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
         setSpeakingUserIds(nowSpeaking);
       });
-      engine.joinChannel(null, channelName, 0, {});
-      engine.muteLocalAudioStream(true);
+      // Fetch a signed Agora token from the backend
+      let agoraToken = null;
+      try {
+        const tokenRes = await axios.post(
+          `${BASE_URL}/live-rooms/agora-token`,
+          { channelName, role: isHostOrSpeaker ? "publisher" : "subscriber" },
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        agoraToken = tokenRes.data.token;
+      } catch (tokenErr) {
+        console.warn("Could not fetch Agora token, joining without token:", tokenErr?.message);
+      }
+      engine.joinChannel(agoraToken, channelName, 0, {});
+      // Only mute audience; hosts/speakers join with mic live
+      engine.muteLocalAudioStream(!isHostOrSpeaker);
     } catch (e) {
       console.error("Agora init error:", e);
     }
