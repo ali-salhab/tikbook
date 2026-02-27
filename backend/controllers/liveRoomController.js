@@ -1050,10 +1050,13 @@ exports.getAgoraToken = async (req, res) => {
       return res.status(400).json({ message: "channelName is required" });
     }
     if (!APP_ID || !APP_CERTIFICATE) {
-      return res.status(500).json({ message: "Agora configuration missing on server" });
+      return res
+        .status(500)
+        .json({ message: "Agora configuration missing on server" });
     }
 
-    const rtcRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const rtcRole =
+      role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
     const privilegeExpiredTs = Math.floor(Date.now() / 1000) + 3600;
     const token = RtcTokenBuilder.buildTokenWithUid(
       APP_ID,
@@ -1061,7 +1064,7 @@ exports.getAgoraToken = async (req, res) => {
       channelName,
       0,
       rtcRole,
-      privilegeExpiredTs
+      privilegeExpiredTs,
     );
 
     res.json({ token });

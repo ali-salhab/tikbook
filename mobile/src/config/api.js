@@ -50,7 +50,7 @@ export const getApiUrl = () => {
       // Android Emulator
       console.log(
         "🤖 Using Android Emulator API:",
-        API_CONFIGS.ANDROID_EMULATOR
+        API_CONFIGS.ANDROID_EMULATOR,
       );
       return API_CONFIGS.ANDROID_EMULATOR;
     } else if (Platform.OS === "ios") {

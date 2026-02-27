@@ -267,7 +267,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
         );
         agoraToken = tokenRes.data.token;
       } catch (tokenErr) {
-        console.warn("Could not fetch Agora token, joining without token:", tokenErr?.message);
+        console.warn(
+          "Could not fetch Agora token, joining without token:",
+          tokenErr?.message,
+        );
       }
       engine.joinChannel(agoraToken, channelName, 0, {});
       // Only mute audience; hosts/speakers join with mic live
