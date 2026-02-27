@@ -44,7 +44,7 @@ const CreateStatusScreen = ({ navigation }) => {
       await axios.post(
         `${BASE_URL}/status`,
         { text: statusText.trim(), bgColor: selectedColor },
-        { headers: { Authorization: `Bearer ${userToken}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
       Alert.alert("تم", "تم نشر حالتك بنجاح", [
         { text: "حسناً", onPress: () => navigation.goBack() },

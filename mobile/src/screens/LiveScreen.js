@@ -313,21 +313,30 @@ export default function LiveScreen({ navigation, route }) {
           remoteUsers.length === 0 ? (
             <RtcSurfaceView
               style={styles.fullScreenVideo}
-              canvas={{ uid: 0, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
+              canvas={{
+                uid: 0,
+                renderMode: VideoRenderModeType.VideoRenderModeHidden,
+              }}
             />
           ) : (
             <View style={styles.splitScreenContainer}>
               <View style={styles.splitScreenItem}>
                 <RtcSurfaceView
                   style={styles.fullScreenVideo}
-                  canvas={{ uid: 0, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
+                  canvas={{
+                    uid: 0,
+                    renderMode: VideoRenderModeType.VideoRenderModeHidden,
+                  }}
                 />
               </View>
               {remoteUsers.map((uid) => (
                 <View key={uid} style={styles.splitScreenItem}>
                   <RtcSurfaceView
                     style={styles.fullScreenVideo}
-                    canvas={{ uid, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
+                    canvas={{
+                      uid,
+                      renderMode: VideoRenderModeType.VideoRenderModeHidden,
+                    }}
                   />
                 </View>
               ))}
@@ -337,7 +346,10 @@ export default function LiveScreen({ navigation, route }) {
           remoteUsers.length === 1 ? (
             <RtcSurfaceView
               style={styles.fullScreenVideo}
-              canvas={{ uid: remoteUsers[0], renderMode: VideoRenderModeType.VideoRenderModeHidden }}
+              canvas={{
+                uid: remoteUsers[0],
+                renderMode: VideoRenderModeType.VideoRenderModeHidden,
+              }}
             />
           ) : (
             <View style={styles.splitScreenContainer}>
@@ -345,7 +357,10 @@ export default function LiveScreen({ navigation, route }) {
                 <View key={uid} style={styles.splitScreenItem}>
                   <RtcSurfaceView
                     style={styles.fullScreenVideo}
-                    canvas={{ uid, renderMode: VideoRenderModeType.VideoRenderModeHidden }}
+                    canvas={{
+                      uid,
+                      renderMode: VideoRenderModeType.VideoRenderModeHidden,
+                    }}
                   />
                 </View>
               ))}
@@ -357,6 +372,17 @@ export default function LiveScreen({ navigation, route }) {
           </View>
         )}
       </View>
+
+      {/* Center divider when in split/PK mode */}
+      {remoteUsers.length > 0 && (
+        <View style={styles.splitDivider} pointerEvents="none">
+          <View style={styles.splitDividerLine} />
+          <View style={styles.splitDividerBadge}>
+            <Text style={styles.splitDividerText}>VS</Text>
+          </View>
+          <View style={styles.splitDividerLine} />
+        </View>
+      )}
 
       <KeyboardAvoidingView
         style={styles.ui}
@@ -554,6 +580,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  splitDivider: {
+    position: "absolute",
+    left: width / 2 - 1,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 5,
+  },
+  splitDividerLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+  splitDividerBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FE2C55",
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 4,
+    shadowColor: "#FE2C55",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  splitDividerText: {
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1,
   },
   ui: { flex: 1 },
 

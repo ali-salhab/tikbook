@@ -390,7 +390,10 @@ const AppNavigator = () => {
               <Stack.Screen name="Map" component={MapScreen} />
               <Stack.Screen name="BadgeShop" component={BadgeShopScreen} />
               <Stack.Screen name="MyBadges" component={MyBadgesScreen} />
-              <Stack.Screen name="CreateStatus" component={CreateStatusScreen} />
+              <Stack.Screen
+                name="CreateStatus"
+                component={CreateStatusScreen}
+              />
             </>
           ) : (
             <>
