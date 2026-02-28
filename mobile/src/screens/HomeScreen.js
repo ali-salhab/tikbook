@@ -404,9 +404,11 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.profileEmoji}>👤</Text>
               )}
             </View>
-            <View style={styles.followButton}>
-              <Ionicons name="add" size={14} color="#FFF" />
-            </View>
+            {item.user._id !== userInfo?._id && (
+              <View style={styles.followButton}>
+                <Ionicons name="add" size={14} color="#FFF" />
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Like Button - TikTok Style */}

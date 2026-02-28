@@ -1,4 +1,10 @@
-import React, { useRef, useState, useEffect, useContext } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -13,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import {
   SafeAreaView,
@@ -49,16 +56,22 @@ export default function LiveScreen({ navigation, route }) {
   const [localUid, setLocalUid] = useState(null);
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [liveTitle, setLiveTitle] = useState("");
-  const [viewerCount, setViewerCount] = useState(1);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [totalViewers, setTotalViewers] = useState(0);
+  const [followersGained, setFollowersGained] = useState(0);
+  const [coinsEarned, setCoinsEarned] = useState(0);
+  const liveStartTimeRef = useRef(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [messageText, setMessageText] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [showChatInput, setShowChatInput] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [liveDuration, setLiveDuration] = useState(0);
 
   // ───────────────── ENGINE ─────────────────
-  const initEngine = () => {
+  const initEngine = useCallback(() => {
     if (engineRef.current) return engineRef.current;
 
     const engine = createAgoraRtcEngine();
@@ -70,33 +83,33 @@ export default function LiveScreen({ navigation, route }) {
     engine.enableVideo();
     engine.enableAudio();
 
+    // Reduced quality to prevent freezing on mid-range devices
     engine.setVideoEncoderConfiguration({
-      dimensions: { width: 1280, height: 720 },
-      frameRate: 24,
-      bitrate: 2000,
+      dimensions: { width: 640, height: 480 },
+      frameRate: 15,
+      bitrate: 600,
     });
 
     engine.registerEventHandler({
       onJoinChannelSuccess: (_, uid) => {
-        console.log("✅ Joined Channel Success:", uid);
         setLocalUid(uid);
         setJoined(true);
+        liveStartTimeRef.current = Date.now();
       },
       onUserJoined: (_, uid) => {
-        console.log("👤 User Joined:", uid);
         setRemoteUsers((p) => [...new Set([...p, uid])]);
         setViewerCount((v) => v + 1);
+        setTotalViewers((t) => t + 1);
       },
       onUserOffline: (_, uid) => {
-        console.log("❌ User Offline:", uid);
         setRemoteUsers((p) => p.filter((i) => i !== uid));
-        setViewerCount((v) => Math.max(1, v - 1));
+        setViewerCount((v) => Math.max(0, v - 1));
       },
     });
 
     engineRef.current = engine;
     return engine;
-  };
+  }, []);
 
   useEffect(() => {
     initEngine();
@@ -192,6 +205,12 @@ export default function LiveScreen({ navigation, route }) {
   };
 
   const leaveLive = async () => {
+    // Calculate duration
+    const dur = liveStartTimeRef.current
+      ? Math.floor((Date.now() - liveStartTimeRef.current) / 1000)
+      : 0;
+    setLiveDuration(dur);
+
     try {
       engineRef.current?.leaveChannel();
       if (isBroadcaster) {
@@ -200,7 +219,28 @@ export default function LiveScreen({ navigation, route }) {
     } catch (e) {
       console.warn("Leave Channel Error:", e);
     }
-    navigation.goBack();
+
+    // Fetch coins earned from wallet if broadcaster
+    if (isBroadcaster) {
+      try {
+        const res = await axios.get(`${BASE_URL}/wallet`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        setCoinsEarned(res.data?.earnings ?? res.data?.balance ?? 0);
+      } catch (_) {}
+      setShowSummary(true);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0)
+      return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
   const sendMessage = () => {
@@ -386,7 +426,7 @@ export default function LiveScreen({ navigation, route }) {
 
       <KeyboardAvoidingView
         style={styles.ui}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.topSection, { paddingTop: insets.top + 10 }]}>
           <View style={styles.topLeft}>
@@ -420,6 +460,23 @@ export default function LiveScreen({ navigation, route }) {
               <Ionicons name="people" color="#fff" size={14} />
               <Text style={styles.viewerText}>{viewerCount}</Text>
             </View>
+            {isBroadcaster && (
+              <TouchableOpacity
+                style={styles.endLiveBtn}
+                onPress={() =>
+                  Alert.alert("إنهاء البث", "هل تريد إنهاء البث المباشر؟", [
+                    { text: "إلغاء", style: "cancel" },
+                    {
+                      text: "إنهاء البث",
+                      style: "destructive",
+                      onPress: leaveLive,
+                    },
+                  ])
+                }
+              >
+                <Text style={styles.endLiveBtnText}>إنهاء</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -548,6 +605,88 @@ export default function LiveScreen({ navigation, route }) {
                 </TouchableOpacity>
               )}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Post-Live Summary Modal ── */}
+      <Modal
+        visible={showSummary}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowSummary(false);
+          navigation.goBack();
+        }}
+      >
+        <View style={styles.summaryOverlay}>
+          <View style={styles.summaryCard}>
+            {/* Header */}
+            <View style={styles.summaryHeader}>
+              <Ionicons name="radio" size={28} color="#FE2C55" />
+              <Text style={styles.summaryTitle}>ملخص البث المباشر</Text>
+            </View>
+
+            {/* Stats grid */}
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryStatBox}>
+                <Ionicons name="time-outline" size={26} color="#FF9500" />
+                <Text style={styles.summaryStatValue}>
+                  {formatDuration(liveDuration)}
+                </Text>
+                <Text style={styles.summaryStatLabel}>مدة البث</Text>
+              </View>
+
+              <View style={styles.summaryStatBox}>
+                <Ionicons name="eye-outline" size={26} color="#1DA1F2" />
+                <Text style={styles.summaryStatValue}>{totalViewers}</Text>
+                <Text style={styles.summaryStatLabel}>مشاهدين</Text>
+              </View>
+
+              <View style={styles.summaryStatBox}>
+                <Ionicons name="person-add-outline" size={26} color="#25D366" />
+                <Text style={styles.summaryStatValue}>{followersGained}</Text>
+                <Text style={styles.summaryStatLabel}>متابعون جدد</Text>
+              </View>
+
+              <View style={styles.summaryStatBox}>
+                <Ionicons name="diamond-outline" size={26} color="#FE2C55" />
+                <Text style={styles.summaryStatValue}>
+                  {coinsEarned.toLocaleString()}
+                </Text>
+                <Text style={styles.summaryStatLabel}>عملة مكتسبة</Text>
+              </View>
+            </View>
+
+            {/* Earnings conversion */}
+            <View style={styles.earningsBox}>
+              <Text style={styles.earningsTitle}>قيمة رصيدك</Text>
+              <Text style={styles.earningsRow}>
+                💵 دولار:{" "}
+                <Text style={styles.earningsAmount}>
+                  ${((coinsEarned / 1000) * 4).toFixed(2)}
+                </Text>
+              </Text>
+              <Text style={styles.earningsRow}>
+                💴 جنيه مصري:{" "}
+                <Text style={styles.earningsAmount}>
+                  {((coinsEarned / 1000) * 200).toFixed(0)} ج
+                </Text>
+              </Text>
+              <Text style={styles.earningsNote}>
+                كل 1000 عملة = 4$ أو 200ج — يمكن سحبها من الرصيد
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.summaryCloseBtn}
+              onPress={() => {
+                setShowSummary(false);
+                navigation.goBack();
+              }}
+            >
+              <Text style={styles.summaryCloseBtnText}>خروج</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -833,5 +972,116 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     marginBottom: 10,
+  },
+
+  // ── End Live button ────────────────────────────────────────────────────
+  endLiveBtn: {
+    marginTop: 8,
+    backgroundColor: "#FE2C55",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: "flex-end",
+  },
+  endLiveBtnText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // ── Post-live summary modal ────────────────────────────────────────────
+  summaryOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  summaryCard: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    maxWidth: 420,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 24,
+    justifyContent: "center",
+  },
+  summaryTitle: {
+    color: "#FFF",
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 20,
+  },
+  summaryStatBox: {
+    flex: 1,
+    minWidth: "44%",
+    backgroundColor: "#2A2A2A",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    gap: 6,
+  },
+  summaryStatValue: {
+    color: "#FFF",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  summaryStatLabel: {
+    color: "#999",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  earningsBox: {
+    backgroundColor: "#2A2A2A",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    gap: 6,
+  },
+  earningsTitle: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  earningsRow: {
+    color: "#CCC",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  earningsAmount: {
+    color: "#FFD700",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  earningsNote: {
+    color: "#888",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 6,
+  },
+  summaryCloseBtn: {
+    backgroundColor: "#FE2C55",
+    borderRadius: 30,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  summaryCloseBtnText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

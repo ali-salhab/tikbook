@@ -226,14 +226,23 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
 
 /* ─────────────────────────── styles ─────────────────────────── */
 const styles = StyleSheet.create({
-  // ── TikTok full-screen ───────────────────────────────────────────────────
+  // ── TikTok half-screen (middle → bottom) ──────────────────────────────
   tiktokContainer: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: height * 0.45,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 2000,
     backgroundColor: "transparent",
+    overflow: "hidden",
   },
   tiktokVideo: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   tiktokGradient: {
     position: "absolute",
@@ -247,8 +256,8 @@ const styles = StyleSheet.create({
   },
   tiktokSender: {
     position: "absolute",
-    bottom: 90,
-    left: 20,
+    bottom: 24,
+    left: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -282,7 +291,7 @@ const styles = StyleSheet.create({
   },
   tiktokTitleWrap: {
     position: "absolute",
-    top: 60,
+    top: 12,
     left: 0,
     right: 0,
     alignItems: "center",

@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
+  Modal,
+  Dimensions,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,11 +23,15 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
+const { width, height } = Dimensions.get("window");
+
 const InboxScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [statuses, setStatuses] = useState([]);
+  const [viewingStatus, setViewingStatus] = useState(null);
   const netInfo = useNetInfo();
 
   const [notifications, setNotifications] = useState([]);
@@ -32,7 +39,6 @@ const InboxScreen = ({ navigation }) => {
   const fetchConversations = async () => {
     if (netInfo.isConnected === false) return;
     try {
-      // Use the new endpoint for conversations
       const res = await axios.get(`${BASE_URL}/messages/conversations`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
@@ -42,6 +48,18 @@ const InboxScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const fetchStatuses = async () => {
+    if (netInfo.isConnected === false) return;
+    try {
+      const res = await axios.get(`${BASE_URL}/status`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setStatuses(res.data || []);
+    } catch (e) {
+      console.error("Error fetching statuses:", e);
     }
   };
 
@@ -63,6 +81,7 @@ const InboxScreen = ({ navigation }) => {
       if (netInfo.isConnected !== false) {
         fetchConversations();
         fetchNotifications();
+        fetchStatuses();
       } else {
         setLoading(false);
       }
@@ -74,6 +93,7 @@ const InboxScreen = ({ navigation }) => {
       setRefreshing(true);
       fetchConversations();
       fetchNotifications();
+      fetchStatuses();
     }
   };
 
@@ -94,7 +114,7 @@ const InboxScreen = ({ navigation }) => {
       return (
         <TouchableOpacity
           style={styles.storyItem}
-          key={item.id}
+          key="create"
           onPress={() => navigation.navigate("CreateStatus")}
         >
           <View style={styles.createStoryContainer}>
@@ -105,7 +125,7 @@ const InboxScreen = ({ navigation }) => {
               />
             ) : (
               <Image
-                source={require("../../assets/icon.png")} // Fallback
+                source={require("../../assets/icon.png")}
                 style={styles.storyAvatar}
               />
             )}
@@ -113,30 +133,50 @@ const InboxScreen = ({ navigation }) => {
               <Ionicons name="add" size={12} color="#FFF" />
             </View>
           </View>
-          <Text style={styles.storyUsername}>{item.user.username}</Text>
+          <Text style={styles.storyUsername}>إنشاء</Text>
         </TouchableOpacity>
       );
     }
 
+    // Real status item
+    const isOwn = item.user?._id === userInfo?._id;
     return (
-      <TouchableOpacity style={styles.storyItem} key={item.id}>
-        <View style={styles.storyRing}>
-          {item.user.profileImage ? (
+      <TouchableOpacity
+        style={styles.storyItem}
+        key={item._id}
+        onPress={() => setViewingStatus(item)}
+      >
+        <View style={[styles.storyRing, isOwn && styles.storyRingOwn]}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.storyAvatar} />
+          ) : item.user?.profileImage ? (
             <Image
               source={{ uri: item.user.profileImage }}
               style={styles.storyAvatar}
             />
           ) : (
-            <View style={styles.storyAvatarPlaceholder}>
-              <Ionicons name="person" size={24} color="#CCC" />
+            <View
+              style={[
+                styles.storyAvatarPlaceholder,
+                { backgroundColor: item.bgColor || "#FE2C55" },
+              ]}
+            >
+              <Text
+                style={{
+                  color: "#FFF",
+                  fontSize: 11,
+                  fontWeight: "700",
+                  textAlign: "center",
+                }}
+                numberOfLines={2}
+              >
+                {item.text?.slice(0, 20) || ""}
+              </Text>
             </View>
           )}
-          <View style={styles.liveBadge}>
-            <Ionicons name="bar-chart" size={10} color="#FFF" />
-          </View>
         </View>
         <Text style={styles.storyUsername} numberOfLines={1}>
-          {item.user.username}
+          {item.user?.username || ""}
         </Text>
       </TouchableOpacity>
     );
@@ -156,18 +196,7 @@ const InboxScreen = ({ navigation }) => {
     }
   };
 
-  const stories = [
-    { id: "create", type: "create", user: { username: "إنشاء" } },
-    ...conversations
-      .filter((c) => c.otherUser)
-      .slice(0, 6)
-      .map((c) => ({
-        id: c._id,
-        type: "story",
-        user: c.otherUser,
-        hasStory: true,
-      })),
-  ];
+  const stories = [{ type: "create" }, ...statuses];
 
   const systemNotifications = notifications.filter(
     (n) => !n.fromUser && !n.read,
@@ -373,6 +402,75 @@ const InboxScreen = ({ navigation }) => {
           contentContainerStyle={{ paddingBottom: 20 }}
         />
       )}
+
+      {/* Status Viewer Modal */}
+      <Modal
+        visible={!!viewingStatus}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingStatus(null)}
+        statusBarTranslucent
+      >
+        <View style={styles.statusViewerContainer}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setViewingStatus(null)}
+          />
+          {viewingStatus && (
+            <View
+              style={[
+                styles.statusViewerCard,
+                { backgroundColor: viewingStatus.bgColor || "#000" },
+              ]}
+            >
+              {viewingStatus.image && (
+                <Image
+                  source={{ uri: viewingStatus.image }}
+                  style={styles.statusViewerImage}
+                />
+              )}
+              {viewingStatus.text ? (
+                <View style={styles.statusViewerTextBox}>
+                  <Text style={styles.statusViewerText}>
+                    {viewingStatus.text}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={styles.statusViewerMeta}>
+                {viewingStatus.user?.profileImage ? (
+                  <Image
+                    source={{ uri: viewingStatus.user.profileImage }}
+                    style={styles.statusViewerAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.statusViewerAvatar,
+                      {
+                        backgroundColor: "#555",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      },
+                    ]}
+                  >
+                    <Ionicons name="person" size={16} color="#FFF" />
+                  </View>
+                )}
+                <Text style={styles.statusViewerUsername}>
+                  {viewingStatus.user?.username}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.statusViewerClose}
+                onPress={() => setViewingStatus(null)}
+              >
+                <Ionicons name="close" size={28} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -458,6 +556,9 @@ const styles = StyleSheet.create({
     padding: 2,
     marginBottom: 4,
     position: "relative",
+  },
+  storyRingOwn: {
+    borderColor: "#25D366",
   },
   storyAvatar: {
     width: "100%",
@@ -618,6 +719,66 @@ const styles = StyleSheet.create({
   },
   time: {
     color: "#999",
+  },
+  statusViewerContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.88)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statusViewerCard: {
+    width: width * 0.9,
+    height: height * 0.65,
+    borderRadius: 20,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statusViewerImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    resizeMode: "cover",
+  },
+  statusViewerTextBox: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 12,
+    maxWidth: "85%",
+  },
+  statusViewerText: {
+    color: "#FFF",
+    fontSize: 26,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  statusViewerMeta: {
+    position: "absolute",
+    bottom: 16,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  statusViewerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#FFF",
+  },
+  statusViewerUsername: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  statusViewerClose: {
+    position: "absolute",
+    top: 12,
+    right: 12,
   },
 });
 
