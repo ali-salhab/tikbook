@@ -1,34 +1,20 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, // true for 465, false for other ports
-    connectionTimeout: 5000, // Fail after 5 seconds if blocked
-    socketTimeout: 5000,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-    },
-    tls: {
-        rejectUnauthorized: false // Helps avoid some self-signed cert issues on free tiers
-    },
-    pool: true,
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Generate 6-digit O
+// Generate 6-digit OTP
 const generateOTP = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send OTP email
+// Send OTP email via Resend (HTTP API — works on Render free plan)
 const sendOTPEmail = async (email, otp) => {
-    try {
-        const mailOptions = {
-            from: process.env.EMAIL_USER, // Gmail requires the from to match the authenticated user
-            to: email,
-            subject: 'رمز التحقق - TikBook',
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || "TikBook <onboarding@resend.dev>",
+      to: [email],
+      subject: "رمز التحقق - TikBook",
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
                     <div style="background: linear-gradient(135deg, #FE2C55 0%, #FF6B9D 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                         <h1 style="color: white; margin: 0; font-size: 28px;">TikBook</h1>
@@ -50,27 +36,22 @@ const sendOTPEmail = async (email, otp) => {
                     </div>
                 </div>
             `,
-        };
+    });
 
-        // Optional: verify connection once before sending (helps surface auth errors clearly)
-        await transporter.verify();
-
-        const info = await transporter.sendMail(mailOptions);
-        console.log('OTP email sent:', info.messageId);
-        return { ok: true };
-    } catch (error) {
-        console.error('Error sending OTP email:', {
-            message: error.message,
-            code: error.code,
-            command: error.command,
-            response: error.response,
-            responseCode: error.responseCode,
-        });
-        return { ok: false, error };
+    if (error) {
+      console.error("Resend error:", error);
+      return { ok: false, error };
     }
+
+    console.log("OTP email sent:", data?.id);
+    return { ok: true };
+  } catch (error) {
+    console.error("Error sending OTP email:", error.message);
+    return { ok: false, error };
+  }
 };
 
 module.exports = {
-    generateOTP,
-    sendOTPEmail,
+  generateOTP,
+  sendOTPEmail,
 };
