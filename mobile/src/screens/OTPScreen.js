@@ -51,7 +51,7 @@ const OTPScreen = ({ route, navigation }) => {
   const verifyOtp = async () => {
     const code = otp.join("");
     if (code.length < 6) {
-      setError("يرجى إدخال الرمز كاملاً");
+      Alert.alert("خطأ", "يرجى إدخال الرمز كاملاً");
       return;
     }
 
@@ -78,10 +78,9 @@ const OTPScreen = ({ route, navigation }) => {
         });
       }
     } catch (e) {
-      console.log("❌ Verification error:", e.response?.data || e.message);
-      setError(
-        e.response?.data?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية",
-      );
+      const msg =
+        e.response?.data?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية";
+      Alert.alert("خطأ في التحقق", msg);
     } finally {
       setLoading(false);
     }

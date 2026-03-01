@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import io from "socket.io-client";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
@@ -56,16 +57,17 @@ const ChatScreen = ({ route, navigation }) => {
   const EMOJI_PICKER_BOTTOM = Math.max(insets.bottom || 0, 8);
 
   // Fetch wallet balance for gift panel
+  const fetchBalance = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/wallet`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setUserBalance(res.data?.balance ?? 0);
+    } catch (_) {}
+  }, [userToken]);
+
   useEffect(() => {
     if (!userId) return;
-    const fetchBalance = async () => {
-      try {
-        const res = await axios.get(`${BASE_URL}/wallet`, {
-          headers: { Authorization: `Bearer ${userToken}` },
-        });
-        setUserBalance(res.data?.balance ?? 0);
-      } catch (_) {}
-    };
     const fetchFollowStatus = async () => {
       try {
         const res = await axios.get(`${BASE_URL}/users/${userId}`, {
@@ -78,27 +80,32 @@ const ChatScreen = ({ route, navigation }) => {
     fetchFollowStatus();
   }, [userId]);
 
-  const handleSendGift = async (gift, quantity) => {
+  // Re-fetch balance whenever the screen comes back into focus (e.g. after Wallet topup)
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) fetchBalance();
+    }, [fetchBalance, userId]),
+  );
+
+  // GiftPanel passes a single object: { gift, quantity, totalCost }
+  const handleSendGift = async ({ gift, quantity, totalCost }) => {
     setShowGiftPanel(false);
     try {
       await axios.post(
         `${BASE_URL}/wallet/gift`,
         {
           receiverId: userId,
-          amount: gift.price * quantity,
+          amount: totalCost ?? gift.price * quantity,
           giftName: gift.name,
         },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
       // Refresh balance
-      const res = await axios.get(`${BASE_URL}/wallet`, {
-        headers: { Authorization: `Bearer ${userToken}` },
-      });
-      setUserBalance(res.data?.balance ?? 0);
+      await fetchBalance();
       // Send a gift message in chat
       const res2 = await axios.post(
         `${BASE_URL}/messages`,
-        { receiverId: userId, text: `🎁 أرسلت هدية: ${gift.name}` },
+        { receiverId: userId, text: `🎁 أرسلت هدية: ${gift.nameAr || gift.name}` },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setMessages((prev) => [...prev, res2.data]);
@@ -164,7 +171,6 @@ const ChatScreen = ({ route, navigation }) => {
       setMessages((prev) => [...prev, res.data]);
       socket.current.emit("sendMessage", res.data);
       setText("");
-      Keyboard.dismiss();
       // ensure list scrolls to show the new message
       setTimeout(
         () => flatListRef.current?.scrollToEnd({ animated: true }),

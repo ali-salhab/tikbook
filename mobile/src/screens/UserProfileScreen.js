@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,23 +7,29 @@ import {
   ScrollView,
   Dimensions,
   Image,
+  ActivityIndicator,
+  Share,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
-import LoadingIndicator from "../components/LoadingIndicator";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+
+const { width } = Dimensions.get("window");
 
 const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
-  const { userInfo, BASE_URL } = useContext(AuthContext);
+  const { userInfo, userToken, BASE_URL } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
   const [videos, setVideos] = useState([]);
+  const [likedVideos, setLikedVideos] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState("videos");
+  const [loading, setLoading] = useState(true);
   const netInfo = useNetInfo();
 
   useEffect(() => {
