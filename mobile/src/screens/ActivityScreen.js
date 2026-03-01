@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,11 +21,12 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const ActivityScreen = ({ navigation }) => {
-  const { userToken, setNotificationCount, fetchNotificationCount } =
+  const { userToken, userInfo, setNotificationCount, fetchNotificationCount } =
     useContext(AuthContext);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [followingMap, setFollowingMap] = useState({});
   const netInfo = useNetInfo();
 
   const formatDate = (dateString) => {
@@ -121,7 +123,24 @@ const ActivityScreen = ({ navigation }) => {
       const res = await axios.get(`${BASE_URL}/notifications`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      setActivities(res.data || []);
+      const notifs = res.data || [];
+      setActivities(notifs);
+
+      // Build a followingMap from follow notifications
+      if (userInfo?._id) {
+        const profileRes = await axios.get(
+          `${BASE_URL}/users/${userInfo._id}`,
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+        const following = profileRes.data?.following || [];
+        const map = {};
+        following.forEach((id) => {
+          map[id] = true;
+        });
+        setFollowingMap(map);
+      }
     } catch (e) {
       console.error("Error fetching notifications:", e);
       setActivities([]);
@@ -156,6 +175,37 @@ const ActivityScreen = ({ navigation }) => {
   if (loading && activities.length === 0) {
     return <LoadingIndicator />;
   }
+
+  const handleFollowBack = async (targetUserId) => {
+    if (!targetUserId) return;
+    const alreadyFollowing = followingMap[targetUserId];
+    try {
+      if (alreadyFollowing) {
+        await axios.put(
+          `${BASE_URL}/users/${targetUserId}/unfollow`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+        setFollowingMap((prev) => ({ ...prev, [targetUserId]: false }));
+      } else {
+        await axios.put(
+          `${BASE_URL}/users/${targetUserId}/follow`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+        setFollowingMap((prev) => ({ ...prev, [targetUserId]: true }));
+      }
+    } catch (e) {
+      Alert.alert(
+        "خطأ",
+        e?.response?.data?.message || "فشل تغيير حالة المتابعة",
+      );
+    }
+  };
 
   const renderItem = ({ item }) => {
     const videoUrl = item.video?.videoUrl;
@@ -219,6 +269,20 @@ const ActivityScreen = ({ navigation }) => {
           </View>
         </View>
 
+        {/* Follow Back button for follow notifications */}
+        {item.type === "follow" && item.fromUser && (
+          <TouchableOpacity
+            style={[
+              styles.followBackBtn,
+              followingMap[item.fromUser._id] && styles.followingBack,
+            ]}
+            onPress={() => handleFollowBack(item.fromUser._id)}
+          >
+            <Text style={styles.followBackText}>
+              {followingMap[item.fromUser._id] ? "متابَع" : "رد المتابعة"}
+            </Text>
+          </TouchableOpacity>
+        )}
         {videoUrl ? (
           thumbUrl ? (
             <Image source={{ uri: thumbUrl }} style={styles.thumbnailImage} />
@@ -382,6 +446,25 @@ const styles = StyleSheet.create({
     width: 48,
     height: 64,
     borderRadius: 4,
+  },
+  followBackBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: "#FE2C55",
+    alignSelf: "center",
+    minWidth: 80,
+    alignItems: "center",
+  },
+  followingBack: {
+    backgroundColor: "#333",
+    borderWidth: 1,
+    borderColor: "#555",
+  },
+  followBackText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
 

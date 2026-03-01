@@ -88,10 +88,7 @@ const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
           label: "الإعدادات والخصوصية",
           icon: "settings-outline",
           iconType: "Ionicons",
-          onPress: () => {
-            // Navigate to settings or logout
-            // For now just close
-          },
+          onPress: () => navigation.navigate("Settings"),
         },
         {
           id: "logout",

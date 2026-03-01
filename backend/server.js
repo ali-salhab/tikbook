@@ -224,6 +224,24 @@ io.on("connection", (socket) => {
     });
   });
 
+  // ── Agora Live Stream Chat (LiveScreen.js) ────────────────────────────────
+  socket.on("live:join", ({ channelName, userId }) => {
+    if (channelName) {
+      socket.join(`live:${channelName}`);
+      console.log(`User ${userId} joined live stream channel ${channelName}`);
+    }
+  });
+
+  socket.on("live:send_message", ({ channelName, message }) => {
+    if (channelName && message) {
+      io.to(`live:${channelName}`).emit("live:message_received", {
+        ...message,
+        id: message.id || Date.now(),
+        timestamp: new Date(),
+      });
+    }
+  });
+
   // Music Player Sync
   socket.on("liveroom:music_update", ({ roomId, state }) => {
     io.to(`liveroom:${roomId}`).emit("liveroom:music_synced", {

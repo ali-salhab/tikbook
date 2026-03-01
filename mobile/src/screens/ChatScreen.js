@@ -13,6 +13,7 @@ import {
   Alert,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import {
   SafeAreaView,
@@ -25,6 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 import i18n from "../i18n";
 import { BASE_URL } from "../config/api";
 import GiftPanel from "../components/GiftPanel";
+import * as ImagePicker from "expo-image-picker";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -44,6 +46,8 @@ const ChatScreen = ({ route, navigation }) => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [inputHeight, setInputHeight] = useState(60);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const socket = useRef(null);
   const flatListRef = useRef(null);
 
@@ -62,7 +66,16 @@ const ChatScreen = ({ route, navigation }) => {
         setUserBalance(res.data?.balance ?? 0);
       } catch (_) {}
     };
+    const fetchFollowStatus = async () => {
+      try {
+        const res = await axios.get(`${BASE_URL}/users/${userId}`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        setIsFollowing(res.data?.followers?.includes(userInfo._id) ?? false);
+      } catch (_) {}
+    };
     fetchBalance();
+    fetchFollowStatus();
   }, [userId]);
 
   const handleSendGift = async (gift, quantity) => {
@@ -177,6 +190,81 @@ const ChatScreen = ({ route, navigation }) => {
     setText((t) => t + emoji);
   };
 
+  const handleToggleFollow = async () => {
+    if (!userId || followLoading) return;
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await axios.put(
+          `${BASE_URL}/users/${userId}/unfollow`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+        setIsFollowing(false);
+      } else {
+        await axios.put(
+          `${BASE_URL}/users/${userId}/follow`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+        setIsFollowing(true);
+      }
+    } catch (e) {
+      Alert.alert(
+        "خطأ",
+        e?.response?.data?.message || "فشل تغيير حالة المتابعة",
+      );
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("خطأ", "نحتاج إذن الوصول للصور");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        const imageUri = result.assets[0].uri;
+        // Send image as message
+        try {
+          const res = await axios.post(
+            `${BASE_URL}/messages`,
+            { receiverId: userId, text: `🖼️ صورة`, imageUrl: imageUri },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          );
+          setMessages((prev) => [...prev, res.data]);
+          socket.current?.emit("sendMessage", res.data);
+          setTimeout(
+            () => flatListRef.current?.scrollToEnd({ animated: true }),
+            80,
+          );
+        } catch (e) {
+          Alert.alert("خطأ", "فشل إرسال الصورة");
+        }
+      }
+    } catch (e) {
+      Alert.alert("خطأ", "فشل فتح الصورة");
+    }
+  };
+
+  const handleCallPress = () => {
+    Alert.alert("اتصال صوتي", `جاري الاتصال بـ ${username}`, [
+      { text: "إلغاء", style: "cancel" },
+    ]);
+  };
+
   // Keyboard listeners: keep track of keyboard height so input stays visible
   useEffect(() => {
     const showEvent =
@@ -217,7 +305,30 @@ const ChatScreen = ({ route, navigation }) => {
         item.sender === userInfo._id ? styles.myMessage : styles.theirMessage,
       ]}
     >
-      <Text style={styles.messageText}>{item.text}</Text>
+      {item.sender !== userInfo._id && (
+        <View style={styles.messageAvatarWrap}>
+          {profileImage ? (
+            <Image
+              source={{ uri: profileImage }}
+              style={styles.messageAvatar}
+            />
+          ) : (
+            <View
+              style={[styles.messageAvatar, styles.messageAvatarPlaceholder]}
+            >
+              <Ionicons name="person" size={12} color="#CCC" />
+            </View>
+          )}
+        </View>
+      )}
+      <View
+        style={[
+          styles.messageBubble,
+          item.sender === userInfo._id ? styles.myBubble : styles.theirBubble,
+        ]}
+      >
+        <Text style={styles.messageText}>{item.text}</Text>
+      </View>
     </View>
   );
 
@@ -339,9 +450,13 @@ const ChatScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={{ flex: 1 }}>
         <View style={styles.chatHeader}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color="#FFF" />
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.headerBtn}
+          >
+            <Ionicons name="chevron-back" size={26} color="#FFF" />
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.chatHeaderUser}
             onPress={() => navigation.navigate("UserProfile", { userId })}
@@ -353,16 +468,36 @@ const ChatScreen = ({ route, navigation }) => {
               />
             ) : (
               <View style={styles.chatHeaderAvatarPlaceholder}>
-                <Ionicons name="person" size={18} color="#CCC" />
+                <Ionicons name="person" size={20} color="#CCC" />
               </View>
             )}
-            <Text style={styles.chatHeaderTitle}>{username}</Text>
+            <View style={styles.chatHeaderInfo}>
+              <Text style={styles.chatHeaderTitle}>{username}</Text>
+              <Text style={styles.chatHeaderOnline}>نشط</Text>
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("UserProfile", { userId })}
-          >
-            <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
-          </TouchableOpacity>
+
+          <View style={styles.chatHeaderActions}>
+            <TouchableOpacity
+              style={[styles.followChip, isFollowing && styles.followingChip]}
+              onPress={handleToggleFollow}
+              disabled={followLoading}
+            >
+              {followLoading ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.followChipText}>
+                  {isFollowing ? "متابَع" : "متابعة"}
+                </Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={handleCallPress}
+            >
+              <Ionicons name="call-outline" size={22} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <FlatList
@@ -410,6 +545,9 @@ const ChatScreen = ({ route, navigation }) => {
           onPress={toggleEmojiPicker}
         >
           <Ionicons name="happy-outline" size={24} color="#888" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.emojiButton} onPress={handlePickImage}>
+          <Ionicons name="image-outline" size={24} color="#888" />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.emojiButton}
@@ -688,52 +826,115 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#1F1F1F",
+    backgroundColor: "#0A0A0A",
+  },
+  headerBtn: {
+    padding: 6,
   },
   chatHeaderUser: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     flex: 1,
-    justifyContent: "center",
+    marginHorizontal: 8,
+  },
+  chatHeaderInfo: {
+    flexDirection: "column",
+  },
+  chatHeaderOnline: {
+    color: "#4CAF50",
+    fontSize: 11,
+    marginTop: 1,
+  },
+  chatHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  followChip: {
+    backgroundColor: "#FE2C55",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  followingChip: {
+    backgroundColor: "#1F1F1F",
+    borderWidth: 1,
+    borderColor: "#444",
+  },
+  followChipText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "700",
   },
   chatHeaderAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#FE2C55",
   },
   chatHeaderAvatarPlaceholder: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#444",
+  },
+  chatHeaderTitle: {
+    color: "#FFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  messagesList: {
+    padding: 12,
+  },
+  messageContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 10,
+  },
+  myMessage: {
+    justifyContent: "flex-start",
+    flexDirection: "row-reverse",
+  },
+  theirMessage: {
+    justifyContent: "flex-start",
+  },
+  messageAvatarWrap: {
+    marginRight: 6,
+    marginBottom: 2,
+  },
+  messageAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  messageAvatarPlaceholder: {
     backgroundColor: "#333",
     justifyContent: "center",
     alignItems: "center",
   },
-  chatHeaderTitle: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "600",
+  messageBubble: {
+    maxWidth: "72%",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
   },
-  messagesList: {
-    padding: 16,
-  },
-  messageContainer: {
-    maxWidth: "75%",
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  myMessage: {
-    alignSelf: "flex-start",
+  myBubble: {
     backgroundColor: "#FE2C55",
+    borderBottomRightRadius: 4,
   },
-  theirMessage: {
-    alignSelf: "flex-end",
+  theirBubble: {
     backgroundColor: "#1F1F1F",
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     color: "#FFF",

@@ -23,6 +23,7 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 import videoService from "../services/videoService";
+import * as ImagePicker from "expo-image-picker";
 
 const { width } = Dimensions.get("window");
 
@@ -123,6 +124,58 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert("✅ تم النسخ", "تم نسخ معرف المستخدم إلى الحافظة", [
         { text: "حسناً" },
       ]);
+    }
+  };
+
+  const handleChangeProfilePicture = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("خطأ", "نحتاج إذن الوصول للصور");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        const imageUri = result.assets[0].uri;
+        const formData = new FormData();
+        const filename =
+          imageUri.split("/").pop() || `profile_${Date.now()}.jpg`;
+        const ext = filename.split(".").pop() || "jpg";
+        formData.append("image", {
+          uri: imageUri,
+          name: filename,
+          type: `image/${ext === "jpg" ? "jpeg" : ext}`,
+        });
+        try {
+          const res = await axios.put(
+            `${BASE_URL}/users/profile/image`,
+            formData,
+            {
+              headers: {
+                Authorization: `Bearer ${userToken}`,
+                "Content-Type": "multipart/form-data",
+              },
+            },
+          );
+          if (res.data?.profileImage) {
+            setProfile((prev) => ({
+              ...prev,
+              profileImage: res.data.profileImage,
+            }));
+            Alert.alert("✅", "تم تغيير صورة البروفايل بنجاح");
+          }
+        } catch (err) {
+          Alert.alert("خطأ", "فشل رفع الصورة");
+        }
+      }
+    } catch (e) {
+      Alert.alert("خطأ", "فشل اختيار الصورة");
     }
   };
 
@@ -370,11 +423,19 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.profileInfo}>
           {/* Avatar with Badge Frame */}
           <View style={styles.avatarContainer}>
-            <ProfileBadgeFrame
-              profileImage={profile?.profileImage}
-              badgeImage={profile?.activeBadge?.imageUrl}
-              size={100}
-            />
+            <TouchableOpacity
+              onPress={handleChangeProfilePicture}
+              activeOpacity={0.85}
+            >
+              <ProfileBadgeFrame
+                profileImage={profile?.profileImage}
+                badgeImage={profile?.activeBadge?.imageUrl}
+                size={100}
+              />
+              <View style={styles.avatarCameraBtn}>
+                <Ionicons name="camera" size={16} color="#FFF" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Name & Username */}
@@ -516,6 +577,19 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginBottom: 12,
+  },
+  avatarCameraBtn: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    backgroundColor: "#FE2C55",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
   },
   avatar: {
     width: 96,

@@ -13,12 +13,11 @@ import {
   TextInput,
   Alert,
   Platform,
-  ScrollView,
+  FlatList,
   Image,
   Dimensions,
   KeyboardAvoidingView,
   Modal,
-  FlatList,
   ActivityIndicator,
 } from "react-native";
 import {
@@ -39,6 +38,7 @@ import { BASE_URL, AGORA_APP_ID } from "../config/api";
 import axios from "axios";
 import { Camera } from "expo-camera";
 import { Audio } from "expo-av";
+import io from "socket.io-client";
 
 const { width, height } = Dimensions.get("window");
 
@@ -69,6 +69,8 @@ export default function LiveScreen({ navigation, route }) {
   const [showChatInput, setShowChatInput] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [liveDuration, setLiveDuration] = useState(0);
+  const chatListRef = useRef(null);
+  const socketRef = useRef(null);
 
   // ───────────────── ENGINE ─────────────────
   const initEngine = useCallback(() => {
@@ -202,9 +204,29 @@ export default function LiveScreen({ navigation, route }) {
     } finally {
       setIsConnecting(false);
     }
+
+    // Connect socket for live chat
+    try {
+      const socketUrl = BASE_URL.replace("/api", "");
+      const sock = io(socketUrl);
+      socketRef.current = sock;
+      const finalCh = channelName;
+      sock.emit("live:join", { channelName: finalCh, userId: userInfo?._id });
+      sock.on("live:message_received", (msg) => {
+        setChatMessages((prev) => [...prev, msg].slice(-100));
+        setTimeout(
+          () => chatListRef.current?.scrollToEnd({ animated: true }),
+          80,
+        );
+      });
+    } catch (_) {}
   };
 
   const leaveLive = async () => {
+    // Disconnect socket
+    try {
+      socketRef.current?.disconnect();
+    } catch (_) {}
     // Calculate duration
     const dur = liveStartTimeRef.current
       ? Math.floor((Date.now() - liveStartTimeRef.current) / 1000)
@@ -245,15 +267,28 @@ export default function LiveScreen({ navigation, route }) {
 
   const sendMessage = () => {
     if (messageText.trim()) {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          user: userInfo?.username || "You",
-          text: messageText,
-          vip: false,
-        },
-      ]);
+      const msg = {
+        id: Date.now(),
+        user: userInfo?.username || "You",
+        userId: userInfo?._id,
+        text: messageText,
+        vip: false,
+      };
+      setChatMessages((prev) => {
+        const updated = [...prev, msg].slice(-100);
+        setTimeout(
+          () => chatListRef.current?.scrollToEnd({ animated: true }),
+          80,
+        );
+        return updated;
+      });
+      // Emit to other viewers via socket
+      try {
+        socketRef.current?.emit("live:send_message", {
+          channelName,
+          message: msg,
+        });
+      } catch (_) {}
       setMessageText("");
     }
   };
@@ -481,23 +516,29 @@ export default function LiveScreen({ navigation, route }) {
         </View>
 
         <View style={styles.middleSection}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={styles.chatScroll}
-          >
-            {chatMessages.map((msg) => (
+          <FlatList
+            ref={chatListRef}
+            data={chatMessages}
+            keyExtractor={(item) =>
+              item.id?.toString() || Math.random().toString()
+            }
+            renderItem={({ item }) => (
               <View
-                key={msg.id}
-                style={[styles.chatMessage, msg.vip && styles.chatMessageVip]}
+                style={[styles.chatMessage, item.vip && styles.chatMessageVip]}
               >
                 <Text style={styles.chatUsername}>
-                  {msg.vip && "VIP "}
-                  {msg.user}:
+                  {item.vip && "VIP "}
+                  {item.user}:
                 </Text>
-                <Text style={styles.chatText}> {msg.text}</Text>
+                <Text style={styles.chatText}> {item.text}</Text>
               </View>
-            ))}
-          </ScrollView>
+            )}
+            showsVerticalScrollIndicator={false}
+            style={styles.chatScroll}
+            onContentSizeChange={() =>
+              chatListRef.current?.scrollToEnd({ animated: true })
+            }
+          />
         </View>
 
         <View

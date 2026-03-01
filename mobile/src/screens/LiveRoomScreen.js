@@ -96,6 +96,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [showManagementModal, setShowManagementModal] = useState(false);
   const [showHandRaiseList, setShowHandRaiseList] = useState(false);
 
+  // ── Summary ───────────────────────────────────────────────────────────────────
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryStats, setSummaryStats] = useState(null);
+  const liveStartRef = useRef(Date.now());
+  const peakViewersRef = useRef(0);
+  const giftsReceivedRef = useRef(0);
+
   // ── Animations ───────────────────────────────────────────────────────────────
   const glowAnim = useRef(new Animated.Value(1)).current;
 
@@ -108,6 +115,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const socketRef = useRef(null);
   const agoraEngineRef = useRef(null);
   const inputRef = useRef(null);
+  const isHostRef = useRef(false);
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────────
 
@@ -221,7 +229,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       agoraEngineRef.current = engine;
       engine.initialize({ appId: AGORA_APP_ID });
       engine.enableAudio();
-      engine.enableAudioVolumeIndication(200, 3, false);
+      engine.enableAudioVolumeIndication(1000, 3, false);
       engine.setChannelProfile(
         ChannelProfileType.ChannelProfileLiveBroadcasting,
       );
@@ -335,7 +343,45 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
     });
     socket.on("liveroom:mute_toggled", fetchRoomData);
-    socket.on("liveroom:hand_raised", fetchRoomData);
+    socket.on(
+      "liveroom:hand_raised",
+      ({ userId: raisedUserId, user: raisedUser }) => {
+        fetchRoomData();
+        // Notify the host about the seat request
+        if (isHostRef.current && raisedUserId !== userInfo._id) {
+          Alert.alert(
+            "✋ طلب جلوس",
+            `${raisedUser?.username || "مستخدم"} يطلب الصعود على المقعد`,
+            [
+              { text: "رفض", style: "cancel" },
+              {
+                text: "قبول",
+                onPress: async () => {
+                  try {
+                    await axios.post(
+                      `${BASE_URL}/live-rooms/${roomId}/make-speaker/${raisedUserId}`,
+                      {},
+                      { headers: { Authorization: `Bearer ${userToken}` } },
+                    );
+                    socketRef.current?.emit("liveroom:make_speaker", {
+                      roomId,
+                      userId: raisedUserId,
+                      user: raisedUser,
+                    });
+                    fetchRoomData();
+                  } catch (e) {
+                    Alert.alert(
+                      "خطأ",
+                      e?.response?.data?.message || "فشل إضافة المتحدث",
+                    );
+                  }
+                },
+              },
+            ],
+          );
+        }
+      },
+    );
     socket.on("liveroom:ended", () => {
       Alert.alert("انتهت الغرفة", "أنهى المضيف هذه الغرفة.", [
         { text: "حسناً", onPress: () => navigation.goBack() },
@@ -347,6 +393,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
     socket.on("liveroom:gift_received", ({ gift, sender }) => {
       const id = `${Date.now()}${Math.random()}`;
+      giftsReceivedRef.current += 1;
       playGiftSound();
       setActiveGifts((prev) => [...prev, { id, gift, sender }]);
       setMessages((prev) =>
@@ -385,6 +432,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         setRoom(rData);
         SoundService.play("join");
         const isHost = rData.host._id === userInfo._id;
+        isHostRef.current = isHost;
         const isSpeaker = rData.speakers?.some(
           (s) => s.user._id === userInfo._id,
         );
@@ -409,7 +457,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
       const res = await axios.get(`${BASE_URL}/live-rooms/${roomId}`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      if (res.data.success) setRoom(res.data.data);
+      if (res.data.success) {
+        setRoom(res.data.data);
+        const viewers = res.data.data?.listeners?.length ?? 0;
+        if (viewers > peakViewersRef.current) peakViewersRef.current = viewers;
+      }
     } catch (_) {}
   };
 
@@ -425,6 +477,58 @@ const LiveRoomScreen = ({ route, navigation }) => {
         userId: userInfo._id,
       });
     } catch (_) {}
+  };
+
+  const formatDuration = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0)
+      return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
+  const handleExitPress = () => {
+    const isHost = room?.host?._id === userInfo?._id;
+    if (!isHost) {
+      navigation.goBack();
+      return;
+    }
+    Alert.alert("إنهاء الغرفة", "هل تريد إنهاء الغرفة وعرض ملخص البث؟", [
+      { text: "إلغاء", style: "cancel" },
+      {
+        text: "إنهاء",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await axios.post(
+              `${BASE_URL}/live-rooms/${roomId}/end`,
+              {},
+              { headers: { Authorization: `Bearer ${userToken}` } },
+            );
+            socketRef.current?.emit("liveroom:end", { roomId });
+          } catch (_) {}
+          const durationSec = Math.floor(
+            (Date.now() - liveStartRef.current) / 1000,
+          );
+          let walletBalance = userBalance;
+          try {
+            const wRes = await axios.get(`${BASE_URL}/wallet`, {
+              headers: { Authorization: `Bearer ${userToken}` },
+            });
+            if (wRes.data?.balance !== undefined)
+              walletBalance = wRes.data.balance;
+          } catch (_) {}
+          setSummaryStats({
+            duration: formatDuration(durationSec),
+            peakViewers: peakViewersRef.current,
+            giftsReceived: giftsReceivedRef.current,
+            balance: walletBalance,
+          });
+          setShowSummary(true);
+        },
+      },
+    ]);
   };
 
   // ─── ACTION HANDLERS ─────────────────────────────────────────────────────────
@@ -616,10 +720,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         {/* Left */}
         <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.exitBtn}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.exitBtn} onPress={handleExitPress}>
             <Feather name="x" size={16} color="#FFF" />
           </TouchableOpacity>
           <View style={styles.liveBadge}>
@@ -752,7 +853,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
   };
 
   const SeatGrid = () => {
-    const speakers = room?.speakers || [];
+    const hostId = room?.host?._id;
+    // Filter out the host from speakers so they don’t appear in seat grid
+    const speakers = (room?.speakers || []).filter(
+      (s) => s.user._id !== hostId,
+    );
     const slots = Array(8)
       .fill(null)
       .map((_, i) => speakers[i] || null);
@@ -1173,14 +1278,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
     <Modal
       visible={showInput}
       transparent
-      animationType="fade"
-      statusBarTranslucent
+      animationType="slide"
       onRequestClose={handleCloseInput}
     >
       <KeyboardAvoidingView
         style={{ flex: 1, justifyContent: "flex-end" }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
       >
         {/* Tap outside to close */}
         <TouchableOpacity
@@ -1188,7 +1292,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           activeOpacity={1}
           onPress={handleCloseInput}
         />
-        <View style={styles.chatBar}>
+        <View style={[styles.chatBar, { paddingBottom: insets.bottom + 12 }]}>
           <TextInput
             ref={inputRef}
             value={inputText}
@@ -1223,6 +1327,77 @@ const LiveRoomScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+    </Modal>
+  );
+
+  // ─── SUMMARY MODAL ───────────────────────────────────────────────────────────
+  const summaryModal = (
+    <Modal
+      visible={showSummary}
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        setShowSummary(false);
+        navigation.goBack();
+      }}
+    >
+      <View style={styles.summaryOverlay}>
+        <View
+          style={[styles.summaryCard, { paddingBottom: insets.bottom + 20 }]}
+        >
+          {/* Header */}
+          <LinearGradient
+            colors={["#A020F0", "#FF00FF"]}
+            style={styles.summaryHeader}
+          >
+            <MaterialCommunityIcons name="broadcast" size={28} color="#FFF" />
+            <Text style={styles.summaryTitle}>ملخص الغرفة</Text>
+            <Text style={styles.summarySubtitle}>شكراً لبثك المباشر!</Text>
+          </LinearGradient>
+
+          {/* Stats grid */}
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryItem}>
+              <Ionicons name="time-outline" size={26} color="#A020F0" />
+              <Text style={styles.summaryValue}>
+                {summaryStats?.duration ?? "0:00"}
+              </Text>
+              <Text style={styles.summaryLabel}>مدة البث</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Ionicons name="eye-outline" size={26} color="#00F2EA" />
+              <Text style={styles.summaryValue}>
+                {summaryStats?.peakViewers ?? 0}
+              </Text>
+              <Text style={styles.summaryLabel}>ذروة المشاهدين</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Ionicons name="gift-outline" size={26} color="#FF4D94" />
+              <Text style={styles.summaryValue}>
+                {summaryStats?.giftsReceived ?? 0}
+              </Text>
+              <Text style={styles.summaryLabel}>هدايا استُلمت</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Ionicons name="diamond" size={26} color="#FFD700" />
+              <Text style={styles.summaryValue}>
+                {summaryStats?.balance ?? 0}
+              </Text>
+              <Text style={styles.summaryLabel}>رصيدك الحالي</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.summaryCloseBtn}
+            onPress={() => {
+              setShowSummary(false);
+              navigation.goBack();
+            }}
+          >
+            <Text style={styles.summaryCloseBtnText}>إغلاق</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 
@@ -1275,7 +1450,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       {/* Main content */}
       <View style={{ flex: 1 }}>
-        <Header />
+        {Header()}
 
         {/* Cover image banner — visible to all viewers */}
         {room?.coverImage ? (
@@ -1317,8 +1492,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        <HostSection />
-        <SeatGrid />
+        {HostSection()}
+        {SeatGrid()}
       </View>
 
       {/* Floating comments */}
@@ -1340,10 +1515,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
       ))}
 
       {/* Mini music bar */}
-      <MiniMusicBar />
+      {MiniMusicBar()}
 
       {/* Bottom action bar — always mounted; hidden behind input when active */}
-      <BottomBar />
+      {BottomBar()}
 
       {/* Chat input — always mounted, shown/hidden via display prop */}
       {chatInputBar}
@@ -1352,6 +1527,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {musicPlayerModal}
       {audioPanelModal}
       {handRaiseModal}
+
+      {summaryModal}
 
       <RoomManagementModal
         visible={showManagementModal}
@@ -1680,10 +1857,81 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(4,0,16,0.97)",
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    paddingBottom: 16,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: "rgba(160,32,240,0.3)",
+  },
+  summaryOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  summaryCard: {
+    width: "100%",
+    backgroundColor: "#0D0020",
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(160,32,240,0.4)",
+  },
+  summaryHeader: {
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+  },
+  summaryTitle: {
+    color: "#FFF",
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+  summarySubtitle: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 14,
+    marginTop: 4,
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 16,
+    gap: 12,
+  },
+  summaryItem: {
+    width: "46%",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    alignItems: "center",
+    paddingVertical: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginHorizontal: "2%",
+  },
+  summaryValue: {
+    color: "#FFF",
+    fontSize: 26,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  summaryCloseBtn: {
+    margin: 16,
+    marginTop: 4,
+    backgroundColor: "#A020F0",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  summaryCloseBtnText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
   chatField: {
     flex: 1,

@@ -11,6 +11,7 @@ import {
   FlatList,
   StyleSheet,
   Dimensions,
+  PixelRatio,
   Image,
   TouchableOpacity,
   Animated,
@@ -320,6 +321,11 @@ const HomeScreen = ({ navigation }) => {
       }
     };
 
+    const isAlreadyFollowing =
+      item.user._id !== userInfo?._id &&
+      Array.isArray(item.user.followers) &&
+      item.user.followers.includes(userInfo?._id);
+
     const isImage = (url) => {
       if (!url) return false;
       const lowerUrl = url.toLowerCase();
@@ -374,7 +380,7 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         {/* Bottom Info */}
-        <View style={styles.bottomSection}>
+        <View style={[styles.bottomSection, { bottom: insets.bottom + 80 }]}>
           <View style={styles.userInfo}>
             <Text style={styles.username}>@{item.user.username}</Text>
             <Text style={styles.description}>{item.description}</Text>
@@ -388,7 +394,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* Side Actions */}
-        <View style={styles.rightActions}>
+        <View style={[styles.rightActions, { bottom: insets.bottom + 80 }]}>
           {/* Profile Image */}
           <TouchableOpacity
             style={styles.profileContainer}
@@ -404,7 +410,7 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.profileEmoji}>👤</Text>
               )}
             </View>
-            {item.user._id !== userInfo?._id && (
+            {item.user._id !== userInfo?._id && !isAlreadyFollowing && (
               <View style={styles.followButton}>
                 <Ionicons name="add" size={14} color="#FFF" />
               </View>
@@ -416,11 +422,11 @@ const HomeScreen = ({ navigation }) => {
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               {item.isLiked ? (
                 <View style={styles.likedHeart}>
-                  <Ionicons name="heart" size={35} color="#FE2C55" />
+                  <Ionicons name="heart" size={ICON_SIZE} color="#FE2C55" />
                   <View style={styles.heartGlow} />
                 </View>
               ) : (
-                <Ionicons name="heart-outline" size={35} color="#FFF" />
+                <Ionicons name="heart-outline" size={ICON_SIZE} color="#FFF" />
               )}
             </Animated.View>
             <Text style={[styles.actionText, item.isLiked && styles.likedText]}>
@@ -436,7 +442,11 @@ const HomeScreen = ({ navigation }) => {
               handleComment(item);
             }}
           >
-            <Ionicons name="chatbubble-ellipses-sharp" size={35} color="#FFF" />
+            <Ionicons
+              name="chatbubble-ellipses-sharp"
+              size={ICON_SIZE}
+              color="#FFF"
+            />
             <Text style={styles.actionText}>
               {formatNumber(item.comments || 0)}
             </Text>
@@ -452,7 +462,7 @@ const HomeScreen = ({ navigation }) => {
           >
             <Ionicons
               name={item.isSaved ? "bookmark" : "bookmark-outline"}
-              size={35}
+              size={ICON_SIZE}
               color="#FFF"
             />
           </TouchableOpacity>
@@ -465,7 +475,7 @@ const HomeScreen = ({ navigation }) => {
               handleShare(item);
             }}
           >
-            <Ionicons name="arrow-redo-sharp" size={35} color="#FFF" />
+            <Ionicons name="arrow-redo-sharp" size={ICON_SIZE} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -547,7 +557,7 @@ const HomeScreen = ({ navigation }) => {
         keyExtractor={(item) => item._id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={Dimensions.get("window").height}
+        snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
         scrollEventThrottle={16}
@@ -582,6 +592,10 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 };
+
+// Responsive icon size based on screen width
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const ICON_SIZE = Math.round(Math.min(SCREEN_WIDTH * 0.085, 32));
 
 const styles = StyleSheet.create({
   container: {
@@ -651,8 +665,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   videoContainer: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     position: "relative",
   },
   video: {
@@ -673,7 +687,6 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     position: "absolute",
-    bottom: 140,
     left: 16,
     right: 90,
     zIndex: 100,
@@ -712,10 +725,9 @@ const styles = StyleSheet.create({
   rightActions: {
     position: "absolute",
     right: 12,
-    bottom: 140,
-    gap: 16,
+    gap: Math.max(SCREEN_HEIGHT * 0.014, 10),
     zIndex: 100,
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   profileContainer: {
     alignItems: "center",

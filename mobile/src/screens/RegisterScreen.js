@@ -120,17 +120,7 @@ const RegisterScreen = ({ navigation }) => {
         username,
         email,
         password,
-        devOtp: response.data.dev_otp,
       });
-
-      if (response.data.dev_otp) {
-        setTimeout(() => {
-          Alert.alert(
-            "⚠️ وضع التطوير",
-            `رمز التحقق للاختبار:\n${response.data.dev_otp}\n\nأدخله في الشاشة التالية.`,
-          );
-        }, 500);
-      }
     } catch (error) {
       console.log("❌ OTP Send Failed:", error.message);
       let title = "خطأ في إنشاء الحساب";

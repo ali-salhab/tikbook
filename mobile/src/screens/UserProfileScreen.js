@@ -42,7 +42,16 @@ const UserProfileScreen = ({ route, navigation }) => {
 
       // Fetch user's videos
       const videosRes = await axios.get(`${BASE_URL}/videos/user/${userId}`);
-      setVideos(videosRes.data || []);
+      const userVideos = videosRes.data || [];
+      setVideos(userVideos);
+
+      // Calculate total likes across all videos
+      const totalLikes = userVideos.reduce(
+        (sum, v) =>
+          sum + (Array.isArray(v.likes) ? v.likes.length : v.likes || 0),
+        0,
+      );
+      setProfile((prev) => ({ ...prev, totalLikes }));
     } catch (e) {
       console.log("❌ Error fetching user profile:", e.message);
     }
@@ -147,8 +156,8 @@ const UserProfileScreen = ({ route, navigation }) => {
               <Text style={styles.statLabel}>متابعون</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{videos.length}</Text>
-              <Text style={styles.statLabel}>فيديو</Text>
+              <Text style={styles.statNumber}>{profile.totalLikes ?? 0}</Text>
+              <Text style={styles.statLabel}>إعجاب</Text>
             </View>
           </View>
 
@@ -354,14 +363,16 @@ const styles = StyleSheet.create({
   videoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    width: "100%",
   },
   videoItem: {
-    width: Dimensions.get("window").width / 3 - 4,
-    height: Dimensions.get("window").width / 2,
-    margin: 2,
+    width: Dimensions.get("window").width / 3 - 2,
+    height: (Dimensions.get("window").width / 3) * 1.4,
+    margin: 1,
     backgroundColor: "#1a1a1a",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
   videoThumbnail: {
     width: "100%",
