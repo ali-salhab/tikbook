@@ -41,6 +41,7 @@ import BadgeShopScreen from "../screens/BadgeShopScreen";
 import MyBadgesScreen from "../screens/MyBadgesScreen";
 import CreateStatusScreen from "../screens/CreateStatusScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -335,6 +336,7 @@ const AppNavigator = () => {
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="OTP" component={OTPScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
               {/* Add MainTabs in case user is logged in */}
               <Stack.Screen name="MainTabs" component={HomeTabs} />
             </>
@@ -388,6 +390,7 @@ const AppNavigator = () => {
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="OTP" component={OTPScreen} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             </>
           )}
         </Stack.Navigator>

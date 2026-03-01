@@ -22,7 +22,7 @@ import i18n from "../i18n";
 // Enable RTL
 // Enable RTL logic moved to index.js
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +49,25 @@ const LoginScreen = ({ navigation }) => {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  // Show success message after registration
+  useEffect(() => {
+    if (route?.params?.registered) {
+      Alert.alert(
+        "✅ تم إنشاء الحساب",
+        "تم التحقق من بريدك بنجاح! يمكنك الآن تسجيل الدخول.",
+        [{ text: "حسناً" }],
+      );
+    }
+    if (route?.params?.passwordReset) {
+      Alert.alert(
+        "✅ تم تغيير كلمة المرور",
+        "يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.",
+        [{ text: "حسناً" }],
+      );
+    }
+  }, []);
+
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -262,14 +281,7 @@ const LoginScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.forgotButton}
-          onPress={() => {
-            setErrorModal({
-              visible: true,
-              title: "قيد الإعداد",
-              message: "ميزة استعادة كلمة المرور قيد الإعداد حالياً.",
-              type: "info",
-            });
-          }}
+          onPress={() => navigation.navigate("ForgotPassword")}
           disabled={loading}
         >
           <Text

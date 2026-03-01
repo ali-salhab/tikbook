@@ -18,7 +18,7 @@ import Constants from "expo-constants";
 
 const OTPScreen = ({ route, navigation }) => {
     const { username, email, password } = route.params;
-    const { BASE_URL, register, login } = useContext(AuthContext);
+    const { BASE_URL } = useContext(AuthContext);
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(60);
@@ -57,28 +57,25 @@ const OTPScreen = ({ route, navigation }) => {
 
         setLoading(true);
         try {
-            console.log("🔐 Verifying OTP...", { email, code });
-            const res = await axios.post(`${BASE_URL}/auth/verify-otp`, {
+            // 1. Verify OTP
+            const verifyRes = await axios.post(`${BASE_URL}/auth/verify-otp`, {
                 email,
                 otp: code,
             });
 
-            if (res.data.verified) {
-                console.log("✅ OTP Verified, creating account...");
-                // Call register from context to complete sign up and login
-                try {
-                    await register(username, email, password, code);
-                    // Note: register function in AuthContext handles navigation/state update
-                } catch (registerError) {
-                    const msg = registerError?.message || "";
-                    if (msg.includes("المستخدم موجود بالفعل")) {
-                        // If user already exists, fall back to login
-                        console.log("ℹ️ User exists, attempting login instead...");
-                        await login(email, password);
-                    } else {
-                        throw registerError;
-                    }
-                }
+            if (verifyRes.data.verified) {
+                // 2. Create the account
+                await axios.post(`${BASE_URL}/auth/register`, {
+                    username,
+                    email,
+                    password,
+                });
+
+                // 3. Navigate to Login with success flag
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: "Login", params: { registered: true } }],
+                });
             }
         } catch (e) {
             console.log("❌ Verification error:", e.response?.data || e.message);
@@ -105,8 +102,8 @@ const OTPScreen = ({ route, navigation }) => {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.container}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={[styles.container, { backgroundColor: "#000" }]}
         >
             <TouchableOpacity
                 style={styles.backButton}
