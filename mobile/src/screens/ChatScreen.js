@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -105,7 +111,10 @@ const ChatScreen = ({ route, navigation }) => {
       // Send a gift message in chat
       const res2 = await axios.post(
         `${BASE_URL}/messages`,
-        { receiverId: userId, text: `🎁 أرسلت هدية: ${gift.nameAr || gift.name}` },
+        {
+          receiverId: userId,
+          text: `🎁 أرسلت هدية: ${gift.nameAr || gift.name}`,
+        },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setMessages((prev) => [...prev, res2.data]);
