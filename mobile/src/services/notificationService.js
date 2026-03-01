@@ -1,53 +1,54 @@
-import { PermissionsAndroid, Platform } from "react-native";
+import { Platform } from "react-native";
 import axios from "axios";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 
-// Configure Expo Notifications to show alerts in foreground
+// ─── Foreground notification handler ─────────────────────────────────────────
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
   }),
 });
 
-// Request User Permission for Notifications
-export const requestUserPermission = async () => {
+// ─── Android notification channel (required for Android 8+) ──────────────────
+export const setupAndroidChannel = async () => {
   if (Platform.OS === "android") {
-    try {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus === "granted") {
-        console.log("Notification permission granted");
-        return true;
-      } else {
-        console.log("Notification permission denied");
-        return false;
-      }
-    } catch (err) {
-      console.warn(err);
-      return false;
-    }
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "الإشعارات",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FE2C55",
+      sound: "default",
+      enableLights: true,
+      enableVibrate: true,
+      showBadge: true,
+    });
   }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  return finalStatus === "granted";
 };
 
-// Get Push Token (Expo)
+// ─── Permission request ───────────────────────────────────────────────────────
+export const requestUserPermission = async () => {
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  if (existing === "granted") return true;
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+};
+
+// ─── Get Expo push token ──────────────────────────────────────────────────────
 export const getPushToken = async () => {
   try {
+    // Ensure Android channel exists
+    await setupAndroidChannel();
+
+    // Request permission first
+    const granted = await requestUserPermission();
+    if (!granted) {
+      console.warn("Push notification permission denied");
+      return null;
+    }
+
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId;
@@ -55,13 +56,15 @@ export const getPushToken = async () => {
       console.error("Project ID not found in Constants");
       return null;
     }
-    // Retry a few times in case of transient network failure
+
+    // Retry up to 3 times on transient errors
     let lastError = null;
     for (let i = 0; i < 3; i++) {
       try {
-        const token = (await Notifications.getExpoPushTokenAsync({ projectId }))
-          .data;
-        console.log("Expo Push Token:", token);
+        const { data: token } = await Notifications.getExpoPushTokenAsync({
+          projectId,
+        });
+        console.log("✅ Expo Push Token:", token);
         return token;
       } catch (err) {
         lastError = err;
@@ -74,63 +77,125 @@ export const getPushToken = async () => {
     }
     throw lastError || new Error("Expo token fetch failed after retries");
   } catch (error) {
-    console.error("Error getting Expo Push token:", error);
+    console.error("Error getting Expo Push Token:", error);
     return null;
   }
 };
 
-// Legacy alias to avoid breaking other files immediately
+// Legacy alias
 export const getFCMToken = getPushToken;
 
-// Save Token to Backend
+// ─── Save token to backend ────────────────────────────────────────────────────
 export const saveTokenToBackend = async (userToken, pushToken, baseUrl) => {
   if (!pushToken || !userToken) return;
   try {
     await axios.put(
-      `${baseUrl}/users/fcm-token`, // Keeping endpoint name for now to avoid breaking backend
+      `${baseUrl}/users/fcm-token`,
       { token: pushToken },
       { headers: { Authorization: `Bearer ${userToken}` } },
     );
-    console.log("Push Token saved to backend");
+    console.log("✅ Push token saved to backend");
   } catch (error) {
-    console.error("Error saving Push token to backend:", error);
+    console.error("Error saving push token to backend:", error);
   }
 };
 
-// Notification Listeners
+// ─── Resolve navigation target from notification data ────────────────────────
+const resolveNavTarget = (data = {}) => {
+  if (!data) return null;
+
+  if (data.screen === "LiveRoom" && data.roomId) {
+    return { screen: "LiveRoom", params: { roomId: data.roomId } };
+  }
+  if (data.screen === "UserProfile" && data.userId) {
+    return { screen: "UserProfile", params: { userId: data.userId } };
+  }
+  if (data.screen === "Chat" && data.chatId) {
+    return { screen: "Chat", params: { chatId: data.chatId } };
+  }
+
+  // Social interactions → Activity screen
+  const activityTypes = [
+    "like",
+    "comment",
+    "follow",
+    "new_video",
+    "live_stream",
+  ];
+  if (data.screen === "Activity" || activityTypes.includes(data.type)) {
+    return { screen: "Activity", params: {} };
+  }
+
+  // Generic passthrough
+  if (data.screen) {
+    const { screen, ...rest } = data;
+    return { screen, params: rest };
+  }
+
+  return { screen: "Activity", params: {} };
+};
+
+// ─── Notification listeners (foreground & background tap) ────────────────────
 export const notificationListener = (navigationRef) => {
-  // Listener for foreground notifications
-  const foregroundSubscription = Notifications.addNotificationReceivedListener(
+  const foregroundSub = Notifications.addNotificationReceivedListener(
     (notification) => {
-      console.log("Foreground notification received:", notification);
+      console.log(
+        "🔔 Notification received (foreground):",
+        notification.request.content.title,
+      );
     },
   );
 
-  // Listener for notification interactions (taps)
-  const responseSubscription =
-    Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      console.log("Notification tapped with data:", data);
+  const responseSub = Notifications.addNotificationResponseReceivedListener(
+    (response) => {
+      const data = response?.notification?.request?.content?.data || {};
+      console.log("👆 Notification tapped:", data);
+      const target = resolveNavTarget(data);
+      if (!target) return;
 
-      if (data?.screen && navigationRef?.isReady()) {
-        // Handle LiveRoom navigation with roomId
-        if (data.screen === "LiveRoom" && data.roomId) {
-          navigationRef.navigate("LiveRoom", { roomId: data.roomId });
-        } else {
-          navigationRef.navigate(data.screen, data.params || {});
+      let attempts = 0;
+      const tryNavigate = () => {
+        if (navigationRef?.isReady()) {
+          navigationRef.navigate(target.screen, target.params);
+        } else if (attempts < 50) {
+          attempts++;
+          setTimeout(tryNavigate, 100);
         }
-      }
-    });
+      };
+      tryNavigate();
+    },
+  );
 
   return () => {
-    foregroundSubscription.remove();
-    responseSubscription.remove();
+    foregroundSub.remove();
+    responseSub.remove();
   };
 };
 
-// Background Message Handler (Expo handles this internally when configured)
+// ─── Handle cold-start (app killed, opened via notification tap) ──────────────
+export const handleInitialNotification = async (navigationRef) => {
+  try {
+    const response = await Notifications.getLastNotificationResponseAsync();
+    if (!response) return;
+    const data = response?.notification?.request?.content?.data || {};
+    const target = resolveNavTarget(data);
+    if (!target) return;
+
+    let attempts = 0;
+    const tryNavigate = () => {
+      if (navigationRef?.isReady()) {
+        navigationRef.navigate(target.screen, target.params);
+      } else if (attempts < 50) {
+        attempts++;
+        setTimeout(tryNavigate, 100);
+      }
+    };
+    tryNavigate();
+  } catch (e) {
+    console.error("handleInitialNotification error:", e);
+  }
+};
+
 export const setBackgroundMessageHandler = () => {
-  console.log(
-    "Background message handler setup (managed by expo-notifications)",
-  );
+  console.log("Background messages handled by expo-notifications");
 };

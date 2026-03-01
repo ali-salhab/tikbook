@@ -6,8 +6,11 @@ import {
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { AuthContext } from "../context/AuthContext";
-import { notificationListener } from "../services/notificationService";
-import * as Notifications from "expo-notifications";
+import {
+  notificationListener,
+  handleInitialNotification,
+  setupAndroidChannel,
+} from "../services/notificationService";
 import VersionChecker from "../components/VersionChecker";
 import OnboardingScreen from "../screens/OnboardingScreen";
 import LoginScreen from "../screens/LoginScreen";
@@ -37,7 +40,6 @@ import SplashScreen from "../screens/SplashScreen";
 import BadgeShopScreen from "../screens/BadgeShopScreen";
 import MyBadgesScreen from "../screens/MyBadgesScreen";
 import CreateStatusScreen from "../screens/CreateStatusScreen";
-import SettingsScreen from "../screens/SettingsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -267,32 +269,12 @@ const AppNavigator = () => {
   const navigationRef = useNavigationContainerRef();
 
   useEffect(() => {
-    // Setup notification listener handling
+    // Setup notification listeners (foreground + background tap)
     const unsubscribe = notificationListener(navigationRef);
-
-    // Handle cold start (App launched from notification)
-    const checkInitialNotification = async () => {
-      try {
-        const response = await Notifications.getLastNotificationResponseAsync();
-        if (response?.notification?.request?.content?.data?.screen) {
-          const { screen, params } = response.notification.request.content.data;
-          console.log("🚀 Cold start notification:", screen, params);
-          // Wait for navigation to be ready
-          const interval = setInterval(() => {
-            if (navigationRef.isReady()) {
-              navigationRef.navigate(screen, params);
-              clearInterval(interval);
-            }
-          }, 100);
-          // Timeout after 5s
-          setTimeout(() => clearInterval(interval), 5000);
-        }
-      } catch (e) {
-        console.error("Failed to check initial notification:", e);
-      }
-    };
-
-    checkInitialNotification();
+    // Setup Android channel
+    setupAndroidChannel();
+    // Handle cold start (app opened from killed state via notification)
+    handleInitialNotification(navigationRef);
     return unsubscribe;
   }, []);
 

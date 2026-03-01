@@ -64,7 +64,21 @@ const sendPushNotification = async (token, title, body, data = {}) => {
         title,
         body,
       },
-      data,
+      data: Object.fromEntries(
+        Object.entries(data).map(([k, v]) => [k, String(v)]),
+      ),
+      android: {
+        notification: {
+          channelId: "default",
+          priority: "high",
+          sound: "default",
+        },
+      },
+      apns: {
+        payload: {
+          aps: { sound: "default", badge: 1 },
+        },
+      },
       token,
     };
 
