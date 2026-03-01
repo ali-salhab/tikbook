@@ -36,7 +36,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
     }
     setLoading(true);
     try {
-      await axios.post(`${BASE_URL}/auth/forgot-password`, { email: email.trim() });
+      await axios.post(`${BASE_URL}/auth/forgot-password`, {
+        email: email.trim(),
+      });
       setStep(2);
     } catch (e) {
       Alert.alert("خطأ", e.response?.data?.message || "فشل إرسال رمز التحقق");
@@ -103,7 +105,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
 
@@ -122,7 +127,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
           {step === 1 && (
             <>
               <View style={styles.inputWrap}>
-                <Ionicons name="mail-outline" size={20} color="#FE2C55" style={styles.inputIcon} />
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color="#FE2C55"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="البريد الإلكتروني"
@@ -163,7 +173,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
                     value={digit}
                     onChangeText={(t) => handleOtpChange(t, i)}
                     onKeyPress={({ nativeEvent }) => {
-                      if (nativeEvent.key === "Backspace") handleBackspace(otp[i], i);
+                      if (nativeEvent.key === "Backspace")
+                        handleBackspace(otp[i], i);
                     }}
                   />
                 ))}
@@ -171,7 +182,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
               {/* New password */}
               <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={20} color="#FE2C55" style={styles.inputIcon} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#FE2C55"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="كلمة المرور الجديدة"
@@ -181,13 +197,22 @@ const ForgotPasswordScreen = ({ navigation }) => {
                   secureTextEntry={!showPass}
                 />
                 <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-                  <Ionicons name={showPass ? "eye-off" : "eye"} size={20} color="#666" />
+                  <Ionicons
+                    name={showPass ? "eye-off" : "eye"}
+                    size={20}
+                    color="#666"
+                  />
                 </TouchableOpacity>
               </View>
 
               {/* Confirm password */}
               <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={20} color="#FE2C55" style={styles.inputIcon} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#FE2C55"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="تأكيد كلمة المرور"
@@ -212,7 +237,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
               <TouchableOpacity
                 style={styles.resendBtn}
-                onPress={() => { setStep(1); setOtp(["","","","","",""]); }}
+                onPress={() => {
+                  setStep(1);
+                  setOtp(["", "", "", "", "", ""]);
+                }}
               >
                 <Text style={styles.resendText}>إعادة الإرسال</Text>
               </TouchableOpacity>

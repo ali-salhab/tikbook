@@ -43,11 +43,14 @@ const sendOTP = async (req, res) => {
         });
       }
       // Fallback for Render/Gmail blocking: Return OTP in response for testing
-      console.log("⚠️ Email failed, returning OTP in response for testing:", otp);
+      console.log(
+        "⚠️ Email failed, returning OTP in response for testing:",
+        otp,
+      );
       res.json({
         message: "فشل إرسال البريد (Test Mode)",
         dev_otp: otp, // OTP included for testing purposes
-        success: true
+        success: true,
       });
     }
   } catch (error) {
@@ -97,13 +100,17 @@ const registerUser = async (req, res) => {
     // Check email uniqueness
     const emailExists = await User.findOne({ email: normalizedEmail });
     if (emailExists) {
-      return res.status(400).json({ message: "هذا البريد الإلكتروني مستخدم بالفعل" });
+      return res
+        .status(400)
+        .json({ message: "هذا البريد الإلكتروني مستخدم بالفعل" });
     }
 
     // Check username uniqueness
     const usernameExists = await User.findOne({ username: username?.trim() });
     if (usernameExists) {
-      return res.status(400).json({ message: "اسم المستخدم مأخوذ، يرجى اختيار اسم آخر" });
+      return res
+        .status(400)
+        .json({ message: "اسم المستخدم مأخوذ، يرجى اختيار اسم آخر" });
     }
 
     const user = await User.create({
@@ -127,8 +134,14 @@ const registerUser = async (req, res) => {
     // MongoDB duplicate key error
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern || {})[0];
-      if (field === "email") return res.status(400).json({ message: "هذا البريد الإلكتروني مستخدم بالفعل" });
-      if (field === "username") return res.status(400).json({ message: "اسم المستخدم مأخوذ، يرجى اختيار اسم آخر" });
+      if (field === "email")
+        return res
+          .status(400)
+          .json({ message: "هذا البريد الإلكتروني مستخدم بالفعل" });
+      if (field === "username")
+        return res
+          .status(400)
+          .json({ message: "اسم المستخدم مأخوذ، يرجى اختيار اسم آخر" });
     }
     res.status(500).json({ message: error.message });
   }
@@ -186,7 +199,9 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      return res.status(404).json({ message: "لا يوجد حساب مرتبط بهذا البريد الإلكتروني" });
+      return res
+        .status(404)
+        .json({ message: "لا يوجد حساب مرتبط بهذا البريد الإلكتروني" });
     }
 
     const otp = generateOTP();
@@ -217,13 +232,19 @@ const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      return res
+        .status(400)
+        .json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
     }
 
     // Verify OTP
-    const otpRecord = await OTP.findOne({ email: normalizedEmail, otp }).sort({ createdAt: -1 });
+    const otpRecord = await OTP.findOne({ email: normalizedEmail, otp }).sort({
+      createdAt: -1,
+    });
     if (!otpRecord) {
-      return res.status(400).json({ message: "رمز التحقق غير صحيح أو منتهي الصلاحية" });
+      return res
+        .status(400)
+        .json({ message: "رمز التحقق غير صحيح أو منتهي الصلاحية" });
     }
 
     // Delete used OTP
@@ -244,5 +265,11 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, sendOTP, verifyOTP, forgotPassword, resetPassword };
-
+module.exports = {
+  registerUser,
+  loginUser,
+  sendOTP,
+  verifyOTP,
+  forgotPassword,
+  resetPassword,
+};

@@ -68,7 +68,6 @@ const LoginScreen = ({ navigation, route }) => {
     }
   }, []);
 
-
   const handleLogin = async () => {
     if (!email || !password) {
       setErrorModal({

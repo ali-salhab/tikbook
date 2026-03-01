@@ -336,7 +336,10 @@ const AppNavigator = () => {
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="OTP" component={OTPScreen} />
-              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+              />
               {/* Add MainTabs in case user is logged in */}
               <Stack.Screen name="MainTabs" component={HomeTabs} />
             </>
@@ -390,7 +393,10 @@ const AppNavigator = () => {
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="OTP" component={OTPScreen} />
-              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              <Stack.Screen
+                name="ForgotPassword"
+                component={ForgotPasswordScreen}
+              />
             </>
           )}
         </Stack.Navigator>
