@@ -126,9 +126,8 @@ const HomeScreen = ({ navigation }) => {
       } else if (e.request) {
         console.error("   Request made but no response received");
       }
-      // Only show error modal when there are no cached videos to display
-      if (videos.length === 0) setNetworkError(e);
-      setVideos((prev) => (prev.length ? prev : [])); // keep existing videos if any
+      // Show error modal when fetch fails
+      setNetworkError(e);
     } finally {
       setLoading(false);
     }
@@ -573,6 +572,14 @@ const HomeScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.retryButton} onPress={fetchVideos}>
           <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
         </TouchableOpacity>
+
+        {/* Network error modal — must live here because this is an early return */}
+        <NetworkErrorModal
+          visible={!!networkError}
+          error={networkError}
+          onRetry={fetchVideos}
+          onDismiss={() => setNetworkError(null)}
+        />
       </View>
     );
   }
