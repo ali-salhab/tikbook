@@ -17,6 +17,8 @@ import {
   Animated,
   RefreshControl,
   Share,
+  ActivityIndicator,
+  PanResponder,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import axios from "axios";
@@ -30,7 +32,9 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
-import NetworkErrorModal, { classifyError } from "../components/NetworkErrorModal";
+import NetworkErrorModal, {
+  classifyError,
+} from "../components/NetworkErrorModal";
 import videoService from "../services/videoService";
 import SoundService from "../services/soundService";
 
@@ -53,7 +57,6 @@ const HomeScreen = ({ navigation, route }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
   const heartScale = useRef(new Animated.Value(0)).current;
-  const videoRef = useRef(null);
   const lastTap = useRef(0);
   const flatListRef = useRef(null);
   // Track viewed video IDs so each video is only counted once per session
@@ -162,13 +165,9 @@ const HomeScreen = ({ navigation, route }) => {
         fetchVideos();
       }
 
-      // Cleanup: pause video when screen loses focus
+      // Cleanup: shouldPlay={isActive} handles pause automatically when screen unfocuses
       return () => {
-        console.log("🔇 HomeScreen unfocused - pausing video");
-        if (videoRef.current) {
-          videoRef.current.pauseAsync().catch(() => {});
-          videoRef.current.setIsMutedAsync(true).catch(() => {});
-        }
+        console.log("🔇 HomeScreen unfocused");
       };
     }, [fetchVideos, netInfo.isConnected]),
   );
@@ -304,21 +303,68 @@ const HomeScreen = ({ navigation, route }) => {
   };
 
   const VideoItem = ({ item, isActive }) => {
+    // Each VideoItem has its own ref so multiple mounted items don't fight over one ref
+    const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
     const [progress, setProgress] = useState(0); // 0-1
     const [duration, setDuration] = useState(0);
+    const progressBarWidth = useRef(0);
+    const isSeeking = useRef(false);
     const playIconOpacity = useRef(new Animated.Value(0)).current;
     const playIconScale = useRef(new Animated.Value(0.6)).current;
 
     useEffect(() => {
       if (videoRef.current) {
         if (isActive) {
-          videoRef.current.playAsync().then(() => setIsPlaying(true)).catch(() => {});
+          videoRef.current
+            .playAsync()
+            .then(() => setIsPlaying(true))
+            .catch(() => {});
         } else {
-          videoRef.current.pauseAsync().then(() => setIsPlaying(false)).catch(() => {});
+          videoRef.current
+            .pauseAsync()
+            .then(() => setIsPlaying(false))
+            .catch(() => {});
         }
       }
     }, [isActive]);
+
+    // PanResponder for draggable progress thumb
+    const progressPanResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          isSeeking.current = true;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          const barW = progressBarWidth.current;
+          if (!barW) return;
+          // gestureState.moveX is absolute; we need relative position
+          // Use dx from the grant position
+          const clampedX = Math.max(0, Math.min(gestureState.moveX, barW));
+          const newProgress = clampedX / barW;
+          setProgress(newProgress);
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const barW = progressBarWidth.current;
+          if (!barW) {
+            isSeeking.current = false;
+            return;
+          }
+          const clampedX = Math.max(0, Math.min(gestureState.moveX, barW));
+          const newProgress = clampedX / barW;
+          setProgress(newProgress);
+          if (videoRef.current && duration > 0) {
+            videoRef.current
+              .setPositionAsync(Math.floor(newProgress * duration))
+              .catch(() => {});
+          }
+          isSeeking.current = false;
+        },
+      }),
+    ).current;
 
     const handleDoubleTap = () => {
       const now = Date.now();
@@ -332,18 +378,32 @@ const HomeScreen = ({ navigation, route }) => {
         // Single tap — play/pause
         if (videoRef.current) {
           if (isPlaying) {
-            videoRef.current.pauseAsync().then(() => setIsPlaying(false)).catch(() => {});
+            videoRef.current
+              .pauseAsync()
+              .then(() => setIsPlaying(false))
+              .catch(() => {});
           } else {
-            videoRef.current.playAsync().then(() => setIsPlaying(true)).catch(() => {});
+            videoRef.current
+              .playAsync()
+              .then(() => setIsPlaying(true))
+              .catch(() => {});
           }
           // Flash the icon
           playIconOpacity.setValue(1);
           playIconScale.setValue(0.6);
           Animated.parallel([
-            Animated.spring(playIconScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
+            Animated.spring(playIconScale, {
+              toValue: 1,
+              useNativeDriver: true,
+              friction: 5,
+            }),
             Animated.sequence([
               Animated.delay(500),
-              Animated.timing(playIconOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+              Animated.timing(playIconOpacity, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+              }),
             ]),
           ]).start();
         }
@@ -447,9 +507,14 @@ const HomeScreen = ({ navigation, route }) => {
               onPlaybackStatusUpdate={(status) => {
                 if (status.isLoaded) {
                   setIsPlaying(status.isPlaying);
+                  setIsBuffering(status.isBuffering || false);
                   if (status.durationMillis && status.durationMillis > 0) {
                     setDuration(status.durationMillis);
-                    setProgress(status.positionMillis / status.durationMillis);
+                    if (!isSeeking.current) {
+                      setProgress(
+                        status.positionMillis / status.durationMillis,
+                      );
+                    }
                   }
                 }
               }}
@@ -474,7 +539,10 @@ const HomeScreen = ({ navigation, route }) => {
           <Animated.View
             style={[
               styles.playPauseOverlay,
-              { opacity: playIconOpacity, transform: [{ scale: playIconScale }] },
+              {
+                opacity: playIconOpacity,
+                transform: [{ scale: playIconScale }],
+              },
             ]}
             pointerEvents="none"
           >
@@ -502,10 +570,32 @@ const HomeScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Progress bar */}
+        {/* Buffering indicator */}
+        {!isImage(item.videoUrl) && isActive && isBuffering && !isPlaying && (
+          <View style={styles.bufferingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="rgba(255,255,255,0.9)" />
+          </View>
+        )}
+
+        {/* Progress bar with draggable thumb */}
         {!isImage(item.videoUrl) && (
-          <View style={[styles.progressBarBg, { bottom: insets.bottom + 76 }]}>
-            <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+          <View
+            style={[styles.progressBarBg, { bottom: insets.bottom + 76 }]}
+            onLayout={(e) => {
+              progressBarWidth.current = e.nativeEvent.layout.width;
+            }}
+            {...progressPanResponder.panHandlers}
+          >
+            <View
+              style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
+            />
+            {/* Draggable thumb */}
+            <View
+              style={[
+                styles.progressThumb,
+                { left: `${progress * 100}%`, marginLeft: -7 },
+              ]}
+            />
           </View>
         )}
 
@@ -875,6 +965,29 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: "#FFF",
     borderRadius: 2,
+  },
+  progressThumb: {
+    position: "absolute",
+    top: -5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  bufferingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 998,
   },
   bottomSection: {
     position: "absolute",

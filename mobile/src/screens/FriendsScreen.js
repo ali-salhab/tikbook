@@ -13,7 +13,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Image,
-  SafeAreaView,
+  Animated,
   RefreshControl,
   Share,
 } from "react-native";
@@ -175,9 +175,10 @@ const FriendsScreen = ({ navigation }) => {
     const isActive = index === activeVideoIndex;
     const username = item.user?.username || "user";
     const profileImage = item.user?.profileImage;
+    const ICON_SIZE = 35;
 
     return (
-      <View style={[styles.videoContainer, { height: height }]}>
+      <View style={[styles.videoContainer, { height }]}>
         <Video
           ref={(ref) => (videoRefs.current[index] = ref)}
           source={{ uri: item.videoUrl }}
@@ -188,22 +189,36 @@ const FriendsScreen = ({ navigation }) => {
           isMuted={false}
         />
 
-        {/* Overlay Content */}
-        <View style={styles.overlay}>
-          {/* Right Side Actions */}
-          <View style={styles.rightContainer}>
-            <TouchableOpacity
-              style={styles.profileContainer}
-              onPress={() =>
-                navigation.navigate("UserProfile", { userId: item.user._id })
-              }
-            >
+        {/* Bottom info — identical structure to HomeScreen */}
+        <View style={[styles.bottomSection, { bottom: insets.bottom + 80 }]}>
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>@{username}</Text>
+            <Text style={styles.description}>{item.description}</Text>
+            <View style={styles.musicRow}>
+              <Ionicons name="musical-notes" size={15} color="#FFF" />
+              <Text style={styles.musicText}>الصوت الأصلي - {username}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Right side actions — identical structure to HomeScreen */}
+        <View style={[styles.rightActions, { bottom: insets.bottom + 80 }]}>
+          <TouchableOpacity
+            style={styles.profileContainer}
+            onPress={() =>
+              navigation.navigate("UserProfile", { userId: item.user._id })
+            }
+          >
+            <View style={styles.profileImageWrapper}>
               {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatar} />
+                <Image
+                  source={{ uri: profileImage }}
+                  style={styles.profileImage}
+                />
               ) : (
                 <View
                   style={[
-                    styles.avatar,
+                    styles.profileImage,
                     {
                       backgroundColor: "#666",
                       justifyContent: "center",
@@ -211,63 +226,55 @@ const FriendsScreen = ({ navigation }) => {
                     },
                   ]}
                 >
-                  <Ionicons name="person" size={24} color="#FFF" />
+                  <Ionicons name="person" size={22} color="#FFF" />
                 </View>
               )}
-              <View style={styles.followBadge}>
-                <Ionicons name="add" size={12} color="#FFF" />
-              </View>
-            </TouchableOpacity>
+            </View>
+            <View style={styles.followButton}>
+              <Ionicons name="add" size={14} color="#FFF" />
+            </View>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton}>
-              {item.isLiked ? (
-                <Ionicons name="heart" size={35} color="#FE2C55" />
-              ) : (
-                <Ionicons name="heart-outline" size={35} color="#FFF" />
-              )}
-              <Text style={styles.actionText}>
-                {formatNumber(item.likes?.length || 0)}
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            {item.isLiked ? (
+              <Ionicons name="heart" size={ICON_SIZE} color="#FE2C55" />
+            ) : (
+              <Ionicons name="heart-outline" size={ICON_SIZE} color="#FFF" />
+            )}
+            <Text style={styles.actionText}>
+              {formatNumber(item.likes?.length || 0)}
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleComment(item)}
-            >
-              <Ionicons
-                name="chatbubble-ellipses-sharp"
-                size={35}
-                color="#FFF"
-              />
-              <Text style={styles.actionText}>
-                {formatNumber(item.comments)}
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleComment(item)}
+          >
+            <Ionicons
+              name="chatbubble-ellipses-sharp"
+              size={ICON_SIZE}
+              color="#FFF"
+            />
+            <Text style={styles.actionText}>{formatNumber(item.comments)}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleSave(item._id)}
-            >
-              <Ionicons
-                name={item.isSaved ? "bookmark" : "bookmark-outline"}
-                size={35}
-                color="#FFF"
-              />
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleSave(item._id)}
+          >
+            <Ionicons
+              name={item.isSaved ? "bookmark" : "bookmark-outline"}
+              size={ICON_SIZE}
+              color="#FFF"
+            />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleShare(item)}
-            >
-              <Ionicons name="arrow-redo-sharp" size={35} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Bottom Content */}
-          <View style={styles.bottomContainer}>
-            <Text style={styles.username}>@{username}</Text>
-            <Text style={styles.description}>{item.description}</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleShare(item)}
+          >
+            <Ionicons name="arrow-redo-sharp" size={ICON_SIZE} color="#FFF" />
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -306,7 +313,9 @@ const FriendsScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => navigation.navigate("MainTabs", { screen: "LiveRooms" })}
+          onPress={() =>
+            navigation.navigate("MainTabs", { screen: "LiveRooms" })
+          }
         >
           <Ionicons name="tv-outline" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -487,72 +496,89 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "absolute",
   },
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    paddingBottom: 20,
-    paddingHorizontal: 10,
-    backgroundColor: "rgba(0,0,0,0.1)", // Slight overlay for text readability
+  // ── Bottom info (mirrors HomeScreen) ──────────────────────────────────────
+  bottomSection: {
+    position: "absolute",
+    left: 16,
+    right: 90,
+    zIndex: 100,
   },
-  rightContainer: {
+  userInfo: {
+    marginBottom: 12,
+  },
+  username: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  description: {
+    color: "#FFF",
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  musicRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  musicText: {
+    color: "#FFF",
+    fontSize: 13,
+    flex: 1,
+  },
+  // ── Right actions (mirrors HomeScreen) ───────────────────────────────────
+  rightActions: {
     position: "absolute",
     right: 10,
-    bottom: 100,
     alignItems: "center",
+    zIndex: 100,
   },
   profileContainer: {
     marginBottom: 20,
     alignItems: "center",
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
+  profileImageWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
     borderColor: "#FFF",
+    overflow: "hidden",
   },
-  followBadge: {
+  profileImage: {
+    width: "100%",
+    height: "100%",
+  },
+  followButton: {
     position: "absolute",
-    bottom: -10,
+    bottom: -8,
+    alignSelf: "center",
     backgroundColor: "#FE2C55",
     borderRadius: 10,
     width: 20,
     height: 20,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#000",
   },
   actionButton: {
-    marginBottom: 15,
+    marginBottom: 16,
     alignItems: "center",
   },
   actionText: {
     color: "#FFF",
     fontSize: 12,
-    marginTop: 5,
+    marginTop: 4,
     fontWeight: "600",
-  },
-  bottomContainer: {
-    marginBottom: 20,
-    marginLeft: 10,
-    width: "75%",
-  },
-  username: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-    textAlign: "left",
-  },
-  description: {
-    color: "#FFF",
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: "left",
-  },
-  time: {
-    color: "#ccc",
-    fontSize: 12,
-    textAlign: "left",
   },
 });
 
