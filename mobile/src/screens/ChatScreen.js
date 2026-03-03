@@ -55,6 +55,7 @@ const ChatScreen = ({ route, navigation }) => {
   const [inputHeight, setInputHeight] = useState(60);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const socket = useRef(null);
   const flatListRef = useRef(null);
 
@@ -165,29 +166,34 @@ const ChatScreen = ({ route, navigation }) => {
   }, [userId]);
 
   const sendMessage = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSending) return;
     if (!userId) {
       Alert.alert("خطأ", "لا يمكن إرسال رسالة بدون تحديد مستخدم.");
       return;
     }
 
+    const msgText = text.trim();
+    setText(""); // clear immediately to prevent double-tap resends
+    setIsSending(true);
+
     try {
       const res = await axios.post(
         `${BASE_URL}/messages`,
-        { receiverId: userId, text: text.trim() },
+        { receiverId: userId, text: msgText },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setMessages((prev) => [...prev, res.data]);
-      socket.current.emit("sendMessage", res.data);
-      setText("");
-      // ensure list scrolls to show the new message
+      socket.current?.emit("sendMessage", res.data);
       setTimeout(
         () => flatListRef.current?.scrollToEnd({ animated: true }),
         80,
       );
     } catch (e) {
       console.log("Error sending message:", e);
+      setText(msgText); // restore on failure
       alert(e.response?.data?.message || e.message || "فشل إرسال الرسالة");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -252,21 +258,52 @@ const ChatScreen = ({ route, navigation }) => {
       });
       if (!result.canceled) {
         const imageUri = result.assets[0].uri;
-        // Send image as message
+        const tempId = `temp-img-${Date.now()}`;
+
+        // Optimistic preview so the image appears immediately
+        const tempMsg = {
+          _id: tempId,
+          sender: userInfo._id,
+          receiver: userId,
+          text: "",
+          imageUrl: imageUri,
+          read: false,
+          createdAt: new Date().toISOString(),
+          _pending: true,
+        };
+        setMessages((prev) => [...prev, tempMsg]);
+        setTimeout(
+          () => flatListRef.current?.scrollToEnd({ animated: true }),
+          80,
+        );
+
+        setIsSending(true);
         try {
-          const res = await axios.post(
-            `${BASE_URL}/messages`,
-            { receiverId: userId, text: `🖼️ صورة`, imageUrl: imageUri },
-            { headers: { Authorization: `Bearer ${userToken}` } },
+          const formData = new FormData();
+          formData.append("receiverId", userId);
+          formData.append("text", "");
+          formData.append("image", {
+            uri: imageUri,
+            type: "image/jpeg",
+            name: "photo.jpg",
+          });
+
+          const res = await axios.post(`${BASE_URL}/messages`, formData, {
+            headers: {
+              Authorization: `Bearer ${userToken}`,
+              "Content-Type": "multipart/form-data",
+            },
+          });
+          // Replace temp message with the saved one (has Cloudinary URL)
+          setMessages((prev) =>
+            prev.map((m) => (m._id === tempId ? res.data : m)),
           );
-          setMessages((prev) => [...prev, res.data]);
           socket.current?.emit("sendMessage", res.data);
-          setTimeout(
-            () => flatListRef.current?.scrollToEnd({ animated: true }),
-            80,
-          );
         } catch (e) {
+          setMessages((prev) => prev.filter((m) => m._id !== tempId));
           Alert.alert("خطأ", "فشل إرسال الصورة");
+        } finally {
+          setIsSending(false);
         }
       }
     } catch (e) {
@@ -313,39 +350,85 @@ const ChatScreen = ({ route, navigation }) => {
     };
   }, []);
 
-  const renderMessage = ({ item }) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.sender === userInfo._id ? styles.myMessage : styles.theirMessage,
-      ]}
-    >
-      {item.sender !== userInfo._id && (
-        <View style={styles.messageAvatarWrap}>
-          {profileImage ? (
-            <Image
-              source={{ uri: profileImage }}
-              style={styles.messageAvatar}
-            />
-          ) : (
-            <View
-              style={[styles.messageAvatar, styles.messageAvatarPlaceholder]}
-            >
-              <Ionicons name="person" size={12} color="#CCC" />
-            </View>
-          )}
-        </View>
-      )}
+  const formatMsgTime = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const hh = d.getHours().toString().padStart(2, "0");
+    const mm = d.getMinutes().toString().padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+
+  const renderMessage = ({ item }) => {
+    const isOwn = item.sender === userInfo._id;
+    const timeLabel = formatMsgTime(item.createdAt);
+    const isPureImageMsg =
+      item.imageUrl && (!item.text || item.text === "🖼️ صورة");
+
+    return (
       <View
         style={[
-          styles.messageBubble,
-          item.sender === userInfo._id ? styles.myBubble : styles.theirBubble,
+          styles.messageContainer,
+          isOwn ? styles.myMessage : styles.theirMessage,
         ]}
       >
-        <Text style={styles.messageText}>{item.text}</Text>
+        {!isOwn && (
+          <View style={styles.messageAvatarWrap}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.messageAvatar}
+              />
+            ) : (
+              <View
+                style={[styles.messageAvatar, styles.messageAvatarPlaceholder]}
+              >
+                <Ionicons name="person" size={12} color="#CCC" />
+              </View>
+            )}
+          </View>
+        )}
+        <View style={styles.messageBubbleWrapper}>
+          <View
+            style={[
+              styles.messageBubble,
+              isOwn ? styles.myBubble : styles.theirBubble,
+              item.imageUrl ? styles.imageBubble : null,
+            ]}
+          >
+            {item.imageUrl ? (
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            ) : null}
+            {!isPureImageMsg && item.text ? (
+              <Text style={styles.messageText}>{item.text}</Text>
+            ) : null}
+          </View>
+          <View
+            style={[
+              styles.msgMeta,
+              isOwn ? styles.msgMetaRight : styles.msgMetaLeft,
+            ]}
+          >
+            <Text style={styles.msgTime}>{timeLabel}</Text>
+            {isOwn && !item._pending && (
+              <Ionicons
+                name={item.read ? "checkmark-done" : "checkmark"}
+                size={14}
+                color={item.read ? "#4FC3F7" : "#AAA"}
+                style={{ marginLeft: 2 }}
+              />
+            )}
+            {isOwn && item._pending && (
+              <ActivityIndicator size={10} color="#AAA" style={{ marginLeft: 2 }} />
+            )}
+          </View>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   // If no userId, show inbox list
   if (!userId) {
@@ -593,12 +676,16 @@ const ChatScreen = ({ route, navigation }) => {
             );
           }}
         />
-        <TouchableOpacity onPress={sendMessage} disabled={!text.trim()}>
-          <Ionicons
-            name="send"
-            size={24}
-            color={text.trim() ? "#FE2C55" : "#888"}
-          />
+        <TouchableOpacity onPress={sendMessage} disabled={!text.trim() || isSending}>
+          {isSending ? (
+            <ActivityIndicator size={22} color="#FE2C55" />
+          ) : (
+            <Ionicons
+              name="send"
+              size={24}
+              color={text.trim() ? "#FE2C55" : "#888"}
+            />
+          )}
         </TouchableOpacity>
       </View>
       {/* Emoji Picker anchored above bottom (behaves like YouTube) */}
@@ -937,11 +1024,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  messageBubble: {
+  messageBubbleWrapper: {
     maxWidth: "72%",
+    flexShrink: 1,
+  },
+  messageBubble: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 18,
+  },
+  imageBubble: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 14,
   },
   myBubble: {
     backgroundColor: "#FE2C55",
@@ -955,6 +1054,22 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 15,
     textAlign: "right",
+  },
+  msgMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 3,
+    gap: 3,
+  },
+  msgMetaRight: {
+    justifyContent: "flex-end",
+  },
+  msgMetaLeft: {
+    justifyContent: "flex-start",
+  },
+  msgTime: {
+    color: "#888",
+    fontSize: 11,
   },
   inputContainer: {
     flexDirection: "row",

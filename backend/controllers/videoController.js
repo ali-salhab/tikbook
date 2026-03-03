@@ -24,10 +24,14 @@ const getVideos = async (req, res) => {
       savedVideoIds = user?.savedVideos.map((id) => id.toString()) || [];
     }
 
-    // Add isSaved property to each video
+    // Add personalized flags to each video
     const videosWithSavedStatus = videos.map((video) => ({
       ...video.toObject(),
       isSaved: savedVideoIds.includes(video._id.toString()),
+      isLiked:
+        req.user && req.user._id
+          ? video.likes.some((id) => id.toString() === req.user._id.toString())
+          : false,
     }));
 
     res.json(videosWithSavedStatus);

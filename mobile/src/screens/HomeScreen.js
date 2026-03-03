@@ -76,10 +76,17 @@ const HomeScreen = ({ navigation }) => {
       });
       console.log("✅ Videos fetched:", res.data.length);
 
+      const currentUserId = userInfo?._id?.toString();
+
       // Map videos and ensure URLs are absolute
       const mappedVideos = (res.data || []).map((video) => ({
         ...video,
-        isLiked: false,
+        isLiked:
+          typeof video.isLiked === "boolean"
+            ? video.isLiked
+            : Array.isArray(video.likes) && currentUserId
+              ? video.likes.some((id) => id?.toString?.() === currentUserId)
+              : false,
         // If backend already returns an absolute URL (Cloudinary/HTTPS), use it directly.
         // Otherwise, build one from the API base (keeps support for local uploads).
         videoUrl: video.videoUrl?.startsWith("http")
@@ -104,7 +111,7 @@ const HomeScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [netInfo.isConnected, BASE_URL, userToken]);
+  }, [netInfo.isConnected, BASE_URL, userToken, userInfo?._id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -144,6 +151,12 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleLike = async (videoId) => {
+    const currentUserId = userInfo?._id;
+
+    if (!userToken || !currentUserId) {
+      return;
+    }
+
     // Update UI immediately
     setVideos((prevVideos) =>
       prevVideos.map((video) => {
@@ -151,8 +164,10 @@ const HomeScreen = ({ navigation }) => {
           const currentLikes = Array.isArray(video.likes) ? video.likes : [];
           const newIsLiked = !video.isLiked;
           const newLikes = newIsLiked
-            ? [...currentLikes, "temp-user-id"]
-            : currentLikes.filter((id) => id !== "temp-user-id");
+            ? [...currentLikes, currentUserId]
+            : currentLikes.filter(
+                (id) => id?.toString?.() !== currentUserId.toString(),
+              );
 
           return {
             ...video,
@@ -166,28 +181,36 @@ const HomeScreen = ({ navigation }) => {
 
     // Send to backend
     try {
-      await axios.put(
+      const res = await axios.put(
         `${BASE_URL}/videos/${videoId}/like`,
         {},
         {
           headers: { Authorization: `Bearer ${userToken}` },
         },
       );
+
+      if (Array.isArray(res.data?.likes)) {
+        const syncedLikes = res.data.likes;
+        const syncedIsLiked = syncedLikes.some(
+          (id) => id?.toString?.() === currentUserId.toString(),
+        );
+
+        setVideos((prevVideos) =>
+          prevVideos.map((video) =>
+            video._id === videoId
+              ? {
+                  ...video,
+                  likes: syncedLikes,
+                  isLiked: syncedIsLiked,
+                }
+              : video,
+          ),
+        );
+      }
     } catch (error) {
       console.log("Error liking video:", error);
-      // Revert on error
-      setVideos((prevVideos) =>
-        prevVideos.map((video) => {
-          if (video._id === videoId) {
-            return {
-              ...video,
-              isLiked: !video.isLiked,
-              likes: video.isLiked ? video.likes + 1 : video.likes - 1,
-            };
-          }
-          return video;
-        }),
-      );
+      // Re-sync with backend to avoid stale like UI
+      fetchVideos();
     }
   };
 

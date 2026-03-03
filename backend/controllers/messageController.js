@@ -25,7 +25,7 @@ const getMessages = async (req, res) => {
   }
 };
 
-// @desc    Send a message
+// @desc    Send a message (text and/or image)
 // @route   POST /api/messages
 // @access  Private
 const sendMessage = async (req, res) => {
@@ -35,15 +35,30 @@ const sendMessage = async (req, res) => {
     return res.status(400).json({ message: "Invalid receiver id" });
   }
 
-  if (!text || !text.trim()) {
-    return res.status(400).json({ message: "Message text is required" });
+  const hasText = text && text.trim();
+  const hasImage = !!req.file;
+
+  if (!hasText && !hasImage) {
+    return res.status(400).json({ message: "Message text or image is required" });
   }
 
   try {
+    let imageUrl = null;
+    if (req.file) {
+      const { uploadToCloudinary } = require('../services/cloudinaryService');
+      const fs = require('fs');
+      try {
+        imageUrl = await uploadToCloudinary(req.file.path, 'messages');
+      } finally {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      }
+    }
+
     const message = await Message.create({
       sender: req.user._id,
       receiver: receiverId,
-      text,
+      text: hasText ? text.trim() : '',
+      imageUrl,
     });
 
     res.status(201).json(message);
