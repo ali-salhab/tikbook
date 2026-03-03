@@ -43,23 +43,12 @@ const InboxScreen = ({ navigation }) => {
 
   const [notifications, setNotifications] = useState([]);
 
-  const openStatus = async (item) => {
-    setViewingStatus(item);
-    setStatusComment("");
-    setStatusViewsCount(item.views?.length || 0);
-    setStatusCommentsCount(item.comments?.length || 0);
-    // Record view (non-blocking)
-    const isOwn = item.user?._id === userInfo?._id;
-    if (!isOwn) {
-      try {
-        const res = await axios.post(
-          `${BASE_URL}/status/${item._id}/view`,
-          {},
-          { headers: { Authorization: `Bearer ${userToken}` } },
-        );
-        setStatusViewsCount(res.data.viewsCount || 0);
-      } catch (_) {}
-    }
+  const openStatus = (item) => {
+    const idx = statuses.findIndex((s) => s._id === item._id);
+    navigation.navigate("StatusViewer", {
+      statuses,
+      initialIndex: idx >= 0 ? idx : 0,
+    });
   };
 
   const sendStatusComment = async () => {
@@ -274,7 +263,7 @@ const InboxScreen = ({ navigation }) => {
       {/* Stories Section */}
       <View style={styles.storiesSectionHeader}>
         <Text style={styles.storiesSectionTitle}>القصص</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate("AllStatuses")}>
           <Text style={styles.storiesSectionMore}>شاهد الكل</Text>
         </TouchableOpacity>
       </View>

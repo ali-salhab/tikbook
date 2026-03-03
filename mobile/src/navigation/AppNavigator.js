@@ -40,6 +40,8 @@ import SplashScreen from "../screens/SplashScreen";
 import BadgeShopScreen from "../screens/BadgeShopScreen";
 import MyBadgesScreen from "../screens/MyBadgesScreen";
 import CreateStatusScreen from "../screens/CreateStatusScreen";
+import StatusViewerScreen from "../screens/StatusViewerScreen";
+import AllStatusesScreen from "../screens/AllStatusesScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import FriendsScreen from "../screens/FriendsScreen";
@@ -392,6 +394,16 @@ const AppNavigator = () => {
                 <Stack.Screen
                   name="CreateStatus"
                   component={CreateStatusScreen}
+                />
+                <Stack.Screen
+                  name="StatusViewer"
+                  component={StatusViewerScreen}
+                  options={{ headerShown: false, animation: "fade" }}
+                />
+                <Stack.Screen
+                  name="AllStatuses"
+                  component={AllStatusesScreen}
+                  options={{ headerShown: false }}
                 />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
                 <Stack.Screen name="Friends" component={FriendsScreen} />
