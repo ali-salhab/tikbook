@@ -39,6 +39,7 @@ const ProfileScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
   const [savedVideos, setSavedVideos] = useState([]);
+  const [likedVideos, setLikedVideos] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const netInfo = useNetInfo();
 
@@ -110,12 +111,32 @@ const ProfileScreen = ({ navigation }) => {
     }
   }, [netInfo.isConnected]);
 
+  const fetchLikedVideos = useCallback(async () => {
+    if (netInfo.isConnected === false) return;
+    try {
+      const res = await axios.get(`${BASE_URL}/videos/liked`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setLikedVideos(res.data || []);
+    } catch (e) {
+      console.log("❌ Error fetching liked videos:", e.message);
+      setLikedVideos([]);
+    }
+  }, [netInfo.isConnected, BASE_URL, userToken]);
+
   // Fetch saved videos when saved tab is selected
   useEffect(() => {
     if (activeTab === "saved" && userInfo) {
       fetchSavedVideos();
     }
   }, [activeTab, userInfo, fetchSavedVideos]);
+
+  // Fetch liked videos when liked tab is selected
+  useEffect(() => {
+    if (activeTab === "liked" && userInfo) {
+      fetchLikedVideos();
+    }
+  }, [activeTab, userInfo, fetchLikedVideos]);
 
   const copyUserId = () => {
     if (userInfo?._id) {
@@ -345,7 +366,40 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         );
       case "liked":
-        return (
+        return likedVideos.length ? (
+          <View style={styles.gridContainer}>
+            {likedVideos.map((video) => {
+              const thumbnail = getVideoThumbnail(video);
+              return (
+                <TouchableOpacity
+                  key={video._id}
+                  style={styles.gridItem}
+                  onPress={() =>
+                    navigation.navigate("Home", { videoId: video._id })
+                  }
+                >
+                  {thumbnail ? (
+                    <Image
+                      source={{ uri: thumbnail }}
+                      style={styles.gridImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.gridPlaceholder}>
+                      <Ionicons name="videocam" size={32} color="#999" />
+                    </View>
+                  )}
+                  <View style={styles.viewsContainer}>
+                    <Ionicons name="play-outline" size={14} color="#FFF" />
+                    <Text style={styles.viewsText}>
+                      {video.views?.toString() || "0"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
           <View style={styles.emptyStateContainer}>
             <Ionicons name="heart-outline" size={64} color="#ccc" />
             <Text style={styles.emptyStateTitle}>لا توجد إعجابات</Text>

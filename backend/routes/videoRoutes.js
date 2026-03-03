@@ -11,6 +11,8 @@ const {
   deleteComment,
   saveVideo,
   getSavedVideos,
+  incrementView,
+  getLikedVideos,
 } = require("../controllers/videoController");
 const { protect } = require("../middleware/authMiddleware");
 const { videoUpload, imageUpload } = require("../middleware/uploadMiddleware");
@@ -30,9 +32,11 @@ router
   );
 router.route("/following").get(protect, getFollowingVideos);
 router.route("/saved").get(protect, getSavedVideos);
+router.route("/liked").get(protect, getLikedVideos);
 router.route("/user/:id").get(getUserVideos);
 router.route("/:id/like").put(protect, likeVideo);
 router.route("/:id/save").put(protect, saveVideo);
+router.route("/:id/view").put(incrementView);
 router
   .route("/:id/comment")
   .post(protect, imageUpload.single("image"), commentVideo);

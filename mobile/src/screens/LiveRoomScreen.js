@@ -15,7 +15,7 @@ import {
   Modal,
   ScrollView,
   Keyboard,
-  KeyboardAvoidingView,
+  InteractionManager,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -116,6 +116,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const socketRef = useRef(null);
   const agoraEngineRef = useRef(null);
   const inputRef = useRef(null);
+  const baseWindowHeightRef = useRef(Dimensions.get("window").height);
   const isHostRef = useRef(false);
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────────
@@ -593,8 +594,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const handleOpenInput = () => {
     playTap();
     setShowInput(true);
-    // Focus will be triggered by the TextInput ref once visible
-    setTimeout(() => inputRef.current?.focus(), 80);
   };
 
   const handleCloseInput = () => {
@@ -1302,9 +1301,40 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ─── KEYBOARD LISTENER ───────────────────────────────────────────────────────────
 
   useEffect(() => {
+    if (!showInput) return;
+
+    let retryTimer = null;
+    const task = InteractionManager.runAfterInteractions(() => {
+      inputRef.current?.focus();
+      retryTimer = setTimeout(() => inputRef.current?.focus(), 120);
+    });
+
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      task?.cancel?.();
+    };
+  }, [showInput]);
+
+  useEffect(() => {
+    const onKeyboardFrame = (e) => {
+      const screenHeight = Dimensions.get("screen").height;
+      const endY = e?.endCoordinates?.screenY;
+      if (typeof endY === "number") {
+        setKeyboardOffset(Math.max(0, screenHeight - endY));
+        return;
+      }
+
+      const endHeight = e?.endCoordinates?.height;
+      setKeyboardOffset(typeof endHeight === "number" ? endHeight : 0);
+    };
+
     const showSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (e) => setKeyboardOffset(e.endCoordinates.height),
+      onKeyboardFrame,
+    );
+    const changeSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillChangeFrame" : "keyboardDidShow",
+      onKeyboardFrame,
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
@@ -1312,11 +1342,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
     return () => {
       showSub.remove();
+      changeSub.remove();
       hideSub.remove();
     };
   }, []);
 
   // ─── CHAT INPUT BAR ───────────────────────────────────────────────────────────
+
+  const isAndroidResizedByKeyboard =
+    Platform.OS === "android" &&
+    baseWindowHeightRef.current - Dimensions.get("window").height > 80;
 
   const chatInputBar = showInput ? (
     <>
@@ -1334,13 +1369,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: keyboardOffset,
+            bottom:
+              Platform.OS === "android"
+                ? isAndroidResizedByKeyboard
+                  ? 0
+                  : keyboardOffset
+                : keyboardOffset,
             paddingBottom: keyboardOffset > 0 ? 10 : insets.bottom + 10,
           },
         ]}
       >
         <TextInput
           ref={inputRef}
+          autoFocus
           value={inputText}
           onChangeText={setInputText}
           placeholder="اكتب تعليقاً..."

@@ -628,6 +628,37 @@ const getSavedVideos = async (req, res) => {
   }
 };
 
+// @desc    Increment video view count (fire-and-forget from client)
+// @route   PUT /api/videos/:id/view
+// @access  Public
+const incrementView = async (req, res) => {
+  try {
+    const video = await Video.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true, select: "views" },
+    );
+    if (!video) return res.status(404).json({ message: "Video not found" });
+    res.json({ views: video.views });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get videos liked by the current user
+// @route   GET /api/videos/liked
+// @access  Private
+const getLikedVideos = async (req, res) => {
+  try {
+    const videos = await Video.find({ likes: req.user._id })
+      .populate("user", "username profileImage")
+      .sort({ createdAt: -1 });
+    res.json(videos);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getVideos,
   createVideo,
@@ -640,4 +671,6 @@ module.exports = {
   deleteComment,
   saveVideo,
   getSavedVideos,
+  incrementView,
+  getLikedVideos,
 };

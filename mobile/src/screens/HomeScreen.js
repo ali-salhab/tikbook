@@ -54,6 +54,17 @@ const HomeScreen = ({ navigation }) => {
   const videoRef = useRef(null);
   const lastTap = useRef(0);
   const flatListRef = useRef(null);
+  // Track viewed video IDs so each video is only counted once per session
+  const viewedIdsRef = useRef(new Set());
+  // Keep refs in sync with latest state/context so onViewableItemsChanged (stable ref) can access them
+  const videosRef = useRef([]);
+  const userTokenRef = useRef(userToken);
+  const BASE_URL_REF = useRef(BASE_URL);
+
+  // Keep mutable refs in sync
+  useEffect(() => { videosRef.current = videos; }, [videos]);
+  useEffect(() => { userTokenRef.current = userToken; }, [userToken]);
+  useEffect(() => { BASE_URL_REF.current = BASE_URL; }, [BASE_URL]);
 
   const fetchVideos = useCallback(async () => {
     // If no internet, don't try to fetch (avoids Network Error logs)
@@ -511,7 +522,23 @@ const HomeScreen = ({ navigation }) => {
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
-      setActiveVideoIndex(viewableItems[0].index);
+      const index = viewableItems[0].index;
+      setActiveVideoIndex(index);
+
+      // Increment view count once per video per session
+      const video = videosRef.current[index];
+      if (video?._id && !viewedIdsRef.current.has(video._id)) {
+        viewedIdsRef.current.add(video._id);
+        const token = userTokenRef.current;
+        const baseUrl = BASE_URL_REF.current;
+        axios
+          .put(
+            `${baseUrl}/videos/${video._id}/view`,
+            {},
+            token ? { headers: { Authorization: `Bearer ${token}` } } : {},
+          )
+          .catch(() => {});
+      }
     }
   }).current;
 
