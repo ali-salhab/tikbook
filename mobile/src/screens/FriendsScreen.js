@@ -295,7 +295,7 @@ const FriendsScreen = ({ navigation }) => {
           <View style={styles.divider} />
           <TouchableOpacity
             style={styles.tabButton}
-            onPress={() => navigation.navigate("Home")}
+            onPress={() => navigation.navigate("MainTabs", { screen: "Home" })}
           >
             <Text style={styles.tabText}>لك</Text>
           </TouchableOpacity>
@@ -303,7 +303,7 @@ const FriendsScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => navigation.navigate("LiveRooms")}
+          onPress={() => navigation.navigate("MainTabs", { screen: "LiveRooms" })}
         >
           <Ionicons name="tv-outline" size={24} color="#FFF" />
         </TouchableOpacity>

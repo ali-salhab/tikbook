@@ -62,9 +62,15 @@ const HomeScreen = ({ navigation }) => {
   const BASE_URL_REF = useRef(BASE_URL);
 
   // Keep mutable refs in sync
-  useEffect(() => { videosRef.current = videos; }, [videos]);
-  useEffect(() => { userTokenRef.current = userToken; }, [userToken]);
-  useEffect(() => { BASE_URL_REF.current = BASE_URL; }, [BASE_URL]);
+  useEffect(() => {
+    videosRef.current = videos;
+  }, [videos]);
+  useEffect(() => {
+    userTokenRef.current = userToken;
+  }, [userToken]);
+  useEffect(() => {
+    BASE_URL_REF.current = BASE_URL;
+  }, [BASE_URL]);
 
   const fetchVideos = useCallback(async () => {
     // If no internet, don't try to fetch (avoids Network Error logs)

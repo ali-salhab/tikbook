@@ -446,8 +446,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
     } catch (err) {
       console.error("Join room error:", err);
-      const msg = err?.response?.data?.message || "تعذّر الانضمام إلى الغرفة";
-      Alert.alert("خطأ", msg);
+      const rawMsg = err?.response?.data?.message || "";
+      // Translate known backend messages to Arabic
+      const msgMap = {
+        "Live room is not active": "انتهى هذا البث المباشر",
+        "Live room not found": "لم يتم العثور على الغرفة",
+        "Maximum speakers reached": "وصل عدد المتحدثين إلى الحد الأقصى",
+        "You are already a speaker": "أنت متحدث بالفعل في هذه الغرفة",
+      };
+      const msg = msgMap[rawMsg] || rawMsg || "تعذّر الانضمام إلى الغرفة";
+      Alert.alert("تنبيه", msg);
       navigation.goBack();
     } finally {
       setLoading(false);

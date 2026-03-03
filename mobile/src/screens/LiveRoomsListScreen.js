@@ -47,9 +47,12 @@ const LiveRoomsListScreen = ({ navigation }) => {
     fetchLiveRooms();
   }, [activeTab]);
 
-  // Fix: handle Android hardware back button (tab screens have no back stack)
+  // Refresh rooms list every time the screen gains focus (avoids stale ended rooms)
   useFocusEffect(
     useCallback(() => {
+      fetchLiveRooms();
+
+      // Fix: handle Android hardware back button (tab screens have no back stack)
       const onBack = () => {
         navigation.navigate("Home");
         return true; // prevent default GO_BACK
