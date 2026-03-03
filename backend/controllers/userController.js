@@ -265,6 +265,38 @@ const updateFcmToken = async (req, res) => {
   }
 };
 
+// @desc    Get suggested users (not yet followed by current user)
+// @route   GET /api/user/suggestions
+// @access  Private
+const getSuggestedUsers = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user._id).select("following");
+    const excludeIds = [...(currentUser.following || []), req.user._id];
+
+    const suggested = await User.aggregate([
+      { $match: { _id: { $nin: excludeIds } } },
+      { $addFields: { followersCount: { $size: "$followers" } } },
+      { $sort: { followersCount: -1 } },
+      { $limit: 20 },
+      {
+        $project: {
+          username: 1,
+          profileImage: 1,
+          bio: 1,
+          isVerified: 1,
+          verificationBadge: 1,
+          followersCount: 1,
+        },
+      },
+    ]);
+
+    res.json(suggested);
+  } catch (error) {
+    console.error("Error fetching suggested users:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getUserProfile,
   followUser,
@@ -273,4 +305,5 @@ module.exports = {
   uploadProfileImage,
   getAllUsers,
   updateFcmToken,
+  getSuggestedUsers,
 };

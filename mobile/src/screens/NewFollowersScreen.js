@@ -25,6 +25,8 @@ const NewFollowersScreen = ({ navigation }) => {
   const [followers, setFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [suggestedUsers, setSuggestedUsers] = useState([]);
+  const [followedIds, setFollowedIds] = useState({});
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -40,6 +42,17 @@ const NewFollowersScreen = ({ navigation }) => {
     if (hours < 24) return `منذ ${hours} س`;
     if (days < 7) return `منذ ${days} ي`;
     return date.toLocaleDateString("ar-EG");
+  };
+
+  const fetchSuggested = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/user/suggestions`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setSuggestedUsers(res.data || []);
+    } catch (e) {
+      console.error("Error fetching suggested users:", e);
+    }
   };
 
   const fetchFollowers = async () => {
@@ -82,6 +95,7 @@ const NewFollowersScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchFollowers();
+      fetchSuggested();
       markAllAsRead();
     }, []),
   );
@@ -89,6 +103,30 @@ const NewFollowersScreen = ({ navigation }) => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchFollowers();
+    fetchSuggested();
+  };
+
+  const handleFollowSuggested = async (userId) => {
+    try {
+      const isFollowing = !!followedIds[userId];
+      if (isFollowing) {
+        await axios.put(
+          `${BASE_URL}/user/${userId}/unfollow`,
+          {},
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        setFollowedIds((prev) => { const n = { ...prev }; delete n[userId]; return n; });
+      } else {
+        await axios.put(
+          `${BASE_URL}/user/${userId}/follow`,
+          {},
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        setFollowedIds((prev) => ({ ...prev, [userId]: true }));
+      }
+    } catch (e) {
+      console.error("Error following suggested user:", e);
+    }
   };
 
   const handleFollowBack = async (userId, currentlyFollowing) => {
@@ -121,12 +159,7 @@ const NewFollowersScreen = ({ navigation }) => {
     }
   };
 
-  const suggested = [
-    { id: "s1", username: "user_a", reason: "مقترح لك" },
-    { id: "s2", username: "user_b", reason: "مشتركين" },
-    { id: "s3", username: "user_c", reason: "نشط الآن" },
-    { id: "s4", username: "user_d", reason: "الأصدقاء" },
-  ];
+
 
   const renderItem = ({ item }) => {
     const user = item.fromUser;
@@ -213,25 +246,60 @@ const NewFollowersScreen = ({ navigation }) => {
             }
           />
 
-          <View style={styles.suggestedSection}>
-            <Text style={styles.suggestedTitle}>حسابات مقترحة ⓘ</Text>
-            <RNFlatList
-              data={suggested}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.suggestedList}
-              renderItem={({ item }) => (
-                <View style={styles.suggestedCard}>
-                  <View style={styles.suggestedAvatar}>
-                    <Ionicons name="person" size={20} color="#CCC" />
-                  </View>
-                  <Text style={styles.suggestedName}>{item.username}</Text>
-                  <Text style={styles.suggestedReason}>{item.reason}</Text>
-                </View>
-              )}
-            />
-          </View>
+          {suggestedUsers.length > 0 && (
+            <View style={styles.suggestedSection}>
+              <Text style={styles.suggestedTitle}>حسابات مقترحة</Text>
+              <RNFlatList
+                data={suggestedUsers}
+                keyExtractor={(item) => item._id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestedList}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.suggestedCard}
+                    onPress={() => navigation.navigate("UserProfile", { userId: item._id })}
+                  >
+                    <View style={{ position: "relative" }}>
+                      {item.profileImage ? (
+                        <Image
+                          source={{ uri: item.profileImage }}
+                          style={styles.suggestedAvatar}
+                        />
+                      ) : (
+                        <View style={[styles.suggestedAvatar, styles.suggestedAvatarPlaceholder]}>
+                          <Ionicons name="person" size={20} color="#CCC" />
+                        </View>
+                      )}
+                      {item.isVerified && (
+                        <View style={styles.verifiedBadge}>
+                          <Ionicons name="checkmark-circle" size={14} color={item.verificationBadge === 'gold' ? '#FFD700' : '#1DA1F2'} />
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.suggestedName} numberOfLines={1}>{item.username}</Text>
+                    <Text style={styles.suggestedReason}>
+                      {item.followersCount > 0 ? `${item.followersCount} متابع` : "حساب جديد"}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.suggestedFollowBtn,
+                        followedIds[item._id] && styles.suggestedFollowingBtn,
+                      ]}
+                      onPress={() => handleFollowSuggested(item._id)}
+                    >
+                      <Text style={[
+                        styles.suggestedFollowText,
+                        followedIds[item._id] && styles.suggestedFollowingText,
+                      ]}>
+                        {followedIds[item._id] ? "أصدقاء" : "متابعة"}
+                      </Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          )}
         </>
       )}
     </SafeAreaView>
@@ -371,31 +439,63 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   suggestedCard: {
-    width: 110,
+    width: 120,
     backgroundColor: "#F7F7F7",
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 12,
+    padding: 12,
     alignItems: "center",
   },
   suggestedAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginBottom: 8,
+  },
+  suggestedAvatarPlaceholder: {
     backgroundColor: "#EAEAEA",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+  },
+  verifiedBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#FFF",
+    borderRadius: 8,
   },
   suggestedName: {
     fontWeight: "700",
     fontSize: 13,
     color: "#111",
+    textAlign: "center",
+    marginBottom: 2,
   },
   suggestedReason: {
     fontSize: 11,
     color: "#777",
-    marginTop: 4,
+    marginTop: 2,
     textAlign: "center",
+    marginBottom: 8,
+  },
+  suggestedFollowBtn: {
+    backgroundColor: "#FE2C55",
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginTop: 4,
+  },
+  suggestedFollowingBtn: {
+    backgroundColor: "#F0F0F0",
+    borderWidth: 1,
+    borderColor: "#DDD",
+  },
+  suggestedFollowText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  suggestedFollowingText: {
+    color: "#333",
   },
 });
 

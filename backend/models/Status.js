@@ -10,6 +10,14 @@ const statusSchema = new mongoose.Schema(
       type: Date,
       default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
     },
+    views: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    comments: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        text: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true },
 );

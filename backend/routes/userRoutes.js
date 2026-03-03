@@ -7,6 +7,7 @@ const {
   uploadProfileImage,
   getAllUsers,
   updateFcmToken,
+  getSuggestedUsers,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const { imageUpload } = require("../middleware/uploadMiddleware");
@@ -14,6 +15,7 @@ const { imageUpload } = require("../middleware/uploadMiddleware");
 const router = express.Router();
 
 router.get("/", getAllUsers);
+router.get("/suggestions", protect, getSuggestedUsers);
 router.put("/fcm-token", protect, updateFcmToken);
 router.get("/:id", getUserProfile);
 router.put("/profile", protect, updateUserProfile);

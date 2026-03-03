@@ -12,6 +12,9 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,9 +35,60 @@ const InboxScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [statuses, setStatuses] = useState([]);
   const [viewingStatus, setViewingStatus] = useState(null);
+  const [statusComment, setStatusComment] = useState("");
+  const [statusViewsCount, setStatusViewsCount] = useState(0);
+  const [statusCommentsCount, setStatusCommentsCount] = useState(0);
+  const [sendingComment, setSendingComment] = useState(false);
   const netInfo = useNetInfo();
 
   const [notifications, setNotifications] = useState([]);
+
+  const openStatus = async (item) => {
+    setViewingStatus(item);
+    setStatusComment("");
+    setStatusViewsCount(item.views?.length || 0);
+    setStatusCommentsCount(item.comments?.length || 0);
+    // Record view (non-blocking)
+    const isOwn = item.user?._id === userInfo?._id;
+    if (!isOwn) {
+      try {
+        const res = await axios.post(
+          `${BASE_URL}/status/${item._id}/view`,
+          {},
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        setStatusViewsCount(res.data.viewsCount || 0);
+      } catch (_) {}
+    }
+  };
+
+  const sendStatusComment = async () => {
+    if (!statusComment.trim() || !viewingStatus) return;
+    setSendingComment(true);
+    try {
+      await axios.post(
+        `${BASE_URL}/status/${viewingStatus._id}/comment`,
+        { text: statusComment.trim() },
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+      setStatusCommentsCount((c) => c + 1);
+      setStatusComment("");
+      // Open chat with status owner so the reply is visible
+      const owner = viewingStatus.user;
+      if (owner && owner._id !== userInfo?._id) {
+        setViewingStatus(null);
+        navigation.navigate("Chat", {
+          userId: owner._id,
+          username: owner.username,
+          profileImage: owner.profileImage || null,
+        });
+      }
+    } catch (e) {
+      console.error("Status comment error:", e.response?.data || e.message);
+    } finally {
+      setSendingComment(false);
+    }
+  };
 
   const fetchConversations = async () => {
     if (netInfo.isConnected === false) return;
@@ -144,7 +198,7 @@ const InboxScreen = ({ navigation }) => {
       <TouchableOpacity
         style={styles.storyItem}
         key={item._id}
-        onPress={() => setViewingStatus(item)}
+        onPress={() => openStatus(item)}
       >
         <View style={[styles.storyRing, isOwn && styles.storyRingOwn]}>
           {item.image ? (
@@ -403,7 +457,7 @@ const InboxScreen = ({ navigation }) => {
         />
       )}
 
-      {/* Status Viewer Modal */}
+      {/* ─── Status Viewer Modal ─────────────────────────────────── */}
       <Modal
         visible={!!viewingStatus}
         transparent
@@ -411,65 +465,130 @@ const InboxScreen = ({ navigation }) => {
         onRequestClose={() => setViewingStatus(null)}
         statusBarTranslucent
       >
-        <View style={styles.statusViewerContainer}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setViewingStatus(null)}
-          />
-          {viewingStatus && (
-            <View
-              style={[
-                styles.statusViewerCard,
-                { backgroundColor: viewingStatus.bgColor || "#000" },
-              ]}
-            >
-              {viewingStatus.image && (
-                <Image
-                  source={{ uri: viewingStatus.image }}
-                  style={styles.statusViewerImage}
-                />
-              )}
-              {viewingStatus.text ? (
-                <View style={styles.statusViewerTextBox}>
-                  <Text style={styles.statusViewerText}>
-                    {viewingStatus.text}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.statusViewerContainer}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setViewingStatus(null)}
+            />
+            {viewingStatus && (
+              <View
+                style={[
+                  styles.statusViewerCard,
+                  { backgroundColor: viewingStatus.bgColor || "#000" },
+                ]}
+              >
+                {/* Close button */}
+                <TouchableOpacity
+                  style={styles.statusViewerClose}
+                  onPress={() => setViewingStatus(null)}
+                >
+                  <Ionicons name="close" size={28} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Top bar: avatar + username + viewer count */}
+                <View style={styles.statusViewerTopBar}>
+                  {viewingStatus.user?.profileImage ? (
+                    <Image
+                      source={{ uri: viewingStatus.user.profileImage }}
+                      style={styles.statusViewerAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.statusViewerAvatar,
+                        {
+                          backgroundColor: "#555",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        },
+                      ]}
+                    >
+                      <Ionicons name="person" size={16} color="#FFF" />
+                    </View>
+                  )}
+                  <Text style={styles.statusViewerUsername}>
+                    {viewingStatus.user?.username}
                   </Text>
+                  {/* Viewer count - only shown to owner */}
+                  {viewingStatus.user?._id === userInfo?._id && (
+                    <View style={styles.statusViewerStats}>
+                      <Ionicons
+                        name="eye-outline"
+                        size={16}
+                        color="rgba(255,255,255,0.85)"
+                      />
+                      <Text style={styles.statusViewerStatsText}>
+                        {statusViewsCount}
+                      </Text>
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={15}
+                        color="rgba(255,255,255,0.85)"
+                        style={{ marginLeft: 10 }}
+                      />
+                      <Text style={styles.statusViewerStatsText}>
+                        {statusCommentsCount}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              ) : null}
-              <View style={styles.statusViewerMeta}>
-                {viewingStatus.user?.profileImage ? (
+
+                {/* Image */}
+                {viewingStatus.image && (
                   <Image
-                    source={{ uri: viewingStatus.user.profileImage }}
-                    style={styles.statusViewerAvatar}
+                    source={{ uri: viewingStatus.image }}
+                    style={styles.statusViewerImage}
                   />
-                ) : (
-                  <View
-                    style={[
-                      styles.statusViewerAvatar,
-                      {
-                        backgroundColor: "#555",
-                        justifyContent: "center",
-                        alignItems: "center",
-                      },
-                    ]}
-                  >
-                    <Ionicons name="person" size={16} color="#FFF" />
+                )}
+
+                {/* Text */}
+                {viewingStatus.text ? (
+                  <View style={styles.statusViewerTextBox}>
+                    <Text style={styles.statusViewerText}>
+                      {viewingStatus.text}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Comment input - shown to everyone EXCEPT the owner */}
+                {viewingStatus.user?._id !== userInfo?._id && (
+                  <View style={styles.statusCommentBar}>
+                    <TextInput
+                      style={styles.statusCommentInput}
+                      placeholder="اكتب ردًا..."
+                      placeholderTextColor="rgba(255,255,255,0.5)"
+                      value={statusComment}
+                      onChangeText={setStatusComment}
+                      returnKeyType="send"
+                      onSubmitEditing={sendStatusComment}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.statusCommentSend,
+                        (!statusComment.trim() || sendingComment) && {
+                          opacity: 0.4,
+                        },
+                      ]}
+                      onPress={sendStatusComment}
+                      disabled={!statusComment.trim() || sendingComment}
+                    >
+                      {sendingComment ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Ionicons name="send" size={20} color="#FFF" />
+                      )}
+                    </TouchableOpacity>
                   </View>
                 )}
-                <Text style={styles.statusViewerUsername}>
-                  {viewingStatus.user?.username}
-                </Text>
               </View>
-              <TouchableOpacity
-                style={styles.statusViewerClose}
-                onPress={() => setViewingStatus(null)}
-              >
-                <Ionicons name="close" size={28} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -779,6 +898,62 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     right: 12,
+    zIndex: 10,
+  },
+  statusViewerTopBar: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    right: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    zIndex: 10,
+  },
+  statusViewerStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: "auto",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 4,
+  },
+  statusViewerStatsText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  statusCommentBar: {
+    position: "absolute",
+    bottom: 16,
+    left: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 28,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  statusCommentInput: {
+    flex: 1,
+    color: "#FFF",
+    fontSize: 15,
+    paddingVertical: 6,
+    textAlign: "right",
+  },
+  statusCommentSend: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FE2C55",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

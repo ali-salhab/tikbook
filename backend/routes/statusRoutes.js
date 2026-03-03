@@ -6,10 +6,14 @@ const {
   createStatus,
   getStatuses,
   deleteStatus,
+  viewStatus,
+  commentOnStatus,
 } = require("../controllers/statusController");
 
 router.post("/", protect, imageUpload.single("image"), createStatus);
 router.get("/", protect, getStatuses);
 router.delete("/:id", protect, deleteStatus);
+router.post("/:id/view", protect, viewStatus);
+router.post("/:id/comment", protect, commentOnStatus);
 
 module.exports = router;
