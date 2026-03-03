@@ -54,8 +54,8 @@ const LiveRoomsListScreen = ({ navigation }) => {
         navigation.navigate("Home");
         return true; // prevent default GO_BACK
       };
-      BackHandler.addEventListener("hardwareBackPress", onBack);
-      return () => BackHandler.removeEventListener("hardwareBackPress", onBack);
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBack);
+      return () => sub.remove();
     }, [navigation]),
   );
 

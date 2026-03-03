@@ -71,8 +71,8 @@ const CreateLiveRoomScreen = ({ navigation }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
+      aspect: [9, 16],   // portrait — fills full screen in the room
+      quality: 0.85,
     });
     if (!result.canceled) setCoverImage(result.assets[0].uri);
   };
@@ -191,9 +191,9 @@ const CreateLiveRoomScreen = ({ navigation }) => {
               <View style={styles.cameraCircle}>
                 <Ionicons name="camera-outline" size={32} color="#FFF" />
               </View>
-              <Text style={styles.coverEmptyTitle}>إضافة صورة غلاف</Text>
+              <Text style={styles.coverEmptyTitle}>اختر خلفية الغرفة</Text>
               <Text style={styles.coverEmptyHint}>
-                اضغط لاختيار صورة للغرفة
+                صورة عمودية تملأ شاشة البث
               </Text>
             </View>
           )}
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
 
   /* cover */
   coverCard: {
-    height: 200,
+    height: 300,
     borderRadius: 20,
     overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.06)",

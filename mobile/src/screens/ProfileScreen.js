@@ -426,24 +426,25 @@ const ProfileScreen = ({ navigation }) => {
               onPress={handleChangeProfilePicture}
               activeOpacity={0.9}
             >
-              {/* Circular clip wrapper — camera arc is INSIDE the circle */}
-              <View style={styles.avatarCircle}>
-                {profile?.profileImage ? (
-                  <Image
-                    source={{ uri: profile.profileImage }}
-                    style={styles.avatarImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={48} color="#bbb" />
-                  </View>
-                )}
+              {/* Avatar circle + floating camera button */}
+              <View style={styles.avatarWrapper}>
+                <View style={styles.avatarCircle}>
+                  {profile?.profileImage ? (
+                    <Image
+                      source={{ uri: profile.profileImage }}
+                      style={styles.avatarImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Ionicons name="person" size={48} color="#bbb" />
+                    </View>
+                  )}
+                </View>
 
-                {/* Bottom-arc camera cut */}
-                <View style={styles.avatarCameraArc}>
-                  <Ionicons name="camera" size={15} color="#FFF" />
-                  <Text style={styles.avatarCameraLabel}>تعديل</Text>
+                {/* Circular camera button — bottom-left, outside the circle */}
+                <View style={styles.cameraBtn}>
+                  <Ionicons name="camera" size={18} color="#FFF" />
                 </View>
               </View>
 
@@ -600,6 +601,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     alignSelf: "center",
   },
+  avatarWrapper: {
+    width: 100,
+    height: 100,
+    // Extra space so the camera button (which overflows bottom-left) isn't clipped
+  },
   avatarCircle: {
     width: 100,
     height: 100,
@@ -618,23 +624,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarCameraArc: {
+  cameraBtn: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 30,
-    backgroundColor: "rgba(0,0,0,0.52)",
+    bottom: -4,
+    left: -4,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 2.5,
+    borderColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-  },
-  avatarCameraLabel: {
-    color: "#FFF",
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
   },
   badgeFrameOverlay: {
     position: "absolute",

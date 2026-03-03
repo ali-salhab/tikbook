@@ -1,79 +1,100 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
+  FlatList,
   Image,
+  Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
+const MAX_COMMENTS = 20;
 
-const CommentItem = ({ comment, onComplete }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
+// ─── Single animated comment row ─────────────────────────────────────────
+const CommentRow = React.memo(({ item, isNew }) => {
+  const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
+  const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
 
   useEffect(() => {
-    Animated.sequence([
+    if (isNew) {
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 300,
+          duration: 240,
           useNativeDriver: true,
         }),
-        Animated.timing(translateY, {
+        Animated.timing(slideY, {
           toValue: 0,
-          duration: 300,
+          duration: 240,
           useNativeDriver: true,
         }),
-      ]),
-      Animated.delay(4000), // Show for 4 seconds
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => onComplete(comment.id));
+      ]).start();
+    }
   }, []);
+
+  const isSystem = item.isSystem;
 
   return (
     <Animated.View
-      style={[
-        styles.commentContainer,
-        { opacity, transform: [{ translateY }] },
-      ]}
+      style={[styles.row, { opacity, transform: [{ translateY: slideY }] }]}
     >
-      <View style={styles.userInfo}>
+      {item.user?.profileImage || item.user?.avatar ? (
         <Image
-          source={{
-            uri:
-              comment.user?.profileImage ||
-              comment.user?.avatar ||
-              "https://i.pravatar.cc/100",
-          }}
+          source={{ uri: item.user.profileImage || item.user.avatar }}
           style={styles.avatar}
         />
-        <View>
-          <Text style={styles.username}>{comment.user?.username}</Text>
-          <Text style={styles.message}>{comment.message}</Text>
-        </View>
+      ) : (
+        <View style={styles.avatarFallback} />
+      )}
+      <View style={styles.bubble}>
+        {item.user?.username ? (
+          <Text style={styles.username}>{item.user.username}</Text>
+        ) : null}
+        <Text style={[styles.message, isSystem && styles.systemMessage]}>
+          {item.message}
+        </Text>
       </View>
     </Animated.View>
   );
-};
+});
 
-const FloatingComments = ({ comments, removeComment }) => {
+// ─── Container ─────────────────────────────────────────────────────────────────────────────────
+const FloatingComments = ({ comments }) => {
+  const listRef = useRef(null);
+
+  // Show last MAX_COMMENTS only
+  const visible = comments.slice(-MAX_COMMENTS);
+  const latestId = visible.length > 0 ? visible[visible.length - 1].id : null;
+
+  const renderItem = useCallback(
+    ({ item }) => <CommentRow item={item} isNew={item.id === latestId} />,
+    [latestId]
+  );
+
+  const keyExtractor = useCallback((item) => String(item.id), []);
+
+  // Scroll to newest comment
+  useEffect(() => {
+    if (visible.length > 0) {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    }
+  }, [visible.length]);
+
   return (
     <View style={styles.container} pointerEvents="none">
-      {comments.map((comment) => (
-        <CommentItem
-          key={comment.id}
-          comment={comment}
-          onComplete={removeComment}
-        />
-      ))}
+      <FlatList
+        ref={listRef}
+        data={visible}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        onContentSizeChange={() =>
+          listRef.current?.scrollToEnd({ animated: true })
+        }
+      />
     </View>
   );
 };
@@ -81,42 +102,63 @@ const FloatingComments = ({ comments, removeComment }) => {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 100, // Above bottom bar
-    left: 20,
-    width: width * 0.7,
-    height: 200,
-    justifyContent: "flex-end",
+    bottom: 90,
+    left: 10,
+    width: width * 0.66,
+    maxHeight: 260,
   },
-  commentContainer: {
-    marginBottom: 8,
+  listContent: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+    paddingVertical: 4,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 6,
     alignSelf: "flex-start",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
     maxWidth: "100%",
   },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    marginRight: 6,
     borderWidth: 1,
-    borderColor: "#FFF",
+    borderColor: "rgba(255,255,255,0.5)",
+    flexShrink: 0,
+  },
+  avatarFallback: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    marginRight: 6,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    flexShrink: 0,
+  },
+  bubble: {
+    backgroundColor: "rgba(0,0,0,0.52)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderTopLeftRadius: 4,
+    maxWidth: "86%",
   },
   username: {
-    color: "#A0A0A0",
-    fontSize: 12,
-    fontWeight: "bold",
-    marginBottom: 2,
+    color: "rgba(180,180,255,0.9)",
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 1,
   },
   message: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  systemMessage: {
+    color: "#FFD700",
+    fontSize: 12,
+    fontStyle: "italic",
   },
 });
 

@@ -49,7 +49,7 @@ import SoundService from "../services/soundService";
 
 const { width, height } = Dimensions.get("window");
 const SEAT_SIZE = 58;
-const HOST_SIZE = 96;
+const HOST_SIZE = 110;
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -775,6 +775,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const host = room?.host;
     return (
       <View style={styles.hostSection}>
+        {/* Outer pulse ring */}
+        <Animated.View
+          style={[
+            styles.glowRingOuter,
+            {
+              transform: [{ scale: glowAnim }],
+              opacity: glowAnim.interpolate({
+                inputRange: [1, 1.08],
+                outputRange: [0.5, 0],
+              }),
+            },
+          ]}
+        />
+        {/* Inner glow ring */}
         <Animated.View
           style={[styles.glowRing, { transform: [{ scale: glowAnim }] }]}
         />
@@ -975,12 +989,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
               setShowGiftModal(true);
             }}
           >
-            <LinearGradient
-              colors={["#A020F0", "#FF00FF"]}
-              style={styles.giftCircle}
-            >
-              <Ionicons name="gift-outline" size={21} color="#FFF" />
-            </LinearGradient>
+            <View style={{ alignItems: "center", gap: 2 }}>
+              <LinearGradient
+                colors={["#A020F0", "#FF00FF"]}
+                style={styles.giftCircle}
+              >
+                <Ionicons name="gift-outline" size={21} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.actionLabel}>هدية</Text>
+            </View>
           </TouchableOpacity>
           {/* More — owner only */}
           {isHost && (
@@ -1283,8 +1300,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
     >
       <KeyboardAvoidingView
         style={{ flex: 1, justifyContent: "flex-end" }}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === "android" ? 0 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
       >
         {/* Tap outside to close */}
         <TouchableOpacity
@@ -1441,10 +1458,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 }
         }
         style={StyleSheet.absoluteFill}
-        blurRadius={8}
+        blurRadius={5}
       />
       <LinearGradient
-        colors={["rgba(8,0,22,0.50)", "rgba(8,0,22,0.80)", "rgba(0,0,0,0.97)"]}
+        colors={["rgba(8,0,22,0.28)", "rgba(8,0,22,0.52)", "rgba(0,0,0,0.88)"]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -1452,33 +1469,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <View style={{ flex: 1 }}>
         {Header()}
 
-        {/* Cover image banner — visible to all viewers */}
-        {room?.coverImage ? (
-          <View style={styles.coverBanner}>
-            <Image
-              source={{ uri: room.coverImage }}
-              style={styles.coverBannerImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.65)"]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.coverBannerOverlay}>
-              <View style={styles.coverLivePill}>
-                <MaterialCommunityIcons
-                  name="broadcast"
-                  size={9}
-                  color="#FFF"
-                />
-                <Text style={styles.coverLiveText}>LIVE</Text>
-              </View>
-              <Text style={styles.coverBannerTitle} numberOfLines={1}>
-                {room?.title}
-              </Text>
-            </View>
-          </View>
-        ) : null}
+        {/* Cover banner removed — background image fills full screen */}
 
         {/* Currency bar */}
         <View style={styles.currencyBar}>
@@ -1497,10 +1488,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       </View>
 
       {/* Floating comments */}
-      <FloatingComments
-        comments={messages}
-        removeComment={(id) => setMessages((p) => p.filter((m) => m.id !== id))}
-      />
+      <FloatingComments comments={messages} />
 
       {/* Animated gifts */}
       {activeGifts.map((d) => (
@@ -1689,14 +1677,32 @@ const styles = StyleSheet.create({
   currencyText: { color: "#FFF", fontSize: 10 },
 
   // ── Host ─────────────────────────────────────────────────────────────────────
-  hostSection: { alignItems: "center", marginTop: 6, marginBottom: 6 },
+  hostSection: { alignItems: "center", marginTop: 14, marginBottom: 8 },
   glowRing: {
     position: "absolute",
-    width: HOST_SIZE + 28,
-    height: HOST_SIZE + 28,
-    borderRadius: (HOST_SIZE + 28) / 2,
-    borderWidth: 2,
-    borderColor: "rgba(160,32,240,0.5)",
+    width: HOST_SIZE + 34,
+    height: HOST_SIZE + 34,
+    borderRadius: (HOST_SIZE + 34) / 2,
+    borderWidth: 3,
+    borderColor: "#A020F0",
+    shadowColor: "#A020F0",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    elevation: 24,
+  },
+  glowRingOuter: {
+    position: "absolute",
+    width: HOST_SIZE + 62,
+    height: HOST_SIZE + 62,
+    borderRadius: (HOST_SIZE + 62) / 2,
+    borderWidth: 1.5,
+    borderColor: "rgba(160,32,240,0.35)",
+    shadowColor: "#A020F0",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 28,
+    elevation: 16,
   },
   hostAvatarWrap: { position: "relative" },
   onlineDot: {
@@ -1727,9 +1733,9 @@ const styles = StyleSheet.create({
     width: SEAT_SIZE,
     height: SEAT_SIZE,
     borderRadius: SEAT_SIZE / 2,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(0,0,0,0.52)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.22)",
     justifyContent: "center",
     alignItems: "center",
     // No overflow:hidden — badge frames extend beyond the circle
@@ -1751,11 +1757,14 @@ const styles = StyleSheet.create({
   },
   seatNum: {
     position: "absolute",
-    bottom: 0,
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    bottom: -2,
+    left: -4,
+    backgroundColor: "rgba(0,0,0,0.72)",
     paddingHorizontal: 4,
-    borderRadius: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    minWidth: 16,
+    alignItems: "center",
   },
   seatNumText: { color: "#FFF", fontSize: 8 },
   mutedDot: {
@@ -1806,7 +1815,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   balanceChipText: { color: "#00F2EA", fontWeight: "bold", fontSize: 12 },
-  actions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  actions: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
   actionCircle: {
     width: 40,
     height: 40,
@@ -1824,6 +1833,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+  },
+  actionLabel: {
+    color: "#FF88FF",
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 
   // ── Mini music bar ────────────────────────────────────────────────────────────
