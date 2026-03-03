@@ -550,12 +550,18 @@ const HomeScreen = ({ navigation }) => {
 
       {/* Top Navigation Bar */}
       <View style={[styles.topBar, { top: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.iconButton}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("Users")}
+        >
           <Ionicons name="search" size={24} color="#FFF" />
         </TouchableOpacity>
 
         <View style={styles.tabsContainer}>
-          <TouchableOpacity style={styles.tabButton}>
+          <TouchableOpacity
+            style={styles.tabButton}
+            onPress={() => navigation.navigate("Friends")}
+          >
             <Text style={styles.tabText}>أتابعه</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
@@ -567,7 +573,7 @@ const HomeScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => navigation.navigate("LiveStreamsList")}
+          onPress={() => navigation.navigate("LiveRooms")}
         >
           <Ionicons name="tv-outline" size={24} color="#FFF" />
         </TouchableOpacity>

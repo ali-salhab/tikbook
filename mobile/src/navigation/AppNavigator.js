@@ -42,6 +42,7 @@ import MyBadgesScreen from "../screens/MyBadgesScreen";
 import CreateStatusScreen from "../screens/CreateStatusScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import FriendsScreen from "../screens/FriendsScreen";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -384,6 +385,7 @@ const AppNavigator = () => {
                 component={CreateStatusScreen}
               />
               <Stack.Screen name="Settings" component={SettingsScreen} />
+              <Stack.Screen name="Friends" component={FriendsScreen} />
             </>
           ) : (
             <>

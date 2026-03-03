@@ -280,26 +280,39 @@ const FriendsScreen = ({ navigation }) => {
         translucent
       />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.addFriendButton}>
-          <View>
-            <Ionicons name="people-outline" size={28} color="#FFF" />
-            <View style={styles.plusBadge}>
-              <Ionicons name="add" size={10} color="#FFF" />
-            </View>
-          </View>
+      {/* Top Navigation Bar - same style as HomeScreen */}
+      <View style={[styles.topBar, { top: insets.top + 10 }]}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("Users")}
+        >
+          <Ionicons name="search" size={24} color="#FFF" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>الأصدقاء</Text>
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity style={styles.tabButtonActive}>
+            <Text style={styles.tabTextActive}>أتابعه</Text>
+            <View style={styles.activeIndicator} />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.tabButton}
+            onPress={() => navigation.navigate("Home")}
+          >
+            <Text style={styles.tabText}>لك</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity>
-          <Ionicons name="search" size={24} color="#FFF" />
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("LiveRooms")}
+        >
+          <Ionicons name="tv-outline" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
       {friendsVideos.length === 0 ? (
-        <View style={styles.emptyState}>
+        <View style={[styles.emptyState, { paddingTop: insets.top + 80 }]}>
           <Ionicons name="people-outline" size={64} color="#666" />
           <Text style={styles.emptyText}>لا توجد فيديوهات من الأصدقاء</Text>
           <Text style={styles.emptySubtext}>
@@ -349,6 +362,62 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
   },
+  // ── Top Bar (same design as HomeScreen) ──────────────────────────────────
+  topBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  iconButton: {
+    padding: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+  },
+  tabButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  tabButtonActive: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    position: "relative",
+  },
+  tabText: {
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  tabTextActive: {
+    color: "#FFF",
+    fontSize: 17,
+    fontWeight: "bold",
+  },
+  divider: {
+    width: 1,
+    height: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  activeIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 4,
+    right: 4,
+    height: 3,
+    backgroundColor: "#FFF",
+    borderRadius: 2,
+  },
+  // ── old header (kept for compat) ──────────────────────────────────────────
   header: {
     position: "absolute",
     top: 0,
@@ -366,9 +435,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  addFriendButton: {
-    // padding: 5,
-  },
+  addFriendButton: {},
   plusBadge: {
     position: "absolute",
     top: -2,
