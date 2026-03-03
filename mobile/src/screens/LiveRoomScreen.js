@@ -1563,8 +1563,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {SeatGrid()}
       </View>
 
-      {/* Floating comments */}
-      <FloatingComments comments={messages} />
+      {/* Floating comments — bottom tracks keyboard so comments stay above input */}
+      <FloatingComments
+        comments={messages}
+        bottomOffset={keyboardOffset > 0 ? keyboardOffset + 66 : 90 + insets.bottom}
+      />
 
       {/* Animated gifts */}
       {activeGifts.map((d) => (
