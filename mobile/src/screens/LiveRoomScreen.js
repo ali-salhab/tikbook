@@ -16,6 +16,7 @@ import {
   ScrollView,
   Keyboard,
   InteractionManager,
+  PanResponder,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -1270,39 +1271,81 @@ const LiveRoomScreen = ({ route, navigation }) => {
     </Modal>
   );
 
-  // ─── MINI MUSIC BAR ──────────────────────────────────────────────────────────
+  // ─── MINI MUSIC BAR (draggable floating widget) ──────────────────────────────
+
+  const floatPos = useRef(
+    new Animated.ValueXY({ x: 10, y: Dimensions.get("window").height - 220 }),
+  ).current;
+  const floatLastPos = useRef({
+    x: 10,
+    y: Dimensions.get("window").height - 220,
+  });
+  const floatDragging = useRef(false);
+
+  const floatPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4,
+      onPanResponderGrant: () => {
+        floatDragging.current = false;
+        floatPos.setOffset(floatLastPos.current);
+        floatPos.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (_, gs) => {
+        if (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4) {
+          floatDragging.current = true;
+        }
+        Animated.event([null, { dx: floatPos.x, dy: floatPos.y }], {
+          useNativeDriver: false,
+        })(_, gs);
+      },
+      onPanResponderRelease: (_, gs) => {
+        floatPos.flattenOffset();
+        const newX = floatLastPos.current.x + gs.dx;
+        const newY = floatLastPos.current.y + gs.dy;
+        floatLastPos.current = { x: newX, y: newY };
+        if (!floatDragging.current) {
+          setShowMusicPlayer(true);
+        }
+      },
+    }),
+  ).current;
 
   const MiniMusicBar = () => {
     if (!sound) return null;
     return (
-      <TouchableOpacity
-        style={[styles.miniBar, { bottom: insets.bottom + 78 }]}
-        activeOpacity={0.85}
-        onPress={() => setShowMusicPlayer(true)}
+      <Animated.View
+        style={[
+          styles.miniBar,
+          { transform: floatPos.getTranslateTransform() },
+        ]}
+        {...floatPanResponder.panHandlers}
       >
-        <Animated.View style={styles.miniBarPulse} />
-        <Ionicons name="musical-notes" size={16} color="#A020F0" />
-        <Text style={styles.miniBarTitle} numberOfLines={1}>
-          {musicTitle || "Music"}
-        </Text>
-        <TouchableOpacity
-          onPress={handleToggleMusic}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons
-            name={isPlayingMusic ? "pause" : "play"}
-            size={18}
-            color="#A020F0"
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleStopMusic}
-          style={{ marginLeft: 6 }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="close" size={16} color="#FF4444" />
-        </TouchableOpacity>
-      </TouchableOpacity>
+        <View style={styles.miniBarInner}>
+          <Ionicons name="musical-notes" size={18} color="#A020F0" />
+          <Text style={styles.miniBarTitle} numberOfLines={1}>
+            {musicTitle || "Music"}
+          </Text>
+          <TouchableOpacity
+            onPress={handleToggleMusic}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={isPlayingMusic ? "pause" : "play"}
+              size={20}
+              color="#A020F0"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleStopMusic}
+            style={{ marginLeft: 6 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close-circle" size={20} color="#FF4444" />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     );
   };
 
@@ -1566,7 +1609,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Floating comments — bottom tracks keyboard so comments stay above input */}
       <FloatingComments
         comments={messages}
-        bottomOffset={keyboardOffset > 0 ? keyboardOffset + 66 : 90 + insets.bottom}
+        bottomOffset={
+          keyboardOffset > 0 ? keyboardOffset + 66 : 90 + insets.bottom
+        }
+        maxHeight={keyboardOffset > 0 ? 160 : 400}
       />
 
       {/* Animated gifts */}
@@ -1920,30 +1966,32 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ── Mini music bar ────────────────────────────────────────────────────────────
+  // ── Mini music bar (floating draggable) ─────────────────────────────────────
   miniBar: {
     position: "absolute",
-    left: 10,
-    right: 10,
+    top: 0,
+    left: 0,
+    zIndex: 999,
+    borderRadius: 26,
+    elevation: 8,
+    shadowColor: "#A020F0",
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  miniBarInner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(160,32,240,0.4)",
+    backgroundColor: "rgba(10,0,30,0.92)",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: "rgba(160,32,240,0.6)",
+    maxWidth: 220,
   },
-  miniBarPulse: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 18,
-  },
-  miniBarTitle: { flex: 1, color: "#DDD", fontSize: 12 },
+  miniBarTitle: { flex: 1, color: "#EEE", fontSize: 13, fontWeight: "600" },
 
   // ── Chat input ────────────────────────────────────────────────────────────────
   chatBar: {

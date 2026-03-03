@@ -269,8 +269,8 @@ const ProfileScreen = ({ navigation }) => {
                   key={video._id}
                   style={styles.gridItem}
                   onPress={() =>
-                    navigation.navigate("Home", { videoId: video._id })
-                  }
+                    navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
+                  }>
                 >
                   {thumbnail ? (
                     <Image
@@ -332,8 +332,8 @@ const ProfileScreen = ({ navigation }) => {
                   key={video._id}
                   style={styles.gridItem}
                   onPress={() =>
-                    navigation.navigate("Home", { videoId: video._id })
-                  }
+                    navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
+                  }>
                 >
                   {thumbnail ? (
                     <Image
@@ -375,7 +375,7 @@ const ProfileScreen = ({ navigation }) => {
                   key={video._id}
                   style={styles.gridItem}
                   onPress={() =>
-                    navigation.navigate("Home", { videoId: video._id })
+                    navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
                   }
                 >
                   {thumbnail ? (

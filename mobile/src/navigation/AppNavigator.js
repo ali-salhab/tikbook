@@ -248,6 +248,16 @@ const HomeTabs = () => {
             ),
         }}
       />
+      {/* Hidden tab — zero-width so it takes no space in the bar */}
+      <Tab.Screen
+        name="Friends"
+        component={FriendsScreen}
+        options={{
+          tabBarButton: () => <View style={{ width: 0, overflow: "hidden" }} />,
+          tabBarItemStyle: { width: 0, minWidth: 0, maxWidth: 0, padding: 0, margin: 0, overflow: "hidden" },
+          tabBarLabel: () => null,
+        }}
+      />
     </Tab.Navigator>
   );
 };
@@ -406,7 +416,6 @@ const AppNavigator = () => {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
-                <Stack.Screen name="Friends" component={FriendsScreen} />
               </>
             ) : (
               <>

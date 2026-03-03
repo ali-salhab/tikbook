@@ -37,7 +37,7 @@ import SoundService from "../services/soundService";
 // Enable RTL
 // Enable RTL logic moved to index.js
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = ({ navigation, route }) => {
   const [videos, setVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -73,6 +73,21 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     BASE_URL_REF.current = BASE_URL;
   }, [BASE_URL]);
+
+  // Scroll to a specific video when navigated from Profile grid tap
+  useEffect(() => {
+    const targetId = route?.params?.videoId;
+    if (!targetId || videos.length === 0) return;
+    const idx = videos.findIndex((v) => v._id === targetId);
+    if (idx !== -1 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: idx, animated: false });
+        setActiveVideoIndex(idx);
+      }, 100);
+    }
+    // Clear the param so re-focusing doesn't re-scroll
+    navigation.setParams({ videoId: undefined });
+  }, [route?.params?.videoId, videos]);
 
   const fetchVideos = useCallback(async () => {
     // If no internet, don't try to fetch (avoids Network Error logs)
@@ -289,12 +304,18 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const VideoItem = ({ item, isActive }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0); // 0-1
+    const [duration, setDuration] = useState(0);
+    const playIconOpacity = useRef(new Animated.Value(0)).current;
+    const playIconScale = useRef(new Animated.Value(0.6)).current;
+
     useEffect(() => {
       if (videoRef.current) {
         if (isActive) {
-          videoRef.current.playAsync();
+          videoRef.current.playAsync().then(() => setIsPlaying(true)).catch(() => {});
         } else {
-          videoRef.current.pauseAsync();
+          videoRef.current.pauseAsync().then(() => setIsPlaying(false)).catch(() => {});
         }
       }
     }, [isActive]);
@@ -304,9 +325,28 @@ const HomeScreen = ({ navigation }) => {
       const DOUBLE_TAP_DELAY = 300;
 
       if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-        // Double tap detected
+        // Double tap — like
         onLikePress();
         animateHeart();
+      } else {
+        // Single tap — play/pause
+        if (videoRef.current) {
+          if (isPlaying) {
+            videoRef.current.pauseAsync().then(() => setIsPlaying(false)).catch(() => {});
+          } else {
+            videoRef.current.playAsync().then(() => setIsPlaying(true)).catch(() => {});
+          }
+          // Flash the icon
+          playIconOpacity.setValue(1);
+          playIconScale.setValue(0.6);
+          Animated.parallel([
+            Animated.spring(playIconScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
+            Animated.sequence([
+              Animated.delay(500),
+              Animated.timing(playIconOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+            ]),
+          ]).start();
+        }
       }
       lastTap.current = now;
     };
@@ -404,6 +444,15 @@ const HomeScreen = ({ navigation }) => {
               isLooping
               isMuted={false}
               useNativeControls={false}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded) {
+                  setIsPlaying(status.isPlaying);
+                  if (status.durationMillis && status.durationMillis > 0) {
+                    setDuration(status.durationMillis);
+                    setProgress(status.positionMillis / status.durationMillis);
+                  }
+                }
+              }}
             />
           )}
 
@@ -420,6 +469,23 @@ const HomeScreen = ({ navigation }) => {
           >
             <Ionicons name="heart" size={120} color="#FFF" />
           </Animated.View>
+
+          {/* Play / Pause flash overlay */}
+          <Animated.View
+            style={[
+              styles.playPauseOverlay,
+              { opacity: playIconOpacity, transform: [{ scale: playIconScale }] },
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.playPauseCircle}>
+              <Ionicons
+                name={isPlaying ? "pause" : "play"}
+                size={44}
+                color="#FFF"
+              />
+            </View>
+          </Animated.View>
         </TouchableOpacity>
 
         {/* Bottom Info */}
@@ -435,6 +501,13 @@ const HomeScreen = ({ navigation }) => {
             </View>
           </View>
         </View>
+
+        {/* Progress bar */}
+        {!isImage(item.videoUrl) && (
+          <View style={[styles.progressBarBg, { bottom: insets.bottom + 76 }]}>
+            <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+          </View>
+        )}
 
         {/* Side Actions */}
         <View style={[styles.rightActions, { bottom: insets.bottom + 80 }]}>
@@ -634,6 +707,11 @@ const HomeScreen = ({ navigation }) => {
         snapToAlignment="start"
         decelerationRate="fast"
         scrollEventThrottle={16}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_HEIGHT,
+          offset: SCREEN_HEIGHT * index,
+          index,
+        })}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
           itemVisiblePercentThreshold: 80,
@@ -765,6 +843,38 @@ const styles = StyleSheet.create({
     marginTop: -60,
     marginLeft: -60,
     zIndex: 1000,
+  },
+  playPauseOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  playPauseCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingLeft: 4, // optical center for play icon
+  },
+  progressBarBg: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    zIndex: 200,
+  },
+  progressBarFill: {
+    height: 3,
+    backgroundColor: "#FFF",
+    borderRadius: 2,
   },
   bottomSection: {
     position: "absolute",
