@@ -21,7 +21,6 @@ import { StatusBar } from "expo-status-bar";
 import { Video } from "expo-av";
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { AuthContext } from "../context/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
@@ -35,7 +34,6 @@ const { width, height } = Dimensions.get("window");
 
 const FriendsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const { userToken, userInfo, BASE_URL } = useContext(AuthContext);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [friendsVideos, setFriendsVideos] = useState([]);
@@ -176,7 +174,7 @@ const FriendsScreen = ({ navigation }) => {
     const profileImage = item.user?.profileImage;
 
     return (
-      <View style={[styles.videoContainer, { height: height - tabBarHeight }]}>
+      <View style={[styles.videoContainer, { height: height }]}>
         <Video
           ref={(ref) => (videoRefs.current[index] = ref)}
           source={{ uri: item.videoUrl }}
@@ -326,7 +324,7 @@ const FriendsScreen = ({ navigation }) => {
           keyExtractor={(item) => item._id}
           pagingEnabled
           showsVerticalScrollIndicator={false}
-          snapToInterval={height - tabBarHeight}
+          snapToInterval={height}
           snapToAlignment="start"
           decelerationRate="fast"
           scrollEventThrottle={16}

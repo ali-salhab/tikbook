@@ -67,7 +67,7 @@ const UsersScreen = ({ navigation, route }) => {
     try {
       const resUsers = await axios.get(`${BASE_URL}/users`);
       const otherUsers = resUsers.data.filter(
-        (user) => user._id !== userInfo._id
+        (user) => user._id !== userInfo._id,
       );
       setUsers(otherUsers);
       setFilteredUsers(otherUsers);
@@ -90,7 +90,7 @@ const UsersScreen = ({ navigation, route }) => {
       const filtered = users.filter(
         (user) =>
           user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+          user.email?.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       setFilteredUsers(filtered);
     }
@@ -126,7 +126,7 @@ const UsersScreen = ({ navigation, route }) => {
       </View>
       <View style={styles.hashtagInfo}>
         <Text style={styles.hashtagText}>{item.tag}</Text>
-        <Text style={styles.hashtagViews}>{item.views} views</Text>
+        <Text style={styles.hashtagViews}>{item.views} مشاهدة</Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color="#888" />
     </TouchableOpacity>
@@ -188,7 +188,7 @@ const UsersScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover</Text>
+        <Text style={styles.headerTitle}>اكتشف</Text>
         {selectMode && (
           <TouchableOpacity
             onPress={() => {
@@ -207,7 +207,7 @@ const UsersScreen = ({ navigation, route }) => {
               }
             }}
           >
-            <Text style={{ color: "#FE2C55", fontWeight: "bold" }}>Done</Text>
+            <Text style={{ color: "#FE2C55", fontWeight: "bold" }}>تم</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -222,8 +222,9 @@ const UsersScreen = ({ navigation, route }) => {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search"
+          placeholder="بحث"
           placeholderTextColor="#888"
+          textAlign="right"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -284,7 +285,7 @@ const UsersScreen = ({ navigation, route }) => {
 
           {/* Trending Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Trending Hashtags</Text>
+            <Text style={styles.sectionTitle}>الوسوم الرائجة</Text>
             <FlatList
               data={trendingHashtags}
               renderItem={renderHashtag}
