@@ -15,6 +15,7 @@ import {
   Modal,
   ScrollView,
   Keyboard,
+  KeyboardAvoidingView,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -1301,7 +1302,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ─── KEYBOARD LISTENER ───────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!showInput) return;
     const showSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       (e) => setKeyboardOffset(e.endCoordinates.height),
@@ -1314,28 +1314,33 @@ const LiveRoomScreen = ({ route, navigation }) => {
       showSub.remove();
       hideSub.remove();
     };
-  }, [showInput]);
+  }, []);
 
   // ─── CHAT INPUT BAR ───────────────────────────────────────────────────────────
 
   const chatInputBar = showInput ? (
-    <>
+    <KeyboardAvoidingView
+      style={StyleSheet.absoluteFill}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      pointerEvents="box-none"
+    >
       {/* Dismiss backdrop */}
       <TouchableOpacity
-        style={StyleSheet.absoluteFill}
+        style={{ flex: 1 }}
         activeOpacity={1}
         onPress={handleCloseInput}
       />
-      {/* Input bar — floats exactly above keyboard */}
+      {/* Input bar */}
       <View
         style={[
           styles.chatBar,
           {
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: keyboardOffset,
-            paddingBottom: keyboardOffset === 0 ? insets.bottom + 12 : 12,
+            paddingBottom:
+              Platform.OS === "android"
+                ? 12
+                : keyboardOffset > 0
+                  ? 12
+                  : insets.bottom + 12,
           },
         ]}
       >
@@ -1371,7 +1376,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           <Ionicons name="close-circle" size={20} color="#AAA" />
         </TouchableOpacity>
       </View>
-    </>
+    </KeyboardAvoidingView>
   ) : null;
 
   // ─── SUMMARY MODAL ───────────────────────────────────────────────────────────
