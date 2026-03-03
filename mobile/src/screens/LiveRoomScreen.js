@@ -1319,28 +1319,23 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ─── CHAT INPUT BAR ───────────────────────────────────────────────────────────
 
   const chatInputBar = showInput ? (
-    <KeyboardAvoidingView
-      style={StyleSheet.absoluteFill}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      pointerEvents="box-none"
-    >
+    <>
       {/* Dismiss backdrop */}
       <TouchableOpacity
-        style={{ flex: 1 }}
+        style={StyleSheet.absoluteFill}
         activeOpacity={1}
         onPress={handleCloseInput}
       />
-      {/* Input bar */}
+      {/* Input bar — sits directly above the keyboard */}
       <View
         style={[
           styles.chatBar,
           {
-            paddingBottom:
-              Platform.OS === "android"
-                ? 12
-                : keyboardOffset > 0
-                  ? 12
-                  : insets.bottom + 12,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: keyboardOffset,
+            paddingBottom: keyboardOffset > 0 ? 10 : insets.bottom + 10,
           },
         ]}
       >
@@ -1376,7 +1371,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           <Ionicons name="close-circle" size={20} color="#AAA" />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </>
   ) : null;
 
   // ─── SUMMARY MODAL ───────────────────────────────────────────────────────────
