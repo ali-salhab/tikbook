@@ -422,7 +422,11 @@ const ChatScreen = ({ route, navigation }) => {
               />
             )}
             {isOwn && item._pending && (
-              <ActivityIndicator size={10} color="#AAA" style={{ marginLeft: 2 }} />
+              <ActivityIndicator
+                size={10}
+                color="#AAA"
+                style={{ marginLeft: 2 }}
+              />
             )}
           </View>
         </View>
@@ -676,7 +680,10 @@ const ChatScreen = ({ route, navigation }) => {
             );
           }}
         />
-        <TouchableOpacity onPress={sendMessage} disabled={!text.trim() || isSending}>
+        <TouchableOpacity
+          onPress={sendMessage}
+          disabled={!text.trim() || isSending}
+        >
           {isSending ? (
             <ActivityIndicator size={22} color="#FE2C55" />
           ) : (

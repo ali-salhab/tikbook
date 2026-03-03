@@ -39,16 +39,18 @@ const sendMessage = async (req, res) => {
   const hasImage = !!req.file;
 
   if (!hasText && !hasImage) {
-    return res.status(400).json({ message: "Message text or image is required" });
+    return res
+      .status(400)
+      .json({ message: "Message text or image is required" });
   }
 
   try {
     let imageUrl = null;
     if (req.file) {
-      const { uploadToCloudinary } = require('../services/cloudinaryService');
-      const fs = require('fs');
+      const { uploadToCloudinary } = require("../services/cloudinaryService");
+      const fs = require("fs");
       try {
-        imageUrl = await uploadToCloudinary(req.file.path, 'messages');
+        imageUrl = await uploadToCloudinary(req.file.path, "messages");
       } finally {
         if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       }
@@ -57,7 +59,7 @@ const sendMessage = async (req, res) => {
     const message = await Message.create({
       sender: req.user._id,
       receiver: receiverId,
-      text: hasText ? text.trim() : '',
+      text: hasText ? text.trim() : "",
       imageUrl,
     });
 
