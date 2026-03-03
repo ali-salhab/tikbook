@@ -43,6 +43,8 @@ import CreateStatusScreen from "../screens/CreateStatusScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import FriendsScreen from "../screens/FriendsScreen";
+import { LiveProvider } from "../context/LiveContext";
+import FloatingLivePlayer from "../components/FloatingLivePlayer";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -320,90 +322,99 @@ const AppNavigator = () => {
   console.log("🗺️ Rendering main navigation Stack", { userToken: !!userToken });
 
   return (
-    <VersionChecker>
-      <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {showOnboarding ? (
-            <>
-              <Stack.Screen
-                name="Onboarding"
-                component={OnboardingScreen}
-                options={{ gestureEnabled: false }}
-              />
-              {/* Add Auth screens so onboarding can navigate to them */}
-              <Stack.Screen name="Auth">
-                {(props) => <LoginScreen {...props} />}
-              </Stack.Screen>
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-              <Stack.Screen name="OTP" component={OTPScreen} />
-              <Stack.Screen
-                name="ForgotPassword"
-                component={ForgotPasswordScreen}
-              />
-              {/* Add MainTabs in case user is logged in */}
-              <Stack.Screen name="MainTabs" component={HomeTabs} />
-            </>
-          ) : userToken ? (
-            <>
-              <Stack.Screen name="MainTabs" component={HomeTabs} />
-              <Stack.Screen name="Chat" component={ChatScreen} />
-              <Stack.Screen name="UserProfile" component={UserProfileScreen} />
-              <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-              <Stack.Screen name="Users" component={UsersScreen} />
-              <Stack.Screen name="Upload" component={UploadScreen} />
-              <Stack.Screen name="PostEdit" component={PostEditScreen} />
-              <Stack.Screen name="Live" component={LiveScreen} />
-              <Stack.Screen
-                name="LiveStreamsList"
-                component={LiveStreamsListScreen}
-              />
-              <Stack.Screen name="LiveRoom" component={LiveRoomScreen} />
-              <Stack.Screen
-                name="CreateLiveRoom"
-                component={CreateLiveRoomScreen}
-              />
-              <Stack.Screen name="Wallet" component={WalletScreen} />
-              <Stack.Screen
-                name="NewFollowers"
-                component={NewFollowersScreen}
-              />
-              <Stack.Screen name="Activity" component={ActivityScreen} />
-              <Stack.Screen
-                name="SystemNotifications"
-                component={SystemNotificationsScreen}
-              />
-              <Stack.Screen
-                name="VerificationRequest"
-                component={VerificationRequestScreen}
-              />
-              <Stack.Screen name="Map" component={MapScreen} />
-              <Stack.Screen name="BadgeShop" component={BadgeShopScreen} />
-              <Stack.Screen name="MyBadges" component={MyBadgesScreen} />
-              <Stack.Screen
-                name="CreateStatus"
-                component={CreateStatusScreen}
-              />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="Friends" component={FriendsScreen} />
-            </>
-          ) : (
-            <>
-              <Stack.Screen name="Auth">
-                {(props) => <LoginScreen {...props} />}
-              </Stack.Screen>
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-              <Stack.Screen name="OTP" component={OTPScreen} />
-              <Stack.Screen
-                name="ForgotPassword"
-                component={ForgotPasswordScreen}
-              />
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </VersionChecker>
+    <LiveProvider>
+      <VersionChecker>
+        <NavigationContainer ref={navigationRef}>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {showOnboarding ? (
+              <>
+                <Stack.Screen
+                  name="Onboarding"
+                  component={OnboardingScreen}
+                  options={{ gestureEnabled: false }}
+                />
+                {/* Add Auth screens so onboarding can navigate to them */}
+                <Stack.Screen name="Auth">
+                  {(props) => <LoginScreen {...props} />}
+                </Stack.Screen>
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="OTP" component={OTPScreen} />
+                <Stack.Screen
+                  name="ForgotPassword"
+                  component={ForgotPasswordScreen}
+                />
+                {/* Add MainTabs in case user is logged in */}
+                <Stack.Screen name="MainTabs" component={HomeTabs} />
+              </>
+            ) : userToken ? (
+              <>
+                <Stack.Screen name="MainTabs" component={HomeTabs} />
+                <Stack.Screen name="Chat" component={ChatScreen} />
+                <Stack.Screen
+                  name="UserProfile"
+                  component={UserProfileScreen}
+                />
+                <Stack.Screen
+                  name="EditProfile"
+                  component={EditProfileScreen}
+                />
+                <Stack.Screen name="Users" component={UsersScreen} />
+                <Stack.Screen name="Upload" component={UploadScreen} />
+                <Stack.Screen name="PostEdit" component={PostEditScreen} />
+                <Stack.Screen name="Live" component={LiveScreen} />
+                <Stack.Screen
+                  name="LiveStreamsList"
+                  component={LiveStreamsListScreen}
+                />
+                <Stack.Screen name="LiveRoom" component={LiveRoomScreen} />
+                <Stack.Screen
+                  name="CreateLiveRoom"
+                  component={CreateLiveRoomScreen}
+                />
+                <Stack.Screen name="Wallet" component={WalletScreen} />
+                <Stack.Screen
+                  name="NewFollowers"
+                  component={NewFollowersScreen}
+                />
+                <Stack.Screen name="Activity" component={ActivityScreen} />
+                <Stack.Screen
+                  name="SystemNotifications"
+                  component={SystemNotificationsScreen}
+                />
+                <Stack.Screen
+                  name="VerificationRequest"
+                  component={VerificationRequestScreen}
+                />
+                <Stack.Screen name="Map" component={MapScreen} />
+                <Stack.Screen name="BadgeShop" component={BadgeShopScreen} />
+                <Stack.Screen name="MyBadges" component={MyBadgesScreen} />
+                <Stack.Screen
+                  name="CreateStatus"
+                  component={CreateStatusScreen}
+                />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen name="Friends" component={FriendsScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="Auth">
+                  {(props) => <LoginScreen {...props} />}
+                </Stack.Screen>
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="OTP" component={OTPScreen} />
+                <Stack.Screen
+                  name="ForgotPassword"
+                  component={ForgotPasswordScreen}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+          <FloatingLivePlayer navigationRef={navigationRef} />
+        </NavigationContainer>
+      </VersionChecker>
+    </LiveProvider>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   StatusBar,
   ImageBackground,
   TextInput,
+  BackHandler,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -19,6 +20,7 @@ import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -44,6 +46,18 @@ const LiveRoomsListScreen = ({ navigation }) => {
   useEffect(() => {
     fetchLiveRooms();
   }, [activeTab]);
+
+  // Fix: handle Android hardware back button (tab screens have no back stack)
+  useFocusEffect(
+    useCallback(() => {
+      const onBack = () => {
+        navigation.navigate("Home");
+        return true; // prevent default GO_BACK
+      };
+      BackHandler.addEventListener("hardwareBackPress", onBack);
+      return () => BackHandler.removeEventListener("hardwareBackPress", onBack);
+    }, [navigation]),
+  );
 
   const fetchLiveRooms = async () => {
     try {

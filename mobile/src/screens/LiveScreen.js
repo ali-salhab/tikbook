@@ -39,19 +39,40 @@ import axios from "axios";
 import { Camera } from "expo-camera";
 import { Audio } from "expo-av";
 import io from "socket.io-client";
+import { useLive } from "../context/LiveContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function LiveScreen({ navigation, route }) {
   const { isBroadcaster, channelId } = route.params || {};
+  const isRestoreMode = route.params?.restore === true;
   const { userToken, userInfo } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
-  const engineRef = useRef(null);
+  // Use shared engine/socket from LiveContext so stream persists when minimized
+  const {
+    engineRef,
+    socketRef,
+    minimize: minimizeLive,
+    releaseEngine,
+    setChannelName: setCtxChannelName,
+    setIsBroadcaster: setCtxIsBroadcaster,
+    setIsInLive,
+    setRemoteUsers: setCtxRemoteUsers,
+    setViewerCount: setCtxViewerCount,
+    channelName: ctxChannelName,
+  } = useLive();
 
-  const [joined, setJoined] = useState(false);
+  // Track if user intentionally minimized (don't release engine on unmount)
+  const isMinimizedRef = useRef(false);
+
+  const [joined, setJoined] = useState(isRestoreMode);
   const [channelName, setChannelName] = useState(
-    isBroadcaster ? userInfo?._id || "test" : channelId || "test",
+    isRestoreMode
+      ? ctxChannelName || channelId || "test"
+      : isBroadcaster
+        ? userInfo?._id || "test"
+        : channelId || "test",
   );
   const [localUid, setLocalUid] = useState(null);
   const [remoteUsers, setRemoteUsers] = useState([]);
@@ -70,7 +91,7 @@ export default function LiveScreen({ navigation, route }) {
   const [showSummary, setShowSummary] = useState(false);
   const [liveDuration, setLiveDuration] = useState(0);
   const chatListRef = useRef(null);
-  const socketRef = useRef(null);
+  // socketRef comes from LiveContext (shared, persists when minimized)
 
   // ───────────────── ENGINE ─────────────────
   const initEngine = useCallback(() => {
@@ -100,12 +121,16 @@ export default function LiveScreen({ navigation, route }) {
       },
       onUserJoined: (_, uid) => {
         setRemoteUsers((p) => [...new Set([...p, uid])]);
+        setCtxRemoteUsers((p) => [...new Set([...p, uid])]);
         setViewerCount((v) => v + 1);
+        setCtxViewerCount((v) => v + 1);
         setTotalViewers((t) => t + 1);
       },
       onUserOffline: (_, uid) => {
         setRemoteUsers((p) => p.filter((i) => i !== uid));
+        setCtxRemoteUsers((p) => p.filter((i) => i !== uid));
         setViewerCount((v) => Math.max(0, v - 1));
+        setCtxViewerCount((v) => Math.max(0, v - 1));
       },
     });
 
@@ -114,11 +139,24 @@ export default function LiveScreen({ navigation, route }) {
   }, []);
 
   useEffect(() => {
+    if (isRestoreMode) {
+      // Engine already running in context - just re-attach UI
+      setJoined(true);
+      return;
+    }
     initEngine();
     return () => {
-      engineRef.current?.leaveChannel();
-      engineRef.current?.release();
-      engineRef.current = null;
+      // Only fully release engine if user didn't minimize (intentional exit)
+      if (!isMinimizedRef.current) {
+        engineRef.current?.leaveChannel();
+        engineRef.current?.release();
+        engineRef.current = null;
+        try {
+          socketRef.current?.disconnect();
+          socketRef.current = null;
+        } catch (_) {}
+        setIsInLive(false);
+      }
     };
   }, []);
 
@@ -189,6 +227,9 @@ export default function LiveScreen({ navigation, route }) {
 
       const finalChannel = res.data.channelName || channelName;
       setChannelName(finalChannel);
+      setCtxChannelName(finalChannel);
+      setCtxIsBroadcaster(!!isBroadcaster);
+      setIsInLive(true);
       const token = res.data.token;
 
       const joinRet = engine.joinChannel(token, finalChannel, 0, {});
@@ -223,6 +264,15 @@ export default function LiveScreen({ navigation, route }) {
   };
 
   const leaveLive = async () => {
+    // For viewers: minimize (keep engine alive) then go back
+    if (!isBroadcaster) {
+      isMinimizedRef.current = true;
+      minimizeLive();
+      navigation.navigate("MainTabs");
+      return;
+    }
+
+    // Broadcaster: full stop
     // Disconnect socket
     try {
       socketRef.current?.disconnect();
@@ -243,17 +293,13 @@ export default function LiveScreen({ navigation, route }) {
     }
 
     // Fetch coins earned from wallet if broadcaster
-    if (isBroadcaster) {
-      try {
-        const res = await axios.get(`${BASE_URL}/wallet`, {
-          headers: { Authorization: `Bearer ${userToken}` },
-        });
-        setCoinsEarned(res.data?.earnings ?? res.data?.balance ?? 0);
-      } catch (_) {}
-      setShowSummary(true);
-    } else {
-      navigation.goBack();
-    }
+    try {
+      const res = await axios.get(`${BASE_URL}/wallet`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setCoinsEarned(res.data?.earnings ?? res.data?.balance ?? 0);
+    } catch (_) {}
+    setShowSummary(true);
   };
 
   const formatDuration = (seconds) => {
@@ -468,6 +514,19 @@ export default function LiveScreen({ navigation, route }) {
             <TouchableOpacity style={styles.exitBtn} onPress={leaveLive}>
               <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
+            {/* Minimize button for viewers: shrink to floating player */}
+            {!isBroadcaster && (
+              <TouchableOpacity
+                style={[styles.exitBtn, { marginLeft: 4 }]}
+                onPress={() => {
+                  isMinimizedRef.current = true;
+                  minimizeLive();
+                  navigation.navigate("MainTabs");
+                }}
+              >
+                <Ionicons name="chevron-down" size={22} color="#fff" />
+              </TouchableOpacity>
+            )}
 
             <View style={styles.hostInfo}>
               <Image

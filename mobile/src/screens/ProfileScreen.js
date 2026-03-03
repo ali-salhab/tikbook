@@ -21,7 +21,6 @@ import ProfileMenuModal from "../components/ProfileMenuModal";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
-import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 import videoService from "../services/videoService";
 import * as ImagePicker from "expo-image-picker";
 
@@ -425,16 +424,38 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.avatarContainer}>
             <TouchableOpacity
               onPress={handleChangeProfilePicture}
-              activeOpacity={0.85}
+              activeOpacity={0.9}
             >
-              <ProfileBadgeFrame
-                profileImage={profile?.profileImage}
-                badgeImage={profile?.activeBadge?.imageUrl}
-                size={100}
-              />
-              <View style={styles.avatarCameraBtn}>
-                <Ionicons name="camera" size={16} color="#FFF" />
+              {/* Circular clip wrapper — camera arc is INSIDE the circle */}
+              <View style={styles.avatarCircle}>
+                {profile?.profileImage ? (
+                  <Image
+                    source={{ uri: profile.profileImage }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Ionicons name="person" size={48} color="#bbb" />
+                  </View>
+                )}
+
+                {/* Bottom-arc camera cut */}
+                <View style={styles.avatarCameraArc}>
+                  <Ionicons name="camera" size={15} color="#FFF" />
+                  <Text style={styles.avatarCameraLabel}>تعديل</Text>
+                </View>
               </View>
+
+              {/* Badge frame overlay (sits outside/on top of circle) */}
+              {profile?.activeBadge?.imageUrl && (
+                <Image
+                  source={{ uri: profile.activeBadge.imageUrl }}
+                  style={styles.badgeFrameOverlay}
+                  resizeMode="contain"
+                  pointerEvents="none"
+                />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -577,24 +598,12 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginBottom: 12,
+    alignSelf: "center",
   },
-  avatarCameraBtn: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    backgroundColor: "#FE2C55",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  avatarCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     overflow: "hidden",
     backgroundColor: "#eee",
   },
@@ -602,11 +611,38 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  avatarFallback: {
+  avatarPlaceholder: {
     width: "100%",
     height: "100%",
+    backgroundColor: "#E0E0E0",
     justifyContent: "center",
     alignItems: "center",
+  },
+  avatarCameraArc: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 30,
+    backgroundColor: "rgba(0,0,0,0.52)",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
+  avatarCameraLabel: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  badgeFrameOverlay: {
+    position: "absolute",
+    width: 135,
+    height: 135,
+    top: -17,
+    left: -17,
+    pointerEvents: "none",
   },
   badgeShopButton: {
     position: "absolute",
