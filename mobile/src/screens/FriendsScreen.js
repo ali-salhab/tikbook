@@ -28,6 +28,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import NetworkErrorModal from "../components/NetworkErrorModal";
 import videoService from "../services/videoService";
 
 const { width, height } = Dimensions.get("window");
@@ -41,6 +42,7 @@ const FriendsScreen = ({ navigation }) => {
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [networkError, setNetworkError] = useState(null);
   const netInfo = useNetInfo();
 
   // MUST declare useRef before any conditional returns (Rules of Hooks)
@@ -72,6 +74,7 @@ const FriendsScreen = ({ navigation }) => {
     } catch (e) {
       console.log("❌ Error fetching friends videos:", e.message);
       setFriendsVideos([]);
+      setNetworkError(e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -351,6 +354,14 @@ const FriendsScreen = ({ navigation }) => {
           initialComments={selectedVideo.comments}
         />
       )}
+
+      {/* Network / Server Error Modal */}
+      <NetworkErrorModal
+        visible={!!networkError}
+        error={networkError}
+        onRetry={fetchFriendsVideos}
+        onDismiss={() => setNetworkError(null)}
+      />
     </View>
   );
 };

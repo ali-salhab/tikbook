@@ -30,6 +30,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import NetworkErrorModal, { classifyError } from "../components/NetworkErrorModal";
 import videoService from "../services/videoService";
 import SoundService from "../services/soundService";
 
@@ -45,6 +46,7 @@ const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [networkError, setNetworkError] = useState(null); // holds the raw error object
   const netInfo = useNetInfo();
 
   // Refs should be defined at the top level
@@ -124,7 +126,9 @@ const HomeScreen = ({ navigation }) => {
       } else if (e.request) {
         console.error("   Request made but no response received");
       }
-      setVideos([]); // show empty state instead of dummy content
+      // Only show error modal when there are no cached videos to display
+      if (videos.length === 0) setNetworkError(e);
+      setVideos((prev) => (prev.length ? prev : [])); // keep existing videos if any
     } finally {
       setLoading(false);
     }
@@ -650,6 +654,14 @@ const HomeScreen = ({ navigation }) => {
         onClose={closeComments}
         videoId={selectedVideo?._id}
         initialComments={selectedVideo?.comments || []}
+      />
+
+      {/* Network / Server Error Modal */}
+      <NetworkErrorModal
+        visible={!!networkError}
+        error={networkError}
+        onRetry={fetchVideos}
+        onDismiss={() => setNetworkError(null)}
       />
     </View>
   );
