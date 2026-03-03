@@ -147,10 +147,60 @@ const commentOnStatus = async (req, res) => {
   }
 };
 
+// POST /api/status/:id/react — add or update reaction
+const reactToStatus = async (req, res) => {
+  try {
+    const { type } = req.body; // like | love | haha | wow | sad
+    const validTypes = ["like", "love", "haha", "wow", "sad"];
+    if (!validTypes.includes(type))
+      return res.status(400).json({ message: "نوع التفاعل غير صحيح" });
+
+    const status = await Status.findById(req.params.id);
+    if (!status) return res.status(404).json({ message: "الحالة غير موجودة" });
+
+    const existingIdx = status.reactions.findIndex(
+      (r) => r.user.toString() === req.user._id.toString(),
+    );
+
+    if (existingIdx !== -1) {
+      if (status.reactions[existingIdx].type === type) {
+        // Same reaction → toggle off (remove)
+        status.reactions.splice(existingIdx, 1);
+      } else {
+        // Different type → update
+        status.reactions[existingIdx].type = type;
+      }
+    } else {
+      status.reactions.push({ user: req.user._id, type });
+    }
+
+    await status.save();
+
+    // Build counts per type
+    const counts = validTypes.reduce((acc, t) => {
+      acc[t] = status.reactions.filter((r) => r.type === t).length;
+      return acc;
+    }, {});
+
+    const userReaction = status.reactions.find(
+      (r) => r.user.toString() === req.user._id.toString(),
+    );
+
+    res.json({
+      total: status.reactions.length,
+      counts,
+      userReaction: userReaction?.type || null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createStatus,
   getStatuses,
   deleteStatus,
   viewStatus,
   commentOnStatus,
+  reactToStatus,
 };

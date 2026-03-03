@@ -34,6 +34,7 @@ const GiftPanel = ({
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
   const categories = [
@@ -100,6 +101,7 @@ const GiftPanel = ({
     }
 
     try {
+      setIsSending(true);
       await onSendGift({
         gift: selectedGift,
         quantity,
@@ -111,6 +113,8 @@ const GiftPanel = ({
     } catch (error) {
       console.log("Gift Panel Send Error", error);
       // Alert is handled in parent
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -285,10 +289,18 @@ const GiftPanel = ({
 
               {/* Send Button */}
               <TouchableOpacity
-                style={styles.sendButton}
+                style={[
+                  styles.sendButton,
+                  isSending && styles.sendButtonDisabled,
+                ]}
                 onPress={handleSendGift}
+                disabled={isSending}
               >
-                <Text style={styles.sendButtonText}>إرسال</Text>
+                {isSending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.sendButtonText}>إرسال</Text>
+                )}
                 <View style={styles.totalCostBadge}>
                   <Ionicons name="diamond" size={14} color="#fff" />
                   <Text style={styles.totalCostText}>
@@ -495,6 +507,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#c4637a",
+    opacity: 0.8,
   },
   sendButtonText: {
     color: "#fff",

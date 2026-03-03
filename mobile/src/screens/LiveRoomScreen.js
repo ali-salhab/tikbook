@@ -15,7 +15,6 @@ import {
   Modal,
   ScrollView,
   Keyboard,
-  KeyboardAvoidingView,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -85,6 +84,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   // ── Gifts ────────────────────────────────────────────────────────────────────
   const [activeGifts, setActiveGifts] = useState([]);
@@ -575,10 +575,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const msg = inputText.trim();
     if (!msg) return;
     SoundService.play("message");
+    const senderUser = freshUser
+      ? {
+          ...userInfo,
+          profileImage: freshUser.profileImage || userInfo?.profileImage,
+        }
+      : userInfo;
     socketRef.current?.emit("liveroom:send_message", {
       roomId,
       message: msg,
-      user: userInfo,
+      user: senderUser,
     });
     setInputText("");
   };
@@ -586,12 +592,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const handleOpenInput = () => {
     playTap();
     setShowInput(true);
+    // Focus will be triggered by the TextInput ref once visible
+    setTimeout(() => inputRef.current?.focus(), 80);
   };
 
   const handleCloseInput = () => {
     Keyboard.dismiss();
     setShowInput(false);
     setInputText("");
+    setKeyboardOffset(0);
   };
 
   const handleSendGiftRequest = async ({ gift, quantity }) => {
@@ -1289,63 +1298,81 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
   };
 
-  // ─── CHAT INPUT (Modal + KeyboardAvoidingView so it always sits above keyboard) ──
+  // ─── KEYBOARD LISTENER ───────────────────────────────────────────────────────────
 
-  const chatInputBar = (
-    <Modal
-      visible={showInput}
-      transparent
-      animationType="slide"
-      onRequestClose={handleCloseInput}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1, justifyContent: "flex-end" }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+  useEffect(() => {
+    if (!showInput) return;
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => setKeyboardOffset(e.endCoordinates.height),
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardOffset(0),
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [showInput]);
+
+  // ─── CHAT INPUT BAR ───────────────────────────────────────────────────────────
+
+  const chatInputBar = showInput ? (
+    <>
+      {/* Dismiss backdrop */}
+      <TouchableOpacity
+        style={StyleSheet.absoluteFill}
+        activeOpacity={1}
+        onPress={handleCloseInput}
+      />
+      {/* Input bar — floats exactly above keyboard */}
+      <View
+        style={[
+          styles.chatBar,
+          {
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: keyboardOffset,
+            paddingBottom: keyboardOffset === 0 ? insets.bottom + 12 : 12,
+          },
+        ]}
       >
-        {/* Tap outside to close */}
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={handleCloseInput}
+        <TextInput
+          ref={inputRef}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="اكتب تعليقاً..."
+          placeholderTextColor="#999"
+          style={styles.chatField}
+          onSubmitEditing={handleSendMessage}
+          returnKeyType="send"
+          blurOnSubmit={false}
+          multiline={false}
+          autoCorrect={false}
+          spellCheck={false}
         />
-        <View style={[styles.chatBar, { paddingBottom: insets.bottom + 12 }]}>
-          <TextInput
-            ref={inputRef}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="اكتب تعليقاً..."
-            placeholderTextColor="#999"
-            style={styles.chatField}
-            onSubmitEditing={handleSendMessage}
-            returnKeyType="send"
-            blurOnSubmit={false}
-            multiline={false}
-            autoCorrect={false}
-            spellCheck={false}
-            autoFocus
-          />
-          <TouchableOpacity
-            onPress={() => {
-              playTap();
-              handleSendMessage();
-            }}
-            style={styles.sendBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="send" size={20} color="#00BFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleCloseInput}
-            style={styles.closeChatBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="close-circle" size={20} color="#AAA" />
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
+        <TouchableOpacity
+          onPress={() => {
+            playTap();
+            handleSendMessage();
+          }}
+          style={styles.sendBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="send" size={20} color="#00BFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleCloseInput}
+          style={styles.closeChatBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="close-circle" size={20} color="#AAA" />
+        </TouchableOpacity>
+      </View>
+    </>
+  ) : null;
 
   // ─── SUMMARY MODAL ───────────────────────────────────────────────────────────
   const summaryModal = (
@@ -1815,7 +1842,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   balanceChipText: { color: "#00F2EA", fontWeight: "bold", fontSize: 12 },
-  actions: { flexDirection: "row", alignItems: "flex-end", gap: 10 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 10 },
   actionCircle: {
     width: 40,
     height: 40,

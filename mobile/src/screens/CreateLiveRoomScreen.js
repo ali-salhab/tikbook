@@ -71,7 +71,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [9, 16],   // portrait — fills full screen in the room
+      aspect: [9, 16], // portrait — fills full screen in the room
       quality: 0.85,
     });
     if (!result.canceled) setCoverImage(result.assets[0].uri);

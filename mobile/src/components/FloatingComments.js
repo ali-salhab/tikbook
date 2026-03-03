@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ const MAX_COMMENTS = 20;
 const CommentRow = React.memo(({ item, isNew }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (isNew) {
@@ -35,18 +36,25 @@ const CommentRow = React.memo(({ item, isNew }) => {
   }, []);
 
   const isSystem = item.isSystem;
+  const imageUri = item.user?.profileImage || item.user?.avatar;
+  const initials = item.user?.username
+    ? item.user.username.charAt(0).toUpperCase()
+    : "?";
 
   return (
     <Animated.View
       style={[styles.row, { opacity, transform: [{ translateY: slideY }] }]}
     >
-      {item.user?.profileImage || item.user?.avatar ? (
+      {imageUri && !imgError ? (
         <Image
-          source={{ uri: item.user.profileImage || item.user.avatar }}
+          source={{ uri: imageUri }}
           style={styles.avatar}
+          onError={() => setImgError(true)}
         />
       ) : (
-        <View style={styles.avatarFallback} />
+        <View style={styles.avatarFallback}>
+          <Text style={styles.avatarInitial}>{initials}</Text>
+        </View>
       )}
       <View style={styles.bubble}>
         {item.user?.username ? (
@@ -70,7 +78,7 @@ const FloatingComments = ({ comments }) => {
 
   const renderItem = useCallback(
     ({ item }) => <CommentRow item={item} isNew={item.id === latestId} />,
-    [latestId]
+    [latestId],
   );
 
   const keyExtractor = useCallback((item) => String(item.id), []);
@@ -133,8 +141,15 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     marginRight: 6,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(120,80,200,0.6)",
     flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: {
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "700",
   },
   bubble: {
     backgroundColor: "rgba(0,0,0,0.52)",

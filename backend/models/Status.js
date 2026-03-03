@@ -18,6 +18,12 @@ const statusSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+    reactions: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        type: { type: String, enum: ["like", "love", "haha", "wow", "sad"], default: "like" },
+      },
+    ],
   },
   { timestamps: true },
 );
