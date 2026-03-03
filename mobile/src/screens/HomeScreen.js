@@ -250,9 +250,27 @@ const HomeScreen = ({ navigation, route }) => {
 
   const handleShare = async (video) => {
     try {
-      await Share.share({
-        message: `شاهد هذا الفيديو الرائع من @${video.user.username}: ${video.description}`,
-      });
+      const deepLink = `tikbook://video/${video._id}`;
+      // Play Store link (shown as fallback — update once app is live)
+      const playStoreUrl = `https://play.google.com/store/apps/details?id=com.tikbook.com`;
+
+      const shareMessage =
+        `🎵 شاهد هذا الفيديو الرائع من @${video.user.username} على تطبيق TikBook!` +
+        (video.description ? `\n\n${video.description}` : "") +
+        `\n\n▶️ افتح في التطبيق:\n${deepLink}` +
+        `\n\n📲 إذا لم يكن التطبيق مثبتاً لديك:\n${playStoreUrl}`;
+
+      await Share.share(
+        {
+          message: shareMessage,
+          url: deepLink, // iOS: opens app directly from share sheet
+          title: `فيديو من @${video.user.username} - TikBook`,
+        },
+        {
+          dialogTitle: "مشاركة الفيديو",
+          subject: `شاهد هذا الفيديو على TikBook`,
+        },
+      );
     } catch (error) {
       console.log(error);
     }
@@ -311,6 +329,8 @@ const HomeScreen = ({ navigation, route }) => {
     const [duration, setDuration] = useState(0);
     const progressBarWidth = useRef(0);
     const isSeeking = useRef(false);
+    const [isScrubbing, setIsScrubbing] = useState(false);
+    const scrubThumbScale = useRef(new Animated.Value(1)).current;
     const playIconOpacity = useRef(new Animated.Value(0)).current;
     const playIconScale = useRef(new Animated.Value(0.6)).current;
 
@@ -330,38 +350,64 @@ const HomeScreen = ({ navigation, route }) => {
       }
     }, [isActive]);
 
+    // Format ms -> m:ss
+    const formatTime = (ms) => {
+      const totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
     // PanResponder for draggable progress thumb
     const progressPanResponder = useRef(
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => {
+        onPanResponderGrant: (evt) => {
           isSeeking.current = true;
-        },
-        onPanResponderMove: (_, gestureState) => {
+          setIsScrubbing(true);
+          Animated.spring(scrubThumbScale, {
+            toValue: 1.8,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 80,
+          }).start();
           const barW = progressBarWidth.current;
           if (!barW) return;
-          // gestureState.moveX is absolute; we need relative position
-          // Use dx from the grant position
-          const clampedX = Math.max(0, Math.min(gestureState.moveX, barW));
-          const newProgress = clampedX / barW;
-          setProgress(newProgress);
+          const relX = evt.nativeEvent.locationX;
+          const newP = Math.max(0, Math.min(relX / barW, 1));
+          setProgress(newP);
         },
-        onPanResponderRelease: (_, gestureState) => {
+        onPanResponderMove: (evt) => {
           const barW = progressBarWidth.current;
-          if (!barW) {
-            isSeeking.current = false;
-            return;
-          }
-          const clampedX = Math.max(0, Math.min(gestureState.moveX, barW));
-          const newProgress = clampedX / barW;
-          setProgress(newProgress);
+          if (!barW) return;
+          const relX = evt.nativeEvent.locationX;
+          const newP = Math.max(0, Math.min(relX / barW, 1));
+          setProgress(newP);
+        },
+        onPanResponderRelease: (evt) => {
+          const barW = progressBarWidth.current;
+          const relX = evt.nativeEvent.locationX;
+          const newP = barW ? Math.max(0, Math.min(relX / barW, 1)) : progress;
+          setProgress(newP);
           if (videoRef.current && duration > 0) {
             videoRef.current
-              .setPositionAsync(Math.floor(newProgress * duration))
+              .setPositionAsync(Math.floor(newP * duration))
               .catch(() => {});
           }
           isSeeking.current = false;
+          setIsScrubbing(false);
+          Animated.spring(scrubThumbScale, {
+            toValue: 1,
+            useNativeDriver: true,
+            friction: 6,
+            tension: 80,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          isSeeking.current = false;
+          setIsScrubbing(false);
+          Animated.spring(scrubThumbScale, { toValue: 1, useNativeDriver: true }).start();
         },
       }),
     ).current;
@@ -580,21 +626,54 @@ const HomeScreen = ({ navigation, route }) => {
         {/* Progress bar with draggable thumb */}
         {!isImage(item.videoUrl) && (
           <View
-            style={[styles.progressBarBg, { bottom: insets.bottom + 76 }]}
+            style={[
+              styles.progressBarWrapper,
+              { bottom: insets.bottom + 68 },
+            ]}
             onLayout={(e) => {
               progressBarWidth.current = e.nativeEvent.layout.width;
             }}
             {...progressPanResponder.panHandlers}
           >
-            <View
-              style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
-            />
-            {/* Draggable thumb */}
-            <View
+            {/* Time bubble — only visible while scrubbing */}
+            {isScrubbing && (
+              <View
+                style={[
+                  styles.timeBubble,
+                  {
+                    left: `${progress * 100}%`,
+                    bottom: 18,
+                    marginLeft: -26,
+                  },
+                ]}
+                pointerEvents="none"
+              >
+                <Text style={styles.timeBubbleText}>
+                  {formatTime(progress * duration)}
+                </Text>
+                {/* Little triangle */}
+                <View style={styles.timeBubbleTail} />
+              </View>
+            )}
+
+            {/* Track bar */}
+            <View style={styles.progressBarBg}>
+              <View
+                style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
+              />
+            </View>
+
+            {/* Animated thumb */}
+            <Animated.View
               style={[
                 styles.progressThumb,
-                { left: `${progress * 100}%`, marginLeft: -7 },
+                {
+                  left: `${progress * 100}%`,
+                  marginLeft: -7,
+                  transform: [{ scale: scrubThumbScale }],
+                },
               ]}
+              pointerEvents="none"
             />
           </View>
         )}
@@ -953,13 +1032,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingLeft: 4, // optical center for play icon
   },
-  progressBarBg: {
+  progressBarWrapper: {
     position: "absolute",
     left: 0,
     right: 0,
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    // tall hit area so dragging is easy
+    paddingVertical: 12,
     zIndex: 200,
+  },
+  progressBarBg: {
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderRadius: 2,
   },
   progressBarFill: {
     height: 3,
@@ -968,16 +1052,43 @@ const styles = StyleSheet.create({
   },
   progressThumb: {
     position: "absolute",
-    top: -5,
+    // vertically centered on the 3-px track + 12-px padding
+    top: 12 - 7,   // paddingTop(12) - half(14/2=7) = 5
     width: 14,
     height: 14,
     borderRadius: 7,
     backgroundColor: "#FFF",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  timeBubble: {
+    position: "absolute",
+    backgroundColor: "rgba(0,0,0,0.75)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  timeBubbleText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+  timeBubbleTail: {
+    position: "absolute",
+    bottom: -5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 5,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "rgba(0,0,0,0.75)",
   },
   bufferingOverlay: {
     position: "absolute",

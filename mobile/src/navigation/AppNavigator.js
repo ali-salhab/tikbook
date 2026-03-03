@@ -51,6 +51,36 @@ import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Linking } from "react-native";
+
+// Parse a tikbook://video/:videoId URL and return the videoId, or null
+const parseDeepLink = (url) => {
+  if (!url) return null;
+  try {
+    // matches tikbook://video/SOME_ID
+    const match = url.match(/tikbook:\/\/video\/([^/?#]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+};
+
+// Navigate to the video — waits until navigation is ready
+const navigateToVideo = (navigationRef, videoId) => {
+  if (!videoId) return;
+  // navigationRef.isReady() may be false on cold start → retry
+  const attempt = (retries = 8) => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate("MainTabs", {
+        screen: "Home",
+        params: { videoId },
+      });
+    } else if (retries > 0) {
+      setTimeout(() => attempt(retries - 1), 250);
+    }
+  };
+  attempt();
+};
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -291,7 +321,23 @@ const AppNavigator = () => {
     setupAndroidChannel();
     // Handle cold start (app opened from killed state via notification)
     handleInitialNotification(navigationRef);
-    return unsubscribe;
+
+    // --- Deep link handling ---
+    // Cold start: app was killed, opened via tikbook:// link
+    Linking.getInitialURL().then((url) => {
+      const videoId = parseDeepLink(url);
+      if (videoId) navigateToVideo(navigationRef, videoId);
+    });
+    // Warm start: app is in background/foreground, link tapped
+    const linkingSub = Linking.addEventListener("url", ({ url }) => {
+      const videoId = parseDeepLink(url);
+      if (videoId) navigateToVideo(navigationRef, videoId);
+    });
+
+    return () => {
+      unsubscribe();
+      linkingSub.remove();
+    };
   }, []);
 
   // Poll for notification count every 30 seconds when user is logged in
