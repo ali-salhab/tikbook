@@ -278,7 +278,7 @@ const InboxScreen = ({ navigation }) => {
 
       {/* Fixed Menu Items */}
       <View style={styles.sectionDivider}>
-        <Text style={styles.sectionDividerText}>الرسائل</Text>
+        <Text style={styles.sectionDividerText}>الإشعارات</Text>
       </View>
       <View style={styles.menuContainer}>
         <TouchableOpacity
@@ -344,6 +344,10 @@ const InboxScreen = ({ navigation }) => {
           </View>
           {systemNotifications.length > 0 && <View style={styles.dotBadge} />}
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.sectionDivider}>
+        <Text style={styles.sectionDividerText}>الرسائل</Text>
       </View>
     </View>
   );

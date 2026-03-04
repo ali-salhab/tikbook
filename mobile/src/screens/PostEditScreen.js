@@ -93,34 +93,16 @@ const PostEditScreen = ({ navigation, route }) => {
       formData.append("allowDuet", allowDuet.toString());
       formData.append("allowStitch", allowStitch.toString());
 
-      console.log("📤 Uploading to:", `${BASE_URL}/videos`);
+      // Start background upload via Context
+      startUpload(formData, userToken);
 
-      // Upload with progress tracking
-      const response = await axios.post(`${BASE_URL}/videos`, formData, {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total,
-          );
-          setUploadProgress(percentCompleted);
-          updateProgress(percentCompleted);
-          console.log(`Upload Progress: ${percentCompleted}%`);
-        },
-        timeout: 180000, // 3 minutes timeout for multi-media
-      });
-
-      console.log("✅ Upload successful:", response.data);
-      finishUpload(true);
-
+      // Navigate away immediately
       Alert.alert(
-        "نجح! 🎉",
-        "تم رفع المنشور بنجاح",
+        "جاري الرفع",
+        "سيتم رفع المنشور في الخلفية، يمكنك استكمال التصفح.",
         [
           {
-            text: "موافق",
+            text: "حسناً",
             onPress: () => {
               navigation.reset({
                 index: 0,
@@ -129,33 +111,12 @@ const PostEditScreen = ({ navigation, route }) => {
             },
           },
         ],
-        { cancelable: false },
       );
     } catch (error) {
-      console.error("❌ Upload error:", error);
-      finishUpload(false);
-      if (error.response) {
-        console.log("❌ Server Error Data:", error.response.data);
-        console.log("❌ Server Error Status:", error.response.status);
-      }
-
-      let errorMessage = "فشل رفع المنشور. الرجاء المحاولة مرة أخرى.";
-
-      if (error.response) {
-        errorMessage = error.response.data.message || errorMessage;
-      } else if (error.message.includes("timeout")) {
-        errorMessage = "انتهت مهلة الرفع. تحقق من اتصالك بالإنترنت.";
-      } else if (error.message.includes("Network")) {
-        errorMessage = "خطأ في الشبكة. تحقق من اتصالك بالإنترنت.";
-      }
-
-      Alert.alert("خطأ", errorMessage, [
-        { text: "إعادة المحاولة", onPress: handleUpload },
-        { text: "إلغاء", style: "cancel" },
-      ]);
+      console.error("❌ Upload preparation error:", error);
+      Alert.alert("خطأ", "فشل تجهيز المنشور");
     } finally {
-      setUploading(false);
-      setUploadProgress(0);
+      // Clean up if needed
     }
   };
 

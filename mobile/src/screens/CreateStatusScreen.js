@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -16,8 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Video } from "expo-av";
-import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
+import { useUpload } from "../context/UploadContext";
 import { BASE_URL } from "../config/api";
 
 const BG_COLORS = [
@@ -33,11 +32,11 @@ const BG_COLORS = [
 
 const CreateStatusScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);
+  const { startUpload } = useUpload();
   const [statusText, setStatusText] = useState("");
   const [selectedColor, setSelectedColor] = useState(BG_COLORS[0]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
-  const [loading, setLoading] = useState(false);
   const videoRef = useRef(null);
 
   const pickImage = async () => {
@@ -80,49 +79,41 @@ const CreateStatusScreen = ({ navigation }) => {
     setSelectedVideo(null);
   };
 
-  const handlePost = async () => {
+  const handlePost = () => {
     if (!statusText.trim() && !selectedImage && !selectedVideo) {
       Alert.alert("تنبيه", "يرجى كتابة نص أو اختيار صورة أو فيديو للحالة");
       return;
     }
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      if (statusText.trim()) formData.append("text", statusText.trim());
-      formData.append("bgColor", selectedColor);
-      if (selectedImage) {
-        const uri = selectedImage.uri;
-        const filename = uri.split("/").pop();
-        const ext = filename.split(".").pop().toLowerCase();
-        const mimeType =
-          ext === "png"
-            ? "image/png"
-            : ext === "gif"
-              ? "image/gif"
-              : "image/jpeg";
-        formData.append("image", { uri, name: filename, type: mimeType });
-      } else if (selectedVideo) {
-        const uri = selectedVideo.uri;
-        const filename = uri.split("/").pop();
-        const ext = filename.split(".").pop().toLowerCase() || "mp4";
-        formData.append("image", { uri, name: filename, type: `video/${ext}` });
-      }
-      await axios.post(`${BASE_URL}/status`, formData, {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      Alert.alert("تم", "تم نشر حالتك بنجاح", [
-        { text: "حسناً", onPress: () => navigation.goBack() },
-      ]);
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message || "حدث خطأ أثناء نشر الحالة، حاول مجدداً";
-      Alert.alert("خطأ", msg);
-    } finally {
-      setLoading(false);
+
+    const formData = new FormData();
+    if (statusText.trim()) formData.append("text", statusText.trim());
+    formData.append("bgColor", selectedColor);
+    if (selectedImage) {
+      const uri = selectedImage.uri;
+      const filename = uri.split("/").pop();
+      const ext = filename.split(".").pop().toLowerCase();
+      const mimeType =
+        ext === "png"
+          ? "image/png"
+          : ext === "gif"
+            ? "image/gif"
+            : "image/jpeg";
+      formData.append("image", { uri, name: filename, type: mimeType });
+    } else if (selectedVideo) {
+      const uri = selectedVideo.uri;
+      const filename = uri.split("/").pop();
+      const ext = filename.split(".").pop().toLowerCase() || "mp4";
+      formData.append("image", { uri, name: filename, type: `video/${ext}` });
     }
+
+    // Fire & forget — upload runs in background with floating indicator
+    startUpload(formData, userToken, `${BASE_URL}/status`);
+
+    Alert.alert(
+      "جاري النشر",
+      "تتم مشاركة حالتك في الخلفية. يمكنك الاستمرار في التصفح.",
+      [{ text: "حسناً", onPress: () => navigation.goBack() }],
+    );
   };
 
   return (
@@ -142,15 +133,9 @@ const CreateStatusScreen = ({ navigation }) => {
               styles.postBtnDisabled,
           ]}
           onPress={handlePost}
-          disabled={
-            (!statusText.trim() && !selectedImage && !selectedVideo) || loading
-          }
+          disabled={!statusText.trim() && !selectedImage && !selectedVideo}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color="#FFF" />
-          ) : (
-            <Text style={styles.postBtnText}>نشر</Text>
-          )}
+          <Text style={styles.postBtnText}>نشر</Text>
         </TouchableOpacity>
       </View>
 

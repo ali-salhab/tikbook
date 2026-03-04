@@ -1,87 +1,66 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, Animated, StyleSheet, Platform } from "react-native";
+import { View, Text, Animated, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUpload } from "../context/UploadContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FloatingUploadOverlay = () => {
-  const { uploading, uploadProgress, uploadDone } = useUpload();
+  const { uploading, uploadProgress, uploadDone, error } = useUpload();
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(120)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0)).current;
 
-  // Slide in / out
+  // Pop in / out
   useEffect(() => {
-    if (uploading) {
-      Animated.spring(translateY, {
-        toValue: 0,
+    if (uploading || uploadDone || error) {
+      Animated.spring(scale, {
+        toValue: 1,
         useNativeDriver: true,
-        friction: 10,
-        tension: 80,
+        friction: 6,
+        tension: 40,
       }).start();
     } else {
-      Animated.timing(translateY, {
-        toValue: 120,
-        duration: 400,
+      Animated.timing(scale, {
+        toValue: 0,
+        duration: 300,
         useNativeDriver: true,
       }).start();
     }
-  }, [uploading]);
+  }, [uploading, uploadDone, error]);
 
-  // Animate progress bar width
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: uploadProgress,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [uploadProgress]);
-
-  if (!uploading) return null;
+  const currentProgress = Math.round(uploadProgress);
 
   return (
     <Animated.View
       style={[
         styles.container,
         {
-          bottom: insets.bottom + 70,
-          transform: [{ translateY }],
+          top: insets.top + 10,
+          left: 16,
+          transform: [{ scale }],
         },
       ]}
-      pointerEvents="none"
+      pointerEvents={uploading ? "auto" : "none"}
     >
-      <View style={styles.card}>
-        {/* Icon */}
-        <View style={styles.iconBox}>
-          {uploadDone ? (
-            <Ionicons name="checkmark-circle" size={26} color="#4CAF50" />
-          ) : (
-            <Ionicons name="cloud-upload-outline" size={26} color="#FE2C55" />
-          )}
-        </View>
+      <View
+        style={[
+          styles.circle,
+          uploadDone && styles.circleSuccess,
+          error && styles.circleError,
+        ]}
+      >
+        {/* Background Vertical Fill */}
+        {!uploadDone && !error && (
+          <View style={[styles.fill, { height: `${currentProgress}%` }]} />
+        )}
 
-        {/* Text + bar */}
-        <View style={styles.content}>
-          <Text style={styles.title}>
-            {uploadDone ? "تم الرفع بنجاح ✅" : "جاري رفع المنشور..."}
-          </Text>
-          <View style={styles.barBg}>
-            <Animated.View
-              style={[
-                styles.barFill,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 100],
-                    outputRange: ["0%", "100%"],
-                    extrapolate: "clamp",
-                  }),
-                  backgroundColor: uploadDone ? "#4CAF50" : "#FE2C55",
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.percent}>{Math.round(uploadProgress)}%</Text>
-        </View>
+        {/* Content */}
+        {uploadDone ? (
+          <Ionicons name="checkmark" size={28} color="#FFF" />
+        ) : error ? (
+          <Ionicons name="alert" size={28} color="#FFF" />
+        ) : (
+          <Text style={styles.percentageText}>{currentProgress}%</Text>
+        )}
       </View>
     </Animated.View>
   );
@@ -90,53 +69,47 @@ const FloatingUploadOverlay = () => {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    left: 16,
-    right: 16,
     zIndex: 9999,
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#1a1a1a",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  iconBox: {
-    marginRight: 12,
-  },
-  content: {
-    flex: 1,
-  },
-  title: {
-    color: "#FFF",
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 6,
-    textAlign: "right",
-  },
-  barBg: {
-    height: 6,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 3,
+  circle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(0,0,0,0.6)", // Dark semi-transparent
+    justifyContent: "center",
+    alignItems: "center",
     overflow: "hidden",
-    marginBottom: 4,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  barFill: {
-    height: "100%",
-    borderRadius: 3,
+  circleSuccess: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
   },
-  percent: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 11,
-    textAlign: "right",
+  circleError: {
+    backgroundColor: "#F44336",
+    borderColor: "#F44336",
+  },
+  fill: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(254, 44, 85, 0.9)", // Brand color
+  },
+  percentageText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 14,
+    zIndex: 2,
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
 
