@@ -27,7 +27,8 @@ import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../config/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
@@ -48,6 +49,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [commentsVisible, setCommentsVisible] = useState(false);
   const { userToken, userInfo } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const isScreenFocused = useIsFocused();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [networkError, setNetworkError] = useState(null); // holds the raw error object
@@ -243,8 +246,22 @@ const HomeScreen = ({ navigation, route }) => {
       }
     } catch (error) {
       console.log("Error liking video:", error);
-      // Re-sync with backend to avoid stale like UI
-      fetchVideos();
+      // Revert the optimistic update on error (don't reload all videos)
+      setVideos((prevVideos) =>
+        prevVideos.map((video) => {
+          if (video._id === videoId) {
+            const currentLikes = Array.isArray(video.likes) ? video.likes : [];
+            const revertedIsLiked = !video.isLiked;
+            const revertedLikes = revertedIsLiked
+              ? [...currentLikes, currentUserId]
+              : currentLikes.filter(
+                  (id) => id?.toString?.() !== currentUserId.toString(),
+                );
+            return { ...video, isLiked: revertedIsLiked, likes: revertedLikes };
+          }
+          return video;
+        }),
+      );
     }
   };
 
@@ -355,7 +372,7 @@ const HomeScreen = ({ navigation, route }) => {
       const totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
       const m = Math.floor(totalSec / 60);
       const s = totalSec % 60;
-      return `${m}:${s.toString().padStart(2, '0')}`;
+      return `${m}:${s.toString().padStart(2, "0")}`;
     };
 
     // PanResponder for draggable progress thumb
@@ -407,7 +424,10 @@ const HomeScreen = ({ navigation, route }) => {
         onPanResponderTerminate: () => {
           isSeeking.current = false;
           setIsScrubbing(false);
-          Animated.spring(scrubThumbScale, { toValue: 1, useNativeDriver: true }).start();
+          Animated.spring(scrubThumbScale, {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
         },
       }),
     ).current;
@@ -603,7 +623,7 @@ const HomeScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         {/* Bottom Info */}
-        <View style={[styles.bottomSection, { bottom: insets.bottom + 80 }]}>
+        <View style={[styles.bottomSection, { bottom: tabBarHeight + 20 }]}>
           <View style={styles.userInfo}>
             <Text style={styles.username}>@{item.user.username}</Text>
             <Text style={styles.description}>{item.description}</Text>
@@ -626,10 +646,7 @@ const HomeScreen = ({ navigation, route }) => {
         {/* Progress bar with draggable thumb */}
         {!isImage(item.videoUrl) && (
           <View
-            style={[
-              styles.progressBarWrapper,
-              { bottom: insets.bottom + 68 },
-            ]}
+            style={[styles.progressBarWrapper, { bottom: tabBarHeight + 8 }]}
             onLayout={(e) => {
               progressBarWidth.current = e.nativeEvent.layout.width;
             }}
@@ -659,7 +676,10 @@ const HomeScreen = ({ navigation, route }) => {
             {/* Track bar */}
             <View style={styles.progressBarBg}>
               <View
-                style={[styles.progressBarFill, { width: `${progress * 100}%` }]}
+                style={[
+                  styles.progressBarFill,
+                  { width: `${progress * 100}%` },
+                ]}
               />
             </View>
 
@@ -679,7 +699,7 @@ const HomeScreen = ({ navigation, route }) => {
         )}
 
         {/* Side Actions */}
-        <View style={[styles.rightActions, { bottom: insets.bottom + 80 }]}>
+        <View style={[styles.rightActions, { bottom: tabBarHeight + 20 }]}>
           {/* Profile Image */}
           <TouchableOpacity
             style={styles.profileContainer}
@@ -768,7 +788,10 @@ const HomeScreen = ({ navigation, route }) => {
   };
 
   const renderItem = ({ item, index }) => (
-    <VideoItem item={item} isActive={index === activeVideoIndex} />
+    <VideoItem
+      item={item}
+      isActive={index === activeVideoIndex && isScreenFocused}
+    />
   );
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
@@ -1053,7 +1076,7 @@ const styles = StyleSheet.create({
   progressThumb: {
     position: "absolute",
     // vertically centered on the 3-px track + 12-px padding
-    top: 12 - 7,   // paddingTop(12) - half(14/2=7) = 5
+    top: 12 - 7, // paddingTop(12) - half(14/2=7) = 5
     width: 14,
     height: 14,
     borderRadius: 7,

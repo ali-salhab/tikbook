@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Video } from "expo-av";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
@@ -35,7 +36,9 @@ const CreateStatusScreen = ({ navigation }) => {
   const [statusText, setStatusText] = useState("");
   const [selectedColor, setSelectedColor] = useState(BG_COLORS[0]);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const videoRef = useRef(null);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -50,14 +53,36 @@ const CreateStatusScreen = ({ navigation }) => {
     });
     if (!result.canceled && result.assets?.length > 0) {
       setSelectedImage(result.assets[0]);
+      setSelectedVideo(null);
     }
   };
 
-  const removeImage = () => setSelectedImage(null);
+  const pickVideo = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("إذن مرفوض", "يرجى السماح بالوصول إلى مكتبة الفيديو");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: true,
+      videoMaxDuration: 30,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      setSelectedVideo(result.assets[0]);
+      setSelectedImage(null);
+    }
+  };
+
+  const removeMedia = () => {
+    setSelectedImage(null);
+    setSelectedVideo(null);
+  };
 
   const handlePost = async () => {
-    if (!statusText.trim() && !selectedImage) {
-      Alert.alert("تنبيه", "يرجى كتابة نص أو اختيار صورة للحالة");
+    if (!statusText.trim() && !selectedImage && !selectedVideo) {
+      Alert.alert("تنبيه", "يرجى كتابة نص أو اختيار صورة أو فيديو للحالة");
       return;
     }
     setLoading(true);
@@ -76,6 +101,11 @@ const CreateStatusScreen = ({ navigation }) => {
               ? "image/gif"
               : "image/jpeg";
         formData.append("image", { uri, name: filename, type: mimeType });
+      } else if (selectedVideo) {
+        const uri = selectedVideo.uri;
+        const filename = uri.split("/").pop();
+        const ext = filename.split(".").pop().toLowerCase() || "mp4";
+        formData.append("image", { uri, name: filename, type: `video/${ext}` });
       }
       await axios.post(`${BASE_URL}/status`, formData, {
         headers: {
@@ -106,10 +136,15 @@ const CreateStatusScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.postBtn,
-            !statusText.trim() && !selectedImage && styles.postBtnDisabled,
+            !statusText.trim() &&
+              !selectedImage &&
+              !selectedVideo &&
+              styles.postBtnDisabled,
           ]}
           onPress={handlePost}
-          disabled={(!statusText.trim() && !selectedImage) || loading}
+          disabled={
+            (!statusText.trim() && !selectedImage && !selectedVideo) || loading
+          }
         >
           {loading ? (
             <ActivityIndicator size="small" color="#FFF" />
@@ -127,7 +162,10 @@ const CreateStatusScreen = ({ navigation }) => {
         <View
           style={[
             styles.preview,
-            { backgroundColor: selectedImage ? "#000" : selectedColor },
+            {
+              backgroundColor:
+                selectedImage || selectedVideo ? "#000" : selectedColor,
+            },
           ]}
         >
           {selectedImage ? (
@@ -143,7 +181,37 @@ const CreateStatusScreen = ({ navigation }) => {
               ) : null}
               <TouchableOpacity
                 style={styles.removeImageBtn}
-                onPress={removeImage}
+                onPress={removeMedia}
+              >
+                <Ionicons name="close-circle" size={26} color="#FFF" />
+              </TouchableOpacity>
+            </>
+          ) : selectedVideo ? (
+            <>
+              <Video
+                ref={videoRef}
+                source={{ uri: selectedVideo.uri }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+                shouldPlay
+                isLooping
+                isMuted={false}
+                useNativeControls={false}
+              />
+              {statusText ? (
+                <View style={styles.previewTextOverlay}>
+                  <Text style={styles.previewText}>{statusText}</Text>
+                </View>
+              ) : null}
+              <View style={styles.videoLabel}>
+                <Ionicons name="videocam" size={16} color="#FFF" />
+                <Text style={{ color: "#FFF", fontSize: 12, marginLeft: 4 }}>
+                  فيديو قصير
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.removeImageBtn}
+                onPress={removeMedia}
               >
                 <Ionicons name="close-circle" size={26} color="#FFF" />
               </TouchableOpacity>
@@ -155,28 +223,38 @@ const CreateStatusScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Color picker */}
-        <View style={styles.colorRow}>
-          {BG_COLORS.map((c) => (
-            <TouchableOpacity
-              key={c}
-              style={[
-                styles.colorDot,
-                { backgroundColor: c },
-                selectedColor === c && styles.colorDotSelected,
-              ]}
-              onPress={() => setSelectedColor(c)}
-            />
-          ))}
-        </View>
+        {/* Color picker — only when no media */}
+        {!selectedImage && !selectedVideo && (
+          <View style={styles.colorRow}>
+            {BG_COLORS.map((c) => (
+              <TouchableOpacity
+                key={c}
+                style={[
+                  styles.colorDot,
+                  { backgroundColor: c },
+                  selectedColor === c && styles.colorDotSelected,
+                ]}
+                onPress={() => setSelectedColor(c)}
+              />
+            ))}
+          </View>
+        )}
 
-        {/* Image picker button */}
-        <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
-          <Ionicons name="image-outline" size={22} color="#FE2C55" />
-          <Text style={styles.imagePickerText}>
-            {selectedImage ? "تغيير الصورة" : "إضافة صورة"}
-          </Text>
-        </TouchableOpacity>
+        {/* Media picker buttons */}
+        <View style={styles.mediaRow}>
+          <TouchableOpacity style={styles.mediaBtn} onPress={pickImage}>
+            <Ionicons name="image-outline" size={22} color="#FE2C55" />
+            <Text style={styles.mediaBtnText}>
+              {selectedImage ? "تغيير الصورة" : "إضافة صورة"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.mediaBtn} onPress={pickVideo}>
+            <Ionicons name="videocam-outline" size={22} color="#FE2C55" />
+            <Text style={styles.mediaBtnText}>
+              {selectedVideo ? "تغيير الفيديو" : "إضافة فيديو"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Text input */}
         <View style={styles.inputBox}>
@@ -254,23 +332,39 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
   },
-  imagePickerBtn: {
+  videoLabel: {
+    position: "absolute",
+    top: 10,
+    left: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  mediaRow: {
+    flexDirection: "row",
+    gap: 12,
     marginHorizontal: 16,
     marginBottom: 12,
+  },
+  mediaBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#FE2C55",
     borderStyle: "dashed",
     justifyContent: "center",
   },
-  imagePickerText: {
+  mediaBtnText: {
     color: "#FE2C55",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
   colorRow: {

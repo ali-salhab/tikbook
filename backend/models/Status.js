@@ -6,6 +6,7 @@ const statusSchema = new mongoose.Schema(
     text: { type: String, default: "" },
     bgColor: { type: String, default: "#FE2C55" },
     image: { type: String, default: null }, // Cloudinary URL
+    video: { type: String, default: null }, // Cloudinary video URL
     expiresAt: {
       type: Date,
       default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
@@ -21,7 +22,11 @@ const statusSchema = new mongoose.Schema(
     reactions: [
       {
         user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        type: { type: String, enum: ["like", "love", "haha", "wow", "sad"], default: "like" },
+        type: {
+          type: String,
+          enum: ["like", "love", "haha", "wow", "sad"],
+          default: "like",
+        },
       },
     ],
   },

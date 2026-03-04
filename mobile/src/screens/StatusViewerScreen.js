@@ -21,7 +21,11 @@ import {
   KeyboardAvoidingView,
   Keyboard,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Video } from "expo-av";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
@@ -213,6 +217,16 @@ const StatusSlide = React.memo(
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           />
+        ) : item.video ? (
+          <Video
+            source={{ uri: item.video }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            shouldPlay={index === currentIndex}
+            isLooping
+            isMuted={false}
+            useNativeControls={false}
+          />
         ) : null}
 
         {/* Dark gradient overlay */}
@@ -290,7 +304,7 @@ const StatusSlide = React.memo(
           <View
             style={[
               styles.textBox,
-              item.image && styles.textBoxWithImage,
+              (item.image || item.video) && styles.textBoxWithImage,
             ]}
           >
             <Text style={styles.statusText}>{item.text}</Text>
@@ -368,7 +382,9 @@ const StatusSlide = React.memo(
                             styles.reactionOptionActive,
                         ]}
                       >
-                        <Text style={styles.reactionOptionEmoji}>{r.emoji}</Text>
+                        <Text style={styles.reactionOptionEmoji}>
+                          {r.emoji}
+                        </Text>
                         <Text style={styles.reactionOptionLabel}>
                           {r.label}
                         </Text>
@@ -468,7 +484,14 @@ export default function StatusViewerScreen({ route, navigation }) {
 
   if (!statuses.length) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#000", justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#000",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <Text style={{ color: "#FFF" }}>لا توجد حالات</Text>
       </View>
     );

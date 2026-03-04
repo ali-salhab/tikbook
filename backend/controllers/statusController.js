@@ -7,13 +7,22 @@ const createStatus = async (req, res) => {
   try {
     const { text, bgColor } = req.body;
     let imageUrl = null;
+    let videoUrl = null;
+    const mimeType = req.file?.mimetype || "";
+    const isVideo = mimeType.startsWith("video/");
 
     if (!text && !req.file) {
-      return res.status(400).json({ message: "يرجى إضافة نص أو صورة للحالة" });
+      return res
+        .status(400)
+        .json({ message: "يرجى إضافة نص أو صورة أو فيديو للحالة" });
     }
 
     if (req.file) {
-      imageUrl = await uploadToCloudinary(req.file.path, "statuses", "image");
+      if (isVideo) {
+        videoUrl = await uploadToCloudinary(req.file.path, "statuses", "video");
+      } else {
+        imageUrl = await uploadToCloudinary(req.file.path, "statuses", "image");
+      }
       // Remove temp file
       try {
         fs.unlinkSync(req.file.path);
@@ -25,6 +34,7 @@ const createStatus = async (req, res) => {
       text: text || "",
       bgColor: bgColor || "#FE2C55",
       image: imageUrl,
+      video: videoUrl,
     });
 
     await status.populate("user", "username profileImage");

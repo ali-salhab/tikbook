@@ -349,7 +349,8 @@ const InboxScreen = ({ navigation }) => {
   );
 
   const renderConversation = ({ item }) => {
-    const otherUser = item.otherUser;
+    // Backend returns item.user (the other party) – support both shapes
+    const otherUser = item.user || item.otherUser;
     if (!otherUser?._id) {
       return null;
     }
