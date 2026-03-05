@@ -18,8 +18,8 @@ import { AuthContext } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 
 // ─── 3 steps: 1 = send OTP, 2 = verify OTP, 3 = new password ───────────────
-const STEP_SEND  = 1;
-const STEP_OTP   = 2;
+const STEP_SEND = 1;
+const STEP_OTP = 2;
 const STEP_RESET = 3;
 
 const ChangePasswordScreen = ({ navigation }) => {
@@ -29,20 +29,20 @@ const ChangePasswordScreen = ({ navigation }) => {
 
   const email = userInfo?.email || "";
 
-  const [step, setStep]           = useState(STEP_SEND);
-  const [loading, setLoading]     = useState(false);
-  const [devOtp, setDevOtp]       = useState(null); // test mode OTP
+  const [step, setStep] = useState(STEP_SEND);
+  const [loading, setLoading] = useState(false);
+  const [devOtp, setDevOtp] = useState(null); // test mode OTP
 
   // OTP step
-  const [otp, setOtp]             = useState(["", "", "", "", "", ""]);
-  const [timer, setTimer]         = useState(60);
-  const inputs                    = useRef([]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [timer, setTimer] = useState(60);
+  const inputs = useRef([]);
 
   // Reset step
-  const [newPassword, setNewPassword]         = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showNew, setShowNew]                 = useState(false);
-  const [showConfirm, setShowConfirm]         = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Countdown timer while on OTP step
   useEffect(() => {
@@ -58,7 +58,9 @@ const ChangePasswordScreen = ({ navigation }) => {
   const sendOtp = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(`${BASE_URL}/auth/forgot-password`, { email });
+      const res = await axios.post(`${BASE_URL}/auth/forgot-password`, {
+        email,
+      });
       if (res.data?.dev_otp) setDevOtp(res.data.dev_otp);
       setStep(STEP_OTP);
     } catch (e) {
@@ -80,33 +82,24 @@ const ChangePasswordScreen = ({ navigation }) => {
     if (!text && index > 0) inputs.current[index - 1]?.focus();
   };
 
-  const verifyOtp = async () => {
+  const verifyOtp = () => {
     const code = otp.join("");
     if (code.length < 6) {
       Alert.alert("خطأ", "يرجى إدخال الرمز كاملاً");
       return;
     }
-    setLoading(true);
-    try {
-      const res = await axios.post(`${BASE_URL}/auth/verify-otp`, {
-        email,
-        otp: code,
-      });
-      if (res.data?.verified) {
-        setStep(STEP_RESET);
-      }
-    } catch (e) {
-      Alert.alert("خطأ", e.response?.data?.message || "رمز التحقق غير صحيح أو منتهي الصلاحية");
-    } finally {
-      setLoading(false);
-    }
+    // Don't call /verify-otp here — it would delete the OTP from DB.
+    // /reset-password handles both OTP verification + password change atomically.
+    setStep(STEP_RESET);
   };
 
   const resendOtp = async () => {
     if (timer > 0) return;
     setLoading(true);
     try {
-      const res = await axios.post(`${BASE_URL}/auth/forgot-password`, { email });
+      const res = await axios.post(`${BASE_URL}/auth/forgot-password`, {
+        email,
+      });
       if (res.data?.dev_otp) setDevOtp(res.data.dev_otp);
       setOtp(["", "", "", "", "", ""]);
       setTimer(60);
@@ -159,7 +152,10 @@ const ChangePasswordScreen = ({ navigation }) => {
       >
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={s.backBtn}
+          >
             <Ionicons name="arrow-back" size={24} color={theme.icon} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>تغيير كلمة المرور</Text>
@@ -174,7 +170,11 @@ const ChangePasswordScreen = ({ navigation }) => {
           {step === STEP_SEND && (
             <View style={s.centerContent}>
               <View style={s.iconCircle}>
-                <Ionicons name="lock-closed-outline" size={44} color="#FE2C55" />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={44}
+                  color="#FE2C55"
+                />
               </View>
 
               <Text style={s.title}>تغيير كلمة المرور</Text>
@@ -233,28 +233,30 @@ const ChangePasswordScreen = ({ navigation }) => {
                     value={digit}
                     onChangeText={(t) => handleOtpChange(t, i)}
                     onKeyPress={({ nativeEvent }) => {
-                      if (nativeEvent.key === "Backspace") handleBackspace(otp[i], i);
+                      if (nativeEvent.key === "Backspace")
+                        handleBackspace(otp[i], i);
                     }}
                   />
                 ))}
               </View>
 
-              <TouchableOpacity
-                style={[s.btn, loading && s.btnDisabled]}
-                onPress={verifyOtp}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <Text style={s.btnText}>تحقق</Text>
-                )}
+              <TouchableOpacity style={s.btn} onPress={verifyOtp}>
+                <Text style={s.btnText}>التالي</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFF" />
               </TouchableOpacity>
 
               <View style={s.resendRow}>
                 <Text style={s.resendLabel}>لم يصلك الرمز؟ </Text>
-                <TouchableOpacity onPress={resendOtp} disabled={timer > 0 || loading}>
-                  <Text style={[s.resendLink, (timer > 0 || loading) && s.resendDisabled]}>
+                <TouchableOpacity
+                  onPress={resendOtp}
+                  disabled={timer > 0 || loading}
+                >
+                  <Text
+                    style={[
+                      s.resendLink,
+                      (timer > 0 || loading) && s.resendDisabled,
+                    ]}
+                  >
                     {timer > 0 ? `إعادة الإرسال (${timer}s)` : "إعادة الإرسال"}
                   </Text>
                 </TouchableOpacity>
@@ -340,12 +342,19 @@ const ChangePasswordScreen = ({ navigation }) => {
                         : "close-circle"
                     }
                     size={16}
-                    color={newPassword === confirmPassword ? "#25D366" : "#FF4444"}
+                    color={
+                      newPassword === confirmPassword ? "#25D366" : "#FF4444"
+                    }
                   />
                   <Text
                     style={[
                       s.matchText,
-                      { color: newPassword === confirmPassword ? "#25D366" : "#FF4444" },
+                      {
+                        color:
+                          newPassword === confirmPassword
+                            ? "#25D366"
+                            : "#FF4444",
+                      },
                     ]}
                   >
                     {newPassword === confirmPassword
