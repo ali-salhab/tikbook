@@ -156,7 +156,8 @@ export const notificationListener = (navigationRef) => {
 
       // Mark as handled so cold-start won't re-navigate
       const notifId = response?.notification?.request?.identifier;
-      if (notifId) AsyncStorage.setItem("@lastHandledNotifId", notifId).catch(() => {});
+      if (notifId)
+        AsyncStorage.setItem("@lastHandledNotifId", notifId).catch(() => {});
 
       let attempts = 0;
       const tryNavigate = () => {

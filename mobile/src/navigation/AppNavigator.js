@@ -284,7 +284,14 @@ const HomeTabs = () => {
         component={FriendsScreen}
         options={{
           tabBarButton: () => <View style={{ width: 0, overflow: "hidden" }} />,
-          tabBarItemStyle: { width: 0, minWidth: 0, maxWidth: 0, padding: 0, margin: 0, overflow: "hidden" },
+          tabBarItemStyle: {
+            width: 0,
+            minWidth: 0,
+            maxWidth: 0,
+            padding: 0,
+            margin: 0,
+            overflow: "hidden",
+          },
           tabBarLabel: () => null,
         }}
       />

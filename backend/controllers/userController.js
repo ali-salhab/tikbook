@@ -297,6 +297,35 @@ const getSuggestedUsers = async (req, res) => {
   }
 };
 
+// @desc    Get current user's followers and following with basic info
+// @route   GET /api/users/my-connections
+// @access  Private
+const getMyConnections = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select("followers following")
+      .populate("followers", "_id username profileImage isOnline")
+      .populate("following", "_id username profileImage isOnline");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Combine followers + following, deduplicated
+    const allIds = new Set();
+    const connections = [];
+    for (const u of [...(user.followers || []), ...(user.following || [])]) {
+      const id = u._id.toString();
+      if (!allIds.has(id)) {
+        allIds.add(id);
+        connections.push(u);
+      }
+    }
+
+    res.json(connections);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getUserProfile,
   followUser,
@@ -306,4 +335,5 @@ module.exports = {
   getAllUsers,
   updateFcmToken,
   getSuggestedUsers,
+  getMyConnections,
 };

@@ -2,6 +2,7 @@ import React, {
   useState,
   useContext,
   useCallback,
+  useMemo,
   useRef,
   useEffect,
 } from "react";
@@ -35,6 +36,7 @@ const InboxScreen = ({ navigation }) => {
 
   // ── Data ───────────────────────────────────────────────────────────────────
   const [conversations, setConversations] = useState([]);
+  const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statuses, setStatuses] = useState([]);
@@ -75,7 +77,7 @@ const InboxScreen = ({ navigation }) => {
   // ── Data fetching ──────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     try {
-      const [convRes, statusRes, notifRes] = await Promise.all([
+      const [convRes, statusRes, notifRes, connRes] = await Promise.all([
         axios.get(`${BASE_URL}/messages/conversations`, {
           headers: { Authorization: `Bearer ${userToken}` },
         }),
@@ -89,18 +91,28 @@ const InboxScreen = ({ navigation }) => {
             headers: { Authorization: `Bearer ${userToken}` },
           })
           .catch(() => ({ data: [] })),
+        axios
+          .get(`${BASE_URL}/users/my-connections`, {
+            headers: { Authorization: `Bearer ${userToken}` },
+          })
+          .catch(() => ({ data: [] })),
       ]);
 
       const convData = convRes.data || [];
       const statusData = statusRes.data || [];
       const notifData = notifRes.data || [];
+      const connData = connRes.data || [];
 
       setConversations(convData);
       setStatuses(statusData);
       setNotifications(notifData);
+      setConnections(connData);
 
       // Compute badge counts (only if the tab hasn't been viewed yet since fetch)
-      const totalUnreadMsgs = convData.reduce((s, c) => s + (c.unreadCount || 0), 0);
+      const totalUnreadMsgs = convData.reduce(
+        (s, c) => s + (c.unreadCount || 0),
+        0,
+      );
       const unreadNotifs = notifData.filter((n) => !n.read).length;
       const unseenStories = statusData.length;
 
@@ -109,7 +121,11 @@ const InboxScreen = ({ navigation }) => {
       if (!viewedTabs.current.stories) setStoriesBadge(unseenStories);
 
       // Reset viewed flags so next fetch recalculates
-      viewedTabs.current = { messages: false, notifications: false, stories: false };
+      viewedTabs.current = {
+        messages: false,
+        notifications: false,
+        stories: false,
+      };
       // Re-clear current tab (already viewed)
       viewedTabs.current[activeTab] = true;
       if (activeTab === "messages") setMsgBadge(0);
@@ -147,15 +163,26 @@ const InboxScreen = ({ navigation }) => {
   const getSummaryText = (notification) => {
     const username = notification.fromUser?.username || "TikBook";
     switch (notification.type) {
-      case "like": return `${username} أعجب بالفيديو الخاص بك`;
-      case "comment": return `${username} علّق على الفيديو الخاص بك`;
-      case "follow": return `${username} بدأ في متابعتك`;
-      default: return `${username} تفاعل معك`;
+      case "like":
+        return `${username} أعجب بالفيديو الخاص بك`;
+      case "comment":
+        return `${username} علّق على الفيديو الخاص بك`;
+      case "follow":
+        return `${username} بدأ في متابعتك`;
+      default:
+        return `${username} تفاعل معك`;
     }
   };
 
   const getInitials = (name) =>
-    name ? name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) : "?";
+    name
+      ? name
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2)
+      : "?";
 
   const formatTime = (iso) => {
     if (!iso) return "";
@@ -163,7 +190,10 @@ const InboxScreen = ({ navigation }) => {
     const now = new Date();
     const diff = now - d;
     if (diff < 86400000)
-      return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleTimeString("ar-EG", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     if (diff < 604800000)
       return d.toLocaleDateString("ar-EG", { weekday: "short" });
     return d.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
@@ -175,11 +205,19 @@ const InboxScreen = ({ navigation }) => {
   });
 
   // ── Derived notification groups ────────────────────────────────────────────
-  const followerNotifications = notifications.filter((n) => n.type === "follow" && !n.read);
-  const activityNotifications = notifications.filter((n) => n.fromUser && n.type !== "follow" && !n.read);
-  const systemNotifications = notifications.filter((n) => !n.fromUser && !n.read);
+  const followerNotifications = notifications.filter(
+    (n) => n.type === "follow" && !n.read,
+  );
+  const activityNotifications = notifications.filter(
+    (n) => n.fromUser && n.type !== "follow" && !n.read,
+  );
+  const systemNotifications = notifications.filter(
+    (n) => !n.fromUser && !n.read,
+  );
   const latestFollower = notifications.find((n) => n.type === "follow");
-  const latestActivity = notifications.find((n) => n.fromUser && n.type !== "follow");
+  const latestActivity = notifications.find(
+    (n) => n.fromUser && n.type !== "follow",
+  );
   const latestSystem = notifications.find((n) => !n.fromUser);
 
   // ── Tab content renderers ──────────────────────────────────────────────────
@@ -217,18 +255,26 @@ const InboxScreen = ({ navigation }) => {
         </View>
         <View style={styles.convoText}>
           <View style={styles.convoRow}>
-            <Text style={[styles.convoName, unread > 0 && styles.convoNameBold]} numberOfLines={1}>
+            <Text
+              style={[styles.convoName, unread > 0 && styles.convoNameBold]}
+              numberOfLines={1}
+            >
               {name}
             </Text>
             <Text style={styles.convoTime}>{lastTime}</Text>
           </View>
           <View style={styles.convoRow}>
-            <Text style={[styles.convoLast, unread > 0 && styles.convoLastBold]} numberOfLines={1}>
+            <Text
+              style={[styles.convoLast, unread > 0 && styles.convoLastBold]}
+              numberOfLines={1}
+            >
               {lastMsg || "اضغط للمحادثة"}
             </Text>
             {unread > 0 && (
               <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unread > 99 ? "99+" : unread}</Text>
+                <Text style={styles.unreadBadgeText}>
+                  {unread > 99 ? "99+" : unread}
+                </Text>
               </View>
             )}
           </View>
@@ -237,27 +283,46 @@ const InboxScreen = ({ navigation }) => {
     );
   };
 
-  // Extract users from conversations, online first
-  const conversationUsers = conversations
-    .map((c) => c.user || c.otherUser)
-    .filter((u) => u && u._id)
-    .sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0));
+  // Build circles: connections (followers/following) + any from conversations not already included
+  const allCircleUsers = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    // First: connections (followers/following)
+    for (const u of connections) {
+      if (u && u._id && !seen.has(u._id)) {
+        seen.add(u._id);
+        result.push(u);
+      }
+    }
+    // Then: conversation users not already included
+    for (const c of conversations) {
+      const u = c.user || c.otherUser;
+      if (u && u._id && !seen.has(u._id.toString())) {
+        seen.add(u._id.toString());
+        result.push(u);
+      }
+    }
+    // Online first
+    return result.sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0));
+  }, [connections, conversations]);
 
   const MessagesTab = () => (
     <FlatList
       data={filteredConversations}
-      keyExtractor={(item) => item._id || item.user?._id || Math.random().toString()}
+      keyExtractor={(item) =>
+        item._id || item.user?._id || Math.random().toString()
+      }
       renderItem={renderConversation}
       ListHeaderComponent={
         <View>
-          {/* ── Active users row ── */}
-          {conversationUsers.length > 0 && (
+          {/* ── Contacts / followers row ── */}
+          {allCircleUsers.length > 0 && (
             <View style={styles.activeUsersSection}>
               <FlatList
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                data={conversationUsers}
-                keyExtractor={(u) => u._id}
+                data={allCircleUsers}
+                keyExtractor={(u) => u._id.toString()}
                 contentContainerStyle={styles.activeUsersContent}
                 renderItem={({ item: u }) => (
                   <TouchableOpacity
@@ -272,15 +337,25 @@ const InboxScreen = ({ navigation }) => {
                   >
                     <View style={styles.activeUserAvatarWrap}>
                       {u.profileImage ? (
-                        <Image source={{ uri: u.profileImage }} style={styles.activeUserAvatar} />
+                        <Image
+                          source={{ uri: u.profileImage }}
+                          style={styles.activeUserAvatar}
+                        />
                       ) : (
-                        <View style={[styles.activeUserAvatar, styles.activeUserInitials]}>
+                        <View
+                          style={[
+                            styles.activeUserAvatar,
+                            styles.activeUserInitials,
+                          ]}
+                        >
                           <Text style={styles.activeUserInitialsText}>
                             {getInitials(u.username || u.name || "")}
                           </Text>
                         </View>
                       )}
-                      {u.isOnline && <View style={styles.activeUserOnlineDot} />}
+                      {u.isOnline && (
+                        <View style={styles.activeUserOnlineDot} />
+                      )}
                     </View>
                     <Text style={styles.activeUserName} numberOfLines={1}>
                       {u.username || u.name || "مستخدم"}
@@ -293,7 +368,12 @@ const InboxScreen = ({ navigation }) => {
 
           {/* ── Search bar ── */}
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#999" style={{ marginHorizontal: 8 }} />
+            <Ionicons
+              name="search"
+              size={18}
+              color="#999"
+              style={{ marginHorizontal: 8 }}
+            />
             <TextInput
               style={styles.searchInput}
               placeholder="بحث في المحادثات..."
@@ -303,7 +383,12 @@ const InboxScreen = ({ navigation }) => {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={18} color="#999" style={{ marginHorizontal: 8 }} />
+                <Ionicons
+                  name="close-circle"
+                  size={18}
+                  color="#999"
+                  style={{ marginHorizontal: 8 }}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -313,13 +398,24 @@ const InboxScreen = ({ navigation }) => {
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubble-ellipses-outline" size={64} color="#333" />
           <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
-          <Text style={styles.emptySubtitle}>ابحث عن أشخاص وابدأ محادثة جديدة</Text>
-          <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate("Users")}>
+          <Text style={styles.emptySubtitle}>
+            ابحث عن أشخاص وابدأ محادثة جديدة
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyBtn}
+            onPress={() => navigation.navigate("Users")}
+          >
             <Text style={styles.emptyBtnText}>ابدأ محادثة جديدة</Text>
           </TouchableOpacity>
         </View>
       }
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FE2C55" />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#FE2C55"
+        />
+      }
       contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
       showsVerticalScrollIndicator={false}
     />
@@ -330,58 +426,85 @@ const InboxScreen = ({ navigation }) => {
       data={["followers", "activity", "system"]}
       keyExtractor={(i) => i}
       renderItem={({ item }) => {
-        if (item === "followers") return (
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("NewFollowers")}>
-            <View style={[styles.menuIcon, { backgroundColor: "#007AFF" }]}>
-              <Ionicons name="people" size={24} color="#FFF" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>متابعون جدد</Text>
-              <Text style={styles.menuSubtitle} numberOfLines={1}>
-                {latestFollower ? getSummaryText(latestFollower) : "لا يوجد متابعون جدد"}
-              </Text>
-            </View>
-            {followerNotifications.length > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>{followerNotifications.length}</Text>
+        if (item === "followers")
+          return (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => navigation.navigate("NewFollowers")}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: "#007AFF" }]}>
+                <Ionicons name="people" size={24} color="#FFF" />
               </View>
-            )}
-          </TouchableOpacity>
-        );
-        if (item === "activity") return (
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("Activity")}>
-            <View style={[styles.menuIcon, { backgroundColor: "#FE2C55" }]}>
-              <Ionicons name="heart" size={24} color="#FFF" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>النشاط</Text>
-              <Text style={styles.menuSubtitle} numberOfLines={1}>
-                {latestActivity ? getSummaryText(latestActivity) : "لا يوجد نشاط"}
-              </Text>
-            </View>
-            {activityNotifications.length > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>{activityNotifications.length}</Text>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>متابعون جدد</Text>
+                <Text style={styles.menuSubtitle} numberOfLines={1}>
+                  {latestFollower
+                    ? getSummaryText(latestFollower)
+                    : "لا يوجد متابعون جدد"}
+                </Text>
               </View>
-            )}
-          </TouchableOpacity>
-        );
+              {followerNotifications.length > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeText}>
+                    {followerNotifications.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        if (item === "activity")
+          return (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => navigation.navigate("Activity")}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: "#FE2C55" }]}>
+                <Ionicons name="heart" size={24} color="#FFF" />
+              </View>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>النشاط</Text>
+                <Text style={styles.menuSubtitle} numberOfLines={1}>
+                  {latestActivity
+                    ? getSummaryText(latestActivity)
+                    : "لا يوجد نشاط"}
+                </Text>
+              </View>
+              {activityNotifications.length > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeText}>
+                    {activityNotifications.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
         return (
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("SystemNotifications")}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("SystemNotifications")}
+          >
             <View style={[styles.menuIcon, { backgroundColor: "#111" }]}>
               <Ionicons name="file-tray-full" size={24} color="#FFF" />
             </View>
             <View style={styles.menuContent}>
               <Text style={styles.menuTitle}>إشعارات النظام</Text>
               <Text style={styles.menuSubtitle} numberOfLines={1}>
-                {latestSystem ? getSummaryText(latestSystem) : "لا توجد إشعارات نظام"}
+                {latestSystem
+                  ? getSummaryText(latestSystem)
+                  : "لا توجد إشعارات نظام"}
               </Text>
             </View>
             {systemNotifications.length > 0 && <View style={styles.dotBadge} />}
           </TouchableOpacity>
         );
       }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FE2C55" />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#FE2C55"
+        />
+      }
       contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
       showsVerticalScrollIndicator={false}
     />
@@ -393,14 +516,23 @@ const InboxScreen = ({ navigation }) => {
       keyExtractor={(s) => s._id}
       numColumns={3}
       columnWrapperStyle={{ gap: 2 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FE2C55" />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#FE2C55"
+        />
+      }
       contentContainerStyle={{ paddingBottom: insets.bottom + 80, gap: 2 }}
       ListEmptyComponent={
         <View style={styles.emptyContainer}>
           <Ionicons name="images-outline" size={64} color="#333" />
           <Text style={styles.emptyTitle}>لا توجد حالات بعد</Text>
           <Text style={styles.emptySubtitle}>أنشئ أول حالة لك الآن</Text>
-          <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate("CreateStatus")}>
+          <TouchableOpacity
+            style={styles.emptyBtn}
+            onPress={() => navigation.navigate("CreateStatus")}
+          >
             <Text style={styles.emptyBtnText}>إنشاء حالة</Text>
           </TouchableOpacity>
         </View>
@@ -408,10 +540,25 @@ const InboxScreen = ({ navigation }) => {
       renderItem={({ item }) => {
         if (item.type === "create") {
           return (
-            <TouchableOpacity style={styles.storyGridItem} onPress={() => navigation.navigate("CreateStatus")}>
-              <View style={[styles.storyGridImg, { backgroundColor: "#111", justifyContent: "center", alignItems: "center" }]}>
+            <TouchableOpacity
+              style={styles.storyGridItem}
+              onPress={() => navigation.navigate("CreateStatus")}
+            >
+              <View
+                style={[
+                  styles.storyGridImg,
+                  {
+                    backgroundColor: "#111",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  },
+                ]}
+              >
                 {userInfo?.profileImage ? (
-                  <Image source={{ uri: userInfo.profileImage }} style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} />
+                  <Image
+                    source={{ uri: userInfo.profileImage }}
+                    style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}
+                  />
                 ) : null}
                 <View style={styles.createPlusCircle}>
                   <Ionicons name="add" size={22} color="#FFF" />
@@ -424,13 +571,42 @@ const InboxScreen = ({ navigation }) => {
         const isOwn = item.user?._id === userInfo?._id;
         const preview = item.image || item.user?.profileImage;
         return (
-          <TouchableOpacity style={styles.storyGridItem} onPress={() => openStatus(item)}>
-            <View style={[styles.storyGridImg, isOwn && { borderColor: "#25D366", borderWidth: 2 }]}>
+          <TouchableOpacity
+            style={styles.storyGridItem}
+            onPress={() => openStatus(item)}
+          >
+            <View
+              style={[
+                styles.storyGridImg,
+                isOwn && { borderColor: "#25D366", borderWidth: 2 },
+              ]}
+            >
               {preview ? (
-                <Image source={{ uri: preview }} style={StyleSheet.absoluteFill} />
+                <Image
+                  source={{ uri: preview }}
+                  style={StyleSheet.absoluteFill}
+                />
               ) : (
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: item.bgColor || "#FE2C55", justifyContent: "center", alignItems: "center", padding: 4 }]}>
-                  <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "700", textAlign: "center" }} numberOfLines={3}>
+                <View
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      backgroundColor: item.bgColor || "#FE2C55",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      padding: 4,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: "#FFF",
+                      fontSize: 11,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                    numberOfLines={3}
+                  >
                     {item.text?.slice(0, 30) || ""}
                   </Text>
                 </View>
@@ -462,12 +638,19 @@ const InboxScreen = ({ navigation }) => {
           onPress={() => switchTab(t.key)}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabLabel, activeTab === t.key && styles.tabLabelActive]}>
+          <Text
+            style={[
+              styles.tabLabel,
+              activeTab === t.key && styles.tabLabelActive,
+            ]}
+          >
             {t.label}
           </Text>
           {t.badge > 0 && (
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>{t.badge > 99 ? "99+" : t.badge}</Text>
+              <Text style={styles.tabBadgeText}>
+                {t.badge > 99 ? "99+" : t.badge}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
@@ -483,7 +666,7 @@ const InboxScreen = ({ navigation }) => {
   );
 
   // ── Main render ────────────────────────────────────────────────────────────
-  const topPad = insets.top;
+  const topPad = insets.top + 10;
 
   return (
     <View style={styles.root}>
@@ -492,9 +675,6 @@ const InboxScreen = ({ navigation }) => {
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad }]}>
         <Text style={styles.headerTitle}>صندوق الوارد</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Users")} style={styles.headerRight}>
-          <Ionicons name="create-outline" size={24} color="#FE2C55" />
-        </TouchableOpacity>
       </View>
 
       {/* Tab bar */}
@@ -531,7 +711,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#1a1a1a",
   },
-  headerTitle: { color: "#FFF", fontSize: 24, fontWeight: "800" },
+  headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "400" },
   headerRight: { padding: 4 },
 
   // Tab bar
@@ -661,7 +841,11 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: { position: "relative", marginRight: 12 },
   avatar: { width: 52, height: 52, borderRadius: 26 },
-  initialsCircle: { justifyContent: "center", alignItems: "center", backgroundColor: "#1a1a2e" },
+  initialsCircle: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1a1a2e",
+  },
   initialsTextLg: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   onlineDot: {
     position: "absolute",
@@ -714,7 +898,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   menuContent: { flex: 1 },
-  menuTitle: { fontSize: 15, fontWeight: "bold", color: "#FFF", marginBottom: 4 },
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 4,
+  },
   menuSubtitle: { fontSize: 13, color: "#888" },
   notificationBadge: {
     backgroundColor: "#FE2C55",
@@ -726,7 +915,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   badgeText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
-  dotBadge: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FE2C55" },
+  dotBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FE2C55",
+  },
 
   // Stories grid
   storyGridItem: {
@@ -781,7 +975,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   emptyTitle: { color: "#FFF", fontSize: 20, fontWeight: "700", marginTop: 16 },
-  emptySubtitle: { color: "#888", fontSize: 14, marginTop: 8, textAlign: "center" },
+  emptySubtitle: {
+    color: "#888",
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: "center",
+  },
   emptyBtn: {
     marginTop: 24,
     backgroundColor: "#FE2C55",

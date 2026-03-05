@@ -89,6 +89,20 @@ const getConversations = async (req, res) => {
             $cond: [{ $eq: ["$sender", req.user._id] }, "$receiver", "$sender"],
           },
           lastMessage: { $first: "$$ROOT" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$receiver", req.user._id] },
+                    { $eq: ["$read", false] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
         },
       },
       {
@@ -105,11 +119,14 @@ const getConversations = async (req, res) => {
       {
         $project: {
           _id: 1,
+          "user._id": 1,
           "user.username": 1,
           "user.profileImage": 1,
+          "user.isOnline": 1,
           "lastMessage.text": 1,
           "lastMessage.createdAt": 1,
           "lastMessage.sender": 1,
+          unreadCount: 1,
         },
       },
       {
