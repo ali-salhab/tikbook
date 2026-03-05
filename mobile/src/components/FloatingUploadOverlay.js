@@ -104,13 +104,16 @@ const FloatingUploadOverlay = () => {
       stopGlow();
     }
     if (uploadDone) {
+      // Auto-show details on success so the user sees the success message
+      setShowDetails(true);
       setTimeout(() => {
+        setShowDetails(false);
         Animated.timing(scale, {
           toValue: 0,
           duration: 350,
           useNativeDriver: true,
-        }).start();
-      }, 2500);
+        }).start(() => resetUpload());
+      }, 5000);
     }
     if (!uploading && !uploadDone && !error) {
       Animated.timing(scale, {
@@ -181,7 +184,7 @@ const FloatingUploadOverlay = () => {
                 <>
                   <Ionicons name="checkmark-circle" size={22} color="#25D366" />
                   <Text style={[styles.pillLabel, { color: "#25D366" }]}>
-                    تم الرفع!
+                    تم النشر!
                   </Text>
                 </>
               ) : error ? (
@@ -249,10 +252,13 @@ const FloatingUploadOverlay = () => {
                       color="#25D366"
                     />
                   </View>
-                  <Text style={styles.modalBigTitle}>تم الرفع بنجاح!</Text>
+                  <Text style={styles.modalBigTitle}>تم النشر بنجاح!</Text>
                   <Text style={styles.modalSub}>
-                    سيكون الفيديو متاحاً قريباً
+                    سيكون المحتوى متاحاً قريباً
                   </Text>
+                  <TouchableOpacity style={styles.closeBtn} onPress={dismiss}>
+                    <Text style={styles.closeBtnText}>حسناً</Text>
+                  </TouchableOpacity>
                 </>
               ) : error ? (
                 <>

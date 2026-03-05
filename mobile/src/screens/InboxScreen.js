@@ -10,6 +10,7 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   Image,
@@ -23,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
@@ -32,6 +34,7 @@ const TABS = ["messages", "notifications", "stories"];
 
 const InboxScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
+  const { t } = useApp();
   const insets = useSafeAreaInsets();
 
   // ── Data ───────────────────────────────────────────────────────────────────
@@ -525,117 +528,127 @@ const InboxScreen = ({ navigation }) => {
     />
   );
 
-  const StoriesTab = () => (
-    <FlatList
-      data={[{ _id: "__create__", type: "create" }, ...statuses]}
-      keyExtractor={(s) => s._id}
-      numColumns={3}
-      columnWrapperStyle={{ gap: 2 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#FE2C55"
-        />
-      }
-      contentContainerStyle={{ paddingBottom: insets.bottom + 80, gap: 2 }}
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Ionicons name="images-outline" size={64} color="#333" />
-          <Text style={styles.emptyTitle}>لا توجد حالات بعد</Text>
-          <Text style={styles.emptySubtitle}>أنشئ أول حالة لك الآن</Text>
-          <TouchableOpacity
-            style={styles.emptyBtn}
-            onPress={() => navigation.navigate("CreateStatus")}
-          >
-            <Text style={styles.emptyBtnText}>إنشاء حالة</Text>
-          </TouchableOpacity>
-        </View>
-      }
-      renderItem={({ item }) => {
-        if (item.type === "create") {
-          return (
-            <TouchableOpacity
-              style={styles.storyGridItem}
-              onPress={() => navigation.navigate("CreateStatus")}
-            >
-              <View
-                style={[
-                  styles.storyGridImg,
-                  {
-                    backgroundColor: "#111",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  },
-                ]}
-              >
-                {userInfo?.profileImage ? (
-                  <Image
-                    source={{ uri: userInfo.profileImage }}
-                    style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}
-                  />
-                ) : null}
-                <View style={styles.createPlusCircle}>
-                  <Ionicons name="add" size={22} color="#FFF" />
-                </View>
-                <Text style={styles.storyGridCreate}>إنشاء{"\n"}حالة</Text>
-              </View>
-            </TouchableOpacity>
-          );
+  const StoriesTab = () => {
+    const storyItems = [{ _id: "__create__", type: "create" }, ...statuses];
+    return (
+      <ScrollView
+        style={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FE2C55"
+          />
         }
-        const isOwn = item.user?._id === userInfo?._id;
-        const preview = item.image || item.user?.profileImage;
-        return (
-          <TouchableOpacity
-            style={styles.storyGridItem}
-            onPress={() => openStatus(item)}
-          >
-            <View
-              style={[
-                styles.storyGridImg,
-                isOwn && { borderColor: "#25D366", borderWidth: 2 },
-              ]}
-            >
-              {preview ? (
-                <Image
-                  source={{ uri: preview }}
-                  style={StyleSheet.absoluteFill}
-                />
-              ) : (
+        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+      >
+        {/* ── Horizontal story circles row (Messenger-style) ── */}
+        <FlatList
+          horizontal
+          data={storyItems}
+          keyExtractor={(s) => s._id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.storiesRow}
+          renderItem={({ item }) => {
+            if (item.type === "create") {
+              return (
+                <TouchableOpacity
+                  style={styles.storyCircleWrap}
+                  onPress={() => navigation.navigate("CreateStatus")}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.storyCircleCreate}>
+                    {userInfo?.profileImage ? (
+                      <Image
+                        source={{ uri: userInfo.profileImage }}
+                        style={[
+                          StyleSheet.absoluteFill,
+                          { borderRadius: 38, opacity: 0.45 },
+                        ]}
+                      />
+                    ) : null}
+                    <View style={styles.storyCreatePlus}>
+                      <Ionicons name="add" size={18} color="#FFF" />
+                    </View>
+                  </View>
+                  <Text style={styles.storyCircleName} numberOfLines={1}>
+                    إنشاء حالة
+                  </Text>
+                </TouchableOpacity>
+              );
+            }
+            const isOwn = item.user?._id === userInfo?._id;
+            const preview = item.image || item.user?.profileImage;
+            return (
+              <TouchableOpacity
+                style={styles.storyCircleWrap}
+                onPress={() => openStatus(item)}
+                activeOpacity={0.8}
+              >
                 <View
                   style={[
-                    StyleSheet.absoluteFill,
-                    {
-                      backgroundColor: item.bgColor || "#FE2C55",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      padding: 4,
-                    },
+                    styles.storyCircleRing,
+                    isOwn ? styles.storyRingOwn : styles.storyRingOther,
                   ]}
                 >
-                  <Text
-                    style={{
-                      color: "#FFF",
-                      fontSize: 11,
-                      fontWeight: "700",
-                      textAlign: "center",
-                    }}
-                    numberOfLines={3}
-                  >
-                    {item.text?.slice(0, 30) || ""}
-                  </Text>
+                  <View style={styles.storyCircleInner}>
+                    {preview ? (
+                      <Image
+                        source={{ uri: preview }}
+                        style={styles.storyCircleImg}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.storyCircleImg,
+                          {
+                            backgroundColor: item.bgColor || "#FE2C55",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: "#FFF",
+                            fontSize: 10,
+                            fontWeight: "700",
+                            textAlign: "center",
+                            padding: 3,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {item.text?.slice(0, 18) || ""}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              )}
-              <View style={styles.storyGridGradient} />
-              <Text style={styles.storyGridUser} numberOfLines={1}>
-                {item.user?.username || ""}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      }}
-    />
-  );
+                <Text style={styles.storyCircleName} numberOfLines={1}>
+                  {isOwn ? "أنت" : item.user?.username || ""}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+
+        {/* ── Empty state ── */}
+        {statuses.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="images-outline" size={64} color="#333" />
+            <Text style={styles.emptyTitle}>لا توجد حالات بعد</Text>
+            <Text style={styles.emptySubtitle}>أنشئ أول حالة لك الآن</Text>
+            <TouchableOpacity
+              style={styles.emptyBtn}
+              onPress={() => navigation.navigate("CreateStatus")}
+            >
+              <Text style={styles.emptyBtnText}>إنشاء حالة</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
 
   // ── Tab bar ────────────────────────────────────────────────────────────────
   const TAB_W = width / 3;
@@ -643,9 +656,13 @@ const InboxScreen = ({ navigation }) => {
   const TabBar = () => (
     <View style={styles.tabBar}>
       {[
-        { key: "messages", label: "الرسائل", badge: msgBadge },
-        { key: "notifications", label: "الإشعارات", badge: notifBadge },
-        { key: "stories", label: "الحالات", badge: storiesBadge },
+        { key: "messages", label: t("inbox_messages"), badge: msgBadge },
+        {
+          key: "notifications",
+          label: t("inbox_notifications"),
+          badge: notifBadge,
+        },
+        { key: "stories", label: t("inbox_stories"), badge: storiesBadge },
       ].map((t) => {
         const pillBg = tabAnim[t.key].interpolate({
           inputRange: [0, 1],
@@ -704,7 +721,7 @@ const InboxScreen = ({ navigation }) => {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad }]}>
-        <Text style={styles.headerTitle}>صندوق الوارد</Text>
+        <Text style={styles.headerTitle}>{t("inbox_title")}</Text>
       </View>
 
       {/* Tab bar */}
@@ -954,50 +971,71 @@ const styles = StyleSheet.create({
     backgroundColor: "#FE2C55",
   },
 
-  // Stories grid
-  storyGridItem: {
-    flex: 1,
-    aspectRatio: 0.75,
-    maxWidth: width / 3,
+  // Stories — Messenger-style horizontal circles
+  storiesRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 18,
+    gap: 16,
   },
-  storyGridImg: {
-    flex: 1,
-    backgroundColor: "#111",
+  storyCircleWrap: {
+    alignItems: "center",
+    width: 74,
+  },
+  // "Create" circle
+  storyCircleCreate: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#1a1a1a",
     overflow: "hidden",
-    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FE2C55",
+    borderStyle: "dashed",
+    marginBottom: 5,
   },
-  storyGridGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 50,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  storyGridUser: {
-    position: "absolute",
-    bottom: 6,
-    left: 4,
-    right: 4,
-    color: "#FFF",
-    fontSize: 11,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  createPlusCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  storyCreatePlus: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "#FE2C55",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 6,
   },
-  storyGridCreate: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "700",
+  // Story circles with ring
+  storyCircleRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    padding: 3,
+    marginBottom: 5,
+  },
+  storyRingOwn: {
+    borderWidth: 2.5,
+    borderColor: "#25D366",
+  },
+  storyRingOther: {
+    borderWidth: 2.5,
+    borderColor: "#FE2C55",
+  },
+  storyCircleInner: {
+    flex: 1,
+    borderRadius: 33,
+    overflow: "hidden",
+    backgroundColor: "#111",
+  },
+  storyCircleImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 33,
+  },
+  storyCircleName: {
+    color: "#CCC",
+    fontSize: 11,
+    fontWeight: "500",
     textAlign: "center",
+    maxWidth: 74,
   },
 
   // Empty states

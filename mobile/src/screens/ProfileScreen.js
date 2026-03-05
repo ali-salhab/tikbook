@@ -232,7 +232,7 @@ const ProfileScreen = ({ navigation }) => {
       <IconComponent
         name={name}
         size={24}
-        color={activeTab === tabName ? "#000" : "#ccc"}
+        color={activeTab === tabName ? theme.accent : theme.iconMuted}
       />
       {activeTab === tabName && <View style={styles.activeIndicator} />}
     </TouchableOpacity>
@@ -273,7 +273,7 @@ const ProfileScreen = ({ navigation }) => {
                   style={styles.gridItem}
                   onPress={() =>
                     navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
-                  }>
+                  }
                 >
                   {thumbnail ? (
                     <Image
@@ -336,7 +336,7 @@ const ProfileScreen = ({ navigation }) => {
                   style={styles.gridItem}
                   onPress={() =>
                     navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
-                  }>
+                  }
                 >
                   {thumbnail ? (
                     <Image
@@ -418,7 +418,10 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      <StatusBar
+        barStyle={theme.id === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={theme.header}
+      />
 
       {/* Header */}
       <View style={styles.header}>
@@ -427,10 +430,10 @@ const ProfileScreen = ({ navigation }) => {
             style={styles.iconButton}
             onPress={() => setMenuVisible(true)}
           >
-            <Ionicons name="menu-outline" size={28} color="#000" />
+            <MaterialCommunityIcons name="menu" size={28} color={theme.icon} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="arrow-redo-outline" size={24} color="#000" />
+            <MaterialCommunityIcons name="share-variant-outline" size={24} color={theme.icon} />
           </TouchableOpacity>
         </View>
 
@@ -444,7 +447,11 @@ const ProfileScreen = ({ navigation }) => {
             onPress={() => navigation.navigate("Activity")}
           >
             <View>
-              <Ionicons name="notifications-outline" size={26} color="#000" />
+              <MaterialCommunityIcons
+                name="bell-outline"
+                size={26}
+                color={theme.icon}
+              />
               {notificationCount > 0 && (
                 <View
                   style={{
@@ -459,7 +466,7 @@ const ProfileScreen = ({ navigation }) => {
                     alignItems: "center",
                     paddingHorizontal: 4,
                     borderWidth: 2,
-                    borderColor: "#FFF",
+                    borderColor: theme.bg2,
                   }}
                 >
                   <Text
@@ -576,7 +583,7 @@ const ProfileScreen = ({ navigation }) => {
               style={styles.editProfileButton}
               onPress={() => navigation.navigate("EditProfile", { profile })}
             >
-              <Feather name="edit-2" size={20} color="#000" />
+              <Feather name="edit-2" size={18} color={theme.icon} />
               <Text style={styles.buttonLabel}>تعديل</Text>
             </TouchableOpacity>
 
@@ -584,8 +591,8 @@ const ProfileScreen = ({ navigation }) => {
               style={styles.badgeButton}
               onPress={() => navigation.navigate("MyBadges")}
             >
-              <Ionicons name="medal-outline" size={20} color="#FFD700" />
-              <Text style={styles.buttonLabel}>الإطارات</Text>
+              <Ionicons name="medal-outline" size={18} color="#FFD700" />
+              <Text style={styles.badgeButtonLabel}>الإطارات</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -748,13 +755,14 @@ const makeStyles = (theme) => StyleSheet.create({
   userIdLabel: {
     fontSize: 12,
     color: theme.textMuted,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   userIdText: {
     fontSize: 12,
     color: theme.textSecondary,
     fontFamily: "monospace",
-    fontWeight: "bold",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   copyIcon: {
     marginLeft: 4,
@@ -780,7 +788,7 @@ const makeStyles = (theme) => StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    height: 15,
+    height: 22,
     backgroundColor: theme.border,
   },
   bio: {
@@ -791,18 +799,21 @@ const makeStyles = (theme) => StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
-    gap: 10,
+    gap: 16,
     marginBottom: 10,
     justifyContent: "center",
+    paddingHorizontal: 20,
   },
   editProfileButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: theme.bg3,
-    borderRadius: 8,
+    paddingVertical: 11,
+    backgroundColor: theme.buttonBg || theme.bg3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.buttonBorder || theme.border,
     flex: 1,
     justifyContent: "center",
   },
@@ -811,9 +822,11 @@ const makeStyles = (theme) => StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#E6F7FF",
-    borderRadius: 8,
+    paddingVertical: 11,
+    backgroundColor: theme.buttonBg || theme.bg3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.buttonBorder || theme.border,
     flex: 1,
     justifyContent: "center",
   },
@@ -822,16 +835,23 @@ const makeStyles = (theme) => StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#FFF9E6",
-    borderRadius: 8,
+    paddingVertical: 11,
+    backgroundColor: theme.id === "dark" ? "#2A2200" : "#FFF8E1",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.id === "dark" ? "#5A4800" : "#F0C040",
     flex: 1,
     justifyContent: "center",
   },
   buttonLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: theme.textSecondary,
+    color: theme.text,
+  },
+  badgeButtonLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.id === "dark" ? "#FFD700" : "#8B6914",
   },
   tabsContainer: {
     flexDirection: "row",
@@ -850,7 +870,7 @@ const makeStyles = (theme) => StyleSheet.create({
     bottom: 0,
     width: 40,
     height: 2,
-    backgroundColor: theme.text,
+    backgroundColor: theme.accent,
   },
   gridContainer: {
     flexDirection: "row",
@@ -859,10 +879,10 @@ const makeStyles = (theme) => StyleSheet.create({
   gridItem: {
     width: width / 3,
     height: (width / 3) * 1.3,
-    backgroundColor: "#333",
+    backgroundColor: theme.bg3,
     position: "relative",
     borderWidth: 0.5,
-    borderColor: "#fff",
+    borderColor: theme.border,
   },
   gridImage: {
     width: "100%",

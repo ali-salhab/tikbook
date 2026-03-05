@@ -106,14 +106,11 @@ const CreateStatusScreen = ({ navigation }) => {
       formData.append("image", { uri, name: filename, type: `video/${ext}` });
     }
 
+    // Navigate back first so the FloatingUploadOverlay is visible
+    navigation.goBack();
+
     // Fire & forget — upload runs in background with floating indicator
     startUpload(formData, userToken, `${BASE_URL}/status`);
-
-    Alert.alert(
-      "جاري النشر",
-      "تتم مشاركة حالتك في الخلفية. يمكنك الاستمرار في التصفح.",
-      [{ text: "حسناً", onPress: () => navigation.goBack() }],
-    );
   };
 
   return (

@@ -141,4 +141,18 @@ export const en = {
   commented_on_video: "commented on your video",
   started_following_you: "started following you",
   interacted_with_you: "interacted with you",
+
+  // Comments
+  comment_label: "Comments",
+  no_comments: "No comments yet",
+  be_first_comment: "Be the first to comment!",
+  reply_button: "Reply",
+  replying_to: "Replying to",
+  error_send_comment: "Failed to send comment. Please try again.",
+  delete_comment_title: "Delete Comment",
+  delete_comment_confirm: "Are you sure you want to delete this comment?",
+  error_delete_comment: "Failed to delete comment",
+  error_gallery_permission: "We need permission to access your photo gallery",
+  user_fallback: "User",
+  just_now: "Now",
 };
