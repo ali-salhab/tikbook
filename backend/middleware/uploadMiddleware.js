@@ -96,8 +96,23 @@ const giftUpload = multer({
   },
 });
 
+// Status upload — accepts both images AND videos in the "image" field
+const statusUpload = multer({
+  storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB (videos can be large)
+  },
+  fileFilter: function (req, file, cb) {
+    const isImage = file.mimetype.startsWith("image/");
+    const isVideo = file.mimetype.startsWith("video/");
+    if (isImage || isVideo) return cb(null, true);
+    return cb(new Error("الملف يجب أن يكون صورة أو فيديو!"));
+  },
+});
+
 module.exports = {
   imageUpload,
   videoUpload,
   giftUpload,
+  statusUpload,
 };
