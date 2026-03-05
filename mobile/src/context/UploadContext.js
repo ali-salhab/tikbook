@@ -60,20 +60,16 @@ export const UploadProvider = ({ children }) => {
         errorMessage = "انتهت مهلة الرفع. تحقق من اتصالك بالإنترنت.";
       }
 
-      Alert.alert("خطأ في الرفع", errorMessage, [
-        {
-          text: "إلغاء",
-          onPress: () => {
-            setUploading(false);
-            setUploadProgress(0);
-          },
-        },
-        // Retry logic would require storing formData, skipping for now
-      ]);
-
       setUploading(false);
       return false;
     }
+  };
+
+  const resetUpload = () => {
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadDone(false);
+    setError(null);
   };
 
   // Deprecated/Legacy helper if needed, but startUpload now takes args
@@ -104,6 +100,7 @@ export const UploadProvider = ({ children }) => {
         startUpload,
         updateProgress,
         finishUpload,
+        resetUpload,
       }}
     >
       {children}

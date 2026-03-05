@@ -1,4 +1,10 @@
-﻿import React, { useState, useContext, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useContext,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import {
   View,
   Text,
@@ -21,40 +27,55 @@ import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
-const HEADER_MAX = 110;
+const TABS = ["messages", "notifications", "stories"];
 
 const InboxScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
+
+  // ── Data ───────────────────────────────────────────────────────────────────
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statuses, setStatuses] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("messages");
+  // Unread badge counters per tab (set when data loads, cleared when tab opened)
+  const [msgBadge, setMsgBadge] = useState(0);
+  const [notifBadge, setNotifBadge] = useState(0);
+  const [storiesBadge, setStoriesBadge] = useState(0);
+  // Track which tabs have been viewed since last fetch
+  const viewedTabs = useRef({
+    messages: false,
+    notifications: false,
+    stories: false,
+  });
 
-  // ── Sliver-style animated values ───────────────────────────────────────────
-  const headerTranslate = scrollY.interpolate({
-    inputRange: [0, HEADER_MAX],
-    outputRange: [0, -HEADER_MAX],
-    extrapolate: "clamp",
-  });
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_MAX * 0.6],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-  const stickyBarOpacity = scrollY.interpolate({
-    inputRange: [HEADER_MAX * 0.5, HEADER_MAX],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
+  const tabUnderline = useRef(new Animated.Value(0)).current;
+
+  // ── Tab switch ─────────────────────────────────────────────────────────────
+  const switchTab = (tab) => {
+    const idx = TABS.indexOf(tab);
+    Animated.spring(tabUnderline, {
+      toValue: idx * (width / 3),
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+    setActiveTab(tab);
+    viewedTabs.current[tab] = true;
+    // Clear badge when tab is opened
+    if (tab === "messages") setMsgBadge(0);
+    if (tab === "notifications") setNotifBadge(0);
+    if (tab === "stories") setStoriesBadge(0);
+  };
 
   // ── Data fetching ──────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     try {
-      const [convRes, statusRes] = await Promise.all([
+      const [convRes, statusRes, notifRes] = await Promise.all([
         axios.get(`${BASE_URL}/messages/conversations`, {
           headers: { Authorization: `Bearer ${userToken}` },
         }),
@@ -63,16 +84,44 @@ const InboxScreen = ({ navigation }) => {
             headers: { Authorization: `Bearer ${userToken}` },
           })
           .catch(() => ({ data: [] })),
+        axios
+          .get(`${BASE_URL}/notifications`, {
+            headers: { Authorization: `Bearer ${userToken}` },
+          })
+          .catch(() => ({ data: [] })),
       ]);
-      setConversations(convRes.data || []);
-      setStatuses(statusRes.data || []);
+
+      const convData = convRes.data || [];
+      const statusData = statusRes.data || [];
+      const notifData = notifRes.data || [];
+
+      setConversations(convData);
+      setStatuses(statusData);
+      setNotifications(notifData);
+
+      // Compute badge counts (only if the tab hasn't been viewed yet since fetch)
+      const totalUnreadMsgs = convData.reduce((s, c) => s + (c.unreadCount || 0), 0);
+      const unreadNotifs = notifData.filter((n) => !n.read).length;
+      const unseenStories = statusData.length;
+
+      if (!viewedTabs.current.messages) setMsgBadge(totalUnreadMsgs);
+      if (!viewedTabs.current.notifications) setNotifBadge(unreadNotifs);
+      if (!viewedTabs.current.stories) setStoriesBadge(unseenStories);
+
+      // Reset viewed flags so next fetch recalculates
+      viewedTabs.current = { messages: false, notifications: false, stories: false };
+      // Re-clear current tab (already viewed)
+      viewedTabs.current[activeTab] = true;
+      if (activeTab === "messages") setMsgBadge(0);
+      if (activeTab === "notifications") setNotifBadge(0);
+      if (activeTab === "stories") setStoriesBadge(0);
     } catch (e) {
       console.error("InboxScreen fetchAll:", e.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userToken]);
+  }, [userToken, activeTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,8 +141,19 @@ const InboxScreen = ({ navigation }) => {
     navigation.navigate("StatusViewer", {
       statuses,
       initialIndex: idx >= 0 ? idx : 0,
+    });
+  };
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  const getSummaryText = (notification) => {
+    const username = notification.fromUser?.username || "TikBook";
+    switch (notification.type) {
+      case "like": return `${username} أعجب بالفيديو الخاص بك`;
+      case "comment": return `${username} علّق على الفيديو الخاص بك`;
+      case "follow": return `${username} بدأ في متابعتك`;
+      default: return `${username} تفاعل معك`;
+    }
+  };
+
   const getInitials = (name) =>
     name ? name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) : "?";
 
@@ -102,12 +162,10 @@ const InboxScreen = ({ navigation }) => {
     const d = new Date(iso);
     const now = new Date();
     const diff = now - d;
-    if (diff < 86400000) {
+    if (diff < 86400000)
       return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-    }
-    if (diff < 604800000) {
+    if (diff < 604800000)
       return d.toLocaleDateString("ar-EG", { weekday: "short" });
-    }
     return d.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
   };
 
@@ -116,105 +174,18 @@ const InboxScreen = ({ navigation }) => {
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // ── Story row at top of list ───────────────────────────────────────────────
-  const ListHeader = () => (
-    <View>
-      {/* Stories */}
-      {statuses.length > 0 && (
-        <View style={styles.storiesSection}>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={[{ _id: "__create__", type: "create" }, ...statuses]}
-            keyExtractor={(s) => s._id}
-            contentContainerStyle={{ paddingHorizontal: 14, gap: 12 }}
-            renderItem={({ item }) => {
-              if (item.type === "create") {
-                return (
-                  <TouchableOpacity
-                    style={styles.storyItem}
-                    onPress={() => navigation.navigate("CreateStatus")}
-                  >
-                    <View style={styles.createStoryContainer}>
-                      {userInfo?.profileImage ? (
-                        <Image source={{ uri: userInfo.profileImage }} style={styles.storyAvatar} />
-                      ) : (
-                        <View style={[styles.storyAvatar, styles.initialsCircle, { backgroundColor: "#FE2C55" }]}>
-                          <Text style={styles.initialsText}>{getInitials(userInfo?.username || "Me")}</Text>
-                        </View>
-                      )}
-                      <View style={styles.createBadge}>
-                        <Ionicons name="add" size={12} color="#FFF" />
-                      </View>
-                    </View>
-                    <Text style={styles.storyUsername} numberOfLines={1}>إنشاء</Text>
-                  </TouchableOpacity>
-                );
-              }
-              const isOwn = item.user?._id === userInfo?._id;
-              return (
-                <TouchableOpacity style={styles.storyItem} onPress={() => openStatus(item)}>
-                  <View style={[styles.storyRing, isOwn && styles.storyRingOwn]}>
-                    {item.image ? (
-                      <Image source={{ uri: item.image }} style={styles.storyAvatar} />
-                    ) : item.user?.profileImage ? (
-                      <Image source={{ uri: item.user.profileImage }} style={styles.storyAvatar} />
-                    ) : (
-                      <View style={[styles.storyAvatar, styles.initialsCircle, { backgroundColor: item.bgColor || "#7c3aed" }]}>
-                        <Text style={styles.initialsText}>{getInitials(item.user?.username)}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.storyUsername} numberOfLines={1}>
-                    {isOwn ? "قصتي" : item.user?.username || ""}
-                  </Text>
-                </TouchableOpacity>
-              );
-            }}
-          />
-        </View>
-      )}
+  // ── Derived notification groups ────────────────────────────────────────────
+  const followerNotifications = notifications.filter((n) => n.type === "follow" && !n.read);
+  const activityNotifications = notifications.filter((n) => n.fromUser && n.type !== "follow" && !n.read);
+  const systemNotifications = notifications.filter((n) => !n.fromUser && !n.read);
+  const latestFollower = notifications.find((n) => n.type === "follow");
+  const latestActivity = notifications.find((n) => n.fromUser && n.type !== "follow");
+  const latestSystem = notifications.find((n) => !n.fromUser);
 
-      {/* Search bar */}
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={18} color="#999" style={{ marginHorizontal: 8 }} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="بحث..."
-          placeholderTextColor="#999"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Ionicons name="close-circle" size={18} color="#999" style={{ marginHorizontal: 8 }} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Section label */}
-      <View style={styles.sectionLabel}>
-        <Text style={styles.sectionLabelText}>المحادثات</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Users")}>
-          <Ionicons name="create-outline" size={22} color="#FE2C55" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const ListEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubble-ellipses-outline" size={64} color="#333" />
-      <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
-      <Text style={styles.emptySubtitle}>ابحث عن أشخاص وابدأ محادثة جديدة</Text>
-      <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate("Users")}>
-        <Text style={styles.emptyBtnText}>ابدأ محادثة جديدة</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
+  // ── Tab content renderers ──────────────────────────────────────────────────
   const renderConversation = ({ item }) => {
-    const other = item.user || {};
+    const other = item.user || item.otherUser || {};
+    if (!other._id) return null;
     const name = other.username || other.name || "مستخدم";
     const avatar = other.profileImage;
     const isOnline = other.isOnline;
@@ -234,19 +205,16 @@ const InboxScreen = ({ navigation }) => {
           })
         }
       >
-        {/* Avatar */}
         <View style={styles.avatarWrapper}>
           {avatar ? (
             <Image source={{ uri: avatar }} style={styles.avatar} />
           ) : (
-            <View style={[styles.avatar, styles.initialsCircle, { backgroundColor: "#1a1a2e" }]}>
+            <View style={[styles.avatar, styles.initialsCircle]}>
               <Text style={styles.initialsTextLg}>{getInitials(name)}</Text>
             </View>
           )}
           {isOnline && <View style={styles.onlineDot} />}
         </View>
-
-        {/* Text */}
         <View style={styles.convoText}>
           <View style={styles.convoRow}>
             <Text style={[styles.convoName, unread > 0 && styles.convoNameBold]} numberOfLines={1}>
@@ -269,6 +237,251 @@ const InboxScreen = ({ navigation }) => {
     );
   };
 
+  // Extract users from conversations, online first
+  const conversationUsers = conversations
+    .map((c) => c.user || c.otherUser)
+    .filter((u) => u && u._id)
+    .sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0));
+
+  const MessagesTab = () => (
+    <FlatList
+      data={filteredConversations}
+      keyExtractor={(item) => item._id || item.user?._id || Math.random().toString()}
+      renderItem={renderConversation}
+      ListHeaderComponent={
+        <View>
+          {/* ── Active users row ── */}
+          {conversationUsers.length > 0 && (
+            <View style={styles.activeUsersSection}>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={conversationUsers}
+                keyExtractor={(u) => u._id}
+                contentContainerStyle={styles.activeUsersContent}
+                renderItem={({ item: u }) => (
+                  <TouchableOpacity
+                    style={styles.activeUserItem}
+                    onPress={() =>
+                      navigation.navigate("Chat", {
+                        userId: u._id,
+                        username: u.username || u.name || "مستخدم",
+                        profileImage: u.profileImage || null,
+                      })
+                    }
+                  >
+                    <View style={styles.activeUserAvatarWrap}>
+                      {u.profileImage ? (
+                        <Image source={{ uri: u.profileImage }} style={styles.activeUserAvatar} />
+                      ) : (
+                        <View style={[styles.activeUserAvatar, styles.activeUserInitials]}>
+                          <Text style={styles.activeUserInitialsText}>
+                            {getInitials(u.username || u.name || "")}
+                          </Text>
+                        </View>
+                      )}
+                      {u.isOnline && <View style={styles.activeUserOnlineDot} />}
+                    </View>
+                    <Text style={styles.activeUserName} numberOfLines={1}>
+                      {u.username || u.name || "مستخدم"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          )}
+
+          {/* ── Search bar ── */}
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color="#999" style={{ marginHorizontal: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="بحث في المحادثات..."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={18} color="#999" style={{ marginHorizontal: 8 }} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      }
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <Ionicons name="chatbubble-ellipses-outline" size={64} color="#333" />
+          <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
+          <Text style={styles.emptySubtitle}>ابحث عن أشخاص وابدأ محادثة جديدة</Text>
+          <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate("Users")}>
+            <Text style={styles.emptyBtnText}>ابدأ محادثة جديدة</Text>
+          </TouchableOpacity>
+        </View>
+      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FE2C55" />}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+
+  const NotificationsTab = () => (
+    <FlatList
+      data={["followers", "activity", "system"]}
+      keyExtractor={(i) => i}
+      renderItem={({ item }) => {
+        if (item === "followers") return (
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("NewFollowers")}>
+            <View style={[styles.menuIcon, { backgroundColor: "#007AFF" }]}>
+              <Ionicons name="people" size={24} color="#FFF" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>متابعون جدد</Text>
+              <Text style={styles.menuSubtitle} numberOfLines={1}>
+                {latestFollower ? getSummaryText(latestFollower) : "لا يوجد متابعون جدد"}
+              </Text>
+            </View>
+            {followerNotifications.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{followerNotifications.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+        if (item === "activity") return (
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("Activity")}>
+            <View style={[styles.menuIcon, { backgroundColor: "#FE2C55" }]}>
+              <Ionicons name="heart" size={24} color="#FFF" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>النشاط</Text>
+              <Text style={styles.menuSubtitle} numberOfLines={1}>
+                {latestActivity ? getSummaryText(latestActivity) : "لا يوجد نشاط"}
+              </Text>
+            </View>
+            {activityNotifications.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{activityNotifications.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+        return (
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate("SystemNotifications")}>
+            <View style={[styles.menuIcon, { backgroundColor: "#111" }]}>
+              <Ionicons name="file-tray-full" size={24} color="#FFF" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>إشعارات النظام</Text>
+              <Text style={styles.menuSubtitle} numberOfLines={1}>
+                {latestSystem ? getSummaryText(latestSystem) : "لا توجد إشعارات نظام"}
+              </Text>
+            </View>
+            {systemNotifications.length > 0 && <View style={styles.dotBadge} />}
+          </TouchableOpacity>
+        );
+      }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FE2C55" />}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+
+  const StoriesTab = () => (
+    <FlatList
+      data={[{ _id: "__create__", type: "create" }, ...statuses]}
+      keyExtractor={(s) => s._id}
+      numColumns={3}
+      columnWrapperStyle={{ gap: 2 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FE2C55" />}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 80, gap: 2 }}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <Ionicons name="images-outline" size={64} color="#333" />
+          <Text style={styles.emptyTitle}>لا توجد حالات بعد</Text>
+          <Text style={styles.emptySubtitle}>أنشئ أول حالة لك الآن</Text>
+          <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate("CreateStatus")}>
+            <Text style={styles.emptyBtnText}>إنشاء حالة</Text>
+          </TouchableOpacity>
+        </View>
+      }
+      renderItem={({ item }) => {
+        if (item.type === "create") {
+          return (
+            <TouchableOpacity style={styles.storyGridItem} onPress={() => navigation.navigate("CreateStatus")}>
+              <View style={[styles.storyGridImg, { backgroundColor: "#111", justifyContent: "center", alignItems: "center" }]}>
+                {userInfo?.profileImage ? (
+                  <Image source={{ uri: userInfo.profileImage }} style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} />
+                ) : null}
+                <View style={styles.createPlusCircle}>
+                  <Ionicons name="add" size={22} color="#FFF" />
+                </View>
+                <Text style={styles.storyGridCreate}>إنشاء{"\n"}حالة</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }
+        const isOwn = item.user?._id === userInfo?._id;
+        const preview = item.image || item.user?.profileImage;
+        return (
+          <TouchableOpacity style={styles.storyGridItem} onPress={() => openStatus(item)}>
+            <View style={[styles.storyGridImg, isOwn && { borderColor: "#25D366", borderWidth: 2 }]}>
+              {preview ? (
+                <Image source={{ uri: preview }} style={StyleSheet.absoluteFill} />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: item.bgColor || "#FE2C55", justifyContent: "center", alignItems: "center", padding: 4 }]}>
+                  <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "700", textAlign: "center" }} numberOfLines={3}>
+                    {item.text?.slice(0, 30) || ""}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.storyGridGradient} />
+              <Text style={styles.storyGridUser} numberOfLines={1}>
+                {item.user?.username || ""}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }}
+    />
+  );
+
+  // ── Tab bar ────────────────────────────────────────────────────────────────
+  const TAB_W = width / 3;
+
+  const TabBar = () => (
+    <View style={styles.tabBar}>
+      {[
+        { key: "messages", label: "الرسائل", badge: msgBadge },
+        { key: "notifications", label: "الإشعارات", badge: notifBadge },
+        { key: "stories", label: "الحالات", badge: storiesBadge },
+      ].map((t) => (
+        <TouchableOpacity
+          key={t.key}
+          style={styles.tabItem}
+          onPress={() => switchTab(t.key)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabLabel, activeTab === t.key && styles.tabLabelActive]}>
+            {t.label}
+          </Text>
+          {t.badge > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{t.badge > 99 ? "99+" : t.badge}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      ))}
+      {/* Animated underline */}
+      <Animated.View
+        style={[
+          styles.tabUnderline,
+          { width: TAB_W - 32, transform: [{ translateX: tabUnderline }] },
+        ]}
+      />
+    </View>
+  );
+
   // ── Main render ────────────────────────────────────────────────────────────
   const topPad = insets.top;
 
@@ -276,67 +489,28 @@ const InboxScreen = ({ navigation }) => {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      {/* ── Sticky compact bar (appears as header collapses) ── */}
-      <Animated.View
-        style={[
-          styles.stickyBar,
-          { paddingTop: topPad, height: 54 + topPad, opacity: stickyBarOpacity },
-        ]}
-        pointerEvents="none"
-      >
-        <Text style={styles.stickyTitle}>الرسائل</Text>
-      </Animated.View>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: topPad }]}>
+        <Text style={styles.headerTitle}>صندوق الوارد</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Users")} style={styles.headerRight}>
+          <Ionicons name="create-outline" size={24} color="#FE2C55" />
+        </TouchableOpacity>
+      </View>
 
-      {/* ── Expanding big header ── */}
-      <Animated.View
-        style={[
-          styles.bigHeader,
-          {
-            paddingTop: topPad + 10,
-            height: HEADER_MAX + topPad,
-            transform: [{ translateY: headerTranslate }],
-            opacity: headerOpacity,
-          },
-        ]}
-        pointerEvents="none"
-      >
-        <Text style={styles.bigTitle}>الرسائل</Text>
-        <Text style={styles.bigSubtitle}>
-          {conversations.length > 0 ? `${conversations.length} محادثة` : ""}
-        </Text>
-      </Animated.View>
+      {/* Tab bar */}
+      <TabBar />
 
-      {/* ── Content list ── */}
+      {/* Content */}
       {loading ? (
         <View style={styles.loadingCenter}>
           <ActivityIndicator size="large" color="#FE2C55" />
         </View>
       ) : (
-        <Animated.FlatList
-          data={filteredConversations}
-          keyExtractor={(item) => item._id || item.user?._id || Math.random().toString()}
-          renderItem={renderConversation}
-          ListHeaderComponent={<ListHeader />}
-          ListEmptyComponent={<ListEmpty />}
-          contentContainerStyle={{
-            paddingTop: HEADER_MAX + topPad,
-            paddingBottom: insets.bottom + 80,
-          }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#FE2C55"
-              progressViewOffset={HEADER_MAX + topPad}
-            />
-          }
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true },
-          )}
-          scrollEventThrottle={16}
-          showsVerticalScrollIndicator={false}
-        />
+        <View style={{ flex: 1 }}>
+          {activeTab === "messages" && <MessagesTab />}
+          {activeTab === "notifications" && <NotificationsTab />}
+          {activeTab === "stories" && <StoriesTab />}
+        </View>
       )}
     </View>
   );
@@ -346,69 +520,117 @@ const InboxScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
 
-  // Sticky bar
-  stickyBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
+  // Header
+  header: {
     backgroundColor: "#000",
-    justifyContent: "flex-end",
+    flexDirection: "row",
     alignItems: "center",
-    paddingBottom: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#1a1a1a",
   },
-  stickyTitle: { color: "#FFF", fontSize: 17, fontWeight: "700" },
+  headerTitle: { color: "#FFF", fontSize: 24, fontWeight: "800" },
+  headerRight: { padding: 4 },
 
-  // Expanding header
-  bigHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
+  // Tab bar
+  tabBar: {
+    flexDirection: "row",
     backgroundColor: "#000",
-    justifyContent: "flex-end",
-    paddingHorizontal: 20,
-    paddingBottom: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#222",
+    position: "relative",
+    paddingBottom: 0,
   },
-  bigTitle: { color: "#FFF", fontSize: 32, fontWeight: "800", letterSpacing: -0.5 },
-  bigSubtitle: { color: "#888", fontSize: 14, marginTop: 2 },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  tabLabelActive: {
+    color: "#FFF",
+  },
+  tabBadge: {
+    backgroundColor: "#FE2C55",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
+  tabUnderline: {
+    position: "absolute",
+    bottom: 0,
+    left: 16,
+    height: 2,
+    backgroundColor: "#FE2C55",
+    borderRadius: 1,
+  },
 
   // Loading
   loadingCenter: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  // Stories
-  storiesSection: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#1a1a1a" },
-  storyItem: { alignItems: "center", width: 68 },
-  storyAvatar: { width: 56, height: 56, borderRadius: 28 },
-  storyRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: "#FE2C55",
+  // Active users row
+  activeUsersSection: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#1a1a1a",
+    paddingVertical: 12,
+  },
+  activeUsersContent: {
+    paddingHorizontal: 14,
+    gap: 14,
+  },
+  activeUserItem: {
+    alignItems: "center",
+    width: 62,
+  },
+  activeUserAvatarWrap: {
+    position: "relative",
+    marginBottom: 5,
+  },
+  activeUserAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+  },
+  activeUserInitials: {
+    backgroundColor: "#1a1a2e",
     justifyContent: "center",
     alignItems: "center",
   },
-  storyRingOwn: { borderColor: "#25D366" },
-  createStoryContainer: { position: "relative" },
-  createBadge: {
+  activeUserInitialsText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  activeUserOnlineDot: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#FE2C55",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
+    bottom: 1,
+    right: 1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#25D366",
+    borderWidth: 2.5,
     borderColor: "#000",
   },
-  storyUsername: { color: "#CCC", fontSize: 11, marginTop: 4, textAlign: "center", maxWidth: 64 },
+  activeUserName: {
+    color: "#CCC",
+    fontSize: 11,
+    fontWeight: "500",
+    textAlign: "center",
+  },
 
   // Search
   searchBar: {
@@ -417,19 +639,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#111",
     borderRadius: 12,
     marginHorizontal: 14,
-    marginVertical: 10,
+    marginTop: 12,
+    marginBottom: 4,
   },
-  searchInput: { flex: 1, color: "#FFF", fontSize: 15, paddingVertical: 10, textAlign: "right" },
-
-  // Section label
-  sectionLabel: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 6,
+  searchInput: {
+    flex: 1,
+    color: "#FFF",
+    fontSize: 15,
+    paddingVertical: 10,
+    textAlign: "right",
   },
-  sectionLabelText: { color: "#888", fontSize: 13, fontWeight: "600" },
 
   // Conversation item
   convoItem: {
@@ -442,8 +661,7 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: { position: "relative", marginRight: 12 },
   avatar: { width: 52, height: 52, borderRadius: 26 },
-  initialsCircle: { justifyContent: "center", alignItems: "center" },
-  initialsText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  initialsCircle: { justifyContent: "center", alignItems: "center", backgroundColor: "#1a1a2e" },
   initialsTextLg: { color: "#FFF", fontSize: 18, fontWeight: "700" },
   onlineDot: {
     position: "absolute",
@@ -457,7 +675,11 @@ const styles = StyleSheet.create({
     borderColor: "#000",
   },
   convoText: { flex: 1 },
-  convoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  convoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   convoName: { color: "#FFF", fontSize: 15, flexShrink: 1 },
   convoNameBold: { fontWeight: "700" },
   convoTime: { color: "#666", fontSize: 12, marginLeft: 6 },
@@ -475,8 +697,89 @@ const styles = StyleSheet.create({
   },
   unreadBadgeText: { color: "#FFF", fontSize: 11, fontWeight: "700" },
 
-  // Empty state
-  emptyContainer: { alignItems: "center", paddingTop: 60, paddingHorizontal: 30 },
+  // Notification menu items
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#111",
+  },
+  menuIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  menuContent: { flex: 1 },
+  menuTitle: { fontSize: 15, fontWeight: "bold", color: "#FFF", marginBottom: 4 },
+  menuSubtitle: { fontSize: 13, color: "#888" },
+  notificationBadge: {
+    backgroundColor: "#FE2C55",
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 6,
+  },
+  badgeText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
+  dotBadge: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FE2C55" },
+
+  // Stories grid
+  storyGridItem: {
+    flex: 1,
+    aspectRatio: 0.75,
+    maxWidth: width / 3,
+  },
+  storyGridImg: {
+    flex: 1,
+    backgroundColor: "#111",
+    overflow: "hidden",
+    position: "relative",
+  },
+  storyGridGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  storyGridUser: {
+    position: "absolute",
+    bottom: 6,
+    left: 4,
+    right: 4,
+    color: "#FFF",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  createPlusCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FE2C55",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  storyGridCreate: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+
+  // Empty states
+  emptyContainer: {
+    alignItems: "center",
+    paddingTop: 60,
+    paddingHorizontal: 30,
+  },
   emptyTitle: { color: "#FFF", fontSize: 20, fontWeight: "700", marginTop: 16 },
   emptySubtitle: { color: "#888", fontSize: 14, marginTop: 8, textAlign: "center" },
   emptyBtn: {

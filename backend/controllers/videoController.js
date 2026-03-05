@@ -157,11 +157,18 @@ const createVideo = async (req, res) => {
         errorMessage = "Cloudinary غير مكون. تحقق من إعدادات الخادم";
       } else if (error.message.includes("placeholder")) {
         errorMessage = "Cloudinary يحتاج إلى بيانات اعتماد حقيقية";
-      } else if (error.http_code === 401) {
-        errorMessage = "بيانات اعتماد Cloudinary غير صحيحة";
+      } else if (error.http_code === 401 || error.error?.http_code === 401) {
+        errorMessage = "بيانات اعتماد Cloudinary غير صحيحة (401)";
+      } else if (
+        error.message?.includes("Must supply api_key") ||
+        error.message?.includes("api_key")
+      ) {
+        errorMessage = "Cloudinary API key مفقود أو غير صحيح";
       } else if (error.message.includes("timeout")) {
         errorMessage = "انتهت مهلة الرفع. حاول مرة أخرى";
       }
+
+      console.error("❌ Returning 500:", errorMessage, "|", error.message);
 
       return res.status(500).json({
         message: errorMessage,

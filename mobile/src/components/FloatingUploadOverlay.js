@@ -8,23 +8,57 @@ import {
   PanResponder,
   Dimensions,
   Modal,
+  Easing,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useUpload } from "../context/UploadContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const PILL_W = 160;
+const PILL_H = 54;
 
 const FloatingUploadOverlay = () => {
-  const { uploading, uploadProgress, uploadDone, error } = useUpload();
+  const { uploading, uploadProgress, uploadDone, error, resetUpload } =
+    useUpload();
   const insets = useSafeAreaInsets();
-  const scale = useRef(new Animated.Value(0)).current;
-  const position = useRef(
-    new Animated.ValueXY({ x: 16, y: insets.top + 60 }),
-  ).current;
-  const [showDetails, setShowDetails] = useState(false);
 
-  // PanResponder for dragging
+  const scale = useRef(new Animated.Value(0)).current;
+  const glowPulse = useRef(new Animated.Value(0.4)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const position = useRef(
+    new Animated.ValueXY({ x: SCREEN_WIDTH - PILL_W - 16, y: insets.top + 60 }),
+  ).current;
+
+  const [showDetails, setShowDetails] = useState(false);
+  const glowLoop = useRef(null);
+
+  const startGlow = () => {
+    glowLoop.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+          easing: Easing.ease,
+        }),
+        Animated.timing(glowPulse, {
+          toValue: 0.3,
+          duration: 700,
+          useNativeDriver: true,
+          easing: Easing.ease,
+        }),
+      ]),
+    );
+    glowLoop.current.start();
+  };
+
+  const stopGlow = () => {
+    glowLoop.current?.stop();
+    glowPulse.setValue(1);
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -38,17 +72,14 @@ const FloatingUploadOverlay = () => {
       ),
       onPanResponderRelease: (_, gesture) => {
         position.flattenOffset();
-
-        // Snap to edges
         const finalX =
-          gesture.moveX < SCREEN_WIDTH / 2 ? 16 : SCREEN_WIDTH - 76;
-
+          gesture.moveX < SCREEN_WIDTH / 2 ? 16 : SCREEN_WIDTH - PILL_W - 16;
         Animated.spring(position, {
           toValue: {
             x: finalX,
             y: Math.max(
               insets.top + 10,
-              Math.min(SCREEN_HEIGHT - 100, gesture.moveY - 30),
+              Math.min(SCREEN_HEIGHT - 100, gesture.moveY - 28),
             ),
           },
           useNativeDriver: false,
@@ -58,40 +89,30 @@ const FloatingUploadOverlay = () => {
     }),
   ).current;
 
-  // Pop in / out with auto-hide on completion
   useEffect(() => {
+    if (uploading || uploadDone || error) {
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 40,
+      }).start();
+    }
     if (uploading) {
-      Animated.spring(scale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 40,
-      }).start();
-    } else if (uploadDone) {
-      // Show success for 2 seconds, then hide
-      Animated.spring(scale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 40,
-      }).start();
-
+      startGlow();
+    } else {
+      stopGlow();
+    }
+    if (uploadDone) {
       setTimeout(() => {
         Animated.timing(scale, {
           toValue: 0,
-          duration: 300,
+          duration: 350,
           useNativeDriver: true,
         }).start();
-      }, 2000);
-    } else if (error) {
-      // Show error
-      Animated.spring(scale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 40,
-      }).start();
-    } else {
+      }, 2500);
+    }
+    if (!uploading && !uploadDone && !error) {
       Animated.timing(scale, {
         toValue: 0,
         duration: 300,
@@ -100,7 +121,30 @@ const FloatingUploadOverlay = () => {
     }
   }, [uploading, uploadDone, error]);
 
-  const currentProgress = Math.round(uploadProgress);
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: uploadProgress,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [uploadProgress]);
+
+  const dismiss = () => {
+    setShowDetails(false);
+    Animated.timing(scale, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => resetUpload());
+  };
+
+  const borderColor = error ? "#FF4444" : uploadDone ? "#25D366" : "#FE2C55";
+  const shadowColor = error ? "#FF4444" : uploadDone ? "#25D366" : "#FE2C55";
+
+  const progressBarWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ["0%", "100%"],
+  });
 
   return (
     <>
@@ -109,6 +153,7 @@ const FloatingUploadOverlay = () => {
         style={[
           styles.container,
           {
+            shadowColor,
             transform: [
               { translateX: position.x },
               { translateY: position.y },
@@ -118,31 +163,58 @@ const FloatingUploadOverlay = () => {
         ]}
         pointerEvents={uploading || uploadDone || error ? "auto" : "none"}
       >
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => setShowDetails(true)}
-          style={[
-            styles.circle,
-            uploadDone && styles.circleSuccess,
-            error && styles.circleError,
-          ]}
-        >
-          {/* Background Progress Fill */}
-          {!uploadDone && !error && (
-            <View style={[styles.fill, { height: `${currentProgress}%` }]} />
-          )}
+        {/* Animated glow ring */}
+        <Animated.View
+          style={[styles.glowRing, { borderColor, opacity: glowPulse }]}
+          pointerEvents="none"
+        />
 
-          {/* Content */}
-          {uploadDone ? (
-            <Ionicons name="checkmark-circle" size={32} color="#FFF" />
-          ) : error ? (
-            <Ionicons name="alert-circle" size={32} color="#FFF" />
-          ) : (
-            <View style={styles.progressContent}>
-              <Ionicons name="cloud-upload-outline" size={24} color="#FFF" />
-              <Text style={styles.percentageText}>{currentProgress}%</Text>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setShowDetails(true)}
+          style={styles.pillTouch}
+        >
+          <BlurView intensity={80} tint="dark" style={styles.blurPill}>
+            <View style={[styles.pillBorder, { borderColor }]} />
+            <View style={styles.pillContent}>
+              {uploadDone ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={22} color="#25D366" />
+                  <Text style={[styles.pillLabel, { color: "#25D366" }]}>
+                    تم الرفع!
+                  </Text>
+                </>
+              ) : error ? (
+                <>
+                  <Ionicons name="alert-circle" size={22} color="#FF4444" />
+                  <Text style={[styles.pillLabel, { color: "#FF4444" }]}>
+                    فشل الرفع
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={20}
+                    color="#FFF"
+                  />
+                  <View style={styles.progressArea}>
+                    <Text style={styles.pillLabel}>
+                      {Math.round(uploadProgress)}%
+                    </Text>
+                    <View style={styles.miniBar}>
+                      <Animated.View
+                        style={[
+                          styles.miniBarFill,
+                          { width: progressBarWidth },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
-          )}
+          </BlurView>
         </TouchableOpacity>
       </Animated.View>
 
@@ -151,70 +223,66 @@ const FloatingUploadOverlay = () => {
         visible={showDetails}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowDetails(false)}
+        onRequestClose={() => (error ? dismiss() : setShowDetails(false))}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowDetails(false)}
+          onPress={() => (error ? dismiss() : setShowDetails(false))}
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>تفاصيل الرفع</Text>
-              <TouchableOpacity onPress={() => setShowDetails(false)}>
-                <Ionicons name="close-circle" size={28} color="#666" />
+              <TouchableOpacity
+                onPress={() => (error ? dismiss() : setShowDetails(false))}
+              >
+                <Ionicons name="close-circle" size={28} color="#555" />
               </TouchableOpacity>
             </View>
-
-            <View style={styles.detailsContainer}>
+            <View style={styles.modalBody}>
               {uploadDone ? (
                 <>
-                  <View style={styles.successIcon}>
+                  <View style={[styles.iconCircle, { borderColor: "#25D366" }]}>
                     <Ionicons
                       name="checkmark-circle"
-                      size={64}
-                      color="#4CAF50"
+                      size={52}
+                      color="#25D366"
                     />
                   </View>
-                  <Text style={styles.detailsTitle}>تم الرفع بنجاح!</Text>
-                  <Text style={styles.detailsSubtitle}>
-                    تم رفع الفيديو الخاص بك وسيكون متاحاً قريباً
+                  <Text style={styles.modalBigTitle}>تم الرفع بنجاح!</Text>
+                  <Text style={styles.modalSub}>
+                    سيكون الفيديو متاحاً قريباً
                   </Text>
                 </>
               ) : error ? (
                 <>
-                  <View style={styles.errorIcon}>
-                    <Ionicons name="alert-circle" size={64} color="#F44336" />
+                  <View style={[styles.iconCircle, { borderColor: "#FF4444" }]}>
+                    <Ionicons name="alert-circle" size={52} color="#FF4444" />
                   </View>
-                  <Text style={styles.detailsTitle}>فشل الرفع</Text>
-                  <Text style={styles.detailsSubtitle}>
+                  <Text style={styles.modalBigTitle}>فشل الرفع</Text>
+                  <Text style={styles.modalSub}>
                     {error?.response?.data?.message ||
                       error?.message ||
                       "حدث خطأ أثناء رفع الفيديو"}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.retryButton}
-                    onPress={() => setShowDetails(false)}
-                  >
-                    <Text style={styles.retryButtonText}>إغلاق</Text>
+                  <TouchableOpacity style={styles.closeBtn} onPress={dismiss}>
+                    <Text style={styles.closeBtnText}>إغلاق</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <View style={styles.progressCircle}>
-                    <Text style={styles.progressCircleText}>
-                      {currentProgress}%
+                  <View style={[styles.iconCircle, { borderColor: "#FE2C55" }]}>
+                    <Text style={styles.bigPercent}>
+                      {Math.round(uploadProgress)}%
                     </Text>
                   </View>
-                  <Text style={styles.detailsTitle}>جارِ الرفع...</Text>
-                  <Text style={styles.detailsSubtitle}>
-                    يرجى الانتظار حتى يكتمل رفع الفيديو
-                  </Text>
+                  <Text style={styles.modalBigTitle}>جارٍ الرفع...</Text>
+                  <Text style={styles.modalSub}>يرجى عدم إغلاق التطبيق</Text>
                   <View style={styles.progressBar}>
-                    <View
+                    <Animated.View
                       style={[
                         styles.progressBarFill,
-                        { width: `${currentProgress}%` },
+                        { width: progressBarWidth },
                       ]}
                     />
                   </View>
@@ -232,120 +300,121 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     zIndex: 9999,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+    width: PILL_W,
+    height: PILL_H,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    elevation: 12,
   },
-  circle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  circleSuccess: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
-  circleError: {
-    backgroundColor: "#F44336",
-    borderColor: "#F44336",
-  },
-  fill: {
+  glowRing: {
     position: "absolute",
-    bottom: 0,
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: PILL_H / 2 + 4,
+    borderWidth: 2,
+  },
+  pillTouch: {
+    width: PILL_W,
+    height: PILL_H,
+    borderRadius: PILL_H / 2,
+    overflow: "hidden",
+  },
+  blurPill: {
+    flex: 1,
+    borderRadius: PILL_H / 2,
+    overflow: "hidden",
+  },
+  pillBorder: {
+    position: "absolute",
+    top: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(254, 44, 85, 0.9)",
+    bottom: 0,
+    borderRadius: PILL_H / 2,
+    borderWidth: 1.5,
   },
-  progressContent: {
+  pillContent: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 2,
+    paddingHorizontal: 14,
+    gap: 8,
   },
-  percentageText: {
+  pillLabel: {
     color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 11,
-    marginTop: 2,
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  progressArea: { flex: 1, gap: 3 },
+  miniBar: {
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  miniBarFill: {
+    height: "100%",
+    backgroundColor: "#FE2C55",
+    borderRadius: 2,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    width: "85%",
-    maxWidth: 400,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 24,
+    width: "82%",
+    maxWidth: 380,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
+    borderBottomColor: "#2a2a2a",
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  detailsContainer: {
-    padding: 30,
-    alignItems: "center",
-  },
-  successIcon: {
-    marginBottom: 20,
-  },
-  errorIcon: {
-    marginBottom: 20,
-  },
-  progressCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 8,
-    borderColor: "#FE2C55",
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#FFF" },
+  modalBody: { padding: 30, alignItems: "center" },
+  iconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
-  progressCircleText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#FE2C55",
-  },
-  detailsTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 10,
+  bigPercent: { color: "#FE2C55", fontSize: 22, fontWeight: "800" },
+  modalBigTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#FFF",
+    marginBottom: 8,
     textAlign: "center",
   },
-  detailsSubtitle: {
-    fontSize: 14,
-    color: "#666",
+  modalSub: {
+    fontSize: 13,
+    color: "#888",
     textAlign: "center",
     lineHeight: 20,
   },
   progressBar: {
     width: "100%",
     height: 6,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: "#2a2a2a",
     borderRadius: 3,
     marginTop: 20,
     overflow: "hidden",
@@ -355,18 +424,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#FE2C55",
     borderRadius: 3,
   },
-  retryButton: {
-    marginTop: 20,
+  closeBtn: {
+    marginTop: 24,
     backgroundColor: "#FE2C55",
     paddingVertical: 12,
-    paddingHorizontal: 30,
+    paddingHorizontal: 36,
     borderRadius: 25,
   },
-  retryButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  closeBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
 });
 
 export default FloatingUploadOverlay;

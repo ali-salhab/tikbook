@@ -50,24 +50,19 @@ const VideoItem = memo(
     const lastTap = useRef(0);
 
     useEffect(() => {
-      // Use InteractionManager to ensure video operations run on main thread
-      const task = InteractionManager.runAfterInteractions(() => {
-        if (videoRef.current) {
-          if (isActive) {
-            videoRef.current
-              .playAsync()
-              .then(() => setIsPlaying(true))
-              .catch(() => {});
-          } else {
-            videoRef.current
-              .pauseAsync()
-              .then(() => setIsPlaying(false))
-              .catch(() => {});
-          }
-        }
-      });
-      return () => task.cancel();
+      // shouldPlay={isActive} already handles play/pause declaratively.
+      // This imperative effect only syncs local isPlaying state so the UI icon is correct.
+      setIsPlaying(isActive);
     }, [isActive]);
+
+    // Pause & unload on unmount so ExoPlayer always releases from the main thread.
+    useEffect(() => {
+      return () => {
+        if (videoRef.current) {
+          videoRef.current.pauseAsync().catch(() => {});
+        }
+      };
+    }, []);
 
     // Format ms -> m:ss
     const formatTime = (ms) => {

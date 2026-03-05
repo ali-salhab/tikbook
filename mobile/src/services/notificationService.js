@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
@@ -153,6 +154,10 @@ export const notificationListener = (navigationRef) => {
       const target = resolveNavTarget(data);
       if (!target) return;
 
+      // Mark as handled so cold-start won't re-navigate
+      const notifId = response?.notification?.request?.identifier;
+      if (notifId) AsyncStorage.setItem("@lastHandledNotifId", notifId).catch(() => {});
+
       let attempts = 0;
       const tryNavigate = () => {
         if (navigationRef?.isReady()) {
@@ -177,9 +182,19 @@ export const handleInitialNotification = async (navigationRef) => {
   try {
     const response = await Notifications.getLastNotificationResponseAsync();
     if (!response) return;
+
+    // Deduplicate: skip if this notification was already handled in a previous session
+    const notifId = response?.notification?.request?.identifier;
+    const STORAGE_KEY = "@lastHandledNotifId";
+    const lastHandled = await AsyncStorage.getItem(STORAGE_KEY);
+    if (notifId && lastHandled === notifId) return;
+
     const data = response?.notification?.request?.content?.data || {};
     const target = resolveNavTarget(data);
     if (!target) return;
+
+    // Mark as handled so next cold start won't re-navigate
+    if (notifId) await AsyncStorage.setItem(STORAGE_KEY, notifId);
 
     let attempts = 0;
     const tryNavigate = () => {
