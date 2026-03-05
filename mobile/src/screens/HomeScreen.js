@@ -33,6 +33,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import VideoItem from "../components/VideoItem";
 import NetworkErrorModal, {
   classifyError,
 } from "../components/NetworkErrorModal";
@@ -100,6 +101,7 @@ const HomeScreen = ({ navigation, route }) => {
     setLoading(true);
     try {
       console.log("📹 Fetching videos from:", `${BASE_URL}/videos`);
+      console.log("⏱️  Using 60s timeout for Render.com cold start...");
 
       const config = {};
       if (userToken) {
@@ -108,7 +110,7 @@ const HomeScreen = ({ navigation, route }) => {
 
       const res = await axios.get(`${BASE_URL}/videos`, {
         ...config,
-        timeout: 20000,
+        timeout: 60000, // 60 seconds for Render.com cold start
       });
       console.log("✅ Videos fetched:", res.data.length);
 

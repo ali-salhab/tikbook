@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   StyleSheet,
+  InteractionManager,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -49,19 +50,23 @@ const VideoItem = memo(
     const lastTap = useRef(0);
 
     useEffect(() => {
-      if (videoRef.current) {
-        if (isActive) {
-          videoRef.current
-            .playAsync()
-            .then(() => setIsPlaying(true))
-            .catch(() => {});
-        } else {
-          videoRef.current
-            .pauseAsync()
-            .then(() => setIsPlaying(false))
-            .catch(() => {});
+      // Use InteractionManager to ensure video operations run on main thread
+      const task = InteractionManager.runAfterInteractions(() => {
+        if (videoRef.current) {
+          if (isActive) {
+            videoRef.current
+              .playAsync()
+              .then(() => setIsPlaying(true))
+              .catch(() => {});
+          } else {
+            videoRef.current
+              .pauseAsync()
+              .then(() => setIsPlaying(false))
+              .catch(() => {});
+          }
         }
-      }
+      });
+      return () => task.cancel();
     }, [isActive]);
 
     // Format ms -> m:ss
@@ -105,9 +110,14 @@ const VideoItem = memo(
           const newP = barW ? Math.max(0, Math.min(relX / barW, 1)) : progress;
           setProgress(newP);
           if (videoRef.current && duration > 0) {
-            videoRef.current
-              .setPositionAsync(Math.floor(newP * duration))
-              .catch(() => {});
+            // Ensure video operations run on main thread
+            InteractionManager.runAfterInteractions(() => {
+              if (videoRef.current && duration > 0) {
+                videoRef.current
+                  .setPositionAsync(Math.floor(newP * duration))
+                  .catch(() => {});
+              }
+            });
           }
           isSeeking.current = false;
           setIsScrubbing(false);
@@ -140,17 +150,21 @@ const VideoItem = memo(
       } else {
         // Single tap — play/pause
         if (videoRef.current) {
-          if (isPlaying) {
-            videoRef.current
-              .pauseAsync()
-              .then(() => setIsPlaying(false))
-              .catch(() => {});
-          } else {
-            videoRef.current
-              .playAsync()
-              .then(() => setIsPlaying(true))
-              .catch(() => {});
-          }
+          // Ensure video operations run on main thread
+          InteractionManager.runAfterInteractions(() => {
+            if (!videoRef.current) return;
+            if (isPlaying) {
+              videoRef.current
+                .pauseAsync()
+                .then(() => setIsPlaying(false))
+                .catch(() => {});
+            } else {
+              videoRef.current
+                .playAsync()
+                .then(() => setIsPlaying(true))
+                .catch(() => {});
+            }
+          });
           // Flash the icon
           playIconOpacity.setValue(1);
           playIconScale.setValue(0.6);

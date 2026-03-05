@@ -78,28 +78,37 @@ const createVideo = async (req, res) => {
     let mediaResults = [];
     try {
       // Check Cloudinary configuration
-      if (
-        !process.env.CLOUDINARY_CLOUD_NAME ||
-        !process.env.CLOUDINARY_API_KEY ||
-        !process.env.CLOUDINARY_API_SECRET
-      ) {
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const apiKey = process.env.CLOUDINARY_API_KEY;
+      const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+      if (!cloudName || !apiKey || !apiSecret) {
         console.error("❌ Cloudinary credentials missing!");
+        console.error("  CLOUD_NAME:", cloudName ? "✓" : "✗");
+        console.error("  API_KEY:", apiKey ? "✓" : "✗");
+        console.error("  API_SECRET:", apiSecret ? "✓" : "✗");
         throw new Error(
           "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.",
         );
       }
 
-      // Check if credentials are still placeholders
-      if (
-        process.env.CLOUDINARY_CLOUD_NAME.includes("your_") ||
-        process.env.CLOUDINARY_API_KEY.includes("your_") ||
-        process.env.CLOUDINARY_API_SECRET.includes("your_")
-      ) {
-        console.error("❌ Cloudinary credentials are placeholders!");
+      // Check if credentials look valid (not empty/too short)
+      if (cloudName.length < 5 || apiKey.length < 10 || apiSecret.length < 10) {
+        console.error("❌ Cloudinary credentials appear invalid!");
+        console.error("  CLOUD_NAME length:", cloudName.length);
+        console.error("  API_KEY length:", apiKey.length);
+        console.error("  API_SECRET length:", apiSecret.length);
         throw new Error(
-          "Cloudinary credentials are still placeholder values. Please update them with actual values from Cloudinary dashboard.",
+          "Cloudinary credentials appear to be invalid. Please check your environment variables.",
         );
       }
+
+      console.log("✅ Cloudinary credentials validated");
+      console.log("  Cloud Name:", cloudName);
+      console.log(
+        "  API Key:",
+        apiKey.substring(0, 4) + "..." + apiKey.substring(apiKey.length - 4),
+      );
 
       for (const file of mediaFiles) {
         console.log("📤 Uploading media to Cloudinary...");

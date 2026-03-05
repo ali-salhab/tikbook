@@ -1,6 +1,9 @@
 const { Resend } = require("resend");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Only initialize Resend if API key is provided
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 // Generate 6-digit OTP
 const generateOTP = () => {
@@ -9,6 +12,16 @@ const generateOTP = () => {
 
 // Send OTP email via Resend (HTTP API — works on Render free plan)
 const sendOTPEmail = async (email, otp, type = "register") => {
+  // Check if Resend is configured
+  if (!resend) {
+    console.warn("⚠️  RESEND NOT CONFIGURED: Email sending is disabled.");
+    console.warn(
+      "   To enable email OTP, set RESEND_API_KEY in your .env file",
+    );
+    console.warn(`   📧 DEV MODE: OTP for ${email} is: ${otp}`);
+    return { success: true, devMode: true }; // Allow development without email
+  }
+
   const subject =
     type === "reset"
       ? "إعادة تعيين كلمة المرور - TikBook"
