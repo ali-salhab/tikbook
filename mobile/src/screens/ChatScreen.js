@@ -20,6 +20,10 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Modal,
+  Share,
+  Dimensions,
+  StatusBar,
 } from "react-native";
 import {
   SafeAreaView,
@@ -34,6 +38,8 @@ import i18n from "../i18n";
 import { BASE_URL } from "../config/api";
 import GiftPanel from "../components/GiftPanel";
 import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library";
+import * as FileSystem from "expo-file-system";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -56,6 +62,9 @@ const ChatScreen = ({ route, navigation }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageSaving, setImageSaving] = useState(false);
   const socket = useRef(null);
   const flatListRef = useRef(null);
 
@@ -358,6 +367,34 @@ const ChatScreen = ({ route, navigation }) => {
     return `${hh}:${mm}`;
   };
 
+  const handleShareImage = async (imageUrl) => {
+    try {
+      await Share.share({ url: imageUrl, message: imageUrl });
+    } catch (e) {
+      Alert.alert("خطأ", "تعذّر مشاركة الصورة");
+    }
+  };
+
+  const handleSaveImage = async (imageUrl) => {
+    try {
+      setImageSaving(true);
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("الإذن مرفوض", "يرجى السماح بالوصول إلى مكتبة الصور");
+        return;
+      }
+      const filename = imageUrl.split("/").pop().split("?")[0] || "image.jpg";
+      const localUri = FileSystem.cacheDirectory + filename;
+      const download = await FileSystem.downloadAsync(imageUrl, localUri);
+      await MediaLibrary.saveToLibraryAsync(download.uri);
+      Alert.alert("تم", "تم حفظ الصورة في المعرض ✓");
+    } catch (e) {
+      Alert.alert("خطأ", "تعذّر حفظ الصورة");
+    } finally {
+      setImageSaving(false);
+    }
+  };
+
   const renderMessage = ({ item }) => {
     const isOwn = item.sender === userInfo._id;
     const timeLabel = formatMsgTime(item.createdAt);
@@ -390,17 +427,30 @@ const ChatScreen = ({ route, navigation }) => {
         <View style={styles.messageBubbleWrapper}>
           <View
             style={[
-              styles.messageBubble,
-              isOwn ? styles.myBubble : styles.theirBubble,
-              item.imageUrl ? styles.imageBubble : null,
+              item.imageUrl && isPureImageMsg
+                ? styles.imageBubble
+                : styles.messageBubble,
+              item.imageUrl && isPureImageMsg
+                ? null
+                : isOwn
+                  ? styles.myBubble
+                  : styles.theirBubble,
             ]}
           >
             {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.messageImage}
-                resizeMode="cover"
-              />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  setSelectedImage(item.imageUrl);
+                  setImageViewerVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.messageImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
             ) : null}
             {!isPureImageMsg && item.text ? (
               <Text style={styles.messageText}>{item.text}</Text>
@@ -719,6 +769,59 @@ const ChatScreen = ({ route, navigation }) => {
           </View>
         </>
       )}
+
+      {/* Full-screen Image Viewer */}
+      <Modal
+        visible={imageViewerVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setImageViewerVisible(false)}
+      >
+        <View style={styles.imageViewerOverlay}>
+          <StatusBar hidden />
+          {/* Close */}
+          <TouchableOpacity
+            style={styles.imageViewerClose}
+            onPress={() => setImageViewerVisible(false)}
+          >
+            <Ionicons name="close" size={30} color="#FFF" />
+          </TouchableOpacity>
+
+          {/* Image */}
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.imageViewerImage}
+              resizeMode="contain"
+            />
+          )}
+
+          {/* Action buttons */}
+          <View style={styles.imageViewerActions}>
+            <TouchableOpacity
+              style={styles.imageViewerBtn}
+              onPress={() => handleShareImage(selectedImage)}
+            >
+              <Ionicons name="share-social-outline" size={26} color="#FFF" />
+              <Text style={styles.imageViewerBtnText}>مشاركة</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.imageViewerBtn}
+              onPress={() => handleSaveImage(selectedImage)}
+              disabled={imageSaving}
+            >
+              {imageSaving ? (
+                <ActivityIndicator size={26} color="#FFF" />
+              ) : (
+                <Ionicons name="download-outline" size={26} color="#FFF" />
+              )}
+              <Text style={styles.imageViewerBtnText}>حفظ</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -934,8 +1037,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   imageBubble: {
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    padding: 0,
+    backgroundColor: "transparent",
+    overflow: "hidden",
+    borderRadius: 14,
   },
   messageImage: {
     width: 200,
@@ -1054,6 +1159,47 @@ const styles = StyleSheet.create({
   },
   emojiText: {
     fontSize: 28,
+  },
+  // --- Image Viewer ---
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imageViewerClose: {
+    position: "absolute",
+    top: 50,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 20,
+    padding: 6,
+  },
+  imageViewerImage: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height * 0.7,
+  },
+  imageViewerActions: {
+    position: "absolute",
+    bottom: 50,
+    flexDirection: "row",
+    gap: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageViewerBtn: {
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  imageViewerBtnText: {
+    color: "#FFF",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
 

@@ -71,13 +71,6 @@ const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
           icon: "qr-code-outline",
           iconType: "Ionicons",
         },
-        {
-          id: "verification",
-          label: "توثيق الحساب",
-          icon: "shield-checkmark-outline",
-          iconType: "Ionicons",
-          onPress: () => navigation.navigate("VerificationRequest"),
-        },
       ],
     },
     {

@@ -57,14 +57,29 @@ const InboxScreen = ({ navigation }) => {
   });
 
   const tabUnderline = useRef(new Animated.Value(0)).current;
+  const tabAnim = useRef({
+    messages: new Animated.Value(1),
+    notifications: new Animated.Value(0),
+    stories: new Animated.Value(0),
+  }).current;
 
   // ── Tab switch ─────────────────────────────────────────────────────────────
   const switchTab = (tab) => {
+    // Animate each tab pill in/out
+    TABS.forEach((t) => {
+      Animated.timing(tabAnim[t], {
+        toValue: t === tab ? 1 : 0,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    });
+    // Slide underline — use raw DOM index (tab bar is LTR in layout)
     const idx = TABS.indexOf(tab);
     Animated.spring(tabUnderline, {
       toValue: idx * (width / 3),
       useNativeDriver: true,
       friction: 8,
+      tension: 60,
     }).start();
     setActiveTab(tab);
     viewedTabs.current[tab] = true;
@@ -631,30 +646,45 @@ const InboxScreen = ({ navigation }) => {
         { key: "messages", label: "الرسائل", badge: msgBadge },
         { key: "notifications", label: "الإشعارات", badge: notifBadge },
         { key: "stories", label: "الحالات", badge: storiesBadge },
-      ].map((t) => (
-        <TouchableOpacity
-          key={t.key}
-          style={styles.tabItem}
-          onPress={() => switchTab(t.key)}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.tabLabel,
-              activeTab === t.key && styles.tabLabelActive,
-            ]}
+      ].map((t) => {
+        const pillBg = tabAnim[t.key].interpolate({
+          inputRange: [0, 1],
+          outputRange: ["rgba(0,0,0,0)", "rgba(254,44,85,0.18)"],
+        });
+        const textColor = tabAnim[t.key].interpolate({
+          inputRange: [0, 1],
+          outputRange: ["#666", "#FFF"],
+        });
+        const fontWeight = tabAnim[t.key].interpolate({
+          inputRange: [0, 1],
+          outputRange: ["400", "700"],
+        });
+        return (
+          <TouchableOpacity
+            key={t.key}
+            style={styles.tabItem}
+            onPress={() => switchTab(t.key)}
+            activeOpacity={0.8}
           >
-            {t.label}
-          </Text>
-          {t.badge > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {t.badge > 99 ? "99+" : t.badge}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      ))}
+            <Animated.View
+              style={[styles.tabPill, { backgroundColor: pillBg }]}
+            >
+              <Animated.Text
+                style={[styles.tabLabel, { color: textColor, fontWeight }]}
+              >
+                {t.label}
+              </Animated.Text>
+              {t.badge > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {t.badge > 99 ? "99+" : t.badge}
+                  </Text>
+                </View>
+              )}
+            </Animated.View>
+          </TouchableOpacity>
+        );
+      })}
       {/* Animated underline */}
       <Animated.View
         style={[
@@ -719,25 +749,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#000",
     borderBottomWidth: 0.5,
-    borderBottomColor: "#222",
+    borderBottomColor: "#1a1a1a",
     position: "relative",
-    paddingBottom: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 12,
-    flexDirection: "row",
     justifyContent: "center",
-    gap: 6,
+  },
+  tabPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    gap: 5,
   },
   tabLabel: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  tabLabelActive: {
-    color: "#FFF",
   },
   tabBadge: {
     backgroundColor: "#FE2C55",

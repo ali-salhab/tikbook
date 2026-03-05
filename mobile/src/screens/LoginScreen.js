@@ -15,14 +15,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
 
-// Enable RTL
-// Enable RTL logic moved to index.js
-
 const LoginScreen = ({ navigation, route }) => {
+  const { theme } = useApp();
+  const styles = makeStyles(theme);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -476,10 +476,10 @@ const LoginScreen = ({ navigation, route }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: theme.bg,
     justifyContent: "space-between",
     paddingHorizontal: 20,
   },
@@ -509,12 +509,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "center",
-    color: "#FFF",
+    color: theme.text,
     paddingHorizontal: 20,
   },
   subtitle: {
     fontSize: 14,
-    color: "#999",
+    color: theme.textSecondary,
     textAlign: "center",
     marginBottom: 40,
     paddingHorizontal: 20,
@@ -536,13 +536,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderWidth: 1.5,
-    borderColor: "#333",
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 50,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: theme.input,
     fontSize: 16,
     textAlign: "right",
-    color: "#FFF",
+    color: theme.text,
   },
   eyeIcon: {
     position: "absolute",
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: "#999",
+    color: theme.textSecondary,
   },
   link: {
     fontSize: 14,
@@ -617,12 +617,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   errorBox: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: theme.card,
     borderRadius: 20,
     paddingVertical: 30,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: theme.border,
     width: "100%",
     maxHeight: "85%",
   },
@@ -638,13 +638,13 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#FFF",
+    color: theme.text,
     textAlign: "center",
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 14,
-    color: "#CCC",
+    color: theme.textSecondary,
     textAlign: "center",
     marginBottom: 20,
     lineHeight: 20,
@@ -707,12 +707,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   technicalDetailsBox: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: theme.bg2,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: theme.border,
   },
   technicalRow: {
     flexDirection: "row",
@@ -720,12 +720,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   technicalLabel: {
-    color: "#888",
+    color: theme.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   technicalValue: {
-    color: "#CCC",
+    color: theme.textSecondary,
     fontSize: 12,
     flex: 1,
     textAlign: "left",
@@ -733,11 +733,11 @@ const styles = StyleSheet.create({
   },
   technicalDivider: {
     height: 1,
-    backgroundColor: "#333",
+    backgroundColor: theme.border,
     marginVertical: 12,
   },
   technicalDetailsLabel: {
-    color: "#888",
+    color: theme.textMuted,
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 8,

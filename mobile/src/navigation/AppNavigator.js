@@ -6,6 +6,7 @@ import {
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { AuthContext } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 import {
   notificationListener,
   handleInitialNotification,
@@ -43,6 +44,7 @@ import CreateStatusScreen from "../screens/CreateStatusScreen";
 import StatusViewerScreen from "../screens/StatusViewerScreen";
 import AllStatusesScreen from "../screens/AllStatusesScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import ChangePasswordScreen from "../screens/ChangePasswordScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import FriendsScreen from "../screens/FriendsScreen";
 import { LiveProvider } from "../context/LiveContext";
@@ -85,7 +87,7 @@ const navigateToVideo = (navigationRef, videoId) => {
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabIconWithBadge = ({ name, color, size, badgeCount }) => (
+const TabIconWithBadge = ({ name, color, size, badgeCount, tabBarBg = "#000" }) => (
   <View
     style={{
       width: 30,
@@ -109,7 +111,7 @@ const TabIconWithBadge = ({ name, color, size, badgeCount }) => (
           alignItems: "center",
           paddingHorizontal: 3,
           borderWidth: 2,
-          borderColor: "#000",
+          borderColor: tabBarBg,
         }}
       >
         <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "bold" }}>
@@ -123,6 +125,7 @@ const TabIconWithBadge = ({ name, color, size, badgeCount }) => (
 const HomeTabs = () => {
   const insets = useSafeAreaInsets();
   const { userInfo, notificationCount } = React.useContext(AuthContext);
+  const { theme, t } = useApp();
 
   return (
     <Tab.Navigator
@@ -130,17 +133,17 @@ const HomeTabs = () => {
         headerShown: false,
         tabBarShowLabel: true,
         tabBarStyle: {
-          backgroundColor: "#000",
+          backgroundColor: theme.tabBar,
           borderTopWidth: 0.5,
-          borderTopColor: "#1a1a1a",
+          borderTopColor: theme.border,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom + 5,
           paddingTop: 5,
           elevation: 0,
           shadowOpacity: 0,
         },
-        tabBarActiveTintColor: "#FFF",
-        tabBarInactiveTintColor: "#666",
+        tabBarActiveTintColor: theme.text,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: "600",
@@ -176,6 +179,7 @@ const HomeTabs = () => {
               size={26}
               color={color}
               badgeCount={0}
+              tabBarBg={theme.tabBar}
             />
           ),
         }}
@@ -248,6 +252,7 @@ const HomeTabs = () => {
               size={24}
               color={color}
               badgeCount={notificationCount}
+              tabBarBg={theme.tabBar}
             />
           ),
         }}
@@ -469,6 +474,7 @@ const AppNavigator = () => {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
               </>
             ) : (
               <>

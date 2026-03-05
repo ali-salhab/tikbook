@@ -23,10 +23,13 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import videoService from "../services/videoService";
 import * as ImagePicker from "expo-image-picker";
+import { useApp } from "../context/AppContext";
 
 const { width } = Dimensions.get("window");
 
 const ProfileScreen = ({ navigation }) => {
+  const { theme } = useApp();
+  const styles = makeStyles(theme);
   const {
     logout,
     userInfo,
@@ -613,10 +616,10 @@ const ProfileScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: theme.bg2,
   },
   header: {
     flexDirection: "row",
@@ -624,7 +627,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#FFF",
+    backgroundColor: theme.bg2,
   },
   headerLeft: {
     flexDirection: "row",
@@ -640,7 +643,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
   },
   iconButton: {
     padding: 4,
@@ -665,7 +668,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     overflow: "hidden",
-    backgroundColor: "#eee",
+    backgroundColor: theme.bg3,
   },
   avatarImage: {
     width: "100%",
@@ -674,7 +677,7 @@ const styles = StyleSheet.create({
   avatarPlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#E0E0E0",
+    backgroundColor: theme.bg3,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -726,11 +729,11 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
   },
   username: {
     fontSize: 14,
-    color: "#666",
+    color: theme.textMuted,
     marginBottom: 16,
   },
   userIdContainer: {
@@ -744,12 +747,12 @@ const styles = StyleSheet.create({
   },
   userIdLabel: {
     fontSize: 12,
-    color: "#888",
+    color: theme.textMuted,
     fontWeight: "bold",
   },
   userIdText: {
     fontSize: 12,
-    color: "#333",
+    color: theme.textSecondary,
     fontFamily: "monospace",
     fontWeight: "bold",
   },
@@ -768,21 +771,21 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 17,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
   },
   statLabel: {
     fontSize: 13,
-    color: "#888",
+    color: theme.textMuted,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 15,
-    backgroundColor: "#eee",
+    backgroundColor: theme.border,
   },
   bio: {
     fontSize: 14,
-    color: "#000",
+    color: theme.text,
     marginBottom: 20,
     textAlign: "center",
   },
@@ -798,7 +801,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#f1f1f1",
+    backgroundColor: theme.bg3,
     borderRadius: 8,
     flex: 1,
     justifyContent: "center",
@@ -828,12 +831,12 @@ const styles = StyleSheet.create({
   buttonLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#333",
+    color: theme.textSecondary,
   },
   tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: theme.border,
     marginTop: 10,
   },
   tab: {
@@ -847,7 +850,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 40,
     height: 2,
-    backgroundColor: "#000",
+    backgroundColor: theme.text,
   },
   gridContainer: {
     flexDirection: "row",
@@ -868,7 +871,7 @@ const styles = StyleSheet.create({
   gridPlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#333",
+    backgroundColor: theme.bg3,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -894,13 +897,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
     marginTop: 20,
     marginBottom: 10,
   },
   emptyStateSubtitle: {
     fontSize: 14,
-    color: "#666",
+    color: theme.textMuted,
     textAlign: "center",
     lineHeight: 20,
   },

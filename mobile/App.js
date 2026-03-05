@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { AuthProvider } from "./src/context/AuthContext";
 import { UploadProvider } from "./src/context/UploadContext";
+import { AppProvider } from "./src/context/AppContext";
 import FloatingUploadOverlay from "./src/components/FloatingUploadOverlay";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -63,17 +64,19 @@ export default function App() {
   }
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <UploadProvider>
-          {netInfo.isConnected === false && (
-            <View style={styles.offlineBanner}>
-              <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
-            </View>
-          )}
-          <AppNavigator />
-          <FloatingUploadOverlay />
-        </UploadProvider>
-      </AuthProvider>
+      <AppProvider>
+        <AuthProvider>
+          <UploadProvider>
+            {netInfo.isConnected === false && (
+              <View style={styles.offlineBanner}>
+                <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
+              </View>
+            )}
+            <AppNavigator />
+            <FloatingUploadOverlay />
+          </UploadProvider>
+        </AuthProvider>
+      </AppProvider>
     </SafeAreaProvider>
   );
 }
