@@ -21,7 +21,12 @@ router.get("/my-connections", protect, getMyConnections);
 router.put("/fcm-token", protect, updateFcmToken);
 router.get("/:id", getUserProfile);
 router.put("/profile", protect, updateUserProfile);
-router.put("/profile/image", protect, imageUpload.single("image"), uploadProfileImage);
+router.put(
+  "/profile/image",
+  protect,
+  imageUpload.single("image"),
+  uploadProfileImage,
+);
 router.put("/:id/follow", protect, followUser);
 router.put("/:id/unfollow", protect, unfollowUser);
 
