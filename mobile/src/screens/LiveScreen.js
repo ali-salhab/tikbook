@@ -550,10 +550,6 @@ export default function LiveScreen({ navigation, route }) {
           </View>
 
           <View style={styles.topRight}>
-            <View style={styles.viewerBadge}>
-              <Ionicons name="people" color="#fff" size={14} />
-              <Text style={styles.viewerText}>{viewerCount}</Text>
-            </View>
             {isBroadcaster && (
               <TouchableOpacity
                 style={styles.endLiveBtn}
@@ -701,7 +697,6 @@ export default function LiveScreen({ navigation, route }) {
                 >
                   <Text style={styles.giftIcon}>{item.icon}</Text>
                   <Text style={styles.giftName}>{item.name}</Text>
-                  <Text style={styles.giftPrice}>💎 {item.price}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -748,34 +743,6 @@ export default function LiveScreen({ navigation, route }) {
                 <Text style={styles.summaryStatValue}>{followersGained}</Text>
                 <Text style={styles.summaryStatLabel}>متابعون جدد</Text>
               </View>
-
-              <View style={styles.summaryStatBox}>
-                <Ionicons name="diamond-outline" size={26} color="#FE2C55" />
-                <Text style={styles.summaryStatValue}>
-                  {coinsEarned.toLocaleString()}
-                </Text>
-                <Text style={styles.summaryStatLabel}>عملة مكتسبة</Text>
-              </View>
-            </View>
-
-            {/* Earnings conversion */}
-            <View style={styles.earningsBox}>
-              <Text style={styles.earningsTitle}>قيمة رصيدك</Text>
-              <Text style={styles.earningsRow}>
-                💵 دولار:{" "}
-                <Text style={styles.earningsAmount}>
-                  ${((coinsEarned / 1000) * 4).toFixed(2)}
-                </Text>
-              </Text>
-              <Text style={styles.earningsRow}>
-                💴 جنيه مصري:{" "}
-                <Text style={styles.earningsAmount}>
-                  {((coinsEarned / 1000) * 200).toFixed(0)} ج
-                </Text>
-              </Text>
-              <Text style={styles.earningsNote}>
-                كل 1000 عملة = 4$ أو 200ج — يمكن سحبها من الرصيد
-              </Text>
             </View>
 
             <TouchableOpacity

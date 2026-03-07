@@ -272,7 +272,10 @@ const ProfileScreen = ({ navigation }) => {
                   key={video._id}
                   style={styles.gridItem}
                   onPress={() =>
-                    navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
+                    navigation.navigate("MainTabs", {
+                      screen: "Home",
+                      params: { videoId: video._id },
+                    })
                   }
                 >
                   {thumbnail ? (
@@ -335,7 +338,10 @@ const ProfileScreen = ({ navigation }) => {
                   key={video._id}
                   style={styles.gridItem}
                   onPress={() =>
-                    navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
+                    navigation.navigate("MainTabs", {
+                      screen: "Home",
+                      params: { videoId: video._id },
+                    })
                   }
                 >
                   {thumbnail ? (
@@ -378,7 +384,10 @@ const ProfileScreen = ({ navigation }) => {
                   key={video._id}
                   style={styles.gridItem}
                   onPress={() =>
-                    navigation.navigate("MainTabs", { screen: "Home", params: { videoId: video._id } })
+                    navigation.navigate("MainTabs", {
+                      screen: "Home",
+                      params: { videoId: video._id },
+                    })
                   }
                 >
                   {thumbnail ? (
@@ -433,7 +442,11 @@ const ProfileScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="menu" size={28} color={theme.icon} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <MaterialCommunityIcons name="share-variant-outline" size={24} color={theme.icon} />
+            <MaterialCommunityIcons
+              name="share-variant-outline"
+              size={24}
+              color={theme.icon}
+            />
           </TouchableOpacity>
         </View>
 
@@ -623,310 +636,311 @@ const ProfileScreen = ({ navigation }) => {
   );
 };
 
-const makeStyles = (theme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.bg2,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: theme.bg2,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    gap: 15,
-  },
-  headerRight: {
-    flexDirection: "row",
-  },
-  headerCenter: {
-    alignItems: "center",
-    position: "relative",
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "bold",
-    color: theme.text,
-  },
-  iconButton: {
-    padding: 4,
-  },
-  profileInfo: {
-    alignItems: "center",
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  avatarContainer: {
-    position: "relative",
-    marginBottom: 12,
-    alignSelf: "center",
-  },
-  avatarWrapper: {
-    width: 100,
-    height: 100,
-    // Extra space so the camera button (which overflows bottom-left) isn't clipped
-  },
-  avatarCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    overflow: "hidden",
-    backgroundColor: theme.bg3,
-  },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
-  },
-  avatarPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.bg3,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cameraBtn: {
-    position: "absolute",
-    bottom: -4,
-    left: -4,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#1A1A1A",
-    borderWidth: 2.5,
-    borderColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  badgeFrameOverlay: {
-    position: "absolute",
-    width: 135,
-    height: 135,
-    top: -17,
-    left: -17,
-    pointerEvents: "none",
-  },
-  badgeShopButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#000",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFD700",
-  },
-  nameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  displayName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.text,
-  },
-  username: {
-    fontSize: 14,
-    color: theme.textMuted,
-    marginBottom: 16,
-  },
-  userIdContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    paddingVertical: 2,
-    paddingHorizontal: 0,
-    marginBottom: 16,
-    alignSelf: "center",
-  },
-  userIdLabel: {
-    fontSize: 12,
-    color: theme.textMuted,
-    fontWeight: "600",
-  },
-  userIdText: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    fontFamily: "monospace",
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  copyIcon: {
-    marginLeft: 4,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 20,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 17,
-    fontWeight: "bold",
-    color: theme.text,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: theme.textMuted,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 22,
-    backgroundColor: theme.border,
-  },
-  bio: {
-    fontSize: 14,
-    color: theme.text,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 10,
-    justifyContent: "center",
-    paddingHorizontal: 20,
-  },
-  editProfileButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    backgroundColor: theme.buttonBg || theme.bg3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.buttonBorder || theme.border,
-    flex: 1,
-    justifyContent: "center",
-  },
-  verificationButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    backgroundColor: theme.buttonBg || theme.bg3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.buttonBorder || theme.border,
-    flex: 1,
-    justifyContent: "center",
-  },
-  badgeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    backgroundColor: theme.id === "dark" ? "#2A2200" : "#FFF8E1",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.id === "dark" ? "#5A4800" : "#F0C040",
-    flex: 1,
-    justifyContent: "center",
-  },
-  buttonLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.text,
-  },
-  badgeButtonLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.id === "dark" ? "#FFD700" : "#8B6914",
-  },
-  tabsContainer: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-    marginTop: 10,
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    position: "relative",
-  },
-  activeIndicator: {
-    position: "absolute",
-    bottom: 0,
-    width: 40,
-    height: 2,
-    backgroundColor: theme.accent,
-  },
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  gridItem: {
-    width: width / 3,
-    height: (width / 3) * 1.3,
-    backgroundColor: theme.bg3,
-    position: "relative",
-    borderWidth: 0.5,
-    borderColor: theme.border,
-  },
-  gridImage: {
-    width: "100%",
-    height: "100%",
-  },
-  gridPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.bg3,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  viewsContainer: {
-    position: "absolute",
-    bottom: 6,
-    left: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  viewsText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  emptyStateContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.text,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: theme.textMuted,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
+const makeStyles = (theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.bg2,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      backgroundColor: theme.bg2,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      gap: 15,
+    },
+    headerRight: {
+      flexDirection: "row",
+    },
+    headerCenter: {
+      alignItems: "center",
+      position: "relative",
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    iconButton: {
+      padding: 4,
+    },
+    profileInfo: {
+      alignItems: "center",
+      paddingTop: 20,
+      paddingBottom: 10,
+    },
+    avatarContainer: {
+      position: "relative",
+      marginBottom: 12,
+      alignSelf: "center",
+    },
+    avatarWrapper: {
+      width: 100,
+      height: 100,
+      // Extra space so the camera button (which overflows bottom-left) isn't clipped
+    },
+    avatarCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      overflow: "hidden",
+      backgroundColor: theme.bg3,
+    },
+    avatarImage: {
+      width: "100%",
+      height: "100%",
+    },
+    avatarPlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.bg3,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    cameraBtn: {
+      position: "absolute",
+      bottom: -4,
+      left: -4,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: "#1A1A1A",
+      borderWidth: 2.5,
+      borderColor: "#FFF",
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.4,
+      shadowRadius: 4,
+      elevation: 6,
+    },
+    badgeFrameOverlay: {
+      position: "absolute",
+      width: 135,
+      height: 135,
+      top: -17,
+      left: -17,
+      pointerEvents: "none",
+    },
+    badgeShopButton: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      backgroundColor: "#000",
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "#FFD700",
+    },
+    nameContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 4,
+    },
+    displayName: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    username: {
+      fontSize: 14,
+      color: theme.textMuted,
+      marginBottom: 16,
+    },
+    userIdContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "transparent",
+      paddingVertical: 2,
+      paddingHorizontal: 0,
+      marginBottom: 16,
+      alignSelf: "center",
+    },
+    userIdLabel: {
+      fontSize: 12,
+      color: theme.textMuted,
+      fontWeight: "600",
+    },
+    userIdText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      fontFamily: "monospace",
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
+    copyIcon: {
+      marginLeft: 4,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+      gap: 20,
+    },
+    statItem: {
+      alignItems: "center",
+    },
+    statNumber: {
+      fontSize: 17,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    statLabel: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginTop: 2,
+    },
+    statDivider: {
+      width: 1,
+      height: 22,
+      backgroundColor: theme.border,
+    },
+    bio: {
+      fontSize: 14,
+      color: theme.text,
+      marginBottom: 20,
+      textAlign: "center",
+    },
+    actionButtons: {
+      flexDirection: "row",
+      gap: 16,
+      marginBottom: 10,
+      justifyContent: "center",
+      paddingHorizontal: 20,
+    },
+    editProfileButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      backgroundColor: theme.buttonBg || theme.bg3,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.buttonBorder || theme.border,
+      flex: 1,
+      justifyContent: "center",
+    },
+    verificationButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      backgroundColor: theme.buttonBg || theme.bg3,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.buttonBorder || theme.border,
+      flex: 1,
+      justifyContent: "center",
+    },
+    badgeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      backgroundColor: theme.id === "dark" ? "#2A2200" : "#FFF8E1",
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.id === "dark" ? "#5A4800" : "#F0C040",
+      flex: 1,
+      justifyContent: "center",
+    },
+    buttonLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.text,
+    },
+    badgeButtonLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.id === "dark" ? "#FFD700" : "#8B6914",
+    },
+    tabsContainer: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      marginTop: 10,
+    },
+    tab: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 12,
+      position: "relative",
+    },
+    activeIndicator: {
+      position: "absolute",
+      bottom: 0,
+      width: 40,
+      height: 2,
+      backgroundColor: theme.accent,
+    },
+    gridContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    gridItem: {
+      width: width / 3,
+      height: (width / 3) * 1.3,
+      backgroundColor: theme.bg3,
+      position: "relative",
+      borderWidth: 0.5,
+      borderColor: theme.border,
+    },
+    gridImage: {
+      width: "100%",
+      height: "100%",
+    },
+    gridPlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: theme.bg3,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    viewsContainer: {
+      position: "absolute",
+      bottom: 6,
+      left: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    viewsText: {
+      color: "#FFF",
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    emptyStateContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+      paddingHorizontal: 40,
+    },
+    emptyStateTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: theme.text,
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    emptyStateSubtitle: {
+      fontSize: 14,
+      color: theme.textMuted,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+  });
 
 export default ProfileScreen;

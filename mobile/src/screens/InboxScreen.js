@@ -1,28 +1,21 @@
-import React, {
-  useState,
-  useContext,
-  useCallback,
-  useMemo,
-  useRef,
-  useEffect,
-} from "react";
+// REWRITTEN — single-screen inbox, theme-aware
+import React, { useState, useContext, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   FlatList,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   Image,
   ActivityIndicator,
   RefreshControl,
-  Animated,
   Dimensions,
   StatusBar,
   TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { BASE_URL } from "../config/api";
@@ -30,11 +23,10 @@ import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
-const TABS = ["messages", "notifications", "stories"];
 
 const InboxScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);
-  const { t } = useApp();
+  const { t, theme } = useApp();
   const insets = useSafeAreaInsets();
 
   // ── Data ───────────────────────────────────────────────────────────────────
@@ -45,52 +37,10 @@ const InboxScreen = ({ navigation }) => {
   const [statuses, setStatuses] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [promoDismissed, setPromoDismissed] = useState(false);
 
-  // ── Tabs ───────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState("messages");
-  // Unread badge counters per tab (set when data loads, cleared when tab opened)
-  const [msgBadge, setMsgBadge] = useState(0);
-  const [notifBadge, setNotifBadge] = useState(0);
-  const [storiesBadge, setStoriesBadge] = useState(0);
-  // Track which tabs have been viewed since last fetch
-  const viewedTabs = useRef({
-    messages: false,
-    notifications: false,
-    stories: false,
-  });
-
-  const tabUnderline = useRef(new Animated.Value(0)).current;
-  const tabAnim = useRef({
-    messages: new Animated.Value(1),
-    notifications: new Animated.Value(0),
-    stories: new Animated.Value(0),
-  }).current;
-
-  // ── Tab switch ─────────────────────────────────────────────────────────────
-  const switchTab = (tab) => {
-    // Animate each tab pill in/out
-    TABS.forEach((t) => {
-      Animated.timing(tabAnim[t], {
-        toValue: t === tab ? 1 : 0,
-        duration: 220,
-        useNativeDriver: false,
-      }).start();
-    });
-    // Slide underline — use raw DOM index (tab bar is LTR in layout)
-    const idx = TABS.indexOf(tab);
-    Animated.spring(tabUnderline, {
-      toValue: idx * (width / 3),
-      useNativeDriver: true,
-      friction: 8,
-      tension: 60,
-    }).start();
-    setActiveTab(tab);
-    viewedTabs.current[tab] = true;
-    // Clear badge when tab is opened
-    if (tab === "messages") setMsgBadge(0);
-    if (tab === "notifications") setNotifBadge(0);
-    if (tab === "stories") setStoriesBadge(0);
-  };
+  // ── Dynamic styles ─────────────────────────────────────────────────────────
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -116,46 +66,17 @@ const InboxScreen = ({ navigation }) => {
           .catch(() => ({ data: [] })),
       ]);
 
-      const convData = convRes.data || [];
-      const statusData = statusRes.data || [];
-      const notifData = notifRes.data || [];
-      const connData = connRes.data || [];
-
-      setConversations(convData);
-      setStatuses(statusData);
-      setNotifications(notifData);
-      setConnections(connData);
-
-      // Compute badge counts (only if the tab hasn't been viewed yet since fetch)
-      const totalUnreadMsgs = convData.reduce(
-        (s, c) => s + (c.unreadCount || 0),
-        0,
-      );
-      const unreadNotifs = notifData.filter((n) => !n.read).length;
-      const unseenStories = statusData.length;
-
-      if (!viewedTabs.current.messages) setMsgBadge(totalUnreadMsgs);
-      if (!viewedTabs.current.notifications) setNotifBadge(unreadNotifs);
-      if (!viewedTabs.current.stories) setStoriesBadge(unseenStories);
-
-      // Reset viewed flags so next fetch recalculates
-      viewedTabs.current = {
-        messages: false,
-        notifications: false,
-        stories: false,
-      };
-      // Re-clear current tab (already viewed)
-      viewedTabs.current[activeTab] = true;
-      if (activeTab === "messages") setMsgBadge(0);
-      if (activeTab === "notifications") setNotifBadge(0);
-      if (activeTab === "stories") setStoriesBadge(0);
+      setConversations(convRes.data || []);
+      setStatuses(statusRes.data || []);
+      setNotifications(notifRes.data || []);
+      setConnections(connRes.data || []);
     } catch (e) {
       console.error("InboxScreen fetchAll:", e.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userToken, activeTab]);
+  }, [userToken]);
 
   useFocusEffect(
     useCallback(() => {
@@ -253,13 +174,23 @@ const InboxScreen = ({ navigation }) => {
       <TouchableOpacity
         style={styles.convoItem}
         activeOpacity={0.75}
-        onPress={() =>
+        onPress={() => {
+          // Clear this conversation's unread badge immediately
+          if (unread > 0) {
+            setConversations((prev) =>
+              prev.map((c) =>
+                (c._id || c.id) === (item._id || item.id)
+                  ? { ...c, unreadCount: 0 }
+                  : c,
+              ),
+            );
+          }
           navigation.navigate("Chat", {
             userId: other._id,
             username: name,
             profileImage: avatar || null,
-          })
-        }
+          });
+        }}
       >
         <View style={styles.avatarWrapper}>
           {avatar ? (
@@ -288,31 +219,22 @@ const InboxScreen = ({ navigation }) => {
             >
               {lastMsg || "اضغط للمحادثة"}
             </Text>
-            {unread > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>
-                  {unread > 99 ? "99+" : unread}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-  // Build circles: connections (followers/following) + any from conversations not already included
+  // ── Circle users for contacts row ─────────────────────────────────────────
   const allCircleUsers = useMemo(() => {
     const seen = new Set();
     const result = [];
-    // First: connections (followers/following)
     for (const u of connections) {
       if (u && u._id && !seen.has(u._id)) {
         seen.add(u._id);
         result.push(u);
       }
     }
-    // Then: conversation users not already included
     for (const c of conversations) {
       const u = c.user || c.otherUser;
       if (u && u._id && !seen.has(u._id.toString())) {
@@ -320,240 +242,31 @@ const InboxScreen = ({ navigation }) => {
         result.push(u);
       }
     }
-    // Online first
     return result.sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0));
   }, [connections, conversations]);
 
-  const MessagesTab = () => (
-    <FlatList
-      data={filteredConversations}
-      keyExtractor={(item) =>
-        item._id || item.user?._id || Math.random().toString()
-      }
-      renderItem={renderConversation}
-      ListHeaderComponent={
-        <View>
-          {/* ── Contacts / followers row ── */}
-          {allCircleUsers.length > 0 && (
-            <View style={styles.activeUsersSection}>
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={allCircleUsers}
-                keyExtractor={(u) => u._id.toString()}
-                contentContainerStyle={styles.activeUsersContent}
-                renderItem={({ item: u }) => (
-                  <TouchableOpacity
-                    style={styles.activeUserItem}
-                    onPress={() =>
-                      navigation.navigate("Chat", {
-                        userId: u._id,
-                        username: u.username || u.name || "مستخدم",
-                        profileImage: u.profileImage || null,
-                      })
-                    }
-                  >
-                    <View style={styles.activeUserAvatarWrap}>
-                      {u.profileImage ? (
-                        <Image
-                          source={{ uri: u.profileImage }}
-                          style={styles.activeUserAvatar}
-                        />
-                      ) : (
-                        <View
-                          style={[
-                            styles.activeUserAvatar,
-                            styles.activeUserInitials,
-                          ]}
-                        >
-                          <Text style={styles.activeUserInitialsText}>
-                            {getInitials(u.username || u.name || "")}
-                          </Text>
-                        </View>
-                      )}
-                      {u.isOnline && (
-                        <View style={styles.activeUserOnlineDot} />
-                      )}
-                    </View>
-                    <Text style={styles.activeUserName} numberOfLines={1}>
-                      {u.username || u.name || "مستخدم"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          )}
-
-          {/* ── Search bar ── */}
-          <View style={styles.searchBar}>
-            <Ionicons
-              name="search"
-              size={18}
-              color="#999"
-              style={{ marginHorizontal: 8 }}
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="بحث في المحادثات..."
-              placeholderTextColor="#999"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons
-                  name="close-circle"
-                  size={18}
-                  color="#999"
-                  style={{ marginHorizontal: 8 }}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      }
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubble-ellipses-outline" size={64} color="#333" />
-          <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
-          <Text style={styles.emptySubtitle}>
-            ابحث عن أشخاص وابدأ محادثة جديدة
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyBtn}
-            onPress={() => navigation.navigate("Users")}
-          >
-            <Text style={styles.emptyBtnText}>ابدأ محادثة جديدة</Text>
-          </TouchableOpacity>
-        </View>
-      }
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#FE2C55"
-        />
-      }
-      contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-      showsVerticalScrollIndicator={false}
-    />
-  );
-
-  const NotificationsTab = () => (
-    <FlatList
-      data={["followers", "activity", "system"]}
-      keyExtractor={(i) => i}
-      renderItem={({ item }) => {
-        if (item === "followers")
-          return (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => navigation.navigate("NewFollowers")}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: "#007AFF" }]}>
-                <Ionicons name="people" size={24} color="#FFF" />
-              </View>
-              <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>متابعون جدد</Text>
-                <Text style={styles.menuSubtitle} numberOfLines={1}>
-                  {latestFollower
-                    ? getSummaryText(latestFollower)
-                    : "لا يوجد متابعون جدد"}
-                </Text>
-              </View>
-              {followerNotifications.length > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.badgeText}>
-                    {followerNotifications.length}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        if (item === "activity")
-          return (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => navigation.navigate("Activity")}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: "#FE2C55" }]}>
-                <Ionicons name="heart" size={24} color="#FFF" />
-              </View>
-              <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>النشاط</Text>
-                <Text style={styles.menuSubtitle} numberOfLines={1}>
-                  {latestActivity
-                    ? getSummaryText(latestActivity)
-                    : "لا يوجد نشاط"}
-                </Text>
-              </View>
-              {activityNotifications.length > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.badgeText}>
-                    {activityNotifications.length}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        return (
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate("SystemNotifications")}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: "#111" }]}>
-              <Ionicons name="file-tray-full" size={24} color="#FFF" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>إشعارات النظام</Text>
-              <Text style={styles.menuSubtitle} numberOfLines={1}>
-                {latestSystem
-                  ? getSummaryText(latestSystem)
-                  : "لا توجد إشعارات نظام"}
-              </Text>
-            </View>
-            {systemNotifications.length > 0 && <View style={styles.dotBadge} />}
-          </TouchableOpacity>
-        );
-      }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#FE2C55"
-        />
-      }
-      contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-      showsVerticalScrollIndicator={false}
-    />
-  );
-
-  const StoriesTab = () => {
-    const storyItems = [{ _id: "__create__", type: "create" }, ...statuses];
-    return (
-      <ScrollView
-        style={{ flex: 1 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#FE2C55"
-          />
-        }
-        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-      >
-        {/* ── Horizontal story circles row (Messenger-style) ── */}
+  // ── ListHeader: الحالات + الإشعارات + رأس قسم الرسائل ──────────────────────
+  const ListHeader = () => (
+    <View>
+      {/* ── Section: الحالات ── */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>الحالات</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("CreateStatus")}>
+          <Text style={styles.sectionAction}>إنشاء</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.storiesSection}>
         <FlatList
           horizontal
-          data={storyItems}
-          keyExtractor={(s) => s._id}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.storiesRow}
+          data={[{ _id: "__create__", type: "create" }, ...statuses]}
+          keyExtractor={(s) => s._id?.toString()}
+          contentContainerStyle={styles.storiesRowContent}
           renderItem={({ item }) => {
             if (item.type === "create") {
               return (
                 <TouchableOpacity
-                  style={styles.storyCircleWrap}
+                  style={styles.storyWrap}
                   onPress={() => navigation.navigate("CreateStatus")}
                   activeOpacity={0.8}
                 >
@@ -563,7 +276,7 @@ const InboxScreen = ({ navigation }) => {
                         source={{ uri: userInfo.profileImage }}
                         style={[
                           StyleSheet.absoluteFill,
-                          { borderRadius: 38, opacity: 0.45 },
+                          { borderRadius: 34, opacity: 0.45 },
                         ]}
                       />
                     ) : null}
@@ -571,7 +284,7 @@ const InboxScreen = ({ navigation }) => {
                       <Ionicons name="add" size={18} color="#FFF" />
                     </View>
                   </View>
-                  <Text style={styles.storyCircleName} numberOfLines={1}>
+                  <Text style={styles.storyName} numberOfLines={1}>
                     إنشاء حالة
                   </Text>
                 </TouchableOpacity>
@@ -581,7 +294,7 @@ const InboxScreen = ({ navigation }) => {
             const preview = item.image || item.user?.profileImage;
             return (
               <TouchableOpacity
-                style={styles.storyCircleWrap}
+                style={styles.storyWrap}
                 onPress={() => openStatus(item)}
                 activeOpacity={0.8}
               >
@@ -624,91 +337,136 @@ const InboxScreen = ({ navigation }) => {
                     )}
                   </View>
                 </View>
-                <Text style={styles.storyCircleName} numberOfLines={1}>
+                <Text style={styles.storyName} numberOfLines={1}>
                   {isOwn ? "أنت" : item.user?.username || ""}
                 </Text>
               </TouchableOpacity>
             );
           }}
         />
+      </View>
 
-        {/* ── Empty state ── */}
-        {statuses.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="images-outline" size={64} color="#333" />
-            <Text style={styles.emptyTitle}>لا توجد حالات بعد</Text>
-            <Text style={styles.emptySubtitle}>أنشئ أول حالة لك الآن</Text>
-            <TouchableOpacity
-              style={styles.emptyBtn}
-              onPress={() => navigation.navigate("CreateStatus")}
-            >
-              <Text style={styles.emptyBtnText}>إنشاء حالة</Text>
+      {/* ── Section: الإشعارات ── */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>الإشعارات</Text>
+      </View>
+
+      {/* متابعون جدد */}
+      <TouchableOpacity
+        style={styles.notifRow}
+        onPress={() => navigation.navigate("NewFollowers")}
+        activeOpacity={0.75}
+      >
+        <View style={styles.notifIndicator}>
+          {followerNotifications.length > 0 ? (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>
+                {followerNotifications.length > 99
+                  ? "99+"
+                  : followerNotifications.length}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ width: 22 }} />
+          )}
+        </View>
+        <View style={styles.notifContent}>
+          <Text style={styles.notifTitle}>متابعون جدد</Text>
+          <Text style={styles.notifSubtitle} numberOfLines={1}>
+            {latestFollower
+              ? getSummaryText(latestFollower)
+              : "لا يوجد متابعون جدد"}
+          </Text>
+        </View>
+        <View style={[styles.notifIconCircle, { backgroundColor: "#007AFF" }]}>
+          <Ionicons name="people" size={24} color="#FFF" />
+        </View>
+      </TouchableOpacity>
+
+      {/* النشاط */}
+      <TouchableOpacity
+        style={styles.notifRow}
+        onPress={() => navigation.navigate("Activity")}
+        activeOpacity={0.75}
+      >
+        <View style={styles.notifIndicator}>
+          {activityNotifications.length > 0 ? (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>
+                {activityNotifications.length > 99
+                  ? "99+"
+                  : activityNotifications.length}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ width: 22 }} />
+          )}
+        </View>
+        <View style={styles.notifContent}>
+          <Text style={styles.notifTitle}>النشاط</Text>
+          <Text style={styles.notifSubtitle} numberOfLines={1}>
+            {latestActivity ? getSummaryText(latestActivity) : "لا يوجد نشاط"}
+          </Text>
+        </View>
+        <View style={[styles.notifIconCircle, { backgroundColor: "#FE2C55" }]}>
+          <Ionicons name="heart" size={24} color="#FFF" />
+        </View>
+      </TouchableOpacity>
+
+      {/* إشعارات النظام */}
+      <TouchableOpacity
+        style={styles.notifRow}
+        onPress={() => navigation.navigate("SystemNotifications")}
+        activeOpacity={0.75}
+      >
+        <View style={styles.notifIndicator}>
+          {systemNotifications.length > 0 ? (
+            <View style={styles.dotBadge} />
+          ) : (
+            <View style={{ width: 22 }} />
+          )}
+        </View>
+        <View style={styles.notifContent}>
+          <Text style={styles.notifTitle}>إشعارات النظام</Text>
+          <Text style={styles.notifSubtitle} numberOfLines={1}>
+            {latestSystem ? getSummaryText(latestSystem) : "لا توجد إشعارات"}
+          </Text>
+        </View>
+        <View style={[styles.notifIconCircle, { backgroundColor: theme.bg3 }]}>
+          <Ionicons name="file-tray-full" size={24} color={theme.icon} />
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Section: الرسائل ── */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>الرسائل</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Users")}>
+          <Text style={styles.sectionAction}>بحث</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Promo banner */}
+      {!promoDismissed && (
+        <View style={styles.promoBanner}>
+          <TouchableOpacity
+            style={styles.promoDismiss}
+            onPress={() => setPromoDismissed(true)}
+          >
+            <Ionicons name="close" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+          <View style={styles.promoBody}>
+            <Text style={styles.promoText}>
+              احصل على رسائل بريد إلكتروني عندما يتفاعل الأشخاص مع حسابك.
+            </Text>
+            <TouchableOpacity style={styles.promoBtn}>
+              <Text style={styles.promoBtnText}>معرفة المزيد</Text>
             </TouchableOpacity>
           </View>
-        )}
-      </ScrollView>
-    );
-  };
-
-  // ── Tab bar ────────────────────────────────────────────────────────────────
-  const TAB_W = width / 3;
-
-  const TabBar = () => (
-    <View style={styles.tabBar}>
-      {[
-        { key: "messages", label: t("inbox_messages"), badge: msgBadge },
-        {
-          key: "notifications",
-          label: t("inbox_notifications"),
-          badge: notifBadge,
-        },
-        { key: "stories", label: t("inbox_stories"), badge: storiesBadge },
-      ].map((t) => {
-        const pillBg = tabAnim[t.key].interpolate({
-          inputRange: [0, 1],
-          outputRange: ["rgba(0,0,0,0)", "rgba(254,44,85,0.18)"],
-        });
-        const textColor = tabAnim[t.key].interpolate({
-          inputRange: [0, 1],
-          outputRange: ["#666", "#FFF"],
-        });
-        const fontWeight = tabAnim[t.key].interpolate({
-          inputRange: [0, 1],
-          outputRange: ["400", "700"],
-        });
-        return (
-          <TouchableOpacity
-            key={t.key}
-            style={styles.tabItem}
-            onPress={() => switchTab(t.key)}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={[styles.tabPill, { backgroundColor: pillBg }]}
-            >
-              <Animated.Text
-                style={[styles.tabLabel, { color: textColor, fontWeight }]}
-              >
-                {t.label}
-              </Animated.Text>
-              {t.badge > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>
-                    {t.badge > 99 ? "99+" : t.badge}
-                  </Text>
-                </View>
-              )}
-            </Animated.View>
-          </TouchableOpacity>
-        );
-      })}
-      {/* Animated underline */}
-      <Animated.View
-        style={[
-          styles.tabUnderline,
-          { width: TAB_W - 32, transform: [{ translateX: tabUnderline }] },
-        ]}
-      />
+          <View style={styles.promoIcon}>
+            <Ionicons name="mail" size={28} color="#FE2C55" />
+          </View>
+        </View>
+      )}
     </View>
   );
 
@@ -717,348 +475,392 @@ const InboxScreen = ({ navigation }) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar
+        barStyle={theme.id === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={theme.bg}
+      />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad }]}>
-        <Text style={styles.headerTitle}>{t("inbox_title")}</Text>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => navigation.navigate("Users")}
+        >
+          <Ionicons name="search" size={24} color={theme.icon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerCenter} activeOpacity={0.7}>
+          <Text style={styles.headerTitle}>{t("inbox_title")}</Text>
+          <Ionicons
+            name="chevron-down"
+            size={14}
+            color={theme.icon}
+            style={{ marginHorizontal: 4 }}
+          />
+          <View style={styles.headerOnlineDot} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => navigation.navigate("NewFollowers")}
+        >
+          <MaterialCommunityIcons
+            name="account-multiple-plus-outline"
+            size={26}
+            color={theme.icon}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Tab bar */}
-      <TabBar />
-
-      {/* Content */}
-      {loading ? (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color="#FE2C55" />
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {activeTab === "messages" && <MessagesTab />}
-          {activeTab === "notifications" && <NotificationsTab />}
-          {activeTab === "stories" && <StoriesTab />}
+      {/* Loading indicator */}
+      {loading && (
+        <View style={styles.loadingBar}>
+          <ActivityIndicator size="small" color="#FE2C55" />
         </View>
       )}
+
+      {/* Single unified list */}
+      <FlatList
+        data={filteredConversations}
+        keyExtractor={(item) =>
+          item._id || item.user?._id || Math.random().toString()
+        }
+        renderItem={renderConversation}
+        ListHeaderComponent={<ListHeader />}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={64}
+                color={theme.textMuted}
+              />
+              <Text style={styles.emptyTitle}>لا توجد محادثات بعد</Text>
+              <Text style={styles.emptySubtitle}>
+                ابحث عن أشخاص وابدأ محادثة جديدة
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyBtn}
+                onPress={() => navigation.navigate("Users")}
+              >
+                <Text style={styles.emptyBtnText}>ابدأ محادثة جديدة</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FE2C55"
+          />
+        }
+        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
 
-// ── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
+// ── Styles (theme-aware) ──────────────────────────────────────────────────────
+const getStyles = (theme) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: theme.bg },
 
-  // Header
-  header: {
-    backgroundColor: "#000",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#1a1a1a",
-  },
-  headerTitle: { color: "#FFF", fontSize: 18, fontWeight: "400" },
-  headerRight: { padding: 4 },
+    // Header
+    header: {
+      backgroundColor: theme.header,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingBottom: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    headerBtn: { padding: 6 },
+    headerCenter: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "center",
+    },
+    headerTitle: { color: theme.text, fontSize: 17, fontWeight: "600" },
+    headerOnlineDot: {
+      width: 9,
+      height: 9,
+      borderRadius: 5,
+      backgroundColor: "#25D366",
+      marginLeft: 2,
+    },
 
-  // Tab bar
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "#000",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#1a1a1a",
-    position: "relative",
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 22,
-    gap: 5,
-  },
-  tabLabel: {
-    fontSize: 14,
-  },
-  tabBadge: {
-    backgroundColor: "#FE2C55",
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 4,
-  },
-  tabBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "700" },
-  tabUnderline: {
-    position: "absolute",
-    bottom: 0,
-    left: 16,
-    height: 2,
-    backgroundColor: "#FE2C55",
-    borderRadius: 1,
-  },
+    // Section headers
+    sectionHeader: {
+      flexDirection: "row-reverse",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingTop: 18,
+      paddingBottom: 8,
+    },
+    sectionTitle: { color: theme.text, fontSize: 17, fontWeight: "700" },
+    sectionAction: { color: "#FE2C55", fontSize: 14, fontWeight: "600" },
 
-  // Loading
-  loadingCenter: { flex: 1, justifyContent: "center", alignItems: "center" },
+    // Promo banner
+    promoBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.card,
+      marginHorizontal: 12,
+      marginTop: 10,
+      marginBottom: 4,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    promoDismiss: { padding: 4, marginRight: 6 },
+    promoBody: { flex: 1 },
+    promoText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      textAlign: "right",
+      lineHeight: 18,
+      marginBottom: 8,
+    },
+    promoBtn: {
+      alignSelf: "flex-end",
+      backgroundColor: "#FE2C55",
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+    },
+    promoBtnText: { color: "#FFF", fontSize: 13, fontWeight: "600" },
+    promoIcon: { marginLeft: 10 },
 
-  // Active users row
-  activeUsersSection: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#1a1a1a",
-    paddingVertical: 12,
-  },
-  activeUsersContent: {
-    paddingHorizontal: 14,
-    gap: 14,
-  },
-  activeUserItem: {
-    alignItems: "center",
-    width: 62,
-  },
-  activeUserAvatarWrap: {
-    position: "relative",
-    marginBottom: 5,
-  },
-  activeUserAvatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-  },
-  activeUserInitials: {
-    backgroundColor: "#1a1a2e",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  activeUserInitialsText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  activeUserOnlineDot: {
-    position: "absolute",
-    bottom: 1,
-    right: 1,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#25D366",
-    borderWidth: 2.5,
-    borderColor: "#000",
-  },
-  activeUserName: {
-    color: "#CCC",
-    fontSize: 11,
-    fontWeight: "500",
-    textAlign: "center",
-  },
+    // Stories sections
+    storiesSection: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      paddingVertical: 10,
+    },
+    contactsSection: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      paddingVertical: 10,
+    },
+    storiesRowContent: { paddingHorizontal: 12, gap: 14 },
+    storyWrap: { alignItems: "center", width: 72 },
+    storyRing: {
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      padding: 3,
+      marginBottom: 5,
+    },
+    storyInner: {
+      flex: 1,
+      borderRadius: 30,
+      overflow: "hidden",
+      backgroundColor: theme.bg3,
+      position: "relative",
+    },
+    storyImg: { width: "100%", height: "100%" },
+    storyOnlineDot: {
+      position: "absolute",
+      bottom: 1,
+      right: 1,
+      width: 13,
+      height: 13,
+      borderRadius: 7,
+      backgroundColor: "#25D366",
+      borderWidth: 2,
+      borderColor: theme.bg,
+    },
+    storyName: {
+      color: theme.textSecondary,
+      fontSize: 11,
+      textAlign: "center",
+      maxWidth: 72,
+    },
+    storyCircleCreate: {
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      backgroundColor: theme.bg3,
+      overflow: "hidden",
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "#FE2C55",
+      borderStyle: "dashed",
+      marginBottom: 5,
+    },
+    storyCreatePlus: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: "#FE2C55",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    storyCircleRing: {
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      padding: 3,
+      marginBottom: 5,
+    },
+    storyRingOwn: { borderWidth: 2.5, borderColor: "#25D366" },
+    storyRingOther: { borderWidth: 2.5, borderColor: "#FE2C55" },
+    storyCircleInner: {
+      flex: 1,
+      borderRadius: 30,
+      overflow: "hidden",
+      backgroundColor: theme.bg3,
+    },
+    storyCircleImg: { width: "100%", height: "100%", borderRadius: 30 },
 
-  // Search
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#111",
-    borderRadius: 12,
-    marginHorizontal: 14,
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  searchInput: {
-    flex: 1,
-    color: "#FFF",
-    fontSize: 15,
-    paddingVertical: 10,
-    textAlign: "right",
-  },
+    // Notification rows
+    notifRow: {
+      flexDirection: "row-reverse",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.bg,
+    },
+    notifIndicator: { width: 36, alignItems: "center", marginLeft: 8 },
+    notifContent: { flex: 1, paddingLeft: 12 },
+    notifTitle: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "700",
+      textAlign: "right",
+      marginBottom: 3,
+    },
+    notifSubtitle: { color: theme.textMuted, fontSize: 13, textAlign: "right" },
+    notifIconCircle: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      justifyContent: "center",
+      alignItems: "center",
+    },
 
-  // Conversation item
-  convoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#111",
-  },
-  avatarWrapper: { position: "relative", marginRight: 12 },
-  avatar: { width: 52, height: 52, borderRadius: 26 },
-  initialsCircle: {
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#1a1a2e",
-  },
-  initialsTextLg: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  onlineDot: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#25D366",
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  convoText: { flex: 1 },
-  convoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  convoName: { color: "#FFF", fontSize: 15, flexShrink: 1 },
-  convoNameBold: { fontWeight: "700" },
-  convoTime: { color: "#666", fontSize: 12, marginLeft: 6 },
-  convoLast: { color: "#888", fontSize: 13, flexShrink: 1 },
-  convoLastBold: { color: "#DDD", fontWeight: "600" },
-  unreadBadge: {
-    backgroundColor: "#FE2C55",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 5,
-    marginLeft: 6,
-  },
-  unreadBadgeText: { color: "#FFF", fontSize: 11, fontWeight: "700" },
+    // Search bar
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.input,
+      borderRadius: 12,
+      marginHorizontal: 14,
+      marginTop: 12,
+      marginBottom: 4,
+    },
+    searchInput: {
+      flex: 1,
+      color: theme.text,
+      fontSize: 15,
+      paddingVertical: 10,
+      textAlign: "right",
+    },
 
-  // Notification menu items
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#111",
-  },
-  menuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  menuContent: { flex: 1 },
-  menuTitle: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: "#FFF",
-    marginBottom: 4,
-  },
-  menuSubtitle: { fontSize: 13, color: "#888" },
-  notificationBadge: {
-    backgroundColor: "#FE2C55",
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 6,
-  },
-  badgeText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
-  dotBadge: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FE2C55",
-  },
+    // Conversation item
+    convoItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.bg,
+    },
+    avatarWrapper: { position: "relative", marginLeft: 10 },
+    avatar: { width: 52, height: 52, borderRadius: 26 },
+    initialsCircle: {
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: theme.bg3,
+    },
+    initialsTextLg: { color: theme.text, fontSize: 18, fontWeight: "700" },
+    onlineDot: {
+      position: "absolute",
+      bottom: 2,
+      right: 2,
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: "#25D366",
+      borderWidth: 2,
+      borderColor: theme.bg,
+    },
+    convoText: { flex: 1 },
+    convoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    convoName: {
+      color: theme.text,
+      fontSize: 15,
+      flexShrink: 1,
+      textAlign: "right",
+    },
+    convoNameBold: { fontWeight: "700" },
+    convoTime: { color: theme.textMuted, fontSize: 12 },
+    convoLast: { color: theme.textMuted, fontSize: 13, textAlign: "right" },
+    convoLastBold: { color: theme.textSecondary, fontWeight: "600" },
+    unreadBadge: {
+      backgroundColor: "#FE2C55",
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 5,
+    },
+    unreadBadgeText: { color: "#FFF", fontSize: 11, fontWeight: "700" },
+    dotBadge: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: "#FE2C55",
+    },
 
-  // Stories — Messenger-style horizontal circles
-  storiesRow: {
-    paddingHorizontal: 12,
-    paddingVertical: 18,
-    gap: 16,
-  },
-  storyCircleWrap: {
-    alignItems: "center",
-    width: 74,
-  },
-  // "Create" circle
-  storyCircleCreate: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#1a1a1a",
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FE2C55",
-    borderStyle: "dashed",
-    marginBottom: 5,
-  },
-  storyCreatePlus: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#FE2C55",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  // Story circles with ring
-  storyCircleRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    padding: 3,
-    marginBottom: 5,
-  },
-  storyRingOwn: {
-    borderWidth: 2.5,
-    borderColor: "#25D366",
-  },
-  storyRingOther: {
-    borderWidth: 2.5,
-    borderColor: "#FE2C55",
-  },
-  storyCircleInner: {
-    flex: 1,
-    borderRadius: 33,
-    overflow: "hidden",
-    backgroundColor: "#111",
-  },
-  storyCircleImg: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 33,
-  },
-  storyCircleName: {
-    color: "#CCC",
-    fontSize: 11,
-    fontWeight: "500",
-    textAlign: "center",
-    maxWidth: 74,
-  },
+    // Loading
+    loadingBar: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 10,
+    },
 
-  // Empty states
-  emptyContainer: {
-    alignItems: "center",
-    paddingTop: 60,
-    paddingHorizontal: 30,
-  },
-  emptyTitle: { color: "#FFF", fontSize: 20, fontWeight: "700", marginTop: 16 },
-  emptySubtitle: {
-    color: "#888",
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: "center",
-  },
-  emptyBtn: {
-    marginTop: 24,
-    backgroundColor: "#FE2C55",
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  emptyBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-});
+    // Empty state
+    emptyContainer: {
+      alignItems: "center",
+      paddingTop: 60,
+      paddingHorizontal: 30,
+    },
+    emptyTitle: {
+      color: theme.text,
+      fontSize: 20,
+      fontWeight: "700",
+      marginTop: 16,
+    },
+    emptySubtitle: {
+      color: theme.textMuted,
+      fontSize: 14,
+      marginTop: 8,
+      textAlign: "center",
+    },
+    emptyBtn: {
+      marginTop: 24,
+      backgroundColor: "#FE2C55",
+      paddingHorizontal: 28,
+      paddingVertical: 12,
+      borderRadius: 24,
+    },
+    emptyBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  });
 
 export default InboxScreen;

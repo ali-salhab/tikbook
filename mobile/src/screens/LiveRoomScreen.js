@@ -779,10 +779,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
               }
               size={30}
             />
-            <View style={styles.coinPill}>
-              <Ionicons name="diamond" size={9} color="#00F2EA" />
-              <Text style={styles.coinText}>{userBalance}</Text>
-            </View>
           </View>
         </View>
       </View>
@@ -917,11 +913,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const canSpeak = isHost || isSpeaker;
     return (
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
-        {/* Balance */}
-        <View style={styles.balanceChip}>
-          <Ionicons name="diamond-outline" size={11} color="#00F2EA" />
-          <Text style={styles.balanceChipText}>{userBalance}</Text>
-        </View>
         {/* Actions */}
         <View style={styles.actions}>
           {/* Mic / Hand */}
@@ -1924,7 +1915,7 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: "row",
     alignItems: "flex-end",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     paddingHorizontal: 12,
     paddingTop: 10,
   },
