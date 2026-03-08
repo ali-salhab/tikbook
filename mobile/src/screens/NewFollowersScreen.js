@@ -20,13 +20,14 @@ import { useFocusEffect } from "@react-navigation/native";
 
 const NewFollowersScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { userToken, setNotificationCount, fetchNotificationCount } =
+  const { userToken, userInfo, fetchNotificationCount } =
     useContext(AuthContext);
   const [followers, setFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [followedIds, setFollowedIds] = useState({});
+  const [followLoadingMap, setFollowLoadingMap] = useState({});
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -57,14 +58,39 @@ const NewFollowersScreen = ({ navigation }) => {
 
   const fetchFollowers = async () => {
     try {
+      let myFollowingIds = new Set();
+
+      if (userInfo?._id) {
+        try {
+          const meRes = await axios.get(`${BASE_URL}/users/${userInfo._id}`, {
+            headers: { Authorization: `Bearer ${userToken}` },
+          });
+          myFollowingIds = new Set(
+            (meRes.data?.following || []).map((id) => id?.toString()),
+          );
+        } catch (profileErr) {
+          console.warn(
+            "Could not fetch my following list:",
+            profileErr?.message,
+          );
+        }
+      }
+
       const res = await axios.get(`${BASE_URL}/notifications`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
+
       // Filter only follow notifications
       const followNotifications = (res.data || []).filter(
         (n) => n.type === "follow" && n.fromUser,
       );
-      setFollowers(followNotifications);
+
+      const enrichedNotifications = followNotifications.map((n) => ({
+        ...n,
+        isFollowingBack: myFollowingIds.has(n.fromUser?._id?.toString()),
+      }));
+
+      setFollowers(enrichedNotifications);
     } catch (e) {
       console.error("Error fetching followers:", e);
       setFollowers([]);
@@ -97,7 +123,7 @@ const NewFollowersScreen = ({ navigation }) => {
       fetchFollowers();
       fetchSuggested();
       markAllAsRead();
-    }, []),
+    }, [userInfo?._id]),
   );
 
   const onRefresh = () => {
@@ -111,14 +137,18 @@ const NewFollowersScreen = ({ navigation }) => {
       const isFollowing = !!followedIds[userId];
       if (isFollowing) {
         await axios.put(
-          `${BASE_URL}/user/${userId}/unfollow`,
+          `${BASE_URL}/users/${userId}/unfollow`,
           {},
           { headers: { Authorization: `Bearer ${userToken}` } },
         );
-        setFollowedIds((prev) => { const n = { ...prev }; delete n[userId]; return n; });
+        setFollowedIds((prev) => {
+          const n = { ...prev };
+          delete n[userId];
+          return n;
+        });
       } else {
         await axios.put(
-          `${BASE_URL}/user/${userId}/follow`,
+          `${BASE_URL}/users/${userId}/follow`,
           {},
           { headers: { Authorization: `Bearer ${userToken}` } },
         );
@@ -130,39 +160,75 @@ const NewFollowersScreen = ({ navigation }) => {
   };
 
   const handleFollowBack = async (userId, currentlyFollowing) => {
+    if (!userId || followLoadingMap[userId]) return;
+
+    setFollowLoadingMap((prev) => ({ ...prev, [userId]: true }));
+
+    const setLocalFollowState = (isFollowingBack) => {
+      setFollowers((prevFollowers) =>
+        prevFollowers.map((f) =>
+          f.fromUser?._id === userId ? { ...f, isFollowingBack } : f,
+        ),
+      );
+    };
+
     try {
       if (currentlyFollowing) {
         // Unfollow
-        await axios.delete(`${BASE_URL}/user/${userId}/unfollow`, {
-          headers: { Authorization: `Bearer ${userToken}` },
-        });
+        await axios.put(
+          `${BASE_URL}/users/${userId}/unfollow`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
       } else {
         // Follow
-        await axios.post(
-          `${BASE_URL}/user/${userId}/follow`,
+        await axios.put(
+          `${BASE_URL}/users/${userId}/follow`,
           {},
           {
             headers: { Authorization: `Bearer ${userToken}` },
           },
         );
       }
-      // Update local state
-      setFollowers((prevFollowers) =>
-        prevFollowers.map((f) =>
-          f.fromUser?._id === userId
-            ? { ...f, isFollowingBack: !currentlyFollowing }
-            : f,
-        ),
-      );
+
+      setLocalFollowState(!currentlyFollowing);
     } catch (error) {
+      const status = error?.response?.status;
+      const message = (error?.response?.data?.message || "").toLowerCase();
+
+      const alreadyFollowingError =
+        !currentlyFollowing &&
+        status === 403 &&
+        message.includes("already follow");
+
+      const alreadyUnfollowedError =
+        currentlyFollowing &&
+        status === 403 &&
+        (message.includes("dont follow") || message.includes("don't follow"));
+
+      // Sync local UI with server state when backend says state already applied.
+      if (alreadyFollowingError) {
+        setLocalFollowState(true);
+        return;
+      }
+
+      if (alreadyUnfollowedError) {
+        setLocalFollowState(false);
+        return;
+      }
+
       console.error("Error toggling follow:", error);
+    } finally {
+      setFollowLoadingMap((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
-
-
   const renderItem = ({ item }) => {
     const user = item.fromUser;
+    const isFollowingBack = !!item.isFollowingBack;
+    const isFollowLoading = !!followLoadingMap[user?._id];
     if (!user) return null;
 
     return (
@@ -197,18 +263,26 @@ const NewFollowersScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.followButton,
-            item.isFollowingBack && styles.followingButton,
+            isFollowingBack && styles.followingButton,
           ]}
-          onPress={() => handleFollowBack(user._id, item.isFollowingBack)}
+          onPress={() => handleFollowBack(user._id, isFollowingBack)}
+          disabled={isFollowLoading}
         >
-          <Text
-            style={[
-              styles.followButtonText,
-              item.isFollowingBack && styles.followingButtonText,
-            ]}
-          >
-            {item.isFollowingBack ? "أصدقاء" : "رد المتابعة"}
-          </Text>
+          {isFollowLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={isFollowingBack ? "#666" : "#FFF"}
+            />
+          ) : (
+            <Text
+              style={[
+                styles.followButtonText,
+                isFollowingBack && styles.followingButtonText,
+              ]}
+            >
+              {isFollowingBack ? "أصدقاء" : "رد المتابعة"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -258,7 +332,9 @@ const NewFollowersScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.suggestedCard}
-                    onPress={() => navigation.navigate("UserProfile", { userId: item._id })}
+                    onPress={() =>
+                      navigation.navigate("UserProfile", { userId: item._id })
+                    }
                   >
                     <View style={{ position: "relative" }}>
                       {item.profileImage ? (
@@ -267,19 +343,36 @@ const NewFollowersScreen = ({ navigation }) => {
                           style={styles.suggestedAvatar}
                         />
                       ) : (
-                        <View style={[styles.suggestedAvatar, styles.suggestedAvatarPlaceholder]}>
+                        <View
+                          style={[
+                            styles.suggestedAvatar,
+                            styles.suggestedAvatarPlaceholder,
+                          ]}
+                        >
                           <Ionicons name="person" size={20} color="#CCC" />
                         </View>
                       )}
                       {item.isVerified && (
                         <View style={styles.verifiedBadge}>
-                          <Ionicons name="checkmark-circle" size={14} color={item.verificationBadge === 'gold' ? '#FFD700' : '#1DA1F2'} />
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={14}
+                            color={
+                              item.verificationBadge === "gold"
+                                ? "#FFD700"
+                                : "#1DA1F2"
+                            }
+                          />
                         </View>
                       )}
                     </View>
-                    <Text style={styles.suggestedName} numberOfLines={1}>{item.username}</Text>
+                    <Text style={styles.suggestedName} numberOfLines={1}>
+                      {item.username}
+                    </Text>
                     <Text style={styles.suggestedReason}>
-                      {item.followersCount > 0 ? `${item.followersCount} متابع` : "حساب جديد"}
+                      {item.followersCount > 0
+                        ? `${item.followersCount} متابع`
+                        : "حساب جديد"}
                     </Text>
                     <TouchableOpacity
                       style={[
@@ -288,10 +381,13 @@ const NewFollowersScreen = ({ navigation }) => {
                       ]}
                       onPress={() => handleFollowSuggested(item._id)}
                     >
-                      <Text style={[
-                        styles.suggestedFollowText,
-                        followedIds[item._id] && styles.suggestedFollowingText,
-                      ]}>
+                      <Text
+                        style={[
+                          styles.suggestedFollowText,
+                          followedIds[item._id] &&
+                            styles.suggestedFollowingText,
+                        ]}
+                      >
                         {followedIds[item._id] ? "أصدقاء" : "متابعة"}
                       </Text>
                     </TouchableOpacity>

@@ -598,6 +598,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
       user: senderUser,
     });
     setInputText("");
+    Keyboard.dismiss();
+    setShowInput(false);
+    setKeyboardOffset(0);
   };
 
   const handleOpenInput = () => {
@@ -981,16 +984,25 @@ const LiveRoomScreen = ({ route, navigation }) => {
               <Ionicons name="options-outline" size={19} color="#FFF" />
             </View>
           </TouchableOpacity>
-          {/* Comment */}
-          <TouchableOpacity onPress={handleOpenInput}>
-            <View style={styles.actionCircle}>
-              <Ionicons
-                name="chatbubble-ellipses-outline"
-                size={19}
-                color="#FFF"
-              />
+
+          {/* Inline Comment Input */}
+          <TouchableOpacity
+            style={styles.inlineCommentContainer}
+            onPress={handleOpenInput}
+            activeOpacity={0.8}
+          >
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <Text style={styles.inlineCommentPlaceholder}>
+                اكتب تعليقاً...
+              </Text>
             </View>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={18}
+              color="rgba(255,255,255,0.7)"
+            />
           </TouchableOpacity>
+
           {/* Gift */}
           <TouchableOpacity
             onPress={() => {
@@ -1361,13 +1373,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const onKeyboardFrame = (e) => {
       const screenHeight = Dimensions.get("screen").height;
       const endY = e?.endCoordinates?.screenY;
-      if (typeof endY === "number") {
-        setKeyboardOffset(Math.max(0, screenHeight - endY));
-        return;
-      }
-
       const endHeight = e?.endCoordinates?.height;
-      setKeyboardOffset(typeof endHeight === "number" ? endHeight : 0);
+
+      const offsetFromY =
+        typeof endY === "number" ? Math.max(0, screenHeight - endY) : 0;
+      const offsetFromHeight =
+        typeof endHeight === "number" ? Math.max(0, endHeight) : 0;
+
+      // Use the larger value because some Android keyboards report one metric
+      // more reliably than the other across devices.
+      const resolvedOffset = Math.max(offsetFromY, offsetFromHeight);
+      setKeyboardOffset(resolvedOffset);
     };
 
     const showSub = Keyboard.addListener(
@@ -1427,7 +1443,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           value={inputText}
           onChangeText={setInputText}
           placeholder="اكتب تعليقاً..."
-          placeholderTextColor="#999"
+          placeholderTextColor="rgba(255,255,255,0.5)"
           style={styles.chatField}
           onSubmitEditing={handleSendMessage}
           returnKeyType="send"
@@ -1621,8 +1637,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Mini music bar */}
       {MiniMusicBar()}
 
-      {/* Bottom action bar — always mounted; hidden behind input when active */}
-      {BottomBar()}
+      {/* Bottom action bar */}
+      {!showInput && BottomBar()}
 
       {/* Chat input — always mounted, shown/hidden via display prop */}
       {chatInputBar}
@@ -2069,14 +2085,35 @@ const styles = StyleSheet.create({
   chatField: {
     flex: 1,
     color: "#FFF",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    height: 40,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 0,
     fontSize: 14,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.15)",
+    textAlign: "right",
+  },
+  inlineCommentContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    height: 40,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  inlineCommentPlaceholder: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    textAlign: "right",
+  },
+  inlineSendBtn: {
+    paddingLeft: 8,
   },
   sendBtn: { padding: 4 },
   closeChatBtn: { padding: 4, marginLeft: 2 },
