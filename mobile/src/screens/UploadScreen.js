@@ -26,6 +26,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation, useIsFocused } from "@react-navigation/native";
+import { ms, fs } from "../utils/responsive";
 
 const { width, height } = Dimensions.get("window");
 
@@ -342,69 +343,69 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    marginTop: 10,
+    paddingHorizontal: ms(16),
+    marginTop: ms(10),
   },
   closeButton: {
-    padding: 8,
+    padding: ms(8),
   },
   addSoundButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.4)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(8),
+    borderRadius: ms(20),
   },
   addSoundText: {
     color: "white",
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: "600",
   },
   sidebar: {
     position: "absolute",
-    left: 16,
-    top: 100,
+    left: ms(16),
+    top: ms(100),
     alignItems: "center",
     zIndex: 10,
   },
   sidebarItem: {
-    marginBottom: 20,
+    marginBottom: ms(20),
     alignItems: "center",
   },
   sidebarLabel: {
     color: "white",
-    fontSize: 10,
-    marginTop: 4,
+    fontSize: fs(10),
+    marginTop: ms(4),
     textShadowColor: "rgba(0, 0, 0, 0.5)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   bottomControls: {
-    paddingBottom: 20,
-    backgroundColor: "transparent", // Gradient could be added here
+    paddingBottom: ms(20),
+    backgroundColor: "transparent",
   },
   modeSelectorContainer: {
-    height: 40,
-    marginBottom: 10,
+    height: ms(40),
+    marginBottom: ms(10),
   },
   modeSelectorContent: {
     alignItems: "center",
-    paddingHorizontal: width / 2 - 30, // Center the first item roughly
+    paddingHorizontal: width / 2 - ms(30),
   },
   modeItem: {
-    paddingHorizontal: 15,
+    paddingHorizontal: ms(15),
     justifyContent: "center",
-    height: 30,
-    borderRadius: 15,
-    marginHorizontal: 5,
+    height: ms(30),
+    borderRadius: ms(15),
+    marginHorizontal: ms(5),
   },
   activeModeItem: {
-    backgroundColor: "rgba(100, 100, 100, 0.5)", // Semi-transparent pill
+    backgroundColor: "rgba(100, 100, 100, 0.5)",
   },
   modeText: {
     color: "rgba(255, 255, 255, 0.6)",
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: "600",
   },
   activeModeText: {
@@ -415,13 +416,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    marginBottom: 20,
-    paddingHorizontal: 20,
+    marginBottom: ms(20),
+    paddingHorizontal: ms(20),
   },
   shutterButtonOuter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: ms(80),
+    height: ms(80),
+    borderRadius: ms(40),
     borderWidth: 5,
     borderColor: "rgba(255, 255, 255, 0.5)",
     justifyContent: "center",
@@ -429,32 +430,32 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   shutterButtonInner: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
+    width: ms(65),
+    height: ms(65),
+    borderRadius: ms(32.5),
     backgroundColor: "white",
   },
   recordingShutter: {
-    width: 30,
-    height: 30,
-    borderRadius: 4,
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(4),
     backgroundColor: "#FE2C55",
   },
   sideButton: {
     alignItems: "center",
     justifyContent: "center",
-    width: 60,
+    width: ms(60),
   },
   sideButtonLabel: {
     color: "white",
-    fontSize: 11,
-    marginTop: 4,
+    fontSize: fs(11),
+    marginTop: ms(4),
     fontWeight: "600",
   },
   uploadPreview: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(6),
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
@@ -465,22 +466,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 5,
+    marginTop: ms(5),
   },
   bottomTabText: {
     color: "rgba(255, 255, 255, 0.6)",
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "600",
-    marginHorizontal: 15,
+    marginHorizontal: ms(15),
   },
   activeBottomTab: {
     color: "white",
   },
   permissionButton: {
     backgroundColor: "white",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 20,
+    padding: ms(15),
+    borderRadius: ms(10),
+    marginTop: ms(20),
     alignSelf: "center",
   },
 });

@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import Constants from "expo-constants";
+import { wp, ms, fs } from "../utils/responsive";
 
 const OTPScreen = ({ route, navigation }) => {
   const { username, email, password } = route.params;
@@ -172,12 +173,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
-    padding: 20,
+    padding: ms(20),
   },
   backButton: {
-    marginTop: Constants.statusBarHeight + 10,
-    width: 40,
-    height: 40,
+    marginTop: Constants.statusBarHeight + ms(10),
+    width: ms(40),
+    height: ms(40),
     justifyContent: "center",
     alignItems: "center",
   },
@@ -185,31 +186,31 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -50,
+    marginTop: -ms(50),
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: ms(80),
+    height: ms(80),
+    borderRadius: ms(40),
     backgroundColor: "rgba(254, 44, 85, 0.1)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: ms(20),
     borderWidth: 1,
     borderColor: "rgba(254, 44, 85, 0.3)",
   },
   title: {
-    fontSize: 24,
+    fontSize: fs(24),
     fontWeight: "bold",
     color: "#FFF",
-    marginBottom: 10,
+    marginBottom: ms(10),
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: "#999",
     textAlign: "center",
-    marginBottom: 40,
-    lineHeight: 22,
+    marginBottom: ms(40),
+    lineHeight: ms(22),
   },
   emailText: {
     color: "#FFF",
@@ -217,19 +218,19 @@ const styles = StyleSheet.create({
   },
   otpContainer: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 40,
+    gap: ms(10),
+    marginBottom: ms(40),
     direction: "ltr",
   },
   otpInput: {
-    width: 45,
-    height: 55,
-    borderRadius: 8,
+    width: ms(45),
+    height: ms(55),
+    borderRadius: ms(8),
     borderWidth: 1,
     borderColor: "#333",
     backgroundColor: "#1a1a1a",
     color: "#FFF",
-    fontSize: 24,
+    fontSize: fs(24),
     fontWeight: "bold",
     textAlign: "center",
   },
@@ -239,19 +240,19 @@ const styles = StyleSheet.create({
   },
   verifyButton: {
     width: "100%",
-    height: 50,
+    height: ms(50),
     backgroundColor: "#FE2C55",
-    borderRadius: 8,
+    borderRadius: ms(8),
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: ms(20),
   },
   disabledButton: {
     opacity: 0.7,
   },
   verifyButtonText: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "bold",
   },
   resendContainer: {
@@ -260,11 +261,11 @@ const styles = StyleSheet.create({
   },
   resendText: {
     color: "#666",
-    fontSize: 14,
+    fontSize: fs(14),
   },
   resendLink: {
     color: "#FE2C55",
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "bold",
   },
 });

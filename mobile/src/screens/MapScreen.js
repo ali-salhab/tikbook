@@ -3,6 +3,7 @@ import { View, StyleSheet, Text, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomMapView from "../components/MapView";
 import * as Location from "expo-location";
+import { ms, fs } from "../utils/responsive";
 
 const MapScreen = ({ navigation }) => {
   const [markers, setMarkers] = useState([]);
@@ -125,22 +126,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(12),
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: fs(20),
     fontWeight: "bold",
     color: "#333",
   },
   addButton: {
     backgroundColor: "#007AFF",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(8),
+    borderRadius: ms(8),
   },
   addButtonText: {
     color: "#fff",
@@ -151,12 +152,12 @@ const styles = StyleSheet.create({
   },
   infoPanel: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: ms(20),
+    left: ms(20),
+    right: ms(20),
     backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
+    padding: ms(16),
+    borderRadius: ms(12),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -164,20 +165,20 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   infoTitle: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: ms(4),
     color: "#333",
   },
   infoDescription: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: "#666",
-    marginBottom: 12,
+    marginBottom: ms(12),
   },
   closeButton: {
     backgroundColor: "#f0f0f0",
-    padding: 8,
-    borderRadius: 6,
+    padding: ms(8),
+    borderRadius: ms(6),
     alignItems: "center",
   },
   closeButtonText: {

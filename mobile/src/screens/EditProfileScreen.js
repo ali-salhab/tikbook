@@ -17,6 +17,7 @@ import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
+import { ms, fs } from "../utils/responsive";
 
 const EditProfileScreen = ({ navigation, route }) => {
   const { userInfo, BASE_URL, userToken } = useContext(AuthContext);
@@ -25,16 +26,16 @@ const EditProfileScreen = ({ navigation, route }) => {
   const [username, setUsername] = useState(currentProfile?.username || "");
   const [bio, setBio] = useState(currentProfile?.bio || "");
   const [profileImage, setProfileImage] = useState(
-    currentProfile?.profileImage || null
+    currentProfile?.profileImage || null,
   );
   const [instagram, setInstagram] = useState(
-    currentProfile?.socialLinks?.instagram || ""
+    currentProfile?.socialLinks?.instagram || "",
   );
   const [youtube, setYoutube] = useState(
-    currentProfile?.socialLinks?.youtube || ""
+    currentProfile?.socialLinks?.youtube || "",
   );
   const [twitter, setTwitter] = useState(
-    currentProfile?.socialLinks?.twitter || ""
+    currentProfile?.socialLinks?.twitter || "",
   );
   const [loading, setLoading] = useState(false);
   const [showInstagramInput, setShowInstagramInput] = useState(false);
@@ -140,7 +141,7 @@ const EditProfileScreen = ({ navigation, route }) => {
         "خطأ",
         error.response?.data?.message ||
           error.message ||
-          "فشل تحديث الملف الشخصي"
+          "فشل تحديث الملف الشخصي",
       );
     } finally {
       setLoading(false);
@@ -413,46 +414,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(12),
     borderBottomWidth: 1,
     borderBottomColor: "#1F1F1F",
     backgroundColor: "#000",
   },
   headerTitle: {
     color: "#FFF",
-    fontSize: 17,
+    fontSize: fs(17),
     fontWeight: "600",
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: ms(20),
   },
   photoSection: {
     alignItems: "center",
-    paddingVertical: 24,
+    paddingVertical: ms(24),
     borderBottomWidth: 8,
     borderBottomColor: "#0A0A0A",
   },
   photoContainer: {
     position: "relative",
-    marginBottom: 12,
+    marginBottom: ms(12),
   },
   profileImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: ms(96),
+    height: ms(96),
+    borderRadius: ms(48),
   },
   cameraButton: {
     position: "absolute",
     bottom: 0,
     right: 0,
     backgroundColor: "#FE2C55",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(16),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
@@ -460,69 +461,69 @@ const styles = StyleSheet.create({
   },
   changePhotoText: {
     color: "#FFF",
-    fontSize: 15,
+    fontSize: fs(15),
   },
   form: {
-    padding: 16,
+    padding: ms(16),
   },
   fieldContainer: {
-    marginBottom: 24,
+    marginBottom: ms(24),
   },
   label: {
     color: "#FFF",
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: ms(8),
   },
   inputWrapper: {
     position: "relative",
   },
   input: {
     backgroundColor: "#1F1F1F",
-    borderRadius: 8,
-    padding: 12,
-    paddingRight: 50,
+    borderRadius: ms(8),
+    padding: ms(12),
+    paddingRight: ms(50),
     color: "#FFF",
-    fontSize: 15,
+    fontSize: fs(15),
     textAlign: "right",
   },
   bioInput: {
-    minHeight: 80,
-    paddingTop: 12,
+    minHeight: ms(80),
+    paddingTop: ms(12),
   },
   characterCount: {
     position: "absolute",
-    left: 12,
-    top: 12,
+    left: ms(12),
+    top: ms(12),
     color: "#666",
-    fontSize: 13,
+    fontSize: fs(13),
   },
   bioCharCount: {
-    top: 12,
+    top: ms(12),
   },
   hint: {
     color: "#666",
-    fontSize: 13,
-    marginTop: 6,
+    fontSize: fs(13),
+    marginTop: ms(6),
     textAlign: "right",
   },
   section: {
-    marginTop: 24,
-    paddingTop: 16,
+    marginTop: ms(24),
+    paddingTop: ms(16),
     borderTopWidth: 8,
     borderTopColor: "#0A0A0A",
   },
   sectionTitle: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "600",
-    marginBottom: 12,
+    marginBottom: ms(12),
   },
   linkItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: ms(12),
     borderBottomWidth: 1,
     borderBottomColor: "#1F1F1F",
   },
@@ -532,8 +533,8 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: "#FFF",
-    fontSize: 15,
-    marginLeft: 12,
+    fontSize: fs(15),
+    marginLeft: ms(12),
   },
   linkRight: {
     flexDirection: "row",
@@ -541,20 +542,20 @@ const styles = StyleSheet.create({
   },
   linkValue: {
     color: "#888",
-    fontSize: 14,
-    marginRight: 8,
+    fontSize: fs(14),
+    marginRight: ms(8),
   },
   socialInputContainer: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: ms(8),
+    paddingHorizontal: ms(12),
     backgroundColor: "#0A0A0A",
   },
   socialInput: {
     backgroundColor: "#1F1F1F",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: ms(8),
+    padding: ms(12),
     color: "#FFF",
-    fontSize: 15,
+    fontSize: fs(15),
     textAlign: "right",
   },
 });

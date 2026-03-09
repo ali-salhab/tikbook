@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { ms, fs } from "../utils/responsive";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
@@ -279,27 +280,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    padding: ms(16),
     backgroundColor: "#FFF",
     borderBottomWidth: 0.5,
     borderBottomColor: "#E5E5E5",
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: fs(17),
     fontWeight: "bold",
   },
   tabsContainer: {
     backgroundColor: "#FFF",
-    paddingVertical: 12,
+    paddingVertical: ms(12),
   },
   tabsContent: {
-    paddingHorizontal: 16,
-    gap: 10,
+    paddingHorizontal: ms(16),
+    gap: ms(10),
   },
   tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(8),
+    borderRadius: ms(20),
     backgroundColor: "#F1F1F1",
   },
   activeTab: {
@@ -313,8 +314,8 @@ const styles = StyleSheet.create({
     color: "#25F4EE",
   },
   listContent: {
-    padding: 16,
-    gap: 12,
+    padding: ms(16),
+    gap: ms(12),
   },
   center: {
     flex: 1,
@@ -324,16 +325,16 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: ms(60),
   },
   emptyText: {
-    marginTop: 12,
+    marginTop: ms(12),
     color: "#999",
   },
   card: {
     backgroundColor: "#FFF",
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: ms(8),
+    padding: ms(16),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -349,64 +350,64 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: ms(12),
   },
   sourceContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: ms(8),
   },
   iconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
     backgroundColor: "#F1F1F1",
     justifyContent: "center",
     alignItems: "center",
   },
   sourceText: {
     color: "#666",
-    fontSize: 13,
+    fontSize: fs(13),
   },
   unreadBadge: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: ms(8),
+    height: ms(8),
+    borderRadius: ms(4),
     backgroundColor: "#007bff",
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: ms(8),
+    height: ms(8),
+    borderRadius: ms(4),
     backgroundColor: "#007bff",
   },
   cardContent: {
-    paddingRight: 32, // Indent content to align with text
+    paddingRight: ms(32),
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: ms(8),
     textAlign: "left",
   },
   unreadTitle: {
     color: "#007bff",
   },
   cardMessage: {
-    fontSize: 14,
+    fontSize: fs(14),
     color: "#333",
-    marginBottom: 8,
+    marginBottom: ms(8),
     textAlign: "left",
-    lineHeight: 20,
+    lineHeight: ms(20),
   },
   cardDescription: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: "#666",
-    marginBottom: 8,
+    marginBottom: ms(8),
     textAlign: "left",
   },
   moreText: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: "#666",
     textAlign: "left",
   },

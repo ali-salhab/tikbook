@@ -18,6 +18,7 @@ import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
+import { ms, fs } from "../utils/responsive";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const ActivityScreen = ({ navigation }) => {
@@ -345,21 +346,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    padding: ms(16),
     borderBottomWidth: 0.5,
     borderBottomColor: "#E5E5E5",
   },
   headerTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: ms(4),
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: fs(17),
     fontWeight: "bold",
   },
   listContent: {
-    padding: 16,
+    padding: ms(16),
   },
   center: {
     flex: 1,
@@ -369,34 +370,34 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: ms(60),
   },
   emptyText: {
-    marginTop: 12,
+    marginTop: ms(12),
     color: "#999",
   },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: ms(20),
   },
   leftContent: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: 10,
+    marginRight: ms(10),
   },
   avatarContainer: {
     position: "relative",
-    marginRight: 12,
-    width: 56,
-    height: 56,
+    marginRight: ms(12),
+    width: ms(56),
+    height: ms(56),
   },
   avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: ms(56),
+    height: ms(56),
+    borderRadius: ms(28),
     backgroundColor: "#F0F0F0",
     justifyContent: "center",
     alignItems: "center",
@@ -404,15 +405,15 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 28,
+    borderRadius: ms(28),
   },
   iconBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -423,37 +424,37 @@ const styles = StyleSheet.create({
   },
   username: {
     fontWeight: "bold",
-    fontSize: 15,
-    marginBottom: 4,
+    fontSize: fs(15),
+    marginBottom: ms(4),
     textAlign: "left",
   },
   actionText: {
     color: "#666",
-    fontSize: 13,
+    fontSize: fs(13),
     textAlign: "left",
-    lineHeight: 18,
+    lineHeight: ms(18),
   },
   time: {
     color: "#999",
   },
   thumbnailPlaceholder: {
-    width: 48,
-    height: 64,
+    width: ms(48),
+    height: ms(64),
     backgroundColor: "#333",
-    borderRadius: 4,
+    borderRadius: ms(4),
   },
   thumbnailImage: {
-    width: 48,
-    height: 64,
-    borderRadius: 4,
+    width: ms(48),
+    height: ms(64),
+    borderRadius: ms(4),
   },
   followBackBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: ms(14),
+    paddingVertical: ms(7),
+    borderRadius: ms(20),
     backgroundColor: "#FE2C55",
     alignSelf: "center",
-    minWidth: 80,
+    minWidth: ms(80),
     alignItems: "center",
   },
   followingBack: {
@@ -463,7 +464,7 @@ const styles = StyleSheet.create({
   },
   followBackText: {
     color: "#fff",
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: "600",
   },
 });

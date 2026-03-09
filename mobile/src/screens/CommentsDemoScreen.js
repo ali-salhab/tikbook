@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { ms, fs } from "../utils/responsive";
 import { LinearGradient } from "expo-linear-gradient";
 import CommentSheet from "../components/comments/CommentSheet";
 import { mockComments } from "../components/comments/mockComments";
@@ -182,38 +183,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 50,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingTop: ms(50),
+    paddingHorizontal: ms(16),
+    paddingBottom: ms(16),
     zIndex: 10,
   },
   backButton: {
-    padding: 4,
+    padding: ms(4),
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "700",
     color: "#FFF",
   },
   videoContent: {
     flex: 1,
     justifyContent: "flex-end",
-    paddingBottom: 20,
+    paddingBottom: ms(20),
   },
   actionsContainer: {
     position: "absolute",
-    right: 12,
-    bottom: 100,
+    right: ms(12),
+    bottom: ms(100),
     alignItems: "center",
   },
   profileButton: {
-    marginBottom: 20,
+    marginBottom: ms(20),
     alignItems: "center",
   },
   profilePlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: ms(50),
+    height: ms(50),
+    borderRadius: ms(25),
     backgroundColor: "#555",
     alignItems: "center",
     justifyContent: "center",
@@ -222,25 +223,23 @@ const styles = StyleSheet.create({
   },
   followBadge: {
     position: "absolute",
-    bottom: -8,
+    bottom: ms(-8),
     backgroundColor: "#FE2C55",
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: ms(20),
+    height: ms(20),
+    borderRadius: ms(10),
     alignItems: "center",
     justifyContent: "center",
   },
   actionButton: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: ms(20),
   },
-  activeAction: {
-    // Highlighted action
-  },
+  activeAction: {},
   actionText: {
     color: "#FFF",
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: fs(12),
+    marginTop: ms(4),
     fontWeight: "600",
   },
   activeText: {
@@ -248,21 +247,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bottomInfo: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: ms(16),
+    paddingBottom: ms(20),
     width: "75%",
   },
   username: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "700",
-    marginBottom: 8,
+    marginBottom: ms(8),
   },
   description: {
     color: "#FFF",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 4,
+    fontSize: fs(14),
+    lineHeight: ms(20),
+    marginBottom: ms(4),
   },
   ctaContainer: {
     position: "absolute",
@@ -270,8 +269,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: "rgba(26, 26, 26, 0.95)",
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingVertical: ms(20),
+    paddingHorizontal: ms(16),
     borderTopWidth: 1,
     borderTopColor: "#333",
   },
@@ -280,37 +279,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FE2C55",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    marginBottom: 16,
+    paddingVertical: ms(14),
+    paddingHorizontal: ms(24),
+    borderRadius: ms(25),
+    marginBottom: ms(16),
   },
   ctaText: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "700",
-    marginLeft: 8,
+    marginLeft: ms(8),
   },
   featuresContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-    padding: 12,
-    borderRadius: 12,
+    padding: ms(12),
+    borderRadius: ms(12),
   },
   featuresTitle: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "700",
-    marginBottom: 8,
+    marginBottom: ms(8),
   },
   featureRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: ms(6),
   },
   featureText: {
     color: "#CCC",
-    fontSize: 12,
-    marginLeft: 8,
+    fontSize: fs(12),
+    marginLeft: ms(8),
   },
 });
 

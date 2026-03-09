@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { ms, fs } from "../utils/responsive";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
@@ -67,10 +68,7 @@ export default function AllStatusesScreen({ navigation }) {
       >
         {/* Thumbnail */}
         <View
-          style={[
-            styles.thumb,
-            { backgroundColor: item.bgColor || "#333" },
-          ]}
+          style={[styles.thumb, { backgroundColor: item.bgColor || "#333" }]}
         >
           {item.image ? (
             <Image
@@ -103,7 +101,9 @@ export default function AllStatusesScreen({ navigation }) {
                 {item.user?.username}
                 {isOwn ? " (أنت)" : ""}
               </Text>
-              <Text style={styles.statusTime}>{getTimeAgo(item.createdAt)}</Text>
+              <Text style={styles.statusTime}>
+                {getTimeAgo(item.createdAt)}
+              </Text>
             </View>
           </View>
           {item.text ? (
@@ -120,7 +120,9 @@ export default function AllStatusesScreen({ navigation }) {
               color="#888"
               style={{ marginLeft: 8 }}
             />
-            <Text style={styles.statusMetaText}>{item.comments?.length || 0}</Text>
+            <Text style={styles.statusMetaText}>
+              {item.comments?.length || 0}
+            </Text>
           </View>
         </View>
 
@@ -133,7 +135,10 @@ export default function AllStatusesScreen({ navigation }) {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>كل الحالات</Text>
@@ -183,73 +188,77 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(12),
     borderBottomWidth: 0.5,
     borderBottomColor: "#E5E5E5",
   },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: "#000" },
+  backBtn: { padding: ms(4) },
+  headerTitle: { fontSize: fs(17), fontWeight: "700", color: "#000" },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: ms(12),
   },
   emptyText: {
     color: "#888",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "500",
     textAlign: "center",
   },
   createBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: ms(6),
     backgroundColor: "#FE2C55",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 24,
-    marginTop: 8,
+    paddingHorizontal: ms(20),
+    paddingVertical: ms(10),
+    borderRadius: ms(24),
+    marginTop: ms(8),
   },
-  createBtnText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
-  list: { paddingVertical: 8 },
-  separator: { height: 1, backgroundColor: "#F0F0F0", marginHorizontal: 16 },
+  createBtnText: { color: "#FFF", fontWeight: "700", fontSize: fs(14) },
+  list: { paddingVertical: ms(8) },
+  separator: {
+    height: 1,
+    backgroundColor: "#F0F0F0",
+    marginHorizontal: ms(16),
+  },
   statusItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(12),
+    gap: ms(12),
   },
   thumb: {
-    width: 64,
-    height: 90,
-    borderRadius: 10,
+    width: ms(64),
+    height: ms(90),
+    borderRadius: ms(10),
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
   },
   thumbText: {
     color: "#FFF",
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: "700",
     textAlign: "center",
-    paddingHorizontal: 4,
+    paddingHorizontal: ms(4),
   },
   statusInfo: {
     flex: 1,
-    gap: 4,
+    gap: ms(4),
   },
   statusUserRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: ms(8),
   },
   userAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: ms(28),
+    height: ms(28),
+    borderRadius: ms(14),
     borderWidth: 1,
     borderColor: "#EEE",
   },
@@ -259,24 +268,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statusUsername: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "700",
     color: "#111",
   },
   statusTime: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: "#999",
   },
   statusPreviewText: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: "#555",
-    lineHeight: 18,
+    lineHeight: ms(18),
   },
   statusMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    marginTop: 2,
+    gap: ms(3),
+    marginTop: ms(2),
   },
-  statusMetaText: { fontSize: 12, color: "#888" },
+  statusMetaText: { fontSize: fs(12), color: "#888" },
 });

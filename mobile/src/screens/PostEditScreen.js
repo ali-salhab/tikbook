@@ -16,6 +16,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
+import { ms, fs } from "../utils/responsive";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
@@ -358,17 +359,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingHorizontal: ms(16),
+    paddingBottom: ms(10),
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.1)",
   },
   headerButton: {
-    padding: 8,
+    padding: ms(8),
   },
   headerTitle: {
     color: "#FFF",
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "bold",
   },
   content: {
@@ -376,14 +377,14 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     width: width,
-    height: width * 1.33, // 3:4 aspect ratio like TikTok
+    height: width * 1.33,
     backgroundColor: "#1a1a1a",
     position: "relative",
   },
   multiHint: {
     color: "#bbb",
     textAlign: "center",
-    marginBottom: 6,
+    marginBottom: ms(6),
   },
   preview: {
     width: "100%",
@@ -393,48 +394,48 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: "50%",
     left: "50%",
-    marginTop: -30,
-    marginLeft: -30,
+    marginTop: ms(-30),
+    marginLeft: ms(-30),
   },
   section: {
-    padding: 16,
+    padding: ms(16),
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.1)",
   },
   sectionTitle: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: ms(12),
     textAlign: "right",
   },
   descriptionInput: {
     color: "#FFF",
-    fontSize: 15,
-    minHeight: 80,
+    fontSize: fs(15),
+    minHeight: ms(80),
     textAlignVertical: "top",
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: ms(8),
+    padding: ms(12),
   },
   charCount: {
     color: "#888",
-    fontSize: 12,
+    fontSize: fs(12),
     textAlign: "right",
-    marginTop: 4,
+    marginTop: ms(4),
   },
   privacyOptions: {
     flexDirection: "row",
-    gap: 12,
+    gap: ms(12),
   },
   privacyOption: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
+    gap: ms(8),
+    padding: ms(12),
+    borderRadius: ms(8),
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 2,
     borderColor: "transparent",
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   },
   privacyLabel: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "600",
   },
   privacyLabelActive: {
@@ -455,51 +456,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: ms(12),
   },
   toggleLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: ms(12),
   },
   toggleLabel: {
     color: "#FFF",
-    fontSize: 15,
+    fontSize: fs(15),
   },
   toggle: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
+    width: ms(50),
+    height: ms(28),
+    borderRadius: ms(14),
     backgroundColor: "rgba(255,255,255,0.2)",
-    padding: 2,
+    padding: ms(2),
     justifyContent: "center",
   },
   toggleActive: {
     backgroundColor: "#FE2C55",
   },
   toggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
     backgroundColor: "#FFF",
   },
   toggleThumbActive: {
     alignSelf: "flex-end",
   },
   footer: {
-    padding: 16,
+    padding: ms(16),
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.1)",
   },
   progressContainer: {
-    marginBottom: 12,
+    marginBottom: ms(12),
   },
   progressBar: {
-    height: 4,
+    height: ms(4),
     backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 2,
+    borderRadius: ms(2),
     overflow: "hidden",
-    marginBottom: 8,
+    marginBottom: ms(8),
   },
   progressFill: {
     height: "100%",
@@ -507,7 +508,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     color: "#FFF",
-    fontSize: 12,
+    fontSize: fs(12),
     textAlign: "center",
   },
   uploadButton: {
@@ -515,16 +516,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 16,
-    borderRadius: 8,
+    gap: ms(8),
+    padding: ms(16),
+    borderRadius: ms(8),
   },
   uploadButtonDisabled: {
     backgroundColor: "#666",
   },
   uploadButtonText: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "bold",
   },
 });
