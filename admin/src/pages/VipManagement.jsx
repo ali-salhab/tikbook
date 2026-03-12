@@ -18,6 +18,33 @@ const defaultForm = {
   imageUrl: "", imageFile: null, isActive: true, sortOrder: 0,
 };
 
+const ALLOWED_BUBBLE_SHAPES = ["classic", "rounded", "square", "pill"];
+
+const normalizeBubbleShape = (shape) => {
+  const value = typeof shape === "string" ? shape.trim().toLowerCase() : "";
+  return ALLOWED_BUBBLE_SHAPES.includes(value) ? value : "classic";
+};
+
+const normalizeBorderWidth = (borderWidth) => {
+  const value = Number(borderWidth);
+  if (!Number.isFinite(value)) return 1.4;
+  return Math.min(Math.max(value, 0), 8);
+};
+
+const getBubbleShapeStyle = (shape) => {
+  switch (normalizeBubbleShape(shape)) {
+    case "rounded":
+      return { borderRadius: 16, borderTopLeftRadius: 16 };
+    case "square":
+      return { borderRadius: 8, borderTopLeftRadius: 8 };
+    case "pill":
+      return { borderRadius: 24, borderTopLeftRadius: 24 };
+    case "classic":
+    default:
+      return { borderRadius: 18, borderTopLeftRadius: 4 };
+  }
+};
+
 const VipManagement = ({ onLogout }) => {
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
@@ -26,7 +53,7 @@ const VipManagement = ({ onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingLevel, setEditingLevel] = useState(null);
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState({ ...defaultForm });
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignData, setAssignData] = useState({ userId: "", username: "", vipLevel: 1 });
   const [userSearchResults, setUserSearchResults] = useState([]);
@@ -72,7 +99,7 @@ const VipManagement = ({ onLogout }) => {
 
   const openCreate = () => {
     setEditingLevel(null);
-    setForm(defaultForm);
+    setForm({ ...defaultForm });
     setImagePreview(null);
     setError("");
     setShowModal(true);
@@ -105,20 +132,33 @@ const VipManagement = ({ onLogout }) => {
         finalImageUrl = await uploadToCloudinary(form.imageFile);
         setUploading(false);
       }
-      const payload = { ...form, imageUrl: finalImageUrl };
+      const payload = {
+        ...form,
+        level: Number(form.level),
+        price: Number(form.price),
+        sortOrder: Number(form.sortOrder) || 0,
+        commentBorderWidth: normalizeBorderWidth(form.commentBorderWidth),
+        commentBubbleShape: normalizeBubbleShape(form.commentBubbleShape),
+        imageUrl: finalImageUrl,
+      };
       delete payload.imageFile;
       if (editingLevel) {
         await api.put(`/vip/admin/levels/${editingLevel.level}`, payload, authHeader);
       } else {
         await api.post("/vip/admin/levels", payload, authHeader);
       }
+      await fetchLevels();
       setShowModal(false);
-      fetchLevels();
+      setEditingLevel(null);
+      setForm({ ...defaultForm });
+      setImagePreview(null);
+      alert(editingLevel ? "تم تحديث مستوى VIP بنجاح" : "تم إضافة مستوى VIP بنجاح");
     } catch (e) {
       setUploading(false);
       setError(e.response?.data?.message || e.message || "حدث خطأ");
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -197,6 +237,18 @@ const VipManagement = ({ onLogout }) => {
                 <div style={styles.cardPrice}>💎 {lvl.price}</div>
                 <div style={{ ...styles.statusBadge, backgroundColor: lvl.isActive ? "#22c55e22" : "#ef444422", color: lvl.isActive ? "#22c55e" : "#ef4444" }}>
                   {lvl.isActive ? "مفعّل" : "معطّل"}
+                </div>
+                <div style={styles.cardPreviewWrap}>
+                  <div
+                    style={{
+                      ...styles.cardPreviewBubble,
+                      ...getBubbleShapeStyle(lvl.commentBubbleShape),
+                      borderColor: lvl.color || VIP_COLORS[lvl.level] || "#FFD700",
+                      borderWidth: normalizeBorderWidth(lvl.commentBorderWidth),
+                    }}
+                  >
+                    VIP تعليق
+                  </div>
                 </div>
                 <div style={styles.cardActions}>
                   <button style={styles.editBtn} onClick={() => openEdit(lvl)}>
@@ -277,6 +329,34 @@ const VipManagement = ({ onLogout }) => {
                   <option value="square">Square</option>
                   <option value="pill">Pill</option>
                 </select>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>معاينة إطار التعليق (VIP)</label>
+                <div style={styles.previewWrap}>
+                  <div
+                    style={{
+                      ...styles.previewBubble,
+                      ...getBubbleShapeStyle(form.commentBubbleShape),
+                      borderColor: form.color || "#FFD700",
+                      borderWidth: normalizeBorderWidth(form.commentBorderWidth),
+                    }}
+                  >
+                    <div style={styles.previewHeader}>
+                      <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>
+                        مستخدم VIP{Number(form.level) || 1}
+                      </span>
+                      <span
+                        style={{
+                          ...styles.previewChip,
+                          backgroundColor: form.color || "#FFD700",
+                        }}
+                      >
+                        VIP{Number(form.level) || 1}
+                      </span>
+                    </div>
+                    <div style={styles.previewMessage}>هذا شكل التعليق داخل صفحة البث المباشر.</div>
+                  </div>
+                </div>
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.label}>صورة المستوى</label>
@@ -415,6 +495,14 @@ const styles = {
   cardNameEn: { fontSize: 12, color: "#64748b" },
   cardPrice: { fontSize: 14, fontWeight: 600, color: "#6366f1" },
   statusBadge: { fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "2px 10px" },
+  cardPreviewWrap: { width: "100%", marginTop: 2 },
+  cardPreviewBubble: {
+    backgroundColor: "rgba(8,8,20,0.86)",
+    color: "#fff",
+    fontSize: 11,
+    textAlign: "center",
+    padding: "6px 8px",
+  },
   cardActions: { display: "flex", gap: 8, marginTop: 4 },
   editBtn: { padding: "6px 10px", backgroundColor: "#e0e7ff", color: "#6366f1", border: "none", borderRadius: 8, cursor: "pointer" },
   deleteBtn: { padding: "6px 10px", backgroundColor: "#fee2e2", color: "#ef4444", border: "none", borderRadius: 8, cursor: "pointer" },
@@ -429,6 +517,12 @@ const styles = {
   saveBtn: { padding: "10px 20px", backgroundColor: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
   cancelBtn: { padding: "10px 20px", backgroundColor: "#f1f5f9", color: "#374151", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   errorBox: { backgroundColor: "#fee2e2", color: "#ef4444", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 14 },
+  previewWrap: { backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 12 },
+  previewBubble: { backgroundColor: "rgba(8,8,20,0.86)", padding: "10px 12px", color: "#fff" },
+  previewHeader: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 },
+  previewUsername: { fontSize: 13, fontWeight: 700 },
+  previewChip: { color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 10, padding: "2px 7px", display: "inline-block" },
+  previewMessage: { color: "#fff", fontSize: 13, lineHeight: "18px" },
   uploadZone: { border: "2px dashed #cbd5e1", borderRadius: 10, padding: 20, textAlign: "center", cursor: "pointer", backgroundColor: "#f8fafc", minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
   imagePreview: { width: 80, height: 80, objectFit: "cover", borderRadius: 10, border: "2px solid #e2e8f0" },
   removeImgBtn: { position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: 11, backgroundColor: "#ef4444", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },

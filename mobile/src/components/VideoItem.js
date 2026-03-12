@@ -23,7 +23,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.1, 34), 42));
+const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.095, 32), 40));
 const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.15, 52), 60));
 const FOLLOW_BUTTON_SIZE = Math.round(
   Math.min(Math.max(PROFILE_SIZE * 0.38, 22), 24),
@@ -367,9 +367,7 @@ const VideoItem = memo(
               ) : (
                 <Video
                   ref={videoRef}
-                  source={
-                    item.localSource ? item.localSource : { uri: item.videoUrl }
-                  }
+                  source={{ uri: item.videoUrl }}
                   style={styles.video}
                   resizeMode="cover"
                   shouldPlay={isActive}
@@ -519,7 +517,7 @@ const VideoItem = memo(
         <View
           style={[
             styles.rightActions,
-            { bottom: overlayBottomOffset, gap: actionGap },
+            { bottom: overlayBottomOffset + 7, gap: actionGap },
           ]}
         >
           {/* Profile Image */}
