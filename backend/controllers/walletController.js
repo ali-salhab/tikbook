@@ -1,6 +1,7 @@
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const {
+  isStripeReady,
   createCoinPurchaseIntent,
   retrievePaymentIntent,
   constructWebhookEvent,
@@ -8,6 +9,7 @@ const {
 
 const SUPPORTED_PAYMENT_METHODS = new Set(["visa"]);
 const COIN_PRICE_EGP = Number(process.env.COIN_PRICE_EGP || 0.605);
+const STRIPE_CURRENCY = (process.env.STRIPE_CURRENCY || "egp").toLowerCase();
 
 const buildTransactionReference = () =>
   `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -218,20 +220,43 @@ const createTopUpRequest = async (req, res) => {
     const price = getTopUpPrice(normalizedAmount);
     const amountCents = Math.round(price * 100);
 
-    const intent = await createCoinPurchaseIntent({
-      amountCents,
-      currency: "egp",
-      metadata: {
-        userId: req.user._id.toString(),
-        coinAmount: String(normalizedAmount),
-        reference,
-        currency: "EGP",
-      },
-    }).catch(() => null);
+    if (!isStripeReady()) {
+      return res.status(503).json({
+        message: "Stripe غير مهيأ حالياً: STRIPE_SECRET_KEY غير مضبوط على السيرفر",
+      });
+    }
+
+    let intent;
+    try {
+      intent = await createCoinPurchaseIntent({
+        amountCents,
+        currency: STRIPE_CURRENCY,
+        metadata: {
+          userId: req.user._id.toString(),
+          coinAmount: String(normalizedAmount),
+          reference,
+          currency: STRIPE_CURRENCY.toUpperCase(),
+        },
+      });
+    } catch (stripeError) {
+      console.error("Stripe payment intent creation failed", {
+        code: stripeError?.code || null,
+        type: stripeError?.type || null,
+        message: stripeError?.message || "unknown_error",
+        decline_code: stripeError?.decline_code || null,
+      });
+
+      return res.status(503).json({
+        message:
+          stripeError?.message ||
+          "Stripe غير مهيأ حالياً أو فشل إنشاء عملية الدفع",
+        code: stripeError?.code || null,
+      });
+    }
 
     if (!intent?.client_secret || !intent?.id) {
       return res.status(503).json({
-        message: "Stripe غير مهيأ حالياً أو فشل إنشاء عملية الدفع",
+        message: "Stripe فشل في إنشاء PaymentIntent. راجع STRIPE_SECRET_KEY وإعدادات الحساب.",
       });
     }
 

@@ -45,7 +45,10 @@ const constructWebhookEvent = ({ rawBody, signature }) => {
   return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 };
 
+const isStripeReady = () => Boolean(stripe);
+
 module.exports = {
+  isStripeReady,
   createCoinPurchaseIntent,
   retrievePaymentIntent,
   constructWebhookEvent,

@@ -21,6 +21,8 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: STRIPE_CURRENCY
+        sync: false
       - key: COIN_PRICE_EGP
         sync: false
 
