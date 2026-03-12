@@ -5,6 +5,7 @@ import {
   Image,
   TouchableOpacity,
   Animated,
+  Easing,
   PanResponder,
   ActivityIndicator,
   Dimensions,
@@ -48,12 +49,38 @@ const VideoItem = memo(
     const heartOpacity = useRef(new Animated.Value(0)).current;
     const heartScale = useRef(new Animated.Value(0)).current;
     const lastTap = useRef(0);
+    const rotateAnim = useRef(new Animated.Value(0)).current;
+    const rotationRef = useRef(null);
 
     useEffect(() => {
       // shouldPlay={isActive} already handles play/pause declaratively.
       // This imperative effect only syncs local isPlaying state so the UI icon is correct.
       setIsPlaying(isActive);
     }, [isActive]);
+
+    useEffect(() => {
+      if (isActive) {
+        rotationRef.current = Animated.loop(
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 3000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          })
+        );
+        rotationRef.current.start();
+      } else {
+        if (rotationRef.current) rotationRef.current.stop();
+      }
+      return () => {
+        if (rotationRef.current) rotationRef.current.stop();
+      };
+    }, [isActive]);
+
+    const spin = rotateAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ["0deg", "360deg"],
+    });
 
     // Pause & unload on unmount so ExoPlayer always releases from the main thread.
     useEffect(() => {
@@ -486,6 +513,25 @@ const VideoItem = memo(
           >
             <Ionicons name="arrow-redo-sharp" size={ICON_SIZE} color="#FFF" />
           </TouchableOpacity>
+
+          {/* Rotating Music Disc */}
+          <TouchableOpacity style={styles.musicDiscContainer} onPress={handleProfilePress}>
+            <Animated.View style={[styles.musicDiscOuter, { transform: [{ rotate: spin }] }]}>
+              <View style={styles.musicDiscInner}>
+                {item.user.profileImage ? (
+                  <Image
+                    source={{ uri: item.user.profileImage }}
+                    style={styles.musicDiscImage}
+                  />
+                ) : (
+                  <View style={styles.musicDiscPlaceholder}>
+                    <Ionicons name="musical-note" size={14} color="#FFF" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.musicDiscCenter} />
+            </Animated.View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -708,6 +754,51 @@ const styles = StyleSheet.create({
   likedText: {
     color: "#FE2C55",
     fontWeight: "bold",
+  },
+  musicDiscContainer: {
+    alignItems: "center",
+    marginTop: 4,
+  },
+  musicDiscOuter: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "#555",
+    backgroundColor: "#111",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  musicDiscInner: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    borderColor: "#888",
+    overflow: "hidden",
+    backgroundColor: "#222",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  musicDiscImage: {
+    width: "100%",
+    height: "100%",
+  },
+  musicDiscPlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FE2C55",
+  },
+  musicDiscCenter: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#111",
+    borderWidth: 1,
+    borderColor: "#555",
   },
 });
 

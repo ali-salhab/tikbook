@@ -455,14 +455,7 @@ const InboxScreen = ({ navigation }) => {
           >
             <Ionicons name="close" size={18} color={theme.textMuted} />
           </TouchableOpacity>
-          <View style={styles.promoBody}>
-            <Text style={styles.promoText}>
-              احصل على رسائل بريد إلكتروني عندما يتفاعل الأشخاص مع حسابك.
-            </Text>
-            <TouchableOpacity style={styles.promoBtn}>
-              <Text style={styles.promoBtnText}>معرفة المزيد</Text>
-            </TouchableOpacity>
-          </View>
+
           <View style={styles.promoIcon}>
             <Ionicons name="mail" size={28} color="#FE2C55" />
           </View>
@@ -781,7 +774,7 @@ const getStyles = (theme) =>
       backgroundColor: theme.bg,
     },
     avatarWrapper: { position: "relative", marginLeft: ms(10) },
-    avatar: { width: ms(52), height: ms(52), borderRadius: ms(26) },
+    avatar: { width: ms(52), height: ms(52), borderRadius: ms(26) ,marginRight: ms(10)},
     initialsCircle: {
       justifyContent: "center",
       alignItems: "center",

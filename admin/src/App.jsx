@@ -20,6 +20,7 @@ import NotificationsManagement from "./pages/NotificationsManagement";
 import VerificationManagement from "./pages/VerificationManagement";
 import BadgeManagement from "./pages/BadgeManagement";
 import GiftManagement from "./pages/GiftManagement";
+import VipManagement from "./pages/VipManagement";
 
 // Wrapper component to handle logout
 const PageWrapper = ({ Component }) => {
@@ -81,6 +82,10 @@ function App() {
         />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/app-versions" element={<AppVersionManagementPage />} />
+        <Route
+          path="/vip"
+          element={<PageWrapper Component={VipManagement} />}
+        />
       </Routes>
     </Router>
   );

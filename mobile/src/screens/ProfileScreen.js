@@ -12,9 +12,11 @@ import {
   Clipboard,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import VipBadge from "../components/VipBadge";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 import ProfileMenuModal from "../components/ProfileMenuModal";
@@ -45,6 +47,7 @@ const ProfileScreen = ({ navigation }) => {
   const [savedVideos, setSavedVideos] = useState([]);
   const [likedVideos, setLikedVideos] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [userStatuses, setUserStatuses] = useState([]);
   const netInfo = useNetInfo();
 
   const fetchProfile = useCallback(async () => {
@@ -72,6 +75,14 @@ const ProfileScreen = ({ navigation }) => {
         likesCount,
       });
       setVideos(userVideos);
+
+      // Fetch own statuses for the ring around avatar
+      try {
+        const statusRes = await axios.get(`${BASE_URL}/status/user/${userInfo._id}`, config);
+        setUserStatuses(statusRes.data || []);
+      } catch (_) {
+        setUserStatuses([]);
+      }
     } catch (e) {
       console.log("❌ Error fetching profile:", e.message);
       if (e.response && e.response.status === 401) {
@@ -506,6 +517,28 @@ const ProfileScreen = ({ navigation }) => {
             >
               {/* Avatar circle + floating camera button */}
               <View style={styles.avatarWrapper}>
+                {/* Dual status ring */}
+                {userStatuses.length > 0 && (
+                  <View style={styles.statusRingOuter} pointerEvents="none">
+                    {userStatuses.length >= 2 ? (
+                      <LinearGradient
+                        colors={[
+                          userStatuses[0]?.bgColor || "#FE2C55",
+                          userStatuses[0]?.bgColor || "#FE2C55",
+                          userStatuses[1]?.bgColor || "#0A84FF",
+                          userStatuses[1]?.bgColor || "#0A84FF",
+                        ]}
+                        locations={[0, 0.49, 0.51, 1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.statusRingGradient}
+                      />
+                    ) : (
+                      <View style={[styles.statusRingGradient, { backgroundColor: userStatuses[0]?.bgColor || "#FE2C55" }]} />
+                    )}
+                    <View style={styles.statusRingInner} />
+                  </View>
+                )}
                 <View style={styles.avatarCircle}>
                   {profile?.profileImage ? (
                     <Image
@@ -543,6 +576,9 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.displayName}>
               {profile?.username || "User"}
             </Text>
+            {profile?.vipLevel > 0 && (
+              <VipBadge level={profile.vipLevel} size="medium" />
+            )}
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
@@ -599,6 +635,16 @@ const ProfileScreen = ({ navigation }) => {
             >
               <Feather name="edit-2" size={18} color={theme.icon} />
               <Text style={styles.buttonLabel}>تعديل</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.vipButton}
+              onPress={() => navigation.navigate("VipStore")}
+            >
+              <MaterialCommunityIcons name="crown" size={15} color="#FFF" />
+              <Text style={styles.vipButtonLabel}>
+                {profile?.vipLevel > 0 ? `VIP${profile.vipLevel}` : "VIP"}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -683,6 +729,33 @@ const makeStyles = (theme) =>
     avatarWrapper: {
       width: ms(100),
       height: ms(100),
+    },
+    statusRingOuter: {
+      position: "absolute",
+      width: ms(112),
+      height: ms(112),
+      borderRadius: ms(56),
+      top: -ms(6),
+      left: -ms(6),
+      overflow: "hidden",
+      zIndex: 2,
+    },
+    statusRingGradient: {
+      position: "absolute",
+      width: "100%",
+      height: "100%",
+      borderRadius: ms(56),
+    },
+    statusRingInner: {
+      position: "absolute",
+      width: ms(104),
+      height: ms(104),
+      borderRadius: ms(52),
+      backgroundColor: "transparent",
+      top: ms(4),
+      left: ms(4),
+      borderWidth: ms(3),
+      borderColor: "rgba(0,0,0,0.85)",
     },
     avatarCircle: {
       width: ms(100),
@@ -813,7 +886,7 @@ const makeStyles = (theme) =>
     },
     actionButtons: {
       flexDirection: "row",
-      gap: ms(16),
+      gap: ms(8),
       marginBottom: ms(10),
       justifyContent: "center",
       paddingHorizontal: ms(20),
@@ -857,6 +930,24 @@ const makeStyles = (theme) =>
       flex: 1,
       justifyContent: "center",
     },
+    vipButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: ms(5),
+      paddingHorizontal: ms(12),
+      paddingVertical: ms(11),
+      backgroundColor: "#7B4A00",
+      borderRadius: ms(10),
+      borderWidth: 1,
+      borderColor: "#FFD700",
+      flex: 1,
+      justifyContent: "center",
+    },
+    vipButtonLabel: {
+      fontSize: fs(12),
+      fontWeight: "bold",
+      color: "#FFD700",
+    },
     buttonLabel: {
       fontSize: fs(13),
       fontWeight: "600",
@@ -898,50 +989,6 @@ const makeStyles = (theme) =>
       borderWidth: 0.5,
       borderColor: theme.border,
     },
-    gridImage: {
-      width: "100%",
-      height: "100%",
-    },
-    gridPlaceholder: {
-      width: "100%",
-      height: "100%",
-      backgroundColor: theme.bg3,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    viewsContainer: {
-      position: "absolute",
-      bottom: ms(6),
-      left: ms(6),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: ms(4),
-    },
-    viewsText: {
-      color: "#FFF",
-      fontSize: fs(12),
-      fontWeight: "600",
-    },
-    emptyStateContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: ms(60),
-      paddingHorizontal: ms(40),
-    },
-    emptyStateTitle: {
-      fontSize: fs(18),
-      fontWeight: "bold",
-      color: theme.text,
-      marginTop: ms(20),
-      marginBottom: ms(10),
-    },
-    emptyStateSubtitle: {
-      fontSize: fs(14),
-      color: theme.textMuted,
-      textAlign: "center",
-      lineHeight: ms(20),
-    },
-  });
     gridImage: {
       width: "100%",
       height: "100%",

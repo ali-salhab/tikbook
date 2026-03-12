@@ -46,6 +46,7 @@ import AnimatedGift from "../components/AnimatedGift";
 import FloatingComments from "../components/FloatingComments";
 import GiftPanel from "../components/GiftPanel";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import VipBadge from "../components/VipBadge";
 import SoundService from "../services/soundService";
 import { ms, fs } from "../utils/responsive";
 
@@ -821,6 +822,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           {joinedAgora && <View style={styles.onlineDot} />}
         </View>
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
+        {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
         <View style={styles.hostRoleRow}>
           <MaterialIcons name="verified" size={13} color="#00F2EA" />
           <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
@@ -880,6 +882,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         <Text style={styles.seatLabel} numberOfLines={1}>
           {user ? user.username : `${index + 1}`}
         </Text>
+        {user?.vipLevel > 0 && <VipBadge level={user.vipLevel} size="small" />}
       </View>
     );
   };

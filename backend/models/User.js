@@ -109,6 +109,9 @@ const userSchema = mongoose.Schema(
         ref: "Video",
       },
     ],
+    // VIP membership
+    vipLevel: { type: Number, default: 0, min: 0, max: 15 },
+    vipPurchasedAt: { type: Date, default: null },
   },
   {
     timestamps: true,

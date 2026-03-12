@@ -456,8 +456,6 @@ const HomeScreen = ({ navigation, route }) => {
         keyExtractor={(item) => item._id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
-        snapToAlignment="start"
         decelerationRate="fast"
         scrollEventThrottle={16}
         getItemLayout={(_, index) => ({

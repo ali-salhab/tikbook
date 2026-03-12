@@ -40,6 +40,7 @@ import MapScreen from "../screens/MapScreen";
 import SplashScreen from "../screens/SplashScreen";
 import BadgeShopScreen from "../screens/BadgeShopScreen";
 import MyBadgesScreen from "../screens/MyBadgesScreen";
+import VipStoreScreen from "../screens/VipStoreScreen";
 import CreateStatusScreen from "../screens/CreateStatusScreen";
 import StatusViewerScreen from "../screens/StatusViewerScreen";
 import AllStatusesScreen from "../screens/AllStatusesScreen";
@@ -459,6 +460,7 @@ const AppNavigator = () => {
                 <Stack.Screen name="Map" component={MapScreen} />
                 <Stack.Screen name="BadgeShop" component={BadgeShopScreen} />
                 <Stack.Screen name="MyBadges" component={MyBadgesScreen} />
+                <Stack.Screen name="VipStore" component={VipStoreScreen} />
                 <Stack.Screen
                   name="CreateStatus"
                   component={CreateStatusScreen}

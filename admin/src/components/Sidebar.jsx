@@ -97,6 +97,12 @@ const Sidebar = ({ onLogout }) => {
       icon: FiSmartphone,
       path: "/app-versions",
     },
+    {
+      id: "vip",
+      label: "إدارة VIP",
+      icon: FiStar,
+      path: "/vip",
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
