@@ -13,6 +13,8 @@ const VIP_COLORS = {
 
 const defaultForm = {
   level: 1, name: "", nameAr: "", price: 99, color: "#FFD700",
+  commentBorderWidth: 1.4,
+  commentBubbleShape: "classic",
   imageUrl: "", imageFile: null, isActive: true, sortOrder: 0,
 };
 
@@ -81,6 +83,9 @@ const VipManagement = ({ onLogout }) => {
     setForm({
       level: lvl.level, name: lvl.name || "", nameAr: lvl.nameAr || "",
       price: lvl.price, color: lvl.color || "#FFD700",
+      commentBorderWidth:
+        typeof lvl.commentBorderWidth === "number" ? lvl.commentBorderWidth : 1.4,
+      commentBubbleShape: lvl.commentBubbleShape || "classic",
       imageUrl: lvl.imageUrl || "", imageFile: null, isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
     });
@@ -247,6 +252,31 @@ const VipManagement = ({ onLogout }) => {
                   <input style={{ ...styles.input, flex: 1 }} value={form.color}
                     onChange={(e) => setForm({ ...form, color: e.target.value })} />
                 </div>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>سماكة إطار التعليق (VIP)</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  min="0"
+                  max="8"
+                  step="0.1"
+                  value={form.commentBorderWidth}
+                  onChange={(e) => setForm({ ...form, commentBorderWidth: +e.target.value })}
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>شكل إطار التعليق (VIP)</label>
+                <select
+                  style={styles.input}
+                  value={form.commentBubbleShape}
+                  onChange={(e) => setForm({ ...form, commentBubbleShape: e.target.value })}
+                >
+                  <option value="classic">Classic</option>
+                  <option value="rounded">Rounded</option>
+                  <option value="square">Square</option>
+                  <option value="pill">Pill</option>
+                </select>
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.label}>صورة المستوى</label>

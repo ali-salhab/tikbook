@@ -94,7 +94,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [activeGifts, setActiveGifts] = useState([]);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
-  const [vipLevelColors, setVipLevelColors] = useState({});
+  const [vipLevelCommentStyles, setVipLevelCommentStyles] = useState({});
 
   // ── Management ───────────────────────────────────────────────────────────────
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -129,7 +129,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   useEffect(() => {
     setCurrentUser(userInfo);
     loadUserBalance();
-    loadVipLevelColors();
+    loadVipLevelCommentStyles();
     setupRoom();
     startGlowAnimation();
     SoundService.preload().catch(() => {});
@@ -175,21 +175,46 @@ const LiveRoomScreen = ({ route, navigation }) => {
     } catch (_) {}
   };
 
-  const loadVipLevelColors = async () => {
+  const loadVipLevelCommentStyles = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/vip/levels`);
       const levels = Array.isArray(res.data?.levels) ? res.data.levels : [];
-      const colors = levels.reduce((acc, level) => {
+      const commentStyles = levels.reduce((acc, level) => {
         const levelNumber = Number(level?.level);
-        const color = typeof level?.color === "string" ? level.color.trim() : "";
-        if (levelNumber > 0 && color) {
-          acc[levelNumber] = color;
-        }
+        if (levelNumber <= 0) return acc;
+
+        const color =
+          typeof level?.color === "string" && level.color.trim()
+            ? level.color.trim()
+            : "#FFD700";
+
+        const widthValue = Number(level?.commentBorderWidth);
+        const borderWidth =
+          Number.isFinite(widthValue) && widthValue >= 0
+            ? Math.min(widthValue, 8)
+            : 1.4;
+
+        const shapeRaw =
+          typeof level?.commentBubbleShape === "string"
+            ? level.commentBubbleShape.trim().toLowerCase()
+            : "classic";
+        const bubbleShape = ["classic", "rounded", "square", "pill"].includes(
+          shapeRaw,
+        )
+          ? shapeRaw
+          : "classic";
+
+        acc[levelNumber] = {
+          color,
+          borderWidth,
+          bubbleShape,
+        };
+
         return acc;
       }, {});
-      setVipLevelColors(colors);
+      setVipLevelCommentStyles(commentStyles);
     } catch (_) {
-      setVipLevelColors({});
+      setVipLevelCommentStyles({});
     }
   };
 
@@ -1705,7 +1730,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         comments={messages}
         bottomOffset={liveCommentsBottomOffset}
         maxHeight={liveCommentsMaxHeight}
-        vipLevelColors={vipLevelColors}
+        vipLevelStyles={vipLevelCommentStyles}
       />
 
       {/* Animated gifts */}

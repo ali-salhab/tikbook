@@ -12,8 +12,34 @@ import {
 const { width } = Dimensions.get("window");
 const MAX_COMMENTS = 40;
 
+const getVipBubbleShapeStyle = (bubbleShape) => {
+  switch (bubbleShape) {
+    case "rounded":
+      return {
+        borderRadius: 16,
+        borderTopLeftRadius: 16,
+      };
+    case "square":
+      return {
+        borderRadius: 8,
+        borderTopLeftRadius: 8,
+      };
+    case "pill":
+      return {
+        borderRadius: 24,
+        borderTopLeftRadius: 24,
+      };
+    case "classic":
+    default:
+      return {
+        borderRadius: 18,
+        borderTopLeftRadius: 4,
+      };
+  }
+};
+
 // ─── Single animated comment row ─────────────────────────────────────────
-const CommentRow = React.memo(({ item, isNew, vipLevelColors }) => {
+const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const [imgError, setImgError] = useState(false);
@@ -43,9 +69,24 @@ const CommentRow = React.memo(({ item, isNew, vipLevelColors }) => {
   const messageText = item.message || item.text || item.body || "";
   const vipLevel = Number(item.user?.vipLevel || 0);
   const isVip = vipLevel > 0;
+  const vipStyleEntry = isVip ? vipLevelStyles?.[vipLevel] : null;
   const vipColor = isVip
-    ? vipLevelColors?.[vipLevel] || "#FFD700"
+    ? typeof vipStyleEntry === "string"
+      ? vipStyleEntry
+      : vipStyleEntry?.color || "#FFD700"
     : null;
+  const borderWidthValue =
+    isVip && typeof vipStyleEntry === "object"
+      ? Number(vipStyleEntry?.borderWidth)
+      : 1.4;
+  const vipBorderWidth = Number.isFinite(borderWidthValue)
+    ? Math.max(0, Math.min(8, borderWidthValue))
+    : 1.4;
+  const bubbleShape =
+    isVip && typeof vipStyleEntry === "object"
+      ? vipStyleEntry?.bubbleShape
+      : "classic";
+  const vipBubbleShapeStyle = getVipBubbleShapeStyle(bubbleShape);
 
   return (
     <Animated.View
@@ -66,7 +107,13 @@ const CommentRow = React.memo(({ item, isNew, vipLevelColors }) => {
         style={[
           styles.bubble,
           isVip && styles.vipBubble,
-          isVip && vipColor ? { borderColor: vipColor } : null,
+          isVip && vipBubbleShapeStyle,
+          isVip && vipColor
+            ? {
+                borderColor: vipColor,
+                borderWidth: vipBorderWidth,
+              }
+            : null,
         ]}
       >
         {item.user?.username ? (
@@ -104,7 +151,7 @@ const FloatingComments = ({
   comments,
   bottomOffset = 90,
   maxHeight = 400,
-  vipLevelColors = {},
+  vipLevelStyles = {},
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -124,10 +171,10 @@ const FloatingComments = ({
       <CommentRow
         item={item}
         isNew={(item.clientMessageId || item.id || item._id) === latestId}
-        vipLevelColors={vipLevelColors}
+        vipLevelStyles={vipLevelStyles}
       />
     ),
-    [latestId, vipLevelColors],
+    [latestId, vipLevelStyles],
   );
 
   const keyExtractor = useCallback(
@@ -255,7 +302,6 @@ const styles = StyleSheet.create({
     maxWidth: "86%",
   },
   vipBubble: {
-    borderWidth: 1.4,
     backgroundColor: "rgba(8,8,20,0.8)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
