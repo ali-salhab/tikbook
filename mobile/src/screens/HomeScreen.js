@@ -60,6 +60,9 @@ const HomeScreen = ({ navigation, route }) => {
 
   // Refs should be defined at the top level
   const flatListRef = useRef(null);
+  const [feedHeight, setFeedHeight] = useState(
+    Math.max(Dimensions.get("window").height - tabBarHeight, 1),
+  );
   // Track viewed video IDs so each video is only counted once per session
   const viewedIdsRef = useRef(new Set());
   // Keep refs in sync with latest state/context so onViewableItemsChanged (stable ref) can access them
@@ -77,6 +80,41 @@ const HomeScreen = ({ navigation, route }) => {
   useEffect(() => {
     BASE_URL_REF.current = BASE_URL;
   }, [BASE_URL]);
+
+  const pageHeight = Math.max(
+    feedHeight || Dimensions.get("window").height - tabBarHeight,
+    1,
+  );
+
+  const handleFeedLayout = useCallback((event) => {
+    const nextHeight = Math.round(event.nativeEvent.layout.height);
+    if (nextHeight > 0) {
+      setFeedHeight((current) =>
+        current === nextHeight ? current : nextHeight,
+      );
+    }
+  }, []);
+
+  const handleMomentumScrollEnd = useCallback(
+    (event) => {
+      if (!flatListRef.current || videos.length === 0) return;
+
+      const rawOffset = event.nativeEvent.contentOffset.y;
+      const nextIndex = Math.max(
+        0,
+        Math.min(videos.length - 1, Math.round(rawOffset / pageHeight)),
+      );
+      const snappedOffset = nextIndex * pageHeight;
+
+      if (Math.abs(rawOffset - snappedOffset) > 1) {
+        flatListRef.current.scrollToOffset({
+          offset: snappedOffset,
+          animated: false,
+        });
+      }
+    },
+    [pageHeight, videos.length],
+  );
 
   // Scroll to a specific video when navigated from Profile grid tap
   useEffect(() => {
@@ -342,6 +380,7 @@ const HomeScreen = ({ navigation, route }) => {
         item={item}
         isActive={index === activeVideoIndex && isScreenFocused}
         tabBarHeight={tabBarHeight}
+        viewportHeight={pageHeight}
         userInfo={userInfo}
         navigation={navigation}
         handleLike={handleLike}
@@ -352,7 +391,7 @@ const HomeScreen = ({ navigation, route }) => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeVideoIndex, isScreenFocused, tabBarHeight, userInfo],
+    [activeVideoIndex, isScreenFocused, pageHeight, tabBarHeight, userInfo],
   );
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
@@ -451,16 +490,21 @@ const HomeScreen = ({ navigation, route }) => {
 
       <FlatList
         ref={flatListRef}
+        style={styles.feedList}
         data={videos}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
+        extraData={`${activeVideoIndex}-${isScreenFocused ? 1 : 0}-${pageHeight}`}
+        onLayout={handleFeedLayout}
         pagingEnabled
+        disableIntervalMomentum
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
         scrollEventThrottle={16}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         getItemLayout={(_, index) => ({
-          length: SCREEN_HEIGHT,
-          offset: SCREEN_HEIGHT * index,
+          length: pageHeight,
+          offset: pageHeight * index,
           index,
         })}
         onViewableItemsChanged={onViewableItemsChanged}
@@ -511,6 +555,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  feedList: {
+    flex: 1,
   },
   topBar: {
     position: "absolute",

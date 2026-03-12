@@ -32,6 +32,25 @@ const transactionSchema = mongoose.Schema(
     platformTransactionId: {
       type: String,
     },
+    transactionId: {
+      type: String,
+    },
+    gateway: {
+      type: String,
+      default: "manual",
+    },
+    paymentMethod: {
+      type: String,
+      default: "manual",
+    },
+    currency: {
+      type: String,
+      default: "EGP",
+    },
+    paymentMeta: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     description: {
       type: String,
     },

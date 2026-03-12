@@ -5,6 +5,7 @@ const {
   sendGift,
   topUpWallet,
   createStripeIntent,
+  createTopUpRequest,
   requestWithdrawal,
 } = require("../controllers/walletController");
 
@@ -28,6 +29,7 @@ router.get("/:userId", protect, async (req, res) => {
 
 router.post("/gift", protect, sendGift);
 router.post("/topup", protect, topUpWallet); // Secure this in prod!
+router.post("/topup/request", protect, createTopUpRequest);
 router.post("/stripe/intent", protect, createStripeIntent);
 router.post("/withdraw", protect, requestWithdrawal);
 

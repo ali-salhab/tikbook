@@ -217,11 +217,12 @@ io.on("connection", (socket) => {
   });
 
   // Chat message in live room
-  socket.on("liveroom:send_message", ({ roomId, message, user }) => {
+  socket.on("liveroom:send_message", ({ roomId, message, user, clientMessageId }) => {
     io.to(`liveroom:${roomId}`).emit("liveroom:message_received", {
       message,
       user,
-      id: Date.now().toString(),
+      id: clientMessageId || Date.now().toString(),
+      clientMessageId: clientMessageId || null,
       timestamp: new Date(),
     });
   });

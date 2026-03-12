@@ -121,6 +121,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const inputRef = useRef(null);
   const baseWindowHeightRef = useRef(Dimensions.get("window").height);
   const isHostRef = useRef(false);
+  const liveMessageKeysRef = useRef(new Set());
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────────
 
@@ -194,6 +195,50 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const m = Math.floor(safMs / 60000);
     const s = String(Math.floor((safMs % 60000) / 1000)).padStart(2, "0");
     return `${m}:${s}`;
+  };
+
+  const normalizeLiveMessage = (payload) => {
+    if (!payload) return null;
+
+    const messageText =
+      typeof payload.message === "string"
+        ? payload.message.trim()
+        : typeof payload.text === "string"
+          ? payload.text.trim()
+          : "";
+
+    if (!messageText && !payload.isSystem) return null;
+
+    const messageId =
+      payload.clientMessageId ||
+      payload.id ||
+      payload._id ||
+      `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    return {
+      ...payload,
+      id: messageId,
+      clientMessageId: payload.clientMessageId || messageId,
+      message: messageText || payload.message || "",
+      user: payload.user || payload.sender || null,
+    };
+  };
+
+  const appendLiveMessage = (payload) => {
+    const normalized = normalizeLiveMessage(payload);
+    if (!normalized) return;
+
+    const dedupeKey = normalized.clientMessageId || normalized.id;
+    if (liveMessageKeysRef.current.has(dedupeKey)) return;
+
+    liveMessageKeysRef.current.add(dedupeKey);
+    setMessages((prev) => {
+      const next = [...prev, normalized].slice(-50);
+      liveMessageKeysRef.current = new Set(
+        next.map((entry) => entry.clientMessageId || entry.id),
+      );
+      return next;
+    });
   };
 
   // ─── PERMISSIONS & SETUP ────────────────────────────────────────────────────
@@ -393,7 +438,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       ]);
     });
     socket.on("liveroom:message_received", (msg) => {
-      setMessages((prev) => [...prev, msg].slice(-50));
+      appendLiveMessage(msg);
       SoundService.play("notification");
     });
     socket.on("liveroom:gift_received", ({ gift, sender }) => {
@@ -401,18 +446,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
       giftsReceivedRef.current += 1;
       playGiftSound();
       setActiveGifts((prev) => [...prev, { id, gift, sender }]);
-      setMessages((prev) =>
-        [
-          ...prev,
-          {
-            id,
-            user: sender,
-            message: `أرسل هدية ${gift.name}!`,
-            isSystem: true,
-            giftUrl: gift.thumbnailUrl,
-          },
-        ].slice(-50),
-      );
+      appendLiveMessage({
+        id,
+        clientMessageId: id,
+        user: sender,
+        message: `أرسل هدية ${gift.name}!`,
+        isSystem: true,
+        giftUrl: gift.thumbnailUrl,
+      });
     });
     socket.on("liveroom:kicked", ({ userId }) => {
       if (userId === userInfo._id) {
@@ -594,10 +635,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
           profileImage: freshUser.profileImage || userInfo?.profileImage,
         }
       : userInfo;
+    const clientMessageId = `msg-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    appendLiveMessage({
+      id: clientMessageId,
+      clientMessageId,
+      message: msg,
+      user: senderUser,
+      timestamp: new Date().toISOString(),
+    });
     socketRef.current?.emit("liveroom:send_message", {
       roomId,
       message: msg,
       user: senderUser,
+      clientMessageId,
     });
     setInputText("");
     Keyboard.dismiss();
@@ -1566,6 +1618,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
   }
 
+  const liveCommentsBottomOffset =
+    keyboardOffset > 0 ? keyboardOffset + ms(72) : insets.bottom + ms(92);
+  const liveCommentsMaxHeight =
+    keyboardOffset > 0
+      ? Math.min(height * 0.2, ms(160))
+      : Math.min(height * 0.34, ms(280));
+
   // ─── RENDER ───────────────────────────────────────────────────────────────────
 
   return (
@@ -1620,10 +1679,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Floating comments — bottom tracks keyboard so comments stay above input */}
       <FloatingComments
         comments={messages}
-        bottomOffset={
-          keyboardOffset > 0 ? keyboardOffset + 66 : 90 + insets.bottom
-        }
-        maxHeight={keyboardOffset > 0 ? 160 : 400}
+        bottomOffset={liveCommentsBottomOffset}
+        maxHeight={liveCommentsMaxHeight}
       />
 
       {/* Animated gifts */}

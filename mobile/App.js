@@ -14,6 +14,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import Constants from "expo-constants";
 import SoundService from "./src/services/soundService";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -63,25 +64,30 @@ export default function App() {
     return null;
   }
   return (
-    <SafeAreaProvider>
-      <AppProvider>
-        <AuthProvider>
-          <UploadProvider>
-            {netInfo.isConnected === false && (
-              <View style={styles.offlineBanner}>
-                <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
-              </View>
-            )}
-            <AppNavigator />
-            <FloatingUploadOverlay />
-          </UploadProvider>
-        </AuthProvider>
-      </AppProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <AppProvider>
+          <AuthProvider>
+            <UploadProvider>
+              {netInfo.isConnected === false && (
+                <View style={styles.offlineBanner}>
+                  <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
+                </View>
+              )}
+              <AppNavigator />
+              <FloatingUploadOverlay />
+            </UploadProvider>
+          </AuthProvider>
+        </AppProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   offlineBanner: {
     backgroundColor: "#FE2C55",
     paddingVertical: 10,

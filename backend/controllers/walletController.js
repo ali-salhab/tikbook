@@ -2,6 +2,32 @@ const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const { createCoinPurchaseIntent } = require("../services/stripeService");
 
+const SUPPORTED_PAYMENT_METHODS = new Set(["visa", "vodafone_cash"]);
+const COIN_PRICE_EGP = Number(process.env.COIN_PRICE_EGP || 0.605);
+
+const buildTransactionReference = () =>
+  `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+const getTopUpPrice = (coinAmount) =>
+  Number((Number(coinAmount) * COIN_PRICE_EGP).toFixed(2));
+
+const buildPaymentInstructions = ({ paymentMethod, reference, phoneNumber }) => {
+  if (paymentMethod === "vodafone_cash") {
+    const merchantPhone = process.env.VODAFONE_CASH_NUMBER || "رقم التاجر غير مضاف بعد";
+    return [
+      `تم إنشاء طلب فودافون كاش برقم ${reference}.`,
+      `رقم المحفظة: ${phoneNumber || "غير محدد"}.`,
+      `حوّل المبلغ إلى: ${merchantPhone}.`,
+      "سيتم إضافة الرصيد بعد تأكيد العملية من الإدارة.",
+    ].join(" ");
+  }
+
+  return [
+    `تم إنشاء طلب دفع بالبطاقة برقم ${reference}.`,
+    "سيتم تأكيد العملية بعد اكتمال ربط بوابة Visa أو مراجعة الإدارة للطلب.",
+  ].join(" ");
+};
+
 // @desc    Get user wallet balance
 // @route   GET /api/wallet
 // @access  Private
@@ -98,24 +124,120 @@ const sendGift = async (req, res) => {
 // @route   POST /api/wallet/topup
 // @access  Private
 const topUpWallet = async (req, res) => {
-  const { amount, transactionId } = req.body;
+  const { amount, transactionId, paymentMethod = "manual", paymentMeta } =
+    req.body;
 
   try {
     let wallet = await Wallet.findOne({ user: req.user._id });
     if (!wallet) wallet = await Wallet.create({ user: req.user._id });
 
-    wallet.balance += Number(amount);
+    const normalizedAmount = Number(amount);
+    wallet.balance += normalizedAmount;
     await wallet.save();
+
+    const gateway =
+      paymentMethod === "visa"
+        ? "visa"
+        : paymentMethod === "vodafone_cash"
+          ? "vodafone_cash"
+          : "manual";
+    const reference = transactionId || buildTransactionReference();
 
     await Transaction.create({
       user: req.user._id,
       type: "purchase",
-      amount: Number(amount),
-      platformTransactionId: transactionId || `TEST-${Date.now()}`,
+      amount: normalizedAmount,
+      platformTransactionId: reference,
+      transactionId: reference,
+      gateway,
+      paymentMethod,
+      paymentMeta: paymentMeta || null,
       description: "Coin Top Up",
     });
 
     res.json(wallet);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Create a top-up request for Visa or Vodafone Cash
+// @route   POST /api/wallet/topup/request
+// @access  Private
+const createTopUpRequest = async (req, res) => {
+  try {
+    const { amount, paymentMethod, phoneNumber } = req.body;
+    const normalizedAmount = Number(amount);
+
+    if (!SUPPORTED_PAYMENT_METHODS.has(paymentMethod)) {
+      return res.status(400).json({ message: "طريقة الدفع غير مدعومة" });
+    }
+
+    if (!normalizedAmount || normalizedAmount <= 0) {
+      return res.status(400).json({ message: "عدد العملات غير صحيح" });
+    }
+
+    if (paymentMethod === "vodafone_cash" && !String(phoneNumber || "").trim()) {
+      return res
+        .status(400)
+        .json({ message: "رقم فودافون كاش مطلوب لإتمام الطلب" });
+    }
+
+    const reference = buildTransactionReference();
+    const price = getTopUpPrice(normalizedAmount);
+    let stripeClientSecret = null;
+
+    if (paymentMethod === "visa") {
+      const amountCents = Math.round(price * 100);
+      const intent = await createCoinPurchaseIntent({
+        amountCents,
+        metadata: {
+          userId: req.user._id.toString(),
+          coinAmount: String(normalizedAmount),
+          reference,
+          currency: "EGP",
+        },
+      }).catch(() => null);
+
+      stripeClientSecret = intent?.client_secret || null;
+    }
+
+    const transaction = await Transaction.create({
+      user: req.user._id,
+      type: "purchase",
+      amount: normalizedAmount,
+      transactionId: reference,
+      platformTransactionId: reference,
+      gateway: paymentMethod,
+      paymentMethod,
+      currency: "EGP",
+      status: "pending",
+      description:
+        paymentMethod === "visa"
+          ? `طلب شحن ${normalizedAmount} عملة عبر Visa`
+          : `طلب شحن ${normalizedAmount} عملة عبر Vodafone Cash`,
+      paymentMeta: {
+        requestedPrice: price,
+        phoneNumber: phoneNumber?.trim() || null,
+        stripeClientSecret,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      status: transaction.status,
+      reference,
+      gateway: paymentMethod,
+      coinAmount: normalizedAmount,
+      price,
+      clientSecret: stripeClientSecret,
+      instructions: buildPaymentInstructions({
+        paymentMethod,
+        reference,
+        phoneNumber,
+      }),
+      transaction,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -208,3 +330,5 @@ module.exports.createStripeIntent = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+module.exports.createTopUpRequest = createTopUpRequest;

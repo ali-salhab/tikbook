@@ -40,6 +40,7 @@ const CommentRow = React.memo(({ item, isNew }) => {
   const initials = item.user?.username
     ? item.user.username.charAt(0).toUpperCase()
     : "?";
+  const messageText = item.message || item.text || item.body || "";
 
   return (
     <Animated.View
@@ -61,7 +62,7 @@ const CommentRow = React.memo(({ item, isNew }) => {
           <Text style={styles.username}>{item.user.username}</Text>
         ) : null}
         <Text style={[styles.message, isSystem && styles.systemMessage]}>
-          {item.message}
+          {messageText}
         </Text>
       </View>
     </Animated.View>
@@ -76,14 +77,28 @@ const FloatingComments = ({ comments, bottomOffset = 90, maxHeight = 400 }) => {
 
   // Show last MAX_COMMENTS only
   const visible = comments.slice(-MAX_COMMENTS);
-  const latestId = visible.length > 0 ? visible[visible.length - 1].id : null;
+  const latestId =
+    visible.length > 0
+      ? visible[visible.length - 1].clientMessageId ||
+        visible[visible.length - 1].id ||
+        visible[visible.length - 1]._id
+      : null;
 
   const renderItem = useCallback(
-    ({ item }) => <CommentRow item={item} isNew={item.id === latestId} />,
+    ({ item }) => (
+      <CommentRow
+        item={item}
+        isNew={(item.clientMessageId || item.id || item._id) === latestId}
+      />
+    ),
     [latestId],
   );
 
-  const keyExtractor = useCallback((item) => String(item.id), []);
+  const keyExtractor = useCallback(
+    (item, index) =>
+      String(item.clientMessageId || item.id || item._id || item.timestamp || index),
+    [],
+  );
 
   // Auto-scroll to newest ONLY when user hasn't manually scrolled up
   useEffect(() => {
@@ -154,6 +169,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 10,
     width: width * 0.78,
+    zIndex: 220,
+    elevation: 10,
     // maxHeight is now passed as prop — no static value here
   },
   listContent: {

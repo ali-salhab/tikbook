@@ -15,15 +15,63 @@ import {
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import SoundService from "../services/soundService";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Reanimated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const ICON_SIZE = Math.round(Math.min(SCREEN_WIDTH * 0.9, 42));
+const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.1, 34), 42));
+const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.15, 52), 60));
+const FOLLOW_BUTTON_SIZE = Math.round(
+  Math.min(Math.max(PROFILE_SIZE * 0.38, 22), 24),
+);
+const ACTION_RAIL_RIGHT = Math.round(
+  Math.min(Math.max(SCREEN_WIDTH * 0.03, 10), 14),
+);
+const ACTION_GAP = Math.round(Math.min(Math.max(SCREEN_HEIGHT * 0.012, 8), 12));
+const MUSIC_DISC_OUTER_SIZE = Math.round(
+  Math.min(Math.max(SCREEN_WIDTH * 0.19, 70), 82),
+);
+const MUSIC_DISC_INNER_SIZE = MUSIC_DISC_OUTER_SIZE - 14;
+const MUSIC_DISC_CENTER_SIZE = Math.round(
+  Math.min(Math.max(MUSIC_DISC_OUTER_SIZE * 0.2, 14), 16),
+);
+const MUSIC_DISC_ICON_SIZE = Math.round(
+  Math.min(Math.max(MUSIC_DISC_INNER_SIZE * 0.22, 14), 18),
+);
+const ACTION_RAIL_WIDTH =
+  Math.max(PROFILE_SIZE, MUSIC_DISC_OUTER_SIZE, ICON_SIZE) + 18;
+const PROGRESS_TRACK_HEIGHT = 3;
+const PROGRESS_THUMB_SIZE = Math.round(
+  Math.min(Math.max(SCREEN_WIDTH * 0.04, 14), 18),
+);
+const PROGRESS_WRAPPER_VERTICAL = 10;
+const PROGRESS_THUMB_OFFSET =
+  PROGRESS_WRAPPER_VERTICAL -
+  Math.round((PROGRESS_THUMB_SIZE - PROGRESS_TRACK_HEIGHT) / 2);
+const CONTROL_DOCK_GAP = Math.round(
+  Math.min(Math.max(SCREEN_HEIGHT * 0.018, 88), 122),
+);
+const CONTROL_BUTTON_SIZE = Math.round(
+  Math.min(Math.max(SCREEN_WIDTH * 0.12, 42), 52),
+);
+const CONTROL_ICON_SIZE = Math.round(
+  Math.min(Math.max(CONTROL_BUTTON_SIZE * 0.48, 18), 24),
+);
+const CONTROL_LABEL_SIZE = Math.round(
+  Math.min(Math.max(SCREEN_WIDTH * 0.028, 10), 12),
+);
 
 const VideoItem = memo(
   ({
     item,
     isActive,
     tabBarHeight,
+    viewportHeight,
     userInfo,
     navigation,
     handleLike,
@@ -43,6 +91,7 @@ const VideoItem = memo(
     const scrubThumbScale = useRef(new Animated.Value(1)).current;
     const playIconOpacity = useRef(new Animated.Value(0)).current;
     const playIconScale = useRef(new Animated.Value(0.6)).current;
+    const [hasZoom, setHasZoom] = useState(false);
 
     // Per-item animation refs (previously shared in HomeScreen — caused all items to share the same animation)
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -51,6 +100,42 @@ const VideoItem = memo(
     const lastTap = useRef(0);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const rotationRef = useRef(null);
+    const itemHeight = Math.max(viewportHeight || SCREEN_HEIGHT, 1);
+    const isViewportConstrained =
+      tabBarHeight > 0 &&
+      itemHeight < SCREEN_HEIGHT - Math.max(Math.round(tabBarHeight * 0.45), 16);
+    const overlayBottomOffset = isViewportConstrained
+      ? Math.max(Math.min(Math.round(itemHeight * 0.04), 24), 16)
+      : tabBarHeight + 20;
+    const progressBottomOffset = isViewportConstrained
+      ? Math.max(Math.min(Math.round(itemHeight * 0.008), 6), 2)
+      : tabBarHeight + 8;
+    const actionGap = Math.max(Math.min(Math.round(itemHeight * 0.014), 14), 8);
+    const controlsBottomOffset = overlayBottomOffset + CONTROL_DOCK_GAP;
+    const zoomScale = useSharedValue(1);
+    const zoomBase = useSharedValue(1);
+
+    const resetZoom = () => {
+      zoomBase.value = 1;
+      zoomScale.value = withTiming(1, { duration: 180 });
+      setHasZoom(false);
+    };
+
+    const mediaZoomStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: zoomScale.value }],
+    }));
+
+    const pinchGesture = Gesture.Pinch()
+      .onUpdate((event) => {
+        const nextScale = Math.min(Math.max(zoomBase.value * event.scale, 1), 3);
+        zoomScale.value = nextScale;
+      })
+      .onEnd(() => {
+        const finalScale = Math.min(Math.max(zoomScale.value, 1), 3);
+        zoomBase.value = finalScale;
+        zoomScale.value = withTiming(finalScale, { duration: 120 });
+        runOnJS(setHasZoom)(finalScale > 1.02);
+      });
 
     useEffect(() => {
       // shouldPlay={isActive} already handles play/pause declaratively.
@@ -91,12 +176,72 @@ const VideoItem = memo(
       };
     }, []);
 
+    useEffect(() => {
+      if (!isActive) {
+        zoomBase.value = 1;
+        zoomScale.value = 1;
+        setHasZoom(false);
+      }
+    }, [isActive, zoomBase, zoomScale]);
+
     // Format ms -> m:ss
     const formatTime = (ms) => {
       const totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
       const m = Math.floor(totalSec / 60);
       const s = totalSec % 60;
       return `${m}:${s.toString().padStart(2, "0")}`;
+    };
+
+    const togglePlayback = () => {
+      if (!videoRef.current || isImage(item.videoUrl)) return;
+
+      InteractionManager.runAfterInteractions(() => {
+        if (!videoRef.current) return;
+        if (isPlaying) {
+          videoRef.current
+            .pauseAsync()
+            .then(() => setIsPlaying(false))
+            .catch(() => {});
+        } else {
+          videoRef.current
+            .playAsync()
+            .then(() => setIsPlaying(true))
+            .catch(() => {});
+        }
+      });
+
+      playIconOpacity.setValue(1);
+      playIconScale.setValue(0.6);
+      Animated.parallel([
+        Animated.spring(playIconScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 5,
+        }),
+        Animated.sequence([
+          Animated.delay(500),
+          Animated.timing(playIconOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    };
+
+    const seekBySeconds = (deltaSeconds) => {
+      if (!videoRef.current || duration <= 0 || isImage(item.videoUrl)) return;
+
+      const nextPosition = Math.max(
+        0,
+        Math.min(duration, Math.round(progress * duration + deltaSeconds * 1000)),
+      );
+      setProgress(nextPosition / duration);
+
+      InteractionManager.runAfterInteractions(() => {
+        if (!videoRef.current) return;
+        videoRef.current.setPositionAsync(nextPosition).catch(() => {});
+      });
     };
 
     // PanResponder for draggable progress thumb
@@ -171,41 +316,7 @@ const VideoItem = memo(
         animateHeart();
       } else {
         // Single tap — play/pause
-        if (videoRef.current) {
-          // Ensure video operations run on main thread
-          InteractionManager.runAfterInteractions(() => {
-            if (!videoRef.current) return;
-            if (isPlaying) {
-              videoRef.current
-                .pauseAsync()
-                .then(() => setIsPlaying(false))
-                .catch(() => {});
-            } else {
-              videoRef.current
-                .playAsync()
-                .then(() => setIsPlaying(true))
-                .catch(() => {});
-            }
-          });
-          // Flash the icon
-          playIconOpacity.setValue(1);
-          playIconScale.setValue(0.6);
-          Animated.parallel([
-            Animated.spring(playIconScale, {
-              toValue: 1,
-              useNativeDriver: true,
-              friction: 5,
-            }),
-            Animated.sequence([
-              Animated.delay(500),
-              Animated.timing(playIconOpacity, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: true,
-              }),
-            ]),
-          ]).start();
-        }
+        togglePlayback();
       }
       lastTap.current = now;
     };
@@ -277,46 +388,50 @@ const VideoItem = memo(
     };
 
     return (
-      <View style={styles.videoContainer}>
+      <View style={[styles.videoContainer, { height: itemHeight }]}>
         <TouchableOpacity
           activeOpacity={1}
           onPress={handleDoubleTap}
           style={styles.videoTouchable}
         >
-          {isImage(item.videoUrl) ? (
-            <Image
-              source={{ uri: item.videoUrl }}
-              style={styles.video}
-              resizeMode="cover"
-            />
-          ) : (
-            <Video
-              ref={videoRef}
-              source={
-                item.localSource ? item.localSource : { uri: item.videoUrl }
-              }
-              style={styles.video}
-              resizeMode="cover"
-              shouldPlay={isActive}
-              isLooping
-              isMuted={false}
-              useNativeControls={false}
-              onPlaybackStatusUpdate={(status) => {
-                if (status.isLoaded) {
-                  setIsPlaying(status.isPlaying);
-                  setIsBuffering(status.isBuffering || false);
-                  if (status.durationMillis && status.durationMillis > 0) {
-                    setDuration(status.durationMillis);
-                    if (!isSeeking.current) {
-                      setProgress(
-                        status.positionMillis / status.durationMillis,
-                      );
-                    }
+          <GestureDetector gesture={pinchGesture}>
+            <Reanimated.View style={[styles.mediaContainer, mediaZoomStyle]}>
+              {isImage(item.videoUrl) ? (
+                <Image
+                  source={{ uri: item.videoUrl }}
+                  style={styles.video}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Video
+                  ref={videoRef}
+                  source={
+                    item.localSource ? item.localSource : { uri: item.videoUrl }
                   }
-                }
-              }}
-            />
-          )}
+                  style={styles.video}
+                  resizeMode="cover"
+                  shouldPlay={isActive}
+                  isLooping
+                  isMuted={false}
+                  useNativeControls={false}
+                  onPlaybackStatusUpdate={(status) => {
+                    if (status.isLoaded) {
+                      setIsPlaying(status.isPlaying);
+                      setIsBuffering(status.isBuffering || false);
+                      if (status.durationMillis && status.durationMillis > 0) {
+                        setDuration(status.durationMillis);
+                        if (!isSeeking.current) {
+                          setProgress(
+                            status.positionMillis / status.durationMillis,
+                          );
+                        }
+                      }
+                    }
+                  }}
+                />
+              )}
+            </Reanimated.View>
+          </GestureDetector>
 
           {/* Double-tap heart animation */}
           <Animated.View
@@ -354,7 +469,7 @@ const VideoItem = memo(
         </TouchableOpacity>
 
         {/* Bottom Info */}
-        <View style={[styles.bottomSection, { bottom: tabBarHeight + 20 }]}>
+        <View style={[styles.bottomSection, { bottom: overlayBottomOffset }]}>
           <View style={styles.userInfo}>
             <Text style={styles.username}>@{item.user.username}</Text>
             <Text style={styles.description}>{item.description}</Text>
@@ -376,8 +491,17 @@ const VideoItem = memo(
 
         {/* Progress bar with draggable thumb */}
         {!isImage(item.videoUrl) && (
+          <View style={[styles.progressMetaRow, { bottom: progressBottomOffset + 18 }]}> 
+            <Text style={styles.progressMetaText}>
+              {formatTime(progress * duration)}
+            </Text>
+            <Text style={styles.progressMetaText}>{formatTime(duration)}</Text>
+          </View>
+        )}
+
+        {!isImage(item.videoUrl) && (
           <View
-            style={[styles.progressBarWrapper, { bottom: tabBarHeight + 8 }]}
+            style={[styles.progressBarWrapper, { bottom: progressBottomOffset }]}
             onLayout={(e) => {
               progressBarWidth.current = e.nativeEvent.layout.width;
             }}
@@ -390,7 +514,7 @@ const VideoItem = memo(
                   styles.timeBubble,
                   {
                     left: `${progress * 100}%`,
-                    bottom: 18,
+                    bottom: PROGRESS_THUMB_SIZE + 6,
                     marginLeft: -26,
                   },
                 ]}
@@ -420,7 +544,7 @@ const VideoItem = memo(
                 styles.progressThumb,
                 {
                   left: `${progress * 100}%`,
-                  marginLeft: -7,
+                  marginLeft: -(PROGRESS_THUMB_SIZE / 2),
                   transform: [{ scale: scrubThumbScale }],
                 },
               ]}
@@ -429,8 +553,61 @@ const VideoItem = memo(
           </View>
         )}
 
+        {!isImage(item.videoUrl) && (
+          <View style={[styles.videoControlsDock, { bottom: controlsBottomOffset }]}>
+            <TouchableOpacity
+              style={styles.videoControlButton}
+              onPress={() => seekBySeconds(-10)}
+            >
+              <Ionicons name="play-back" size={CONTROL_ICON_SIZE} color="#FFF" />
+              <Text style={styles.videoControlLabel}>10ث</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.videoControlButton, styles.videoControlPrimary]}
+              onPress={togglePlayback}
+            >
+              <Ionicons
+                name={isPlaying ? "pause" : "play"}
+                size={CONTROL_ICON_SIZE + 2}
+                color="#FFF"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.videoControlButton}
+              onPress={() => seekBySeconds(10)}
+            >
+              <Ionicons
+                name="play-forward"
+                size={CONTROL_ICON_SIZE}
+                color="#FFF"
+              />
+              <Text style={styles.videoControlLabel}>10ث</Text>
+            </TouchableOpacity>
+
+            {hasZoom && (
+              <TouchableOpacity
+                style={styles.videoControlButton}
+                onPress={resetZoom}
+              >
+                <Ionicons
+                  name="contract-outline"
+                  size={CONTROL_ICON_SIZE}
+                  color="#FFF"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Side Actions */}
-        <View style={[styles.rightActions, { bottom: tabBarHeight + 20 }]}>
+        <View
+          style={[
+            styles.rightActions,
+            { bottom: overlayBottomOffset, gap: actionGap },
+          ]}
+        >
           {/* Profile Image */}
           <TouchableOpacity
             style={styles.profileContainer}
@@ -525,7 +702,11 @@ const VideoItem = memo(
                   />
                 ) : (
                   <View style={styles.musicDiscPlaceholder}>
-                    <Ionicons name="musical-note" size={14} color="#FFF" />
+                    <Ionicons
+                      name="musical-note"
+                      size={MUSIC_DISC_ICON_SIZE}
+                      color="#FFF"
+                    />
                   </View>
                 )}
               </View>
@@ -545,6 +726,11 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     position: "relative",
+    overflow: "hidden",
+  },
+  mediaContainer: {
+    width: "100%",
+    height: "100%",
   },
   video: {
     width: "100%",
@@ -585,25 +771,25 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    paddingVertical: 12,
+    paddingVertical: PROGRESS_WRAPPER_VERTICAL,
     zIndex: 200,
   },
   progressBarBg: {
-    height: 3,
+    height: PROGRESS_TRACK_HEIGHT,
     backgroundColor: "rgba(255,255,255,0.3)",
     borderRadius: 2,
   },
   progressBarFill: {
-    height: 3,
+    height: PROGRESS_TRACK_HEIGHT,
     backgroundColor: "#FFF",
     borderRadius: 2,
   },
   progressThumb: {
     position: "absolute",
-    top: 12 - 7,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    top: PROGRESS_THUMB_OFFSET,
+    width: PROGRESS_THUMB_SIZE,
+    height: PROGRESS_THUMB_SIZE,
+    borderRadius: PROGRESS_THUMB_SIZE / 2,
     backgroundColor: "#FFF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -647,10 +833,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 998,
   },
+  progressMetaRow: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    zIndex: 210,
+  },
+  progressMetaText: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 12,
+    fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
   bottomSection: {
     position: "absolute",
     left: 16,
-    right: 90,
+    right: ACTION_RAIL_RIGHT + ACTION_RAIL_WIDTH,
     zIndex: 100,
   },
   userInfo: {
@@ -686,19 +889,18 @@ const styles = StyleSheet.create({
   },
   rightActions: {
     position: "absolute",
-    right: 12,
-    gap: Math.max(SCREEN_HEIGHT * 0.014, 10),
+    right: ACTION_RAIL_RIGHT,
+    gap: ACTION_GAP,
     zIndex: 100,
-    paddingBottom: 10,
   },
   profileContainer: {
     alignItems: "center",
     marginBottom: 12,
   },
   profileImageWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: PROFILE_SIZE,
+    height: PROFILE_SIZE,
+    borderRadius: PROFILE_SIZE / 2,
     borderWidth: 1.5,
     borderColor: "#FFF",
     overflow: "hidden",
@@ -711,14 +913,14 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   profileEmoji: {
-    fontSize: 28,
+    fontSize: Math.round(PROFILE_SIZE * 0.46),
   },
   followButton: {
     position: "absolute",
-    bottom: -10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    bottom: -Math.round(FOLLOW_BUTTON_SIZE * 0.42),
+    width: FOLLOW_BUTTON_SIZE,
+    height: FOLLOW_BUTTON_SIZE,
+    borderRadius: FOLLOW_BUTTON_SIZE / 2,
     backgroundColor: "#FE2C55",
     justifyContent: "center",
     alignItems: "center",
@@ -755,14 +957,42 @@ const styles = StyleSheet.create({
     color: "#FE2C55",
     fontWeight: "bold",
   },
+  videoControlsDock: {
+    position: "absolute",
+    left: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    zIndex: 210,
+  },
+  videoControlButton: {
+    width: CONTROL_BUTTON_SIZE,
+    height: CONTROL_BUTTON_SIZE,
+    borderRadius: CONTROL_BUTTON_SIZE / 2,
+    backgroundColor: "rgba(0,0,0,0.48)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoControlPrimary: {
+    backgroundColor: "rgba(254,44,85,0.88)",
+    borderColor: "rgba(255,255,255,0.28)",
+  },
+  videoControlLabel: {
+    color: "#FFF",
+    fontSize: CONTROL_LABEL_SIZE,
+    fontWeight: "700",
+    marginTop: -1,
+  },
   musicDiscContainer: {
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 2,
   },
   musicDiscOuter: {
-    width: 45,
-    height: 45,
-    borderRadius: 48,
+    width: MUSIC_DISC_OUTER_SIZE,
+    height: MUSIC_DISC_OUTER_SIZE,
+    borderRadius: MUSIC_DISC_OUTER_SIZE / 2,
     borderWidth: 3,
     borderColor: "#555",
     backgroundColor: "#111",
@@ -770,10 +1000,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   musicDiscInner: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 3,
+    width: MUSIC_DISC_INNER_SIZE,
+    height: MUSIC_DISC_INNER_SIZE,
+    borderRadius: MUSIC_DISC_INNER_SIZE / 2,
+    borderWidth: 2.5,
     borderColor: "#888",
     overflow: "hidden",
     backgroundColor: "#222",
@@ -793,9 +1023,9 @@ const styles = StyleSheet.create({
   },
   musicDiscCenter: {
     position: "absolute",
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: MUSIC_DISC_CENTER_SIZE,
+    height: MUSIC_DISC_CENTER_SIZE,
+    borderRadius: MUSIC_DISC_CENTER_SIZE / 2,
     backgroundColor: "#111",
     borderWidth: 2,
     borderColor: "#555",

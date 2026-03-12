@@ -240,6 +240,21 @@
   color: #991b1b;
 }
 
+.gateway-badge.vodafone_cash {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.gateway-badge.visa {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.gateway-badge.manual {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
 .gateway-badge.stripe {
   background: #e0e7ff;
   color: #3730a3;
@@ -271,6 +286,11 @@
   color: #991b1b;
 }
 
+.status-badge.refunded {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
 .status-icon {
   font-size: 1rem;
 }
@@ -288,6 +308,41 @@
 
 .refund-btn:hover {
   background: #dc2626;
+  transform: translateY(-2px);
+}
+
+.transaction-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.approve-btn,
+.reject-btn {
+  color: white;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.approve-btn {
+  background: #10b981;
+}
+
+.approve-btn:hover {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.reject-btn {
+  background: #f59e0b;
+}
+
+.reject-btn:hover {
+  background: #d97706;
   transform: translateY(-2px);
 }
 

@@ -52,6 +52,9 @@ const WalletScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("visa");
+  const [vodafoneCashPhone, setVodafoneCashPhone] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Withdrawal form state
   const [withdrawFullName, setWithdrawFullName] = useState("");
@@ -119,13 +122,26 @@ const WalletScreen = ({ navigation }) => {
       return;
     }
 
+    if (
+      selectedPaymentMethod === "vodafone_cash" &&
+      !vodafoneCashPhone.trim()
+    ) {
+      Alert.alert("تنبيه", "الرجاء إدخال رقم فودافون كاش أولاً");
+      return;
+    }
+
+    const paymentMethodLabel =
+      selectedPaymentMethod === "visa"
+        ? "Visa / MasterCard"
+        : "Vodafone Cash";
+
     Alert.alert(
-      "تأكيد الشراء",
-      `شراء ${amount} عملة مقابل ج.م. ${price.toFixed(2)}؟`,
+      "تأكيد الطلب",
+      `إنشاء طلب شحن ${amount} عملة عبر ${paymentMethodLabel} مقابل ج.م. ${price.toFixed(2)}؟`,
       [
         { text: "إلغاء", style: "cancel" },
         {
-          text: "تأكيد الدفع",
+          text: "إنشاء الطلب",
           onPress: () => processPayment(amount),
         },
       ],
@@ -133,25 +149,33 @@ const WalletScreen = ({ navigation }) => {
   };
 
   const processPayment = async (amount) => {
-    setLoading(true);
-    setTimeout(async () => {
-      try {
-        const res = await axios.post(
-          `${BASE_URL}/wallet/topup`,
-          {
-            amount: amount,
-            transactionId: `MOCK-PAY-${Date.now()}`,
-          },
-          { headers: { Authorization: `Bearer ${userToken}` } },
-        );
-        setBalance(res.data.balance);
-        setLoading(false);
-        Alert.alert("نجاح", "تم شحن الرصيد بنجاح! 🎉");
-      } catch (e) {
-        setLoading(false);
-        Alert.alert("خطأ", "فشلت عملية الشراء");
-      }
-    }, 1500);
+    setPaymentLoading(true);
+    try {
+      const res = await axios.post(
+        `${BASE_URL}/wallet/topup/request`,
+        {
+          amount,
+          paymentMethod: selectedPaymentMethod,
+          phoneNumber:
+            selectedPaymentMethod === "vodafone_cash"
+              ? vodafoneCashPhone.trim()
+              : undefined,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+
+      setPaymentLoading(false);
+      setSelectedPackage(null);
+      setCustomAmount("");
+      Alert.alert(
+        "تم إنشاء الطلب",
+        `${res.data.instructions || "تم إرسال طلب الدفع بنجاح."}\n\nرقم العملية: ${res.data.reference}`,
+      );
+    } catch (e) {
+      setPaymentLoading(false);
+      const msg = e?.response?.data?.message || "فشلت عملية إنشاء الطلب";
+      Alert.alert("خطأ", msg);
+    }
   };
 
   const handleWithdrawSubmit = async () => {
@@ -337,6 +361,57 @@ const WalletScreen = ({ navigation }) => {
                 {">"}
               </Text>
             </View>
+
+            <View style={styles.paymentMethodsCard}>
+              <Text style={styles.paymentMethodsTitle}>اختر طريقة الدفع</Text>
+
+              <View style={styles.paymentMethodsRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodOption,
+                    selectedPaymentMethod === "visa" &&
+                      styles.paymentMethodOptionActive,
+                  ]}
+                  onPress={() => setSelectedPaymentMethod("visa")}
+                >
+                  <FontAwesome5 name="cc-visa" size={24} color="#1A1F71" />
+                  <Text style={styles.paymentMethodName}>Visa / MasterCard</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodOption,
+                    selectedPaymentMethod === "vodafone_cash" &&
+                      styles.paymentMethodOptionActive,
+                  ]}
+                  onPress={() => setSelectedPaymentMethod("vodafone_cash")}
+                >
+                  <FontAwesome5 name="mobile-alt" size={20} color="#E60000" />
+                  <Text style={styles.paymentMethodName}>Vodafone Cash</Text>
+                </TouchableOpacity>
+              </View>
+
+              {selectedPaymentMethod === "vodafone_cash" && (
+                <>
+                  <Text style={styles.inputLabel}>رقم فودافون كاش</Text>
+                  <TextInput
+                    style={styles.withdrawInput}
+                    placeholder="أدخل رقم المحفظة"
+                    placeholderTextColor="#999"
+                    value={vodafoneCashPhone}
+                    onChangeText={setVodafoneCashPhone}
+                    keyboardType="phone-pad"
+                    textAlign="right"
+                  />
+                </>
+              )}
+
+              <Text style={styles.paymentMethodHint}>
+                {selectedPaymentMethod === "visa"
+                  ? "سيتم تسجيل طلب الدفع بالبطاقة وإظهاره في لوحة المدفوعات. التفعيل الفعلي يتطلب ربط مزود بطاقات مثل Stripe أو Paymob."
+                  : "سيتم إنشاء طلب Vodafone Cash وإرساله للمراجعة، ثم إضافة الرصيد بعد تأكيد التحويل."}
+              </Text>
+            </View>
           </ScrollView>
 
           {/* Footer */}
@@ -348,36 +423,11 @@ const WalletScreen = ({ navigation }) => {
           >
             <View style={styles.paymentMethodRow}>
               <Text style={styles.paymentLabel}>طريقة الدفع</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.cardIcons}
-              >
-                <View style={styles.paymentIcon}>
-                  <FontAwesome5 name="cc-visa" size={24} color="#1A1F71" />
-                </View>
-                <View style={styles.paymentIcon}>
-                  <FontAwesome5
-                    name="cc-mastercard"
-                    size={24}
-                    color="#EB001B"
-                  />
-                </View>
-                <View style={styles.paymentIcon}>
-                  <FontAwesome5 name="mobile-alt" size={18} color="#E60000" />
-                  <Text style={styles.paymentTextSmall}>Cash</Text>
-                </View>
-                <View style={[styles.paymentIcon, styles.paymentBadge]}>
-                  <Text style={[styles.paymentTextSmall, { color: "#1155cc" }]}>
-                    Fawry
-                  </Text>
-                </View>
-                <View style={[styles.paymentIcon, styles.paymentBadge]}>
-                  <Text style={[styles.paymentTextSmall, { color: "#555" }]}>
-                    Meeza
-                  </Text>
-                </View>
-              </ScrollView>
+              <Text style={styles.paymentLabelValue}>
+                {selectedPaymentMethod === "visa"
+                  ? "Visa / MasterCard"
+                  : "Vodafone Cash"}
+              </Text>
             </View>
             <Text style={styles.totalText}>
               الإجمالي: ج.م.{" "}
@@ -388,10 +438,18 @@ const WalletScreen = ({ navigation }) => {
                   : "0.00"}
             </Text>
             <TouchableOpacity
-              style={styles.rechargeButton}
+              style={[
+                styles.rechargeButton,
+                paymentLoading && styles.disabledRechargeButton,
+              ]}
               onPress={handleRecharge}
+              disabled={paymentLoading}
             >
-              <Text style={styles.rechargeButtonText}>الشحن</Text>
+              {paymentLoading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.rechargeButtonText}>إنشاء طلب الدفع</Text>
+              )}
             </TouchableOpacity>
           </View>
         </>
@@ -626,6 +684,54 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "right",
   },
+  paymentMethodsCard: {
+    backgroundColor: "#FFF",
+    marginHorizontal: ms(16),
+    marginBottom: ms(16),
+    borderRadius: ms(12),
+    padding: ms(16),
+    borderWidth: 1,
+    borderColor: "#EEE",
+    gap: ms(10),
+  },
+  paymentMethodsTitle: {
+    fontSize: fs(14),
+    fontWeight: "bold",
+    color: "#111",
+    textAlign: "right",
+  },
+  paymentMethodsRow: {
+    flexDirection: "row-reverse",
+    gap: ms(10),
+  },
+  paymentMethodOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: ms(12),
+    paddingVertical: ms(12),
+    paddingHorizontal: ms(10),
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(6),
+    backgroundColor: "#FAFAFA",
+  },
+  paymentMethodOptionActive: {
+    borderColor: "#FE2C55",
+    backgroundColor: "#FFF1F4",
+  },
+  paymentMethodName: {
+    fontSize: fs(11),
+    fontWeight: "700",
+    color: "#111",
+    textAlign: "center",
+  },
+  paymentMethodHint: {
+    fontSize: fs(11),
+    color: "#666",
+    textAlign: "right",
+    lineHeight: ms(18),
+  },
   footer: {
     position: "absolute",
     bottom: 0,
@@ -651,6 +757,11 @@ const styles = StyleSheet.create({
     fontSize: fs(14),
     color: "#333",
     marginLeft: ms(8),
+  },
+  paymentLabelValue: {
+    fontSize: fs(13),
+    color: "#111",
+    fontWeight: "700",
   },
   cardIcons: {
     flexDirection: "row-reverse",
@@ -685,6 +796,9 @@ const styles = StyleSheet.create({
     paddingVertical: ms(14),
     borderRadius: ms(4),
     alignItems: "center",
+  },
+  disabledRechargeButton: {
+    opacity: 0.7,
   },
   rechargeButtonText: {
     color: "#FFF",

@@ -91,7 +91,10 @@ const PaymentsManagement = ({ onLogout }) => {
     const txData = Array.isArray(transactionsData) ? transactionsData : [];
     const totalRevenue = txData
       .filter((t) => t.status === "completed")
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
+      .reduce(
+        (sum, t) => sum + (t.paymentMeta?.requestedPrice || t.amount || 0),
+        0,
+      );
 
     setStats({
       totalRevenue: totalRevenue.toFixed(2),
@@ -108,6 +111,9 @@ const PaymentsManagement = ({ onLogout }) => {
     if (searchTerm) {
       filtered = filtered.filter(
         (transaction) =>
+          transaction.user?.username
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
           transaction.userId?.username
             ?.toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
@@ -194,6 +200,38 @@ const PaymentsManagement = ({ onLogout }) => {
     }
   };
 
+  const handleApproveTransaction = async (transactionId) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      await api.post(
+        `/admin/transactions/${transactionId}/approve`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      fetchTransactions();
+      alert("Transaction approved successfully");
+    } catch (error) {
+      console.error("Error approving transaction:", error);
+      alert("Failed to approve transaction");
+    }
+  };
+
+  const handleRejectTransaction = async (transactionId) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      await api.post(
+        `/admin/transactions/${transactionId}/reject`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      fetchTransactions();
+      alert("Transaction rejected successfully");
+    } catch (error) {
+      console.error("Error rejecting transaction:", error);
+      alert("Failed to reject transaction");
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -213,6 +251,8 @@ const PaymentsManagement = ({ onLogout }) => {
         return <FiXCircle className="status-icon error" />;
       case "pending":
         return <FiClock className="status-icon pending" />;
+      case "refunded":
+        return <FiRefreshCw className="status-icon pending" />;
       default:
         return null;
     }
@@ -237,7 +277,7 @@ const PaymentsManagement = ({ onLogout }) => {
             <FiDollarSign className="stat-icon" />
             <div>
               <h3>Total Revenue</h3>
-              <p>${stats.totalRevenue}</p>
+              <p>EGP {stats.totalRevenue}</p>
             </div>
           </div>
           <div className="stat-card">
@@ -431,7 +471,9 @@ const PaymentsManagement = ({ onLogout }) => {
             <option value="all">All Gateways</option>
             <option value="fawry">Fawry</option>
             <option value="paymob">Paymob</option>
-            <option value="vodafoneCash">Vodafone Cash</option>
+            <option value="vodafone_cash">Vodafone Cash</option>
+            <option value="visa">Visa</option>
+            <option value="manual">Manual</option>
             <option value="stripe">Stripe</option>
           </select>
 
@@ -483,9 +525,17 @@ const PaymentsManagement = ({ onLogout }) => {
                 filteredTransactions.map((transaction) => (
                   <tr key={transaction._id}>
                     <td>{transaction.transactionId || transaction._id}</td>
-                    <td>{transaction.userId?.username || "Unknown"}</td>
+                    <td>
+                      {transaction.user?.username ||
+                        transaction.userId?.username ||
+                        "Unknown"}
+                    </td>
                     <td className="amount">
-                      ${transaction.amount?.toFixed(2) || "0.00"}
+                      {(transaction.paymentMeta?.requestedPrice ||
+                        transaction.amount ||
+                        0
+                      ).toFixed(2)}
+                      {transaction.currency ? ` ${transaction.currency}` : ""}
                     </td>
                     <td>
                       <span className={`gateway-badge ${transaction.gateway}`}>
@@ -500,16 +550,38 @@ const PaymentsManagement = ({ onLogout }) => {
                     </td>
                     <td>{formatDate(transaction.createdAt)}</td>
                     <td>
-                      {transaction.status === "completed" && (
-                        <button
-                          className="refund-btn"
-                          onClick={() =>
-                            handleRefundTransaction(transaction._id)
-                          }
-                        >
-                          Refund
-                        </button>
-                      )}
+                      <div className="transaction-actions">
+                        {transaction.status === "completed" && (
+                          <button
+                            className="refund-btn"
+                            onClick={() =>
+                              handleRefundTransaction(transaction._id)
+                            }
+                          >
+                            Refund
+                          </button>
+                        )}
+                        {transaction.status === "pending" && (
+                          <>
+                            <button
+                              className="approve-btn"
+                              onClick={() =>
+                                handleApproveTransaction(transaction._id)
+                              }
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="reject-btn"
+                              onClick={() =>
+                                handleRejectTransaction(transaction._id)
+                              }
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

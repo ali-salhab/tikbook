@@ -113,6 +113,67 @@ router.get("/transactions", protect, admin, async (req, res) => {
   }
 });
 
+router.post("/transactions/:id/approve", protect, admin, async (req, res) => {
+  try {
+    const Transaction = require("../models/Transaction");
+    const Wallet = require("../models/Wallet");
+
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (transaction.status !== "pending") {
+      return res
+        .status(400)
+        .json({ message: "Only pending transactions can be approved" });
+    }
+
+    let wallet = await Wallet.findOne({ user: transaction.user });
+    if (!wallet) {
+      wallet = await Wallet.create({ user: transaction.user });
+    }
+
+    wallet.balance += Number(transaction.amount || 0);
+    await wallet.save();
+
+    transaction.status = "completed";
+    await transaction.save();
+
+    res.json({ message: "Transaction approved successfully", transaction });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error approving transaction", error: error.message });
+  }
+});
+
+router.post("/transactions/:id/reject", protect, admin, async (req, res) => {
+  try {
+    const Transaction = require("../models/Transaction");
+
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (transaction.status !== "pending") {
+      return res
+        .status(400)
+        .json({ message: "Only pending transactions can be rejected" });
+    }
+
+    transaction.status = "failed";
+    await transaction.save();
+
+    res.json({ message: "Transaction rejected successfully", transaction });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error rejecting transaction", error: error.message });
+  }
+});
+
 router.post("/transactions/:id/refund", protect, admin, async (req, res) => {
   try {
     const Transaction = require("../models/Transaction");
