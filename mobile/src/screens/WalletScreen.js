@@ -17,9 +17,9 @@ import {
 } from "react-native-safe-area-context";
 import {
   Ionicons,
-  FontAwesome5,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
+import { useStripe } from "@stripe/stripe-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
@@ -46,14 +46,13 @@ const CoinIcon = ({ size = 20 }) => (
 const WalletScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { userToken, userInfo } = useContext(AuthContext);
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [activeTab, setActiveTab] = useState("recharge"); // 'recharge' | 'withdraw'
   const [balance, setBalance] = useState(0);
   const [earnings, setEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("visa");
-  const [vodafoneCashPhone, setVodafoneCashPhone] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Withdrawal form state
@@ -122,22 +121,9 @@ const WalletScreen = ({ navigation }) => {
       return;
     }
 
-    if (
-      selectedPaymentMethod === "vodafone_cash" &&
-      !vodafoneCashPhone.trim()
-    ) {
-      Alert.alert("تنبيه", "الرجاء إدخال رقم فودافون كاش أولاً");
-      return;
-    }
-
-    const paymentMethodLabel =
-      selectedPaymentMethod === "visa"
-        ? "Visa / MasterCard"
-        : "Vodafone Cash";
-
     Alert.alert(
       "تأكيد الطلب",
-      `إنشاء طلب شحن ${amount} عملة عبر ${paymentMethodLabel} مقابل ج.م. ${price.toFixed(2)}؟`,
+      `إنشاء طلب شحن ${amount} عملة عبر Stripe مقابل ج.م. ${price.toFixed(2)}؟`,
       [
         { text: "إلغاء", style: "cancel" },
         {
@@ -155,22 +141,80 @@ const WalletScreen = ({ navigation }) => {
         `${BASE_URL}/wallet/topup/request`,
         {
           amount,
-          paymentMethod: selectedPaymentMethod,
-          phoneNumber:
-            selectedPaymentMethod === "vodafone_cash"
-              ? vodafoneCashPhone.trim()
-              : undefined,
+          paymentMethod: "visa",
         },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
+      if (!res.data.clientSecret || !res.data.paymentIntentId) {
+        setPaymentLoading(false);
+        Alert.alert("خطأ", "لم يتم تجهيز شاشة الدفع من Stripe");
+        return;
+      }
+
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: "TikBook",
+        paymentIntentClientSecret: res.data.clientSecret,
+        allowsDelayedPaymentMethods: false,
+        defaultBillingDetails: {
+          name: userInfo?.username || "TikBook User",
+        },
+        returnURL: "tikbook://stripe-redirect",
+      });
+
+      if (initError) {
+        await axios
+          .post(
+            `${BASE_URL}/wallet/topup/fail`,
+            {
+              reference: res.data.reference,
+              reason: initError.message || "init_failed",
+            },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          )
+          .catch(() => {});
+        setPaymentLoading(false);
+        Alert.alert("خطأ", initError.message || "تعذر فتح شاشة الدفع");
+        return;
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        await axios
+          .post(
+            `${BASE_URL}/wallet/topup/fail`,
+            {
+              reference: res.data.reference,
+              reason:
+                presentError.code || presentError.message || "payment_failed",
+            },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          )
+          .catch(() => {});
+        setPaymentLoading(false);
+        if (presentError.code === "Canceled") {
+          Alert.alert("تم الإلغاء", "تم إلغاء عملية الدفع");
+          return;
+        }
+        Alert.alert("خطأ", presentError.message || "فشلت عملية الدفع");
+        return;
+      }
+
+      const confirmRes = await axios.post(
+        `${BASE_URL}/wallet/topup/confirm`,
+        {
+          reference: res.data.reference,
+          paymentIntentId: res.data.paymentIntentId,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+
+      setBalance(confirmRes.data.wallet?.balance ?? balance);
       setPaymentLoading(false);
       setSelectedPackage(null);
       setCustomAmount("");
-      Alert.alert(
-        "تم إنشاء الطلب",
-        `${res.data.instructions || "تم إرسال طلب الدفع بنجاح."}\n\nرقم العملية: ${res.data.reference}`,
-      );
+      Alert.alert("نجاح", "تم شحن الرصيد عبر Stripe بنجاح");
     } catch (e) {
       setPaymentLoading(false);
       const msg = e?.response?.data?.message || "فشلت عملية إنشاء الطلب";
@@ -365,51 +409,14 @@ const WalletScreen = ({ navigation }) => {
             <View style={styles.paymentMethodsCard}>
               <Text style={styles.paymentMethodsTitle}>اختر طريقة الدفع</Text>
 
-              <View style={styles.paymentMethodsRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.paymentMethodOption,
-                    selectedPaymentMethod === "visa" &&
-                      styles.paymentMethodOptionActive,
-                  ]}
-                  onPress={() => setSelectedPaymentMethod("visa")}
-                >
-                  <FontAwesome5 name="cc-visa" size={24} color="#1A1F71" />
-                  <Text style={styles.paymentMethodName}>Visa / MasterCard</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.paymentMethodOption,
-                    selectedPaymentMethod === "vodafone_cash" &&
-                      styles.paymentMethodOptionActive,
-                  ]}
-                  onPress={() => setSelectedPaymentMethod("vodafone_cash")}
-                >
-                  <FontAwesome5 name="mobile-alt" size={20} color="#E60000" />
-                  <Text style={styles.paymentMethodName}>Vodafone Cash</Text>
-                </TouchableOpacity>
+              <View style={[styles.paymentMethodOption, styles.paymentMethodOptionActive]}>
+                <Ionicons name="card-outline" size={24} color="#1A1F71" />
+                <Text style={styles.paymentMethodName}>Visa / MasterCard (Stripe)</Text>
               </View>
 
-              {selectedPaymentMethod === "vodafone_cash" && (
-                <>
-                  <Text style={styles.inputLabel}>رقم فودافون كاش</Text>
-                  <TextInput
-                    style={styles.withdrawInput}
-                    placeholder="أدخل رقم المحفظة"
-                    placeholderTextColor="#999"
-                    value={vodafoneCashPhone}
-                    onChangeText={setVodafoneCashPhone}
-                    keyboardType="phone-pad"
-                    textAlign="right"
-                  />
-                </>
-              )}
-
               <Text style={styles.paymentMethodHint}>
-                {selectedPaymentMethod === "visa"
-                  ? "سيتم تسجيل طلب الدفع بالبطاقة وإظهاره في لوحة المدفوعات. التفعيل الفعلي يتطلب ربط مزود بطاقات مثل Stripe أو Paymob."
-                  : "سيتم إنشاء طلب Vodafone Cash وإرساله للمراجعة، ثم إضافة الرصيد بعد تأكيد التحويل."}
+                سيتم فتح Stripe PaymentSheet لإتمام الدفع ببطاقتك، ثم يضاف
+                الرصيد مباشرة بعد نجاح العملية.
               </Text>
             </View>
           </ScrollView>
@@ -423,11 +430,7 @@ const WalletScreen = ({ navigation }) => {
           >
             <View style={styles.paymentMethodRow}>
               <Text style={styles.paymentLabel}>طريقة الدفع</Text>
-              <Text style={styles.paymentLabelValue}>
-                {selectedPaymentMethod === "visa"
-                  ? "Visa / MasterCard"
-                  : "Vodafone Cash"}
-              </Text>
+              <Text style={styles.paymentLabelValue}>Visa / MasterCard (Stripe)</Text>
             </View>
             <Text style={styles.totalText}>
               الإجمالي: ج.م.{" "}
@@ -448,7 +451,7 @@ const WalletScreen = ({ navigation }) => {
               {paymentLoading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.rechargeButtonText}>إنشاء طلب الدفع</Text>
+                <Text style={styles.rechargeButtonText}>ادفع الآن</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -162,7 +162,7 @@ const sampleBadges = [
     properties: {
       animation: "royal-shimmer",
       glowEffect: true,
-      particleEffect: "diamonds",
+      particleEffect: "coins",
     },
     sortOrder: 13,
   },
@@ -197,7 +197,7 @@ const seedBadges = async () => {
 
     badges.forEach((badge) => {
       console.log(
-        `  - ${badge.name} (${badge.type}) - ${badge.rarity} - ${badge.price} diamonds`,
+        `  - ${badge.name} (${badge.type}) - ${badge.rarity} - ${badge.price} coins`,
       );
     });
 

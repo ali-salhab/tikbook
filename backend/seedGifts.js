@@ -72,11 +72,11 @@ const sampleGifts = [
 
   // Premium Gifts
   {
-    name: "Diamond",
-    nameAr: "ماسة",
+    name: "Coin",
+    nameAr: "عملة",
     animationUrl:
       "https://lottie.host/8a9b0c1d-2f3e-4d5e-b6c7-1a2b3c4d5e6f/DiamondAnimation.json",
-    thumbnailUrl: "💎",
+    thumbnailUrl: "🪙",
     animationType: "lottie",
     price: 100,
     category: "premium",

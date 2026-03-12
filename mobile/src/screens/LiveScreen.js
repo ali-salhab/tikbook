@@ -342,7 +342,7 @@ export default function LiveScreen({ navigation, route }) {
 
   const gifts = [
     { id: 1, icon: "🌹", name: "Rose", price: 1 },
-    { id: 2, icon: "💎", name: "Diamond", price: 5 },
+    { id: 2, icon: "🪙", name: "Coin", price: 5 },
     { id: 3, icon: "👑", name: "Crown", price: 10 },
     { id: 4, icon: "🚀", name: "Rocket", price: 20 },
     { id: 5, icon: "🎁", name: "Gift", price: 50 },

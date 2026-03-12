@@ -96,7 +96,7 @@ const VipCard = ({ item, myVipLevel, onPurchase, purchasing }) => {
             <ActivityIndicator size="small" color={item.color} />
           ) : (
             <>
-              <MaterialCommunityIcons name="diamond" size={12} color="#60CFFF" />
+              <Ionicons name="logo-bitcoin" size={12} color="#60CFFF" />
               <Text style={styles.priceText}>{item.price.toLocaleString()}</Text>
             </>
           )}
@@ -140,7 +140,7 @@ export default function VipStoreScreen({ navigation }) {
     if (balance < item.price) {
       Alert.alert(
         "رصيد غير كافٍ",
-        `تحتاج إلى ${item.price.toLocaleString()} 💎\nرصيدك الحالي: ${balance.toLocaleString()} 💎`,
+        `تحتاج إلى ${item.price.toLocaleString()} عملة\nرصيدك الحالي: ${balance.toLocaleString()} عملة`,
         [
           { text: "إلغاء", style: "cancel" },
           { text: "شحن الرصيد", onPress: () => navigation.navigate("Wallet") },
@@ -151,7 +151,7 @@ export default function VipStoreScreen({ navigation }) {
 
     Alert.alert(
       `شراء VIP${item.level}`,
-      `هل تريد شراء ${item.nameAr}؟\nالسعر: ${item.price.toLocaleString()} 💎`,
+      `هل تريد شراء ${item.nameAr}؟\nالسعر: ${item.price.toLocaleString()} عملة`,
       [
         { text: "إلغاء", style: "cancel" },
         {
@@ -194,7 +194,7 @@ export default function VipStoreScreen({ navigation }) {
             <MaterialCommunityIcons name="crown" size={22} color="#FFD700" />
           </View>
           <View style={styles.balancePill}>
-            <MaterialCommunityIcons name="diamond" size={14} color="#60CFFF" />
+            <Ionicons name="logo-bitcoin" size={14} color="#60CFFF" />
             <Text style={styles.balanceText}>{balance.toLocaleString()}</Text>
           </View>
         </View>

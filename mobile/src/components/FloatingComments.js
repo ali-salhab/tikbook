@@ -13,7 +13,7 @@ const { width } = Dimensions.get("window");
 const MAX_COMMENTS = 40;
 
 // ─── Single animated comment row ─────────────────────────────────────────
-const CommentRow = React.memo(({ item, isNew }) => {
+const CommentRow = React.memo(({ item, isNew, vipLevelColors }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const [imgError, setImgError] = useState(false);
@@ -41,6 +41,11 @@ const CommentRow = React.memo(({ item, isNew }) => {
     ? item.user.username.charAt(0).toUpperCase()
     : "?";
   const messageText = item.message || item.text || item.body || "";
+  const vipLevel = Number(item.user?.vipLevel || 0);
+  const isVip = vipLevel > 0;
+  const vipColor = isVip
+    ? vipLevelColors?.[vipLevel] || "#FFD700"
+    : null;
 
   return (
     <Animated.View
@@ -57,9 +62,34 @@ const CommentRow = React.memo(({ item, isNew }) => {
           <Text style={styles.avatarInitial}>{initials}</Text>
         </View>
       )}
-      <View style={styles.bubble}>
+      <View
+        style={[
+          styles.bubble,
+          isVip && styles.vipBubble,
+          isVip && vipColor ? { borderColor: vipColor } : null,
+        ]}
+      >
         {item.user?.username ? (
-          <Text style={styles.username}>{item.user.username}</Text>
+          <View style={styles.headerRow}>
+            <Text
+              style={[
+                styles.username,
+                isVip && vipColor ? { color: vipColor } : null,
+              ]}
+            >
+              {item.user.username}
+            </Text>
+            {isVip && (
+              <View
+                style={[
+                  styles.vipChip,
+                  vipColor ? { backgroundColor: vipColor } : null,
+                ]}
+              >
+                <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
+              </View>
+            )}
+          </View>
         ) : null}
         <Text style={[styles.message, isSystem && styles.systemMessage]}>
           {messageText}
@@ -70,7 +100,12 @@ const CommentRow = React.memo(({ item, isNew }) => {
 });
 
 // ─── Container ────────────────────────────────────────────────────────────
-const FloatingComments = ({ comments, bottomOffset = 90, maxHeight = 400 }) => {
+const FloatingComments = ({
+  comments,
+  bottomOffset = 90,
+  maxHeight = 400,
+  vipLevelColors = {},
+}) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
   const userScrolledRef = useRef(false);
@@ -89,9 +124,10 @@ const FloatingComments = ({ comments, bottomOffset = 90, maxHeight = 400 }) => {
       <CommentRow
         item={item}
         isNew={(item.clientMessageId || item.id || item._id) === latestId}
+        vipLevelColors={vipLevelColors}
       />
     ),
-    [latestId],
+    [latestId, vipLevelColors],
   );
 
   const keyExtractor = useCallback(
@@ -218,11 +254,36 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 4,
     maxWidth: "86%",
   },
+  vipBubble: {
+    borderWidth: 1.4,
+    backgroundColor: "rgba(8,8,20,0.8)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    marginBottom: 2,
+  },
   username: {
     color: "rgba(180,180,255,0.9)",
     fontSize: 13,
     fontWeight: "700",
-    marginBottom: 2,
+  },
+  vipChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  vipChipText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "800",
   },
   message: {
     color: "#FFF",

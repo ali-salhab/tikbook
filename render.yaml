@@ -17,6 +17,12 @@ services:
         sync: false
       - key: AGORA_APP_CERTIFICATE
         sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: COIN_PRICE_EGP
+        sync: false
 
   # Admin Panel (Static Site)
   - type: web

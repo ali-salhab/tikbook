@@ -12,7 +12,7 @@ const walletSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Total diamonds/earnings received (for withdrawal logic)
+    // Total coin earnings received (for withdrawal logic)
     earnings: {
       type: Number,
       default: 0,

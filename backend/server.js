@@ -44,7 +44,16 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "50mb" }));
+app.use(
+  express.json({
+    limit: "50mb",
+    verify: (req, _res, buf) => {
+      if (req.originalUrl?.startsWith("/api/wallet/stripe/webhook")) {
+        req.rawBody = buf.toString("utf8");
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/uploads", express.static("uploads"));
 

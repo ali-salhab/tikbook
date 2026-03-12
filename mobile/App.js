@@ -15,6 +15,7 @@ import { View, Text, StyleSheet, Platform } from "react-native";
 import Constants from "expo-constants";
 import SoundService from "./src/services/soundService";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -22,6 +23,8 @@ SplashScreen.preventAutoHideAsync();
 export default function App() {
   const [appIsReady, setAppIsReady] = React.useState(false);
   const netInfo = useNetInfo();
+  const stripePublishableKey =
+    process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
   useEffect(() => {
     async function prepare() {
@@ -63,23 +66,37 @@ export default function App() {
   if (!appIsReady) {
     return null;
   }
+
+  const appContent = (
+    <SafeAreaProvider>
+      <AppProvider>
+        <AuthProvider>
+          <UploadProvider>
+            {netInfo.isConnected === false && (
+              <View style={styles.offlineBanner}>
+                <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
+              </View>
+            )}
+            <AppNavigator />
+            <FloatingUploadOverlay />
+          </UploadProvider>
+        </AuthProvider>
+      </AppProvider>
+    </SafeAreaProvider>
+  );
+
   return (
     <GestureHandlerRootView style={styles.root}>
-      <SafeAreaProvider>
-        <AppProvider>
-          <AuthProvider>
-            <UploadProvider>
-              {netInfo.isConnected === false && (
-                <View style={styles.offlineBanner}>
-                  <Text style={styles.offlineText}>لا يوجد اتصال بالانترنت</Text>
-                </View>
-              )}
-              <AppNavigator />
-              <FloatingUploadOverlay />
-            </UploadProvider>
-          </AuthProvider>
-        </AppProvider>
-      </SafeAreaProvider>
+      {stripePublishableKey ? (
+        <StripeProvider
+          publishableKey={stripePublishableKey}
+          urlScheme="tikbook"
+        >
+          {appContent}
+        </StripeProvider>
+      ) : (
+        appContent
+      )}
     </GestureHandlerRootView>
   );
 }

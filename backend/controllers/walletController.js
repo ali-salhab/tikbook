@@ -1,8 +1,12 @@
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
-const { createCoinPurchaseIntent } = require("../services/stripeService");
+const {
+  createCoinPurchaseIntent,
+  retrievePaymentIntent,
+  constructWebhookEvent,
+} = require("../services/stripeService");
 
-const SUPPORTED_PAYMENT_METHODS = new Set(["visa", "vodafone_cash"]);
+const SUPPORTED_PAYMENT_METHODS = new Set(["visa"]);
 const COIN_PRICE_EGP = Number(process.env.COIN_PRICE_EGP || 0.605);
 
 const buildTransactionReference = () =>
@@ -11,21 +15,95 @@ const buildTransactionReference = () =>
 const getTopUpPrice = (coinAmount) =>
   Number((Number(coinAmount) * COIN_PRICE_EGP).toFixed(2));
 
-const buildPaymentInstructions = ({ paymentMethod, reference, phoneNumber }) => {
-  if (paymentMethod === "vodafone_cash") {
-    const merchantPhone = process.env.VODAFONE_CASH_NUMBER || "رقم التاجر غير مضاف بعد";
-    return [
-      `تم إنشاء طلب فودافون كاش برقم ${reference}.`,
-      `رقم المحفظة: ${phoneNumber || "غير محدد"}.`,
-      `حوّل المبلغ إلى: ${merchantPhone}.`,
-      "سيتم إضافة الرصيد بعد تأكيد العملية من الإدارة.",
-    ].join(" ");
+const ensureWallet = async (userId) => {
+  let wallet = await Wallet.findOne({ user: userId });
+  if (!wallet) {
+    wallet = await Wallet.create({ user: userId });
+  }
+  return wallet;
+};
+
+const buildPaymentInstructions = ({ reference }) =>
+  [
+    `تم إنشاء طلب دفع بالبطاقة برقم ${reference}.`,
+    "ستظهر الآن شاشة Stripe لإتمام العملية.",
+  ].join(" ");
+
+const markTopUpFailed = async (transaction, reason) => {
+  if (!transaction || transaction.status === "completed") {
+    return transaction;
   }
 
-  return [
-    `تم إنشاء طلب دفع بالبطاقة برقم ${reference}.`,
-    "سيتم تأكيد العملية بعد اكتمال ربط بوابة Visa أو مراجعة الإدارة للطلب.",
-  ].join(" ");
+  if (transaction.status !== "failed") {
+    transaction.status = "failed";
+    transaction.paymentMeta = {
+      ...(transaction.paymentMeta || {}),
+      failureReason: reason || "payment_failed",
+      failedAt: new Date(),
+    };
+    await transaction.save();
+  }
+
+  return transaction;
+};
+
+const completeTopUpTransaction = async ({ transaction, paymentIntent, source }) => {
+  if (!transaction) {
+    return { wallet: null, transaction: null };
+  }
+
+  const wallet = await ensureWallet(transaction.user);
+
+  if (transaction.status === "completed") {
+    return { wallet, transaction };
+  }
+
+  wallet.balance += Number(transaction.amount || 0);
+  await wallet.save();
+
+  transaction.status = "completed";
+  transaction.platformTransactionId = paymentIntent?.id || transaction.platformTransactionId;
+  transaction.paymentMeta = {
+    ...(transaction.paymentMeta || {}),
+    stripePaymentIntentId:
+      paymentIntent?.id || transaction.paymentMeta?.stripePaymentIntentId || null,
+    stripeStatus: paymentIntent?.status || "succeeded",
+    confirmedAt: new Date(),
+    completedBy: source || "unknown",
+  };
+  await transaction.save();
+
+  return { wallet, transaction };
+};
+
+const findTopUpTransactionByIntent = async (paymentIntent) => {
+  const reference = paymentIntent?.metadata?.reference;
+  const userId = paymentIntent?.metadata?.userId;
+  const intentId = paymentIntent?.id;
+
+  const or = [];
+  if (intentId) {
+    or.push({ "paymentMeta.stripePaymentIntentId": intentId });
+    or.push({ platformTransactionId: intentId });
+  }
+  if (reference) {
+    or.push({ transactionId: reference });
+  }
+
+  if (!or.length) {
+    return null;
+  }
+
+  const query = {
+    type: "purchase",
+    $or: or,
+  };
+
+  if (userId) {
+    query.user = userId;
+  }
+
+  return Transaction.findOne(query).sort({ createdAt: -1 });
 };
 
 // @desc    Get user wallet balance
@@ -33,19 +111,14 @@ const buildPaymentInstructions = ({ paymentMethod, reference, phoneNumber }) => 
 // @access  Private
 const getBalance = async (req, res) => {
   try {
-    let wallet = await Wallet.findOne({ user: req.user._id });
-
-    if (!wallet) {
-      wallet = await Wallet.create({ user: req.user._id });
-    }
-
+    const wallet = await ensureWallet(req.user._id);
     res.json(wallet);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Process a gift transaction (Coins -> Diamonds)
+// @desc    Process a gift transaction (coins -> coins earnings)
 // @route   POST /api/wallet/gift
 // @access  Private
 const sendGift = async (req, res) => {
@@ -59,7 +132,6 @@ const sendGift = async (req, res) => {
   session.startTransaction();
 
   try {
-    // 1. Check Sender Balance
     const senderWallet = await Wallet.findOne({ user: req.user._id }).session(
       session,
     );
@@ -68,11 +140,9 @@ const sendGift = async (req, res) => {
       return res.status(400).json({ message: "Insufficient coins" });
     }
 
-    // 2. Deduct from Sender
     senderWallet.balance -= amount;
     await senderWallet.save({ session });
 
-    // 3. Add to Receiver (Earnings)
     let receiverWallet = await Wallet.findOne({ user: receiverId }).session(
       session,
     );
@@ -80,10 +150,9 @@ const sendGift = async (req, res) => {
       receiverWallet = await Wallet.create([{ user: receiverId }], { session });
       receiverWallet = receiverWallet[0];
     }
-    receiverWallet.earnings += amount; // Usually 1 Coin = 0.5 Diamonds (platform cut), but 1:1 for now
+    receiverWallet.earnings += amount;
     await receiverWallet.save({ session });
 
-    // 4. Create Transaction Records
     await Transaction.create(
       [
         {
@@ -120,86 +189,50 @@ const sendGift = async (req, res) => {
   }
 };
 
-// @desc    Simulate Top Up (In production, call this from RevenueCat Webhook)
+// @desc    Manual top-up endpoint is disabled to avoid fake balances
 // @route   POST /api/wallet/topup
 // @access  Private
 const topUpWallet = async (req, res) => {
-  const { amount, transactionId, paymentMethod = "manual", paymentMeta } =
-    req.body;
-
-  try {
-    let wallet = await Wallet.findOne({ user: req.user._id });
-    if (!wallet) wallet = await Wallet.create({ user: req.user._id });
-
-    const normalizedAmount = Number(amount);
-    wallet.balance += normalizedAmount;
-    await wallet.save();
-
-    const gateway =
-      paymentMethod === "visa"
-        ? "visa"
-        : paymentMethod === "vodafone_cash"
-          ? "vodafone_cash"
-          : "manual";
-    const reference = transactionId || buildTransactionReference();
-
-    await Transaction.create({
-      user: req.user._id,
-      type: "purchase",
-      amount: normalizedAmount,
-      platformTransactionId: reference,
-      transactionId: reference,
-      gateway,
-      paymentMethod,
-      paymentMeta: paymentMeta || null,
-      description: "Coin Top Up",
-    });
-
-    res.json(wallet);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  return res.status(410).json({
+    message: "Manual top-up is disabled. Use Stripe payment flow instead.",
+  });
 };
 
-// @desc    Create a top-up request for Visa or Vodafone Cash
+// @desc    Create a Stripe top-up request
 // @route   POST /api/wallet/topup/request
 // @access  Private
 const createTopUpRequest = async (req, res) => {
   try {
-    const { amount, paymentMethod, phoneNumber } = req.body;
+    const { amount, paymentMethod } = req.body;
     const normalizedAmount = Number(amount);
-
-    if (!SUPPORTED_PAYMENT_METHODS.has(paymentMethod)) {
-      return res.status(400).json({ message: "طريقة الدفع غير مدعومة" });
-    }
 
     if (!normalizedAmount || normalizedAmount <= 0) {
       return res.status(400).json({ message: "عدد العملات غير صحيح" });
     }
 
-    if (paymentMethod === "vodafone_cash" && !String(phoneNumber || "").trim()) {
-      return res
-        .status(400)
-        .json({ message: "رقم فودافون كاش مطلوب لإتمام الطلب" });
+    if (paymentMethod && !SUPPORTED_PAYMENT_METHODS.has(paymentMethod)) {
+      return res.status(400).json({ message: "طريقة الدفع غير مدعومة" });
     }
 
     const reference = buildTransactionReference();
     const price = getTopUpPrice(normalizedAmount);
-    let stripeClientSecret = null;
+    const amountCents = Math.round(price * 100);
 
-    if (paymentMethod === "visa") {
-      const amountCents = Math.round(price * 100);
-      const intent = await createCoinPurchaseIntent({
-        amountCents,
-        metadata: {
-          userId: req.user._id.toString(),
-          coinAmount: String(normalizedAmount),
-          reference,
-          currency: "EGP",
-        },
-      }).catch(() => null);
+    const intent = await createCoinPurchaseIntent({
+      amountCents,
+      currency: "egp",
+      metadata: {
+        userId: req.user._id.toString(),
+        coinAmount: String(normalizedAmount),
+        reference,
+        currency: "EGP",
+      },
+    }).catch(() => null);
 
-      stripeClientSecret = intent?.client_secret || null;
+    if (!intent?.client_secret || !intent?.id) {
+      return res.status(503).json({
+        message: "Stripe غير مهيأ حالياً أو فشل إنشاء عملية الدفع",
+      });
     }
 
     const transaction = await Transaction.create({
@@ -208,18 +241,15 @@ const createTopUpRequest = async (req, res) => {
       amount: normalizedAmount,
       transactionId: reference,
       platformTransactionId: reference,
-      gateway: paymentMethod,
-      paymentMethod,
+      gateway: "visa",
+      paymentMethod: "visa",
       currency: "EGP",
       status: "pending",
-      description:
-        paymentMethod === "visa"
-          ? `طلب شحن ${normalizedAmount} عملة عبر Visa`
-          : `طلب شحن ${normalizedAmount} عملة عبر Vodafone Cash`,
+      description: `طلب شحن ${normalizedAmount} عملة عبر Stripe`,
       paymentMeta: {
         requestedPrice: price,
-        phoneNumber: phoneNumber?.trim() || null,
-        stripeClientSecret,
+        stripeClientSecret: intent.client_secret,
+        stripePaymentIntentId: intent.id,
       },
     });
 
@@ -227,16 +257,211 @@ const createTopUpRequest = async (req, res) => {
       success: true,
       status: transaction.status,
       reference,
-      gateway: paymentMethod,
+      gateway: "visa",
       coinAmount: normalizedAmount,
       price,
-      clientSecret: stripeClientSecret,
-      instructions: buildPaymentInstructions({
-        paymentMethod,
-        reference,
-        phoneNumber,
-      }),
+      clientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+      instructions: buildPaymentInstructions({ reference }),
       transaction,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Confirm completed Stripe top-up and credit wallet
+// @route   POST /api/wallet/topup/confirm
+// @access  Private
+const confirmTopUpRequest = async (req, res) => {
+  try {
+    const { reference, paymentIntentId } = req.body;
+
+    if (!reference) {
+      return res.status(400).json({ message: "رقم العملية مطلوب" });
+    }
+
+    const transaction = await Transaction.findOne({
+      user: req.user._id,
+      transactionId: reference,
+      type: "purchase",
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: "لم يتم العثور على طلب الدفع" });
+    }
+
+    if (transaction.status === "completed") {
+      const wallet = await ensureWallet(req.user._id);
+      return res.json({ success: true, wallet, transaction });
+    }
+
+    const intentId =
+      paymentIntentId || transaction.paymentMeta?.stripePaymentIntentId || null;
+    const paymentIntent = await retrievePaymentIntent(intentId);
+
+    if (!paymentIntent) {
+      return res.status(400).json({
+        message: "تعذر التحقق من عملية الدفع لدى Stripe",
+      });
+    }
+
+    if (paymentIntent.status !== "succeeded") {
+      return res.status(400).json({
+        message: "عملية الدفع لم تكتمل بعد",
+        status: paymentIntent.status,
+      });
+    }
+
+    if (
+      paymentIntent.metadata?.userId &&
+      paymentIntent.metadata.userId !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "عملية الدفع لا تخص هذا المستخدم" });
+    }
+
+    if (
+      paymentIntent.metadata?.reference &&
+      paymentIntent.metadata.reference !== reference
+    ) {
+      return res.status(400).json({ message: "مرجع عملية الدفع غير مطابق" });
+    }
+
+    const result = await completeTopUpTransaction({
+      transaction,
+      paymentIntent,
+      source: "confirm_api",
+    });
+
+    res.json({ success: true, wallet: result.wallet, transaction: result.transaction });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Mark canceled or failed Stripe top-up request
+// @route   POST /api/wallet/topup/fail
+// @access  Private
+const failTopUpRequest = async (req, res) => {
+  try {
+    const { reference, reason } = req.body;
+
+    if (!reference) {
+      return res.status(400).json({ message: "رقم العملية مطلوب" });
+    }
+
+    const transaction = await Transaction.findOne({
+      user: req.user._id,
+      transactionId: reference,
+      type: "purchase",
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: "لم يتم العثور على طلب الدفع" });
+    }
+
+    await markTopUpFailed(transaction, reason || "canceled");
+
+    res.json({ success: true, transaction });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Stripe webhook receiver
+// @route   POST /api/wallet/stripe/webhook
+// @access  Public (signed by Stripe)
+const handleStripeWebhook = async (req, res) => {
+  const signature = req.headers["stripe-signature"];
+
+  if (!signature) {
+    return res.status(400).send("Missing stripe-signature header");
+  }
+
+  if (!req.rawBody) {
+    return res.status(400).send("Missing raw body for webhook verification");
+  }
+
+  let event;
+  try {
+    event = constructWebhookEvent({ rawBody: req.rawBody, signature });
+  } catch (error) {
+    return res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+
+  try {
+    switch (event.type) {
+      case "payment_intent.succeeded": {
+        const paymentIntent = event.data.object;
+        const transaction = await findTopUpTransactionByIntent(paymentIntent);
+
+        if (!transaction) {
+          console.warn("Stripe webhook: transaction not found for", paymentIntent?.id);
+          break;
+        }
+
+        await completeTopUpTransaction({
+          transaction,
+          paymentIntent,
+          source: "stripe_webhook",
+        });
+        break;
+      }
+
+      case "payment_intent.payment_failed":
+      case "payment_intent.canceled": {
+        const paymentIntent = event.data.object;
+        const transaction = await findTopUpTransactionByIntent(paymentIntent);
+
+        if (transaction) {
+          await markTopUpFailed(transaction, event.type);
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    return res.json({ received: true });
+  } catch (error) {
+    console.error("Stripe webhook processing error:", error);
+    return res.status(500).json({ received: false, message: error.message });
+  }
+};
+
+// @desc    Get top-up transaction status
+// @route   GET /api/wallet/topup/status/:reference
+// @access  Private
+const getTopUpStatus = async (req, res) => {
+  try {
+    const { reference } = req.params;
+
+    if (!reference) {
+      return res.status(400).json({ message: "رقم العملية مطلوب" });
+    }
+
+    const transaction = await Transaction.findOne({
+      user: req.user._id,
+      transactionId: reference,
+      type: "purchase",
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: "لم يتم العثور على طلب الدفع" });
+    }
+
+    const wallet =
+      transaction.status === "completed" ? await ensureWallet(req.user._id) : null;
+
+    res.json({
+      success: true,
+      reference,
+      status: transaction.status,
+      gateway: transaction.gateway,
+      balance: wallet?.balance ?? null,
+      failureReason: transaction.paymentMeta?.failureReason || null,
+      stripeStatus: transaction.paymentMeta?.stripeStatus || null,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -270,7 +495,6 @@ const requestWithdrawal = async (req, res) => {
       return res.status(400).json({ message: "رصيدك غير كافٍ للسحب" });
     }
 
-    // Check no pending request
     const existing = await WithdrawalRequest.findOne({
       user: req.user._id,
       status: "pending",
@@ -298,15 +522,13 @@ const requestWithdrawal = async (req, res) => {
   }
 };
 
-module.exports = { getBalance, sendGift, topUpWallet, requestWithdrawal };
-
 // @desc    Create Stripe PaymentIntent for coins
 // @route   POST /api/wallet/stripe/intent
 // @access  Private
-module.exports.createStripeIntent = async (req, res) => {
+const createStripeIntent = async (req, res) => {
   try {
-    const { coinAmount } = req.body; // number of coins user wants to buy
-    const centsPerCoin = Number(process.env.CENTS_PER_COIN || 100); // $1 per coin default
+    const { coinAmount } = req.body;
+    const centsPerCoin = Number(process.env.CENTS_PER_COIN || 100);
     const amountCents = Number(coinAmount) * centsPerCoin;
     if (!amountCents || amountCents <= 0) {
       return res.status(400).json({ message: "Invalid coin amount" });
@@ -319,6 +541,7 @@ module.exports.createStripeIntent = async (req, res) => {
         coinAmount: String(coinAmount),
       },
     });
+
     if (!intent) {
       return res
         .status(500)
@@ -331,4 +554,15 @@ module.exports.createStripeIntent = async (req, res) => {
   }
 };
 
-module.exports.createTopUpRequest = createTopUpRequest;
+module.exports = {
+  getBalance,
+  sendGift,
+  topUpWallet,
+  createStripeIntent,
+  createTopUpRequest,
+  confirmTopUpRequest,
+  failTopUpRequest,
+  handleStripeWebhook,
+  getTopUpStatus,
+  requestWithdrawal,
+};

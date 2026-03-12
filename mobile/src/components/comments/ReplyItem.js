@@ -79,7 +79,7 @@ const ReplyItem = ({ reply, onLike }) => {
             )}
             {reply.user.isVip && (
               <View style={styles.vipBadge}>
-                <MaterialIcons name="diamond" size={10} color="#FFD700" />
+                <MaterialIcons name="stars" size={10} color="#FFD700" />
               </View>
             )}
           </View>

@@ -88,7 +88,7 @@ const CommentItem = ({
             )}
             {comment.user.isVip && (
               <View style={styles.vipBadge}>
-                <MaterialIcons name="diamond" size={12} color="#FFD700" />
+                <MaterialIcons name="stars" size={12} color="#FFD700" />
               </View>
             )}
           </View>

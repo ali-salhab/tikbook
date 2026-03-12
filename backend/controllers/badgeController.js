@@ -118,7 +118,7 @@ const purchaseBadge = async (req, res) => {
     if (wallet.balance < badge.price) {
       return res.status(400).json({
         success: false,
-        message: `رصيدك غير كافٍ. تحتاج ${badge.price} 💎 ولديك ${wallet.balance} 💎`,
+        message: `رصيدك غير كافٍ. تحتاج ${badge.price} عملة ولديك ${wallet.balance} عملة`,
       });
     }
 

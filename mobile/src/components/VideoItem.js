@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import SoundService from "../services/soundService";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -53,18 +52,6 @@ const PROGRESS_WRAPPER_VERTICAL = 10;
 const PROGRESS_THUMB_OFFSET =
   PROGRESS_WRAPPER_VERTICAL -
   Math.round((PROGRESS_THUMB_SIZE - PROGRESS_TRACK_HEIGHT) / 2);
-const CONTROL_DOCK_GAP = Math.round(
-  Math.min(Math.max(SCREEN_HEIGHT * 0.018, 88), 122),
-);
-const CONTROL_BUTTON_SIZE = Math.round(
-  Math.min(Math.max(SCREEN_WIDTH * 0.12, 42), 52),
-);
-const CONTROL_ICON_SIZE = Math.round(
-  Math.min(Math.max(CONTROL_BUTTON_SIZE * 0.48, 18), 24),
-);
-const CONTROL_LABEL_SIZE = Math.round(
-  Math.min(Math.max(SCREEN_WIDTH * 0.028, 10), 12),
-);
 
 const VideoItem = memo(
   ({
@@ -91,7 +78,6 @@ const VideoItem = memo(
     const scrubThumbScale = useRef(new Animated.Value(1)).current;
     const playIconOpacity = useRef(new Animated.Value(0)).current;
     const playIconScale = useRef(new Animated.Value(0.6)).current;
-    const [hasZoom, setHasZoom] = useState(false);
 
     // Per-item animation refs (previously shared in HomeScreen — caused all items to share the same animation)
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -111,15 +97,8 @@ const VideoItem = memo(
       ? Math.max(Math.min(Math.round(itemHeight * 0.008), 6), 2)
       : tabBarHeight + 8;
     const actionGap = Math.max(Math.min(Math.round(itemHeight * 0.014), 14), 8);
-    const controlsBottomOffset = overlayBottomOffset + CONTROL_DOCK_GAP;
     const zoomScale = useSharedValue(1);
     const zoomBase = useSharedValue(1);
-
-    const resetZoom = () => {
-      zoomBase.value = 1;
-      zoomScale.value = withTiming(1, { duration: 180 });
-      setHasZoom(false);
-    };
 
     const mediaZoomStyle = useAnimatedStyle(() => ({
       transform: [{ scale: zoomScale.value }],
@@ -134,7 +113,6 @@ const VideoItem = memo(
         const finalScale = Math.min(Math.max(zoomScale.value, 1), 3);
         zoomBase.value = finalScale;
         zoomScale.value = withTiming(finalScale, { duration: 120 });
-        runOnJS(setHasZoom)(finalScale > 1.02);
       });
 
     useEffect(() => {
@@ -180,7 +158,6 @@ const VideoItem = memo(
       if (!isActive) {
         zoomBase.value = 1;
         zoomScale.value = 1;
-        setHasZoom(false);
       }
     }, [isActive, zoomBase, zoomScale]);
 
@@ -227,21 +204,6 @@ const VideoItem = memo(
           }),
         ]),
       ]).start();
-    };
-
-    const seekBySeconds = (deltaSeconds) => {
-      if (!videoRef.current || duration <= 0 || isImage(item.videoUrl)) return;
-
-      const nextPosition = Math.max(
-        0,
-        Math.min(duration, Math.round(progress * duration + deltaSeconds * 1000)),
-      );
-      setProgress(nextPosition / duration);
-
-      InteractionManager.runAfterInteractions(() => {
-        if (!videoRef.current) return;
-        videoRef.current.setPositionAsync(nextPosition).catch(() => {});
-      });
     };
 
     // PanResponder for draggable progress thumb
@@ -550,54 +512,6 @@ const VideoItem = memo(
               ]}
               pointerEvents="none"
             />
-          </View>
-        )}
-
-        {!isImage(item.videoUrl) && (
-          <View style={[styles.videoControlsDock, { bottom: controlsBottomOffset }]}>
-            <TouchableOpacity
-              style={styles.videoControlButton}
-              onPress={() => seekBySeconds(-10)}
-            >
-              <Ionicons name="play-back" size={CONTROL_ICON_SIZE} color="#FFF" />
-              <Text style={styles.videoControlLabel}>10ث</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.videoControlButton, styles.videoControlPrimary]}
-              onPress={togglePlayback}
-            >
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={CONTROL_ICON_SIZE + 2}
-                color="#FFF"
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.videoControlButton}
-              onPress={() => seekBySeconds(10)}
-            >
-              <Ionicons
-                name="play-forward"
-                size={CONTROL_ICON_SIZE}
-                color="#FFF"
-              />
-              <Text style={styles.videoControlLabel}>10ث</Text>
-            </TouchableOpacity>
-
-            {hasZoom && (
-              <TouchableOpacity
-                style={styles.videoControlButton}
-                onPress={resetZoom}
-              >
-                <Ionicons
-                  name="contract-outline"
-                  size={CONTROL_ICON_SIZE}
-                  color="#FFF"
-                />
-              </TouchableOpacity>
-            )}
           </View>
         )}
 
@@ -956,34 +870,6 @@ const styles = StyleSheet.create({
   likedText: {
     color: "#FE2C55",
     fontWeight: "bold",
-  },
-  videoControlsDock: {
-    position: "absolute",
-    left: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    zIndex: 210,
-  },
-  videoControlButton: {
-    width: CONTROL_BUTTON_SIZE,
-    height: CONTROL_BUTTON_SIZE,
-    borderRadius: CONTROL_BUTTON_SIZE / 2,
-    backgroundColor: "rgba(0,0,0,0.48)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  videoControlPrimary: {
-    backgroundColor: "rgba(254,44,85,0.88)",
-    borderColor: "rgba(255,255,255,0.28)",
-  },
-  videoControlLabel: {
-    color: "#FFF",
-    fontSize: CONTROL_LABEL_SIZE,
-    fontWeight: "700",
-    marginTop: -1,
   },
   musicDiscContainer: {
     alignItems: "center",

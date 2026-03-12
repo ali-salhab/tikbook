@@ -12,7 +12,7 @@ const DEFAULT_LEVELS = [
   { level: 5, name: "VIP5 - Elite",       nameAr: "السقون الذهبي",    price: 1299, color: "#E67E22", sortOrder: 5 },
   { level: 6, name: "VIP6 - Royal",       nameAr: "السبقون العلتي",   price: 1299, color: "#8E44AD", sortOrder: 6 },
   { level: 7, name: "VIP7 - Flame",       nameAr: "السقون المتسب",    price: 1799, color: "#C0392B", sortOrder: 7 },
-  { level: 8, name: "VIP8 - Diamond",     nameAr: "السقون اللتي",     price: 2499, color: "#E74C3C", sortOrder: 8 },
+  { level: 8, name: "VIP8 - Ruby",        nameAr: "السقون اللتي",     price: 2499, color: "#E74C3C", sortOrder: 8 },
   { level: 9, name: "VIP9 - Crystal",     nameAr: "السقون الكريستالي",price: 2799, color: "#1ABC9C", sortOrder: 9 },
   { level: 10, name: "VIP10 - Legend",    nameAr: "السقون اللفتي",    price: 2999, color: "#3498DB", sortOrder: 10 },
   { level: 11, name: "VIP11 - Warrior",   nameAr: "السقون العلتي",    price: 3999, color: "#34495E", sortOrder: 11 },

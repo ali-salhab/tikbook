@@ -94,6 +94,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [activeGifts, setActiveGifts] = useState([]);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
+  const [vipLevelColors, setVipLevelColors] = useState({});
 
   // ── Management ───────────────────────────────────────────────────────────────
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -128,6 +129,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   useEffect(() => {
     setCurrentUser(userInfo);
     loadUserBalance();
+    loadVipLevelColors();
     setupRoom();
     startGlowAnimation();
     SoundService.preload().catch(() => {});
@@ -171,6 +173,24 @@ const LiveRoomScreen = ({ route, navigation }) => {
       });
       if (res.data?.balance !== undefined) setUserBalance(res.data.balance);
     } catch (_) {}
+  };
+
+  const loadVipLevelColors = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/vip/levels`);
+      const levels = Array.isArray(res.data?.levels) ? res.data.levels : [];
+      const colors = levels.reduce((acc, level) => {
+        const levelNumber = Number(level?.level);
+        const color = typeof level?.color === "string" ? level.color.trim() : "";
+        if (levelNumber > 0 && color) {
+          acc[levelNumber] = color;
+        }
+        return acc;
+      }, {});
+      setVipLevelColors(colors);
+    } catch (_) {
+      setVipLevelColors({});
+    }
   };
 
   const startGlowAnimation = () => {
@@ -632,9 +652,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const senderUser = freshUser
       ? {
           ...userInfo,
+          vipLevel: freshUser.vipLevel ?? userInfo?.vipLevel ?? 0,
           profileImage: freshUser.profileImage || userInfo?.profileImage,
         }
-      : userInfo;
+      : {
+          ...userInfo,
+          vipLevel: userInfo?.vipLevel ?? 0,
+        };
     const clientMessageId = `msg-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 8)}`;
@@ -1578,7 +1602,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
               <Text style={styles.summaryLabel}>هدايا استُلمت</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Ionicons name="diamond" size={26} color="#FFD700" />
+              <Ionicons name="logo-bitcoin" size={26} color="#FFD700" />
               <Text style={styles.summaryValue}>
                 {summaryStats?.balance ?? 0}
               </Text>
@@ -1681,6 +1705,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         comments={messages}
         bottomOffset={liveCommentsBottomOffset}
         maxHeight={liveCommentsMaxHeight}
+        vipLevelColors={vipLevelColors}
       />
 
       {/* Animated gifts */}

@@ -497,30 +497,8 @@ module.exports = {
 // @route   POST /api/admin/wallet/grant
 // @access  Private/Admin
 async function grantCoinsToUser(req, res) {
-  try {
-    const { userId, amount, reason } = req.body;
-    const value = Number(amount);
-    if (!userId || !value || value <= 0) {
-      return res.status(400).json({ message: "Invalid userId or amount" });
-    }
-
-    let wallet = await Wallet.findOne({ user: userId });
-    if (!wallet) {
-      wallet = await Wallet.create({ user: userId });
-    }
-
-    wallet.balance += value;
-    await wallet.save();
-
-    await Transaction.create({
-      user: userId,
-      type: "admin_grant",
-      amount: value,
-      description: reason || "Admin granted coins",
-    });
-
-    res.json({ success: true, balance: wallet.balance });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  return res.status(410).json({
+    message:
+      "Wallet grant endpoint is disabled. Users must purchase coins via Stripe gateway.",
+  });
 }

@@ -27,7 +27,7 @@ const badgeSchema = mongoose.Schema(
     },
     price: {
       type: Number,
-      default: 0, // Price in diamonds/coins
+      default: 0, // Price in coins
     },
     isActive: {
       type: Boolean,

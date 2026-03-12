@@ -65,7 +65,7 @@ const BadgeShopScreen = ({ navigation }) => {
 
     Alert.alert(
       "تأكيد الشراء",
-      `شراء "${badge.name}" مقابل ${badge.price} 💎؟`,
+      `شراء "${badge.name}" مقابل ${badge.price} عملة؟`,
       [
         { text: "إلغاء", style: "cancel" },
         {
@@ -164,7 +164,7 @@ const BadgeShopScreen = ({ navigation }) => {
               <Text style={styles.exclusiveText}>EXCLUSIVE</Text>
             ) : (
               <>
-                <Ionicons name="diamond" size={16} color="#FFD700" />
+                <Ionicons name="logo-bitcoin" size={16} color="#FFD700" />
                 <Text style={styles.priceText}>{item.price}</Text>
               </>
             )}

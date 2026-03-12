@@ -69,6 +69,12 @@
           "color": "#FE2C55"
         }
       ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.tikbook"
+        }
+      ],
       "expo-font",
       "expo-web-browser"
     ],

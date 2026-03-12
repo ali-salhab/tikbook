@@ -7,6 +7,8 @@
     "dev": "nodemon server.js",
     "seed": "node seedData.js",
     "create-admin": "node createAdmin.js",
+    "coins:reset:dry": "node resetFakeCoins.js",
+    "coins:reset:apply": "node resetFakeCoins.js --apply --reset-transactions --purge-admin-grants",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test-push": "node testPushNotification.js",
     "send-notification": "node quickSend.js"

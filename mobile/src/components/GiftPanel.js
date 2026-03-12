@@ -176,7 +176,7 @@ const GiftPanel = ({
 
         {/* Price */}
         <View style={styles.priceRow}>
-          <Ionicons name="diamond" size={10} color="#FFD700" />
+          <Ionicons name="logo-bitcoin" size={10} color="#FFD700" />
           <Text style={styles.giftPrice}>{item.price}</Text>
         </View>
 
@@ -216,7 +216,7 @@ const GiftPanel = ({
               onPress={onRecharge}
               style={styles.balanceContainer}
             >
-              <Ionicons name="diamond" size={16} color="#FFD700" />
+              <Ionicons name="logo-bitcoin" size={16} color="#FFD700" />
               <Text style={styles.balanceText}>{userBalance}</Text>
               <Ionicons name="add-circle" size={16} color="#4CAF50" />
             </TouchableOpacity>
@@ -302,7 +302,7 @@ const GiftPanel = ({
                   <Text style={styles.sendButtonText}>إرسال</Text>
                 )}
                 <View style={styles.totalCostBadge}>
-                  <Ionicons name="diamond" size={14} color="#fff" />
+                  <Ionicons name="logo-bitcoin" size={14} color="#fff" />
                   <Text style={styles.totalCostText}>
                     {selectedGift.price * quantity}
                   </Text>

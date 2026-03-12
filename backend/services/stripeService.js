@@ -13,14 +13,40 @@ try {
   console.error("Failed to initialize Stripe:", err);
 }
 
-const createCoinPurchaseIntent = async ({ amountCents, metadata = {} }) => {
+const createCoinPurchaseIntent = async ({
+  amountCents,
+  metadata = {},
+  currency = "egp",
+}) => {
   if (!stripe) return null;
   return stripe.paymentIntents.create({
     amount: amountCents,
-    currency: "usd",
+    currency,
     metadata,
     automatic_payment_methods: { enabled: true },
   });
 };
 
-module.exports = { createCoinPurchaseIntent };
+const retrievePaymentIntent = async (paymentIntentId) => {
+  if (!stripe || !paymentIntentId) return null;
+  return stripe.paymentIntents.retrieve(paymentIntentId);
+};
+
+const constructWebhookEvent = ({ rawBody, signature }) => {
+  if (!stripe) {
+    throw new Error("Stripe is not initialized");
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error("STRIPE_WEBHOOK_SECRET is not set");
+  }
+
+  return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+};
+
+module.exports = {
+  createCoinPurchaseIntent,
+  retrievePaymentIntent,
+  constructWebhookEvent,
+};
