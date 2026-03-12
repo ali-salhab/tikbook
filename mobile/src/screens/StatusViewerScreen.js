@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
 } from "react";
 import {
   View,
@@ -431,59 +432,112 @@ const StatusSlide = React.memo(
   },
 );
 
-// ─── Main StatusViewerScreen ──────────────────────────────────────────────
-export default function StatusViewerScreen({ route, navigation }) {
-  const { statuses = [], initialIndex = 0 } = route.params || {};
-  const { userInfo, userToken } = useContext(AuthContext);
-  const flatRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+// ─── UserStoriesPage: one full page per user (handles per-user story progression)
+const UserStoriesPage = React.memo(
+  ({ group, isActive, userInfo, userToken, onClose, onNextGroup, onPrevGroup }) => {
+    const { items } = group;
+    const [storyIdx, setStoryIdx] = useState(0);
 
-  const onClose = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
+    // Reset to first story when this page comes into view
+    useEffect(() => {
+      if (isActive) setStoryIdx(0);
+    }, [isActive]);
 
-  const goNext = useCallback(() => {
-    if (currentIndex < statuses.length - 1) {
-      const next = currentIndex + 1;
-      flatRef.current?.scrollToIndex({ index: next, animated: true });
-      setCurrentIndex(next);
-    } else {
-      navigation.goBack();
-    }
-  }, [currentIndex, statuses.length]);
+    const currentItem = items[storyIdx] || items[0];
+    if (!currentItem) return null;
 
-  const goPrev = useCallback(() => {
-    if (currentIndex > 0) {
-      const prev = currentIndex - 1;
-      flatRef.current?.scrollToIndex({ index: prev, animated: true });
-      setCurrentIndex(prev);
-    }
-  }, [currentIndex]);
+    const goNext = useCallback(() => {
+      if (storyIdx < items.length - 1) setStoryIdx((s) => s + 1);
+      else onNextGroup();
+    }, [storyIdx, items.length, onNextGroup]);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
-    }
-  }).current;
+    const goPrev = useCallback(() => {
+      if (storyIdx > 0) setStoryIdx((s) => s - 1);
+      else onPrevGroup();
+    }, [storyIdx, onPrevGroup]);
 
-  const renderItem = useCallback(
-    ({ item, index }) => (
+    return (
       <StatusSlide
-        item={item}
-        index={index}
-        currentIndex={currentIndex}
-        total={statuses.length}
+        item={currentItem}
+        index={storyIdx}
+        currentIndex={storyIdx}
+        total={items.length}
         userInfo={userInfo}
         userToken={userToken}
         onClose={onClose}
         onPrev={goPrev}
         onNext={goNext}
       />
+    );
+  },
+);
+UserStoriesPage.displayName = "UserStoriesPage";
+
+// ─── Main StatusViewerScreen ──────────────────────────────────────────────
+export default function StatusViewerScreen({ route, navigation }) {
+  const rawGroups = route.params?.groups;
+  const rawStatuses = route.params?.statuses;
+  const initialGroupIndex =
+    route.params?.initialGroupIndex ?? route.params?.initialIndex ?? 0;
+  const { userInfo, userToken } = useContext(AuthContext);
+  const flatRef = useRef(null);
+  const [currentGroupIndex, setCurrentGroupIndex] = useState(initialGroupIndex);
+
+  // Support both new 'groups' param and old flat 'statuses' param
+  const groups = useMemo(() => {
+    if (rawGroups && rawGroups.length > 0) return rawGroups;
+    if (rawStatuses && rawStatuses.length > 0) {
+      const map = {};
+      rawStatuses.forEach((s) => {
+        const uid = s.user?._id || s._id;
+        if (!map[uid]) map[uid] = { user: s.user, items: [] };
+        map[uid].items.push(s);
+      });
+      return Object.values(map);
+    }
+    return [];
+  }, [rawGroups, rawStatuses]);
+
+  const onClose = useCallback(() => navigation.goBack(), [navigation]);
+
+  const goNextGroup = useCallback(() => {
+    if (currentGroupIndex < groups.length - 1) {
+      const next = currentGroupIndex + 1;
+      flatRef.current?.scrollToIndex({ index: next, animated: true });
+      setCurrentGroupIndex(next);
+    } else {
+      navigation.goBack();
+    }
+  }, [currentGroupIndex, groups.length, navigation]);
+
+  const goPrevGroup = useCallback(() => {
+    if (currentGroupIndex > 0) {
+      const prev = currentGroupIndex - 1;
+      flatRef.current?.scrollToIndex({ index: prev, animated: true });
+      setCurrentGroupIndex(prev);
+    }
+  }, [currentGroupIndex]);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) setCurrentGroupIndex(viewableItems[0].index);
+  }).current;
+
+  const renderItem = useCallback(
+    ({ item, index }) => (
+      <UserStoriesPage
+        group={item}
+        isActive={index === currentGroupIndex}
+        userInfo={userInfo}
+        userToken={userToken}
+        onClose={onClose}
+        onNextGroup={goNextGroup}
+        onPrevGroup={goPrevGroup}
+      />
     ),
-    [currentIndex, userInfo, userToken, onClose, goPrev, goNext],
+    [currentGroupIndex, userInfo, userToken, onClose, goNextGroup, goPrevGroup],
   );
 
-  if (!statuses.length) {
+  if (!groups.length) {
     return (
       <View
         style={{
@@ -503,13 +557,13 @@ export default function StatusViewerScreen({ route, navigation }) {
       <StatusBar hidden />
       <FlatList
         ref={flatRef}
-        data={statuses}
-        keyExtractor={(item) => item._id}
+        data={groups}
+        keyExtractor={(item) => item.user?._id || item.items?.[0]?._id || Math.random().toString()}
         renderItem={renderItem}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        initialScrollIndex={initialIndex}
+        initialScrollIndex={initialGroupIndex}
         getItemLayout={(_, index) => ({
           length: width,
           offset: width * index,

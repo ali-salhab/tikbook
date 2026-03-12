@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
-import { FiEdit, FiTrash2, FiPlus, FiX, FiCheck, FiUser } from "react-icons/fi";
+import { FiEdit, FiTrash2, FiPlus, FiX, FiCheck, FiUser, FiUpload, FiImage } from "react-icons/fi";
 
 const VIP_COLORS = {
   1: "#CD7F32", 2: "#C0C0C0", 3: "#FFD700", 4: "#00BFFF",
@@ -13,7 +13,7 @@ const VIP_COLORS = {
 
 const defaultForm = {
   level: 1, name: "", nameAr: "", price: 99, color: "#FFD700",
-  imageUrl: "", isActive: true, sortOrder: 0,
+  imageUrl: "", imageFile: null, isActive: true, sortOrder: 0,
 };
 
 const VipManagement = ({ onLogout }) => {
@@ -31,6 +31,23 @@ const VipManagement = ({ onLogout }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const CLOUD_NAME = "dah8ui33p";
+  const UPLOAD_PRESET = "badges_preset";
+
+  const uploadToCloudinary = async (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    fd.append("folder", "tikbook/vip");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.secure_url;
+  };
 
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -54,6 +71,7 @@ const VipManagement = ({ onLogout }) => {
   const openCreate = () => {
     setEditingLevel(null);
     setForm(defaultForm);
+    setImagePreview(null);
     setError("");
     setShowModal(true);
   };
@@ -63,9 +81,10 @@ const VipManagement = ({ onLogout }) => {
     setForm({
       level: lvl.level, name: lvl.name || "", nameAr: lvl.nameAr || "",
       price: lvl.price, color: lvl.color || "#FFD700",
-      imageUrl: lvl.imageUrl || "", isActive: lvl.isActive,
+      imageUrl: lvl.imageUrl || "", imageFile: null, isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
     });
+    setImagePreview(lvl.imageUrl || null);
     setError("");
     setShowModal(true);
   };
@@ -75,15 +94,24 @@ const VipManagement = ({ onLogout }) => {
     setSaving(true);
     setError("");
     try {
+      let finalImageUrl = form.imageUrl;
+      if (form.imageFile) {
+        setUploading(true);
+        finalImageUrl = await uploadToCloudinary(form.imageFile);
+        setUploading(false);
+      }
+      const payload = { ...form, imageUrl: finalImageUrl };
+      delete payload.imageFile;
       if (editingLevel) {
-        await api.put(`/vip/admin/levels/${editingLevel.level}`, form, authHeader);
+        await api.put(`/vip/admin/levels/${editingLevel.level}`, payload, authHeader);
       } else {
-        await api.post("/vip/admin/levels", form, authHeader);
+        await api.post("/vip/admin/levels", payload, authHeader);
       }
       setShowModal(false);
       fetchLevels();
     } catch (e) {
-      setError(e.response?.data?.message || "حدث خطأ");
+      setUploading(false);
+      setError(e.response?.data?.message || e.message || "حدث خطأ");
     } finally {
       setSaving(false);
     }
@@ -221,10 +249,42 @@ const VipManagement = ({ onLogout }) => {
                 </div>
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.label}>رابط الصورة (اختياري)</label>
-                <input style={styles.input} value={form.imageUrl}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                  placeholder="https://..." />
+                <label style={styles.label}>صورة المستوى</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setForm({ ...form, imageFile: file, imageUrl: "" });
+                    setImagePreview(URL.createObjectURL(file));
+                  }}
+                />
+                <div
+                  style={styles.uploadZone}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {imagePreview ? (
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <img src={imagePreview} alt="preview" style={styles.imagePreview} />
+                      <button
+                        style={styles.removeImgBtn}
+                        onClick={(e) => { e.stopPropagation(); setImagePreview(null); setForm({ ...form, imageFile: null, imageUrl: "" }); }}
+                      >
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <FiImage size={32} style={{ marginBottom: 8 }} />
+                      <div style={{ fontSize: 13 }}>اضغط لاختيار صورة</div>
+                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>PNG, JPG, WebP</div>
+                    </div>
+                  )}
+                </div>
+                {uploading && <div style={{ color: "#6366f1", fontSize: 13, marginTop: 6 }}>جاري رفع الصورة...</div>}
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.label}>الترتيب</label>
@@ -240,8 +300,8 @@ const VipManagement = ({ onLogout }) => {
               </div>
               <div style={styles.modalFooter}>
                 <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>إلغاء</button>
-                <button style={styles.saveBtn} onClick={handleSave} disabled={saving}>
-                  {saving ? "جاري الحفظ..." : <><FiCheck size={14} /> حفظ</>}
+              <button style={styles.saveBtn} onClick={handleSave} disabled={saving || uploading}>
+                {uploading ? "جاري الرفع..." : saving ? "جاري الحفظ..." : <><FiCheck size={14} /> حفظ</>}
                 </button>
               </div>
             </div>
@@ -339,6 +399,9 @@ const styles = {
   saveBtn: { padding: "10px 20px", backgroundColor: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
   cancelBtn: { padding: "10px 20px", backgroundColor: "#f1f5f9", color: "#374151", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   errorBox: { backgroundColor: "#fee2e2", color: "#ef4444", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 14 },
+  uploadZone: { border: "2px dashed #cbd5e1", borderRadius: 10, padding: 20, textAlign: "center", cursor: "pointer", backgroundColor: "#f8fafc", minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
+  imagePreview: { width: 80, height: 80, objectFit: "cover", borderRadius: 10, border: "2px solid #e2e8f0" },
+  removeImgBtn: { position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: 11, backgroundColor: "#ef4444", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
   userList: { border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", marginBottom: 12 },
   userItem: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", transition: "background 0.15s" },
   selectedUser: { backgroundColor: "#f0fdf4", color: "#16a34a", padding: "8px 12px", borderRadius: 8, fontSize: 14, marginBottom: 12 },

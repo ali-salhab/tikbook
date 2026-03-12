@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import SoundService from "../services/soundService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const ICON_SIZE = Math.round(Math.min(SCREEN_WIDTH * 0.085, 32));
+const ICON_SIZE = Math.round(Math.min(SCREEN_WIDTH * 0.9, 42));
 
 const VideoItem = memo(
   ({
@@ -696,10 +696,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileImageWrapper: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1.5,
     borderColor: "#FFF",
     overflow: "hidden",
     backgroundColor: "#FE2C55",
@@ -760,20 +760,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   musicDiscOuter: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
+    width: 45,
+    height: 45,
+    borderRadius: 48,
+    borderWidth: 3,
     borderColor: "#555",
     backgroundColor: "#111",
     justifyContent: "center",
     alignItems: "center",
   },
   musicDiscInner: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 3,
     borderColor: "#888",
     overflow: "hidden",
     backgroundColor: "#222",
@@ -793,11 +793,11 @@ const styles = StyleSheet.create({
   },
   musicDiscCenter: {
     position: "absolute",
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#111",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#555",
   },
 });

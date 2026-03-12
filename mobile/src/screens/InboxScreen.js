@@ -260,10 +260,10 @@ const InboxScreen = ({ navigation }) => {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={[{ _id: "__create__", type: "create" }, ...statuses]}
+          data={[{ _id: "__create__", type: "create" }, ...groupedStatuses]}
           keyExtractor={(s) => s._id?.toString()}
           contentContainerStyle={styles.storiesRowContent}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             if (item.type === "create") {
               return (
                 <TouchableOpacity
@@ -292,19 +292,28 @@ const InboxScreen = ({ navigation }) => {
               );
             }
             const isOwn = item.user?._id === userInfo?._id;
-            const preview = item.image || item.user?.profileImage;
+            const count = item.items?.length || 1;
+            const preview = item.items?.[0]?.image || item.user?.profileImage;
             return (
               <TouchableOpacity
                 style={styles.storyWrap}
-                onPress={() => openStatus(item)}
+                onPress={() => openGroupStatus(index - 1)}
                 activeOpacity={0.8}
               >
                 <View
                   style={[
                     styles.storyCircleRing,
-                    isOwn ? styles.storyRingOwn : styles.storyRingOther,
+                    count <= 1 && (isOwn ? styles.storyRingOwn : styles.storyRingOther),
                   ]}
                 >
+                  {count > 1 && (
+                    <LinearGradient
+                      colors={isOwn ? ["#25D366", "#00BFFF"] : ["#FE2C55", "#FF9500"]}
+                      style={[StyleSheet.absoluteFill, { borderRadius: ms(34) }]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    />
+                  )}
                   <View style={styles.storyCircleInner}>
                     {preview ? (
                       <Image
@@ -316,7 +325,7 @@ const InboxScreen = ({ navigation }) => {
                         style={[
                           styles.storyCircleImg,
                           {
-                            backgroundColor: item.bgColor || "#FE2C55",
+                            backgroundColor: item.items?.[0]?.bgColor || "#FE2C55",
                             justifyContent: "center",
                             alignItems: "center",
                           },
@@ -332,11 +341,16 @@ const InboxScreen = ({ navigation }) => {
                           }}
                           numberOfLines={2}
                         >
-                          {item.text?.slice(0, 18) || ""}
+                          {item.items?.[0]?.text?.slice(0, 18) || ""}
                         </Text>
                       </View>
                     )}
                   </View>
+                  {count > 1 && (
+                    <View style={styles.storyCountBadge}>
+                      <Text style={styles.storyCountText}>{count}</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.storyName} numberOfLines={1}>
                   {isOwn ? "أنت" : item.user?.username || ""}
@@ -712,6 +726,24 @@ const getStyles = (theme) =>
       backgroundColor: theme.bg3,
     },
     storyCircleImg: { width: "100%", height: "100%", borderRadius: ms(30) },
+    storyCountBadge: {
+      position: "absolute",
+      bottom: ms(2),
+      right: ms(2),
+      width: ms(20),
+      height: ms(20),
+      borderRadius: ms(10),
+      backgroundColor: "#FE2C55",
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 1.5,
+      borderColor: theme.bg,
+    },
+    storyCountText: {
+      color: "#FFF",
+      fontSize: fs(10),
+      fontWeight: "700",
+    },
 
     // Notification rows
     notifRow: {
