@@ -98,7 +98,7 @@ const giftSchema = new mongoose.Schema(
   },
 );
 
-giftSchema.pre("validate", function syncGiftAliases(next) {
+giftSchema.pre("validate", async function syncGiftAliases() {
   if (!this.coinPrice && this.price) {
     this.coinPrice = this.price;
   }
@@ -123,8 +123,6 @@ giftSchema.pre("validate", function syncGiftAliases(next) {
     this.animationType = "lottie";
     this.animationUrl = this.lottieUrl;
   }
-
-  next();
 });
 
 giftSchema.index({ isActive: 1, sortOrder: 1, coinPrice: 1 });

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
-import LottieView from "lottie-react-native";
+import LottieView, { type AnimationObject } from "lottie-react-native";
 import type { GiftEventPayload } from "../types";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
@@ -100,7 +100,7 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
 
         <View style={styles.animationWrap}>
           {animationJson ? (
-            <LottieView source={animationJson as object} autoPlay loop style={styles.animation} />
+            <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
           ) : (
             <Text style={styles.fallback}>{event.gift.name}</Text>
           )}

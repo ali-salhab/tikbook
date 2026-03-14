@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import LottieView from "lottie-react-native";
+import LottieView, { type AnimationObject } from "lottie-react-native";
 import type { GiftCatalogItem } from "../types";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
@@ -62,7 +62,7 @@ const GiftCard = memo(({ item, onPress, shouldAnimate, disabled }: GiftCardProps
     >
       <View style={styles.previewBox}>
         {json ? (
-          <LottieView source={json as object} autoPlay loop style={styles.lottie} />
+          <LottieView source={json as AnimationObject} autoPlay loop style={styles.lottie} />
         ) : item.previewImage ? (
           <Image source={{ uri: item.previewImage }} style={styles.previewImage} />
         ) : (

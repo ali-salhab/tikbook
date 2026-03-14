@@ -47,7 +47,7 @@ const vipLevelSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-vipLevelSchema.pre("validate", function syncLiveEngagementFields(next) {
+vipLevelSchema.pre("validate", async function syncLiveEngagementFields() {
   if (!this.code && LEVEL_CODE_MAP[this.level]) {
     this.code = LEVEL_CODE_MAP[this.level];
   }
@@ -55,8 +55,6 @@ vipLevelSchema.pre("validate", function syncLiveEngagementFields(next) {
   if (!this.usernameColor && this.color) {
     this.usernameColor = this.color;
   }
-
-  next();
 });
 
 const VipLevel = mongoose.model("VipLevel", vipLevelSchema);

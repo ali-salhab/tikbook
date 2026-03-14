@@ -1,6 +1,6 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import LottieView from "lottie-react-native";
+import LottieView, { type AnimationObject } from "lottie-react-native";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
 type Props = {
@@ -72,10 +72,10 @@ const VipCommentMessage = ({
         {Boolean(frameJson && shouldAnimateFrame) && (
           <View pointerEvents="none" style={styles.frameLayer}>
             <LottieView
-              source={frameJson as object}
+              source={frameJson as AnimationObject}
               autoPlay
               loop
-              resizeMode="stretch"
+              resizeMode="cover"
               style={styles.frame}
             />
           </View>

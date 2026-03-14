@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
-import LottieView from "lottie-react-native";
+import LottieView, { type AnimationObject } from "lottie-react-native";
 import type { LiveRoomUser } from "../types";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
@@ -102,7 +102,7 @@ const JoinAnimation = ({ user, joinAnimationUrl, onDone }: Props) => {
           {joinTitle}
         </Text>
         {animationJson ? (
-          <LottieView source={animationJson as object} autoPlay loop style={styles.animation} />
+          <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
         ) : null}
       </View>
     </Animated.View>

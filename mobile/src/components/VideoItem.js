@@ -874,8 +874,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   likeButtonLottie: {
-    width: ICON_SIZE + 16,
-    height: ICON_SIZE + 16,
+    width: 220,
+    height: 220,
+    margin: -((220 - ICON_SIZE) / 2),
   },
   musicDiscContainer: {
     alignItems: "center",
