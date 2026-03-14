@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, ActivityIndicator } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import LottieView from "lottie-react-native";
 
 const SplashScreen = ({ navigation, onFinish }) => {
   useEffect(() => {
@@ -17,7 +18,12 @@ const SplashScreen = ({ navigation, onFinish }) => {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <ActivityIndicator size="large" color="#FFFFFF" />
+      <LottieView
+        source={require("../../assets/lottie-loader.json")}
+        style={{ width: 120, height: 120 }}
+        autoPlay
+        loop
+      />
     </View>
   );
 };

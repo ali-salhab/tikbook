@@ -269,7 +269,7 @@ const WalletScreen = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color="#FE2C55" />
+        <LottieView source={require("../../assets/lottie-loader.json")} style={{ width: 80, height: 80 }} autoPlay loop />
       </SafeAreaView>
     );
   }

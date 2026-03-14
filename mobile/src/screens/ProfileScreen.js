@@ -23,6 +23,7 @@ import ProfileMenuModal from "../components/ProfileMenuModal";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
+import LottieView from "lottie-react-native";
 import videoService from "../services/videoService";
 import * as ImagePicker from "expo-image-picker";
 import { useApp } from "../context/AppContext";
@@ -231,7 +232,7 @@ const ProfileScreen = ({ navigation }) => {
           backgroundColor: "#fff",
         }}
       >
-        <ActivityIndicator size="large" color="#000" />
+        <LottieView source={require("../../assets/lottie-loader.json")} style={{ width: 80, height: 80 }} autoPlay loop />
       </View>
     );
   }

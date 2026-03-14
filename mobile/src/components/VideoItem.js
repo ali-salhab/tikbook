@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
+import LottieView from "lottie-react-native";
 import SoundService from "../services/soundService";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
@@ -84,6 +85,9 @@ const VideoItem = memo(
     const heartOpacity = useRef(new Animated.Value(0)).current;
     const heartScale = useRef(new Animated.Value(0)).current;
     const lastTap = useRef(0);
+    const likeButtonLottieRef = useRef(null);
+    const heartOverlayLottieRef = useRef(null);
+    const [isAnimatingLike, setIsAnimatingLike] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const rotationRef = useRef(null);
     const itemHeight = Math.max(viewportHeight || SCREEN_HEIGHT, 1);
@@ -287,23 +291,15 @@ const VideoItem = memo(
 
     const animateHeart = () => {
       heartOpacity.setValue(1);
-      heartScale.setValue(0);
-
-      Animated.parallel([
-        Animated.timing(heartScale, {
-          toValue: 1.5,
+      heartOverlayLottieRef.current?.reset();
+      heartOverlayLottieRef.current?.play();
+      setTimeout(() => {
+        Animated.timing(heartOpacity, {
+          toValue: 0,
           duration: 400,
           useNativeDriver: true,
-        }),
-        Animated.sequence([
-          Animated.delay(200),
-          Animated.timing(heartOpacity, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
+        }).start();
+      }, 700);
     };
 
     const animateLike = () => {
@@ -326,6 +322,11 @@ const VideoItem = memo(
     const onLikePress = () => {
       SoundService.play("like");
       animateLike();
+      if (!item.isLiked) {
+        setIsAnimatingLike(true);
+      } else {
+        likeButtonLottieRef.current?.reset();
+      }
       handleLike(item._id);
     };
 
@@ -397,16 +398,16 @@ const VideoItem = memo(
 
           {/* Double-tap heart animation */}
           <Animated.View
-            style={[
-              styles.heartOverlay,
-              {
-                opacity: heartOpacity,
-                transform: [{ scale: heartScale }],
-              },
-            ]}
+            style={[styles.heartOverlay, { opacity: heartOpacity }]}
             pointerEvents="none"
           >
-            <Ionicons name="heart" size={120} color="#FFF" />
+            <LottieView
+              ref={heartOverlayLottieRef}
+              source={require("../../assets/lottie-heart.json")}
+              style={{ width: 220, height: 220 }}
+              loop={false}
+              autoPlay={false}
+            />
           </Animated.View>
 
           {/* Play / Pause flash overlay */}
@@ -547,14 +548,15 @@ const VideoItem = memo(
           {/* Like Button - TikTok Style */}
           <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              {item.isLiked ? (
-                <View style={styles.likedHeart}>
-                  <Ionicons name="heart" size={ICON_SIZE} color="#FE2C55" />
-                  <View style={styles.heartGlow} />
-                </View>
-              ) : (
-                <Ionicons name="heart-outline" size={ICON_SIZE} color="#FFF" />
-              )}
+              <LottieView
+                ref={likeButtonLottieRef}
+                source={require("../../assets/lottie-heart.json")}
+                style={styles.likeButtonLottie}
+                loop={false}
+                autoPlay={isAnimatingLike}
+                progress={isAnimatingLike ? undefined : (item.isLiked ? 1 : 0)}
+                onAnimationFinish={() => setIsAnimatingLike(false)}
+              />
             </Animated.View>
             <Text style={[styles.actionText, item.isLiked && styles.likedText]}>
               {formatNumber(item.likes || 0)}
@@ -870,6 +872,10 @@ const styles = StyleSheet.create({
   likedText: {
     color: "#FE2C55",
     fontWeight: "bold",
+  },
+  likeButtonLottie: {
+    width: ICON_SIZE + 16,
+    height: ICON_SIZE + 16,
   },
   musicDiscContainer: {
     alignItems: "center",

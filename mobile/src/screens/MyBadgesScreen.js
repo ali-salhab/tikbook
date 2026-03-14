@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { badgeService } from "../services/badgeService";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
@@ -276,7 +277,7 @@ const MyBadgesScreen = ({ navigation }) => {
       {/* Badge List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <LottieView source={require("../../assets/lottie-loader.json")} style={{ width: 80, height: 80 }} autoPlay loop />
         </View>
       ) : currentBadges.length === 0 ? (
         <View style={styles.emptyContainer}>
