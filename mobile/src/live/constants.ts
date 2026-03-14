@@ -1,0 +1,10 @@
+export const LIVE_CHAT_MAX_MESSAGES = 220;
+export const LIVE_CHAT_INITIAL_RENDER = 20;
+export const LIVE_CHAT_WINDOW_SIZE = 8;
+export const LIVE_CHAT_BATCH_RENDER = 16;
+
+export const GIFT_OVERLAY_MAX_SIMULTANEOUS = 4;
+export const GIFT_OVERLAY_QUEUE_LIMIT = 30;
+
+export const CHAT_SEND_THROTTLE_MS = 260;
+export const GIFT_SEND_THROTTLE_MS = 200;

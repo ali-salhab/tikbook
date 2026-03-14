@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
 } from "react-native";
+import LottieView from "lottie-react-native";
 
 const { width } = Dimensions.get("window");
 const MAX_COMMENTS = 40;
@@ -87,6 +88,10 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
       ? vipStyleEntry?.bubbleShape
       : "classic";
   const vipBubbleShapeStyle = getVipBubbleShapeStyle(bubbleShape);
+  const commentFrameLottieUrl =
+    isVip && typeof vipStyleEntry === "object"
+      ? vipStyleEntry?.commentFrameLottieUrl || null
+      : null;
 
   return (
     <Animated.View
@@ -141,6 +146,17 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
         <Text style={[styles.message, isSystem && styles.systemMessage]}>
           {messageText}
         </Text>
+        {/* VIP animated comment frame overlay - rendered only when URL is available */}
+        {commentFrameLottieUrl ? (
+          <LottieView
+            source={{ uri: commentFrameLottieUrl }}
+            autoPlay
+            loop
+            style={styles.commentFrame}
+            pointerEvents="none"
+            resizeMode="cover"
+          />
+        ) : null}
       </View>
     </Animated.View>
   );
@@ -355,6 +371,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     overflow: "hidden",
+  },
+  commentFrame: {
+    position: "absolute",
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    pointerEvents: "none",
   },
 });
 

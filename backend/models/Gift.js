@@ -15,10 +15,20 @@ const giftSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Dedicated Lottie URL for clients that only support JSON animations.
+    lottieUrl: {
+      type: String,
+      default: "",
+    },
     // Static thumbnail for gift selection
     thumbnailUrl: {
       type: String,
       required: true,
+    },
+    // Alias-friendly preview image used by admin/mobile live selector.
+    previewImage: {
+      type: String,
+      default: "",
     },
     // Animation type
     animationType: {
@@ -36,6 +46,16 @@ const giftSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 1,
+    },
+    coinPrice: {
+      type: Number,
+      min: 1,
+      default: null,
+    },
+    rarity: {
+      type: String,
+      enum: ["common", "rare", "epic", "legendary", "mythic"],
+      default: "common",
     },
     // Gift category
     category: {
@@ -62,10 +82,6 @@ const giftSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    // Sound effect URL
-    soundUrl: {
-      type: String,
-    },
     // Active status
     isActive: {
       type: Boolean,
@@ -81,6 +97,37 @@ const giftSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+giftSchema.pre("validate", function syncGiftAliases(next) {
+  if (!this.coinPrice && this.price) {
+    this.coinPrice = this.price;
+  }
+
+  if (!this.price && this.coinPrice) {
+    this.price = this.coinPrice;
+  }
+
+  if (!this.previewImage && this.thumbnailUrl) {
+    this.previewImage = this.thumbnailUrl;
+  }
+
+  if (!this.thumbnailUrl && this.previewImage) {
+    this.thumbnailUrl = this.previewImage;
+  }
+
+  if (!this.lottieUrl && this.animationType === "lottie" && this.animationUrl) {
+    this.lottieUrl = this.animationUrl;
+  }
+
+  if (!this.animationUrl && this.lottieUrl) {
+    this.animationType = "lottie";
+    this.animationUrl = this.lottieUrl;
+  }
+
+  next();
+});
+
+giftSchema.index({ isActive: 1, sortOrder: 1, coinPrice: 1 });
 
 const giftTransactionSchema = new mongoose.Schema(
   {

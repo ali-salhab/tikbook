@@ -49,6 +49,7 @@ import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 import VipBadge from "../components/VipBadge";
 import SoundService from "../services/soundService";
 import { ms, fs } from "../utils/responsive";
+import JoinAnimation from "../live/components/JoinAnimation";
 
 const { width, height } = Dimensions.get("window");
 const SEAT_SIZE = ms(58);
@@ -95,6 +96,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
   const [vipLevelCommentStyles, setVipLevelCommentStyles] = useState({});
+
+  // ── Join animation (VIP entrance) ────────────────────────────────────────────
+  const [joinAnimationUser, setJoinAnimationUser] = useState(null);
+  const [vipJoinAnimationUrls, setVipJoinAnimationUrls] = useState({});
 
   // ── Management ───────────────────────────────────────────────────────────────
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -177,6 +182,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const loadVipLevelCommentStyles = async () => {
     try {
+      // Fetch base VIP styles (color, shape, border) from existing endpoint
       const res = await axios.get(`${BASE_URL}/vip/levels`);
       const levels = Array.isArray(res.data?.levels) ? res.data.levels : [];
       const commentStyles = levels.reduce((acc, level) => {
@@ -212,6 +218,32 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
         return acc;
       }, {});
+
+      // Also fetch live engagement VIP levels for Lottie frame and join animation URLs
+      try {
+        const leRes = await axios.get(`${BASE_URL}/live-engagement/vip-levels`);
+        const leLevels = Array.isArray(leRes.data?.levels)
+          ? leRes.data.levels
+          : [];
+        const joinUrls = {};
+        leLevels.forEach((leLevel) => {
+          const lvl = Number(leLevel?.level);
+          if (lvl <= 0) return;
+          if (leLevel?.commentFrameLottieUrl) {
+            if (commentStyles[lvl]) {
+              commentStyles[lvl].commentFrameLottieUrl =
+                leLevel.commentFrameLottieUrl;
+            }
+          }
+          if (leLevel?.joinAnimationLottieUrl) {
+            joinUrls[lvl] = leLevel.joinAnimationLottieUrl;
+          }
+        });
+        setVipJoinAnimationUrls(joinUrls);
+      } catch (_) {
+        // live-engagement endpoint may not have data yet — silently ignore
+      }
+
       setVipLevelCommentStyles(commentStyles);
     } catch (_) {
       setVipLevelCommentStyles({});
@@ -420,6 +452,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
     socket.on("liveroom:user_joined", fetchRoomData);
     socket.on("liveroom:agora_uid", ({ userId, agoraUid }) => {
       agoraUidMapRef.current[agoraUid] = userId;
+    });
+    // Show VIP join animation when a VIP user enters the room
+    socket.on("live:room:user-joined", ({ user }) => {
+      if (user && Number(user.vipLevel) > 0) {
+        setJoinAnimationUser(user);
+      }
     });
     socket.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();
@@ -1744,6 +1782,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
           }
         />
       ))}
+
+      {/* VIP join animation banner */}
+      {joinAnimationUser && (
+        <JoinAnimation
+          user={joinAnimationUser}
+          joinAnimationUrl={
+            vipJoinAnimationUrls[Number(joinAnimationUser.vipLevel)] || null
+          }
+          onDone={() => setJoinAnimationUser(null)}
+        />
+      )}
 
       {/* Mini music bar */}
       {MiniMusicBar()}

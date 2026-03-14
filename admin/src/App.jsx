@@ -21,6 +21,7 @@ import VerificationManagement from "./pages/VerificationManagement";
 import BadgeManagement from "./pages/BadgeManagement";
 import GiftManagement from "./pages/GiftManagement";
 import VipManagement from "./pages/VipManagement";
+import LiveAssetsManagement from "./pages/LiveAssetsManagement";
 
 // Wrapper component to handle logout
 const PageWrapper = ({ Component }) => {
@@ -85,6 +86,10 @@ function App() {
         <Route
           path="/vip"
           element={<PageWrapper Component={VipManagement} />}
+        />
+        <Route
+          path="/live-assets"
+          element={<PageWrapper Component={LiveAssetsManagement} />}
         />
       </Routes>
     </Router>

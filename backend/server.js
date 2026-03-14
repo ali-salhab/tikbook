@@ -76,6 +76,10 @@ const badgeRoutes = require("./routes/badgeRoutes");
 const giftRoutes = require("./routes/giftRoutes");
 const statusRoutes = require("./routes/statusRoutes");
 const vipRoutes = require("./routes/vipRoutes");
+const liveEngagementRoutes = require("./routes/liveEngagementRoutes");
+const {
+  registerLiveEngagementHandlers,
+} = require("./services/liveEngagementSocketService");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/videos", videoRoutes);
@@ -95,6 +99,7 @@ app.use("/api/badges", badgeRoutes);
 app.use("/api/gifts", giftRoutes);
 app.use("/api/status", statusRoutes);
 app.use("/api/vip", vipRoutes);
+app.use("/api/live-engagement", liveEngagementRoutes);
 
 app.get("/", (req, res) => {
   res.send("TikBook API is running...");
@@ -103,6 +108,9 @@ app.get("/", (req, res) => {
 // Socket.io connection
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
+
+  // Scalable live room engagement handlers (chat, gifts, presence).
+  registerLiveEngagementHandlers(io, socket);
 
   // Join user room
   socket.on("join", (userId) => {

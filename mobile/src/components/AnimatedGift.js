@@ -152,10 +152,12 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   // ── STANDARD GIFT (lottie / gif / small video) ────────────────────────────
   const renderAnimation = () => {
     if (gift.animationType === "lottie") {
+      // Support both legacy `animationUrl` and new `lottieUrl` field
+      const lottieSource = gift.animationUrl || gift.lottieUrl;
       return (
         <LottieView
           ref={lottieRef}
-          source={{ uri: gift.animationUrl }}
+          source={{ uri: lottieSource }}
           autoPlay
           loop={false}
           style={[styles.lottieAnim, gift.fullScreen && styles.largeAnim]}
@@ -184,6 +186,18 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           onPlaybackStatusUpdate={(s) => {
             if (s.didJustFinish) exitAnimation();
           }}
+        />
+      );
+    }
+    // Fallback: if gift has lottieUrl with no explicit animationType
+    if (gift.lottieUrl) {
+      return (
+        <LottieView
+          ref={lottieRef}
+          source={{ uri: gift.lottieUrl }}
+          autoPlay
+          loop={false}
+          style={[styles.lottieAnim, gift.fullScreen && styles.largeAnim]}
         />
       );
     }

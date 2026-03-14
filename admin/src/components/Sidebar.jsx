@@ -16,6 +16,7 @@ import {
   FiAward,
   FiSmartphone,
   FiStar,
+  FiUpload,
 } from "react-icons/fi";
 
 const Sidebar = ({ onLogout }) => {
@@ -102,6 +103,12 @@ const Sidebar = ({ onLogout }) => {
       label: "إدارة VIP",
       icon: FiStar,
       path: "/vip",
+    },
+    {
+      id: "live-assets",
+      label: "أصول البث المباشر",
+      icon: FiUpload,
+      path: "/live-assets",
     },
   ];
 
