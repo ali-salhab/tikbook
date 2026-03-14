@@ -166,29 +166,28 @@ const assignVipToUser = async (req, res) => {
 const seedVipLevels = async (req, res) => {
   try {
     const SEED_LEVELS = [
-      { level: 1, name: "Bronze",   nameAr: "برونزي",  price: 99,   color: "#CD7F32", sortOrder: 1 },
-      { level: 2, name: "Silver",   nameAr: "فضي",     price: 199,  color: "#C0C0C0", sortOrder: 2 },
-      { level: 3, name: "Gold",     nameAr: "ذهبي",    price: 399,  color: "#FFD700", sortOrder: 3 },
-      { level: 4, name: "Platinum", nameAr: "بلاتيني", price: 699,  color: "#00BCD4", sortOrder: 4 },
-      { level: 5, name: "Diamond",  nameAr: "ماسي",    price: 1299, color: "#9C27B0", sortOrder: 5 },
-      { level: 6, name: "Royal",    nameAr: "ملكي",    price: 1999, color: "#E91E63", sortOrder: 6 },
-      { level: 7, name: "Legendary",nameAr: "أسطوري",  price: 2999, color: "#FF5722", sortOrder: 7 },
+      { level: 1, name: "Bronze",    nameAr: "برونزي",  price: 99,   color: "#CD7F32", sortOrder: 1 },
+      { level: 2, name: "Silver",    nameAr: "فضي",     price: 199,  color: "#C0C0C0", sortOrder: 2 },
+      { level: 3, name: "Gold",      nameAr: "ذهبي",    price: 399,  color: "#FFD700", sortOrder: 3 },
+      { level: 4, name: "Platinum",  nameAr: "بلاتيني", price: 699,  color: "#00BCD4", sortOrder: 4 },
+      { level: 5, name: "Diamond",   nameAr: "ماسي",    price: 1299, color: "#9C27B0", sortOrder: 5 },
+      { level: 6, name: "Royal",     nameAr: "ملكي",    price: 1999, color: "#E91E63", sortOrder: 6 },
+      { level: 7, name: "Legendary", nameAr: "أسطوري",  price: 2999, color: "#FF5722", sortOrder: 7 },
     ];
 
-    const results = await Promise.all(
-      SEED_LEVELS.map((lvl) =>
-        VipLevel.findOneAndUpdate(
-          { level: lvl.level },
-          { $setOnInsert: lvl },
-          { upsert: true, new: true }
-        )
-      )
-    );
+    let added = 0;
+    for (const lvl of SEED_LEVELS) {
+      const exists = await VipLevel.findOne({ level: lvl.level });
+      if (!exists) {
+        await VipLevel.create(lvl);
+        added++;
+      }
+    }
 
     res.json({
       success: true,
-      message: `تم إضافة ${results.length} مستويات VIP تجريبية بنجاح`,
-      count: results.length,
+      message: `تمت العملية: ${added} مستويات جديدة، ${SEED_LEVELS.length - added} موجودة مسبقاً`,
+      count: added,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
