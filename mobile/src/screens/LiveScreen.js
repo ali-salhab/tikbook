@@ -364,7 +364,7 @@ export default function LiveScreen({ navigation, route }) {
 
         <SafeAreaView style={styles.preLiveContent}>
           <View style={styles.preLiveHeader}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity onPress={() => navigation.navigate("MainTabs")}>
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.flipBtn}>
@@ -712,7 +712,7 @@ export default function LiveScreen({ navigation, route }) {
         animationType="fade"
         onRequestClose={() => {
           setShowSummary(false);
-          navigation.goBack();
+          navigation.navigate("MainTabs");
         }}
       >
         <View style={styles.summaryOverlay}>
@@ -750,7 +750,7 @@ export default function LiveScreen({ navigation, route }) {
               style={styles.summaryCloseBtn}
               onPress={() => {
                 setShowSummary(false);
-                navigation.goBack();
+                navigation.navigate("MainTabs");
               }}
             >
               <Text style={styles.summaryCloseBtnText}>خروج</Text>

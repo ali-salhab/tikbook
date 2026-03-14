@@ -3,6 +3,42 @@ import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import { FiEdit, FiTrash2, FiPlus, FiX, FiCheck, FiBox, FiImage, FiMusic, FiGift } from "react-icons/fi";
+import Lottie from "lottie-react";
+
+const isLottieUrl = (url) => {
+  if (!url) return false;
+  try {
+    const lower = url.toLowerCase().split("?")[0];
+    return lower.endsWith(".json") || lower.includes("/raw/upload/");
+  } catch { return false; }
+};
+
+const GiftPreview = ({ animationUrl, thumbnailUrl, name, style }) => {
+  const [lottieData, setLottieData] = useState(null);
+  const [lottieError, setLottieError] = useState(false);
+  const urlToLoad = isLottieUrl(animationUrl) ? animationUrl : null;
+
+  useEffect(() => {
+    if (!urlToLoad) return;
+    setLottieData(null);
+    setLottieError(false);
+    fetch(urlToLoad)
+      .then((r) => r.json())
+      .then(setLottieData)
+      .catch(() => setLottieError(true));
+  }, [urlToLoad]);
+
+  if (urlToLoad && lottieData && !lottieError) {
+    return <Lottie animationData={lottieData} loop autoplay style={style} />;
+  }
+
+  const imgSrc = thumbnailUrl || animationUrl;
+  if (imgSrc && !isLottieUrl(imgSrc)) {
+    return <img src={imgSrc} alt={name} style={{ ...style, objectFit: "cover" }} onError={(e) => { e.target.style.display = "none"; }} />;
+  }
+
+  return <span style={{ fontSize: 36 }}>🎁</span>;
+};
 
 const RARITY_META = {
   common:    { label: "عادي",   color: "#6b7280", bg: "#f3f4f6" },
@@ -219,11 +255,11 @@ const GiftManagement = ({ onLogout }) => {
                   {/* Rarity stripe */}
                   <div style={{ ...styles.rarityStripe, background: rarity.color }} />
                   <div style={styles.thumbWrap}>
-                    <img
-                      src={gift.thumbnailUrl}
-                      alt={gift.nameAr || gift.name}
+                    <GiftPreview
+                      animationUrl={gift.animationUrl}
+                      thumbnailUrl={gift.thumbnailUrl}
+                      name={gift.nameAr || gift.name}
                       style={styles.thumb}
-                      onError={(e) => { e.target.style.display = "none"; }}
                     />
                   </div>
                   <div style={styles.cardBody}>
