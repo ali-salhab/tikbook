@@ -7,6 +7,7 @@ const {
   createGift,
   updateGift,
   deleteGift,
+  seedDefaultGifts,
 } = require("../controllers/giftController");
 const { protect } = require("../middleware/authMiddleware");
 const { giftUpload } = require("../middleware/uploadMiddleware");
@@ -40,5 +41,6 @@ router.put(
   updateGift,
 );
 router.delete("/admin/:id", protect, deleteGift);
+router.post("/admin/seed", protect, seedDefaultGifts);
 
 module.exports = router;

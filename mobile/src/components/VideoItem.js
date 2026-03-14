@@ -138,10 +138,14 @@ const VideoItem = memo(
       };
     }, [isActive]);
 
-    const spin = rotateAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: ["0deg", "360deg"],
-    });
+    // Memoize the interpolation node — creating a new one on every render leaks
+    // native Animated nodes and exhausts the heap (OOM at MatrixMathHelper.decomposeMatrix).
+    const spin = useRef(
+      rotateAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ["0deg", "360deg"],
+      })
+    ).current;
 
     // Pause & unload on unmount so ExoPlayer always releases from the main thread.
     useEffect(() => {

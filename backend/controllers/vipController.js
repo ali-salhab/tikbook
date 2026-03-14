@@ -162,6 +162,39 @@ const assignVipToUser = async (req, res) => {
   }
 };
 
+// Admin: POST /api/vip/admin/seed
+const seedVipLevels = async (req, res) => {
+  try {
+    const SEED_LEVELS = [
+      { level: 1, name: "Bronze",   nameAr: "برونزي",  price: 99,   color: "#CD7F32", sortOrder: 1 },
+      { level: 2, name: "Silver",   nameAr: "فضي",     price: 199,  color: "#C0C0C0", sortOrder: 2 },
+      { level: 3, name: "Gold",     nameAr: "ذهبي",    price: 399,  color: "#FFD700", sortOrder: 3 },
+      { level: 4, name: "Platinum", nameAr: "بلاتيني", price: 699,  color: "#00BCD4", sortOrder: 4 },
+      { level: 5, name: "Diamond",  nameAr: "ماسي",    price: 1299, color: "#9C27B0", sortOrder: 5 },
+      { level: 6, name: "Royal",    nameAr: "ملكي",    price: 1999, color: "#E91E63", sortOrder: 6 },
+      { level: 7, name: "Legendary",nameAr: "أسطوري",  price: 2999, color: "#FF5722", sortOrder: 7 },
+    ];
+
+    const results = await Promise.all(
+      SEED_LEVELS.map((lvl) =>
+        VipLevel.findOneAndUpdate(
+          { level: lvl.level },
+          { $setOnInsert: lvl },
+          { upsert: true, new: true }
+        )
+      )
+    );
+
+    res.json({
+      success: true,
+      message: `تم إضافة ${results.length} مستويات VIP تجريبية بنجاح`,
+      count: results.length,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   getAllVipLevels,
   getMyVip,
@@ -171,4 +204,5 @@ module.exports = {
   updateVipLevel,
   deleteVipLevel,
   assignVipToUser,
+  seedVipLevels,
 };

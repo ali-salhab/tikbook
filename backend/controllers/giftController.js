@@ -429,3 +429,74 @@ exports.deleteGift = async (req, res) => {
     });
   }
 };
+
+// Admin: POST /api/gifts/admin/seed
+exports.seedDefaultGifts = async (req, res) => {
+  try {
+    const SEED_GIFTS = [
+      {
+        name: "Rose", nameAr: "وردة", price: 10, rarity: "common", category: "basic",
+        animationType: "gif", duration: 3, comboEnabled: true, sortOrder: 1,
+        animationUrl: "https://placehold.co/200/FF6B9D/white?text=Rose",
+        thumbnailUrl: "https://placehold.co/200/FF6B9D/white?text=Rose",
+      },
+      {
+        name: "Heart", nameAr: "قلب", price: 25, rarity: "common", category: "basic",
+        animationType: "gif", duration: 3, comboEnabled: true, sortOrder: 2,
+        animationUrl: "https://placehold.co/200/EF4444/white?text=Heart",
+        thumbnailUrl: "https://placehold.co/200/EF4444/white?text=Heart",
+      },
+      {
+        name: "Star", nameAr: "نجمة", price: 50, rarity: "rare", category: "basic",
+        animationType: "gif", duration: 3, comboEnabled: true, sortOrder: 3,
+        animationUrl: "https://placehold.co/200/EAB308/white?text=Star",
+        thumbnailUrl: "https://placehold.co/200/EAB308/white?text=Star",
+      },
+      {
+        name: "Crown", nameAr: "تاج", price: 100, rarity: "epic", category: "premium",
+        animationType: "gif", duration: 4, comboEnabled: true, sortOrder: 4,
+        animationUrl: "https://placehold.co/200/8B5CF6/white?text=Crown",
+        thumbnailUrl: "https://placehold.co/200/8B5CF6/white?text=Crown",
+      },
+      {
+        name: "Fire", nameAr: "نار", price: 200, rarity: "legendary", category: "premium",
+        animationType: "gif", duration: 4, comboEnabled: false, sortOrder: 5,
+        animationUrl: "https://placehold.co/200/F97316/white?text=Fire",
+        thumbnailUrl: "https://placehold.co/200/F97316/white?text=Fire",
+      },
+      {
+        name: "Diamond", nameAr: "ماس", price: 500, rarity: "mythic", category: "vip",
+        animationType: "gif", duration: 5, comboEnabled: false, fullScreen: true, sortOrder: 6,
+        animationUrl: "https://placehold.co/200/00BCD4/white?text=Diamond",
+        thumbnailUrl: "https://placehold.co/200/00BCD4/white?text=Diamond",
+      },
+    ];
+
+    let added = 0;
+    const results = [];
+    for (const g of SEED_GIFTS) {
+      const exists = await Gift.findOne({ name: g.name });
+      if (!exists) {
+        const created = await Gift.create({ ...g, isActive: true });
+        results.push(created);
+        added++;
+      } else {
+        results.push(exists);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `تمت العملية: ${added} هدايا جديدة، ${SEED_GIFTS.length - added} موجودة مسبقاً`,
+      count: added,
+      gifts: results,
+    });
+  } catch (error) {
+    console.error("Error seeding gifts:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to seed gifts",
+    });
+  }
+};
+

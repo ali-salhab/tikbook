@@ -200,6 +200,20 @@ const VipManagement = ({ onLogout }) => {
     }
   };
 
+  const handleSeedVip = async () => {
+    if (!window.confirm("سيتم إضافة 7 مستويات VIP تجريبية (برونزي، فضي، ذهبي...). هل تريد المتابعة؟")) return;
+    try {
+      setLoading(true);
+      const res = await api.post("/vip/admin/seed", {}, authHeader);
+      await fetchLevels();
+      alert(res.data?.message || "تم تحميل بيانات VIP التجريبية بنجاح ✅");
+    } catch (e) {
+      alert(e.response?.data?.message || "فشل تحميل البيانات التجريبية");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AdminLayout onLogout={onLogout}>
       <div style={styles.container}>
@@ -209,7 +223,10 @@ const VipManagement = ({ onLogout }) => {
             <h2 style={styles.title}>⭐ إدارة VIP</h2>
             <p style={styles.subtitle}>إدارة مستويات VIP وتعيينها للمستخدمين</p>
           </div>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <button style={styles.seedBtn} onClick={handleSeedVip} disabled={loading}>
+              🌱 بيانات تجريبية
+            </button>
             <button style={styles.assignBtn} onClick={() => { setShowAssignModal(true); setError(""); }}>
               <FiUser size={16} /> تعيين VIP لمستخدم
             </button>
@@ -224,42 +241,53 @@ const VipManagement = ({ onLogout }) => {
           <div style={styles.loading}>جاري التحميل...</div>
         ) : (
           <div style={styles.grid}>
-            {levels.map((lvl) => (
-              <div key={lvl.level} style={{ ...styles.card, borderColor: lvl.color || VIP_COLORS[lvl.level] || "#FFD700" }}>
-                <div style={{ ...styles.cardBadge, backgroundColor: lvl.color || VIP_COLORS[lvl.level] || "#FFD700" }}>
-                  VIP {lvl.level}
-                </div>
-                {lvl.imageUrl && (
-                  <img src={lvl.imageUrl} alt={lvl.nameAr} style={styles.cardImg} />
-                )}
-                <div style={styles.cardName}>{lvl.nameAr}</div>
-                {lvl.name && <div style={styles.cardNameEn}>{lvl.name}</div>}
-                <div style={styles.cardPrice}>💎 {lvl.price}</div>
-                <div style={{ ...styles.statusBadge, backgroundColor: lvl.isActive ? "#22c55e22" : "#ef444422", color: lvl.isActive ? "#22c55e" : "#ef4444" }}>
-                  {lvl.isActive ? "مفعّل" : "معطّل"}
-                </div>
-                <div style={styles.cardPreviewWrap}>
-                  <div
-                    style={{
-                      ...styles.cardPreviewBubble,
-                      ...getBubbleShapeStyle(lvl.commentBubbleShape),
-                      borderColor: lvl.color || VIP_COLORS[lvl.level] || "#FFD700",
-                      borderWidth: normalizeBorderWidth(lvl.commentBorderWidth),
-                    }}
-                  >
-                    VIP تعليق
+            {levels.length === 0 && (
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 48, color: "#94a3b8" }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>⭐</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>لا توجد مستويات VIP بعد</div>
+                <div style={{ fontSize: 13, marginTop: 6 }}>اضغط "بيانات تجريبية" لإضافة مستويات افتراضية</div>
+              </div>
+            )}
+            {levels.map((lvl) => {
+              const color = lvl.color || VIP_COLORS[lvl.level] || "#FFD700";
+              return (
+                <div key={lvl.level} style={{ ...styles.card, borderColor: color, boxShadow: `0 4px 16px ${color}33` }}>
+                  <div style={{ ...styles.cardBadge, background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
+                    ⭐ VIP {lvl.level}
+                  </div>
+                  {lvl.imageUrl && (
+                    <img src={lvl.imageUrl} alt={lvl.nameAr} style={styles.cardImg} />
+                  )}
+                  <div style={styles.cardName}>{lvl.nameAr}</div>
+                  {lvl.name && <div style={styles.cardNameEn}>{lvl.name}</div>}
+                  <div style={{ ...styles.cardPrice, color }}>💎 {lvl.price}</div>
+                  <div style={{ ...styles.statusBadge, backgroundColor: lvl.isActive ? "#22c55e22" : "#ef444422", color: lvl.isActive ? "#22c55e" : "#ef4444" }}>
+                    {lvl.isActive ? "مفعّل" : "معطّل"}
+                  </div>
+                  <div style={styles.cardPreviewWrap}>
+                    <div
+                      style={{
+                        ...styles.cardPreviewBubble,
+                        ...getBubbleShapeStyle(lvl.commentBubbleShape),
+                        borderColor: color,
+                        borderWidth: normalizeBorderWidth(lvl.commentBorderWidth),
+                        borderStyle: "solid",
+                      }}
+                    >
+                      VIP تعليق
+                    </div>
+                  </div>
+                  <div style={styles.cardActions}>
+                    <button style={styles.editBtn} onClick={() => openEdit(lvl)}>
+                      <FiEdit size={14} />
+                    </button>
+                    <button style={styles.deleteBtn} onClick={() => handleDelete(lvl.level)}>
+                      <FiTrash2 size={14} />
+                    </button>
                   </div>
                 </div>
-                <div style={styles.cardActions}>
-                  <button style={styles.editBtn} onClick={() => openEdit(lvl)}>
-                    <FiEdit size={14} />
-                  </button>
-                  <button style={styles.deleteBtn} onClick={() => handleDelete(lvl.level)}>
-                    <FiTrash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -486,6 +514,7 @@ const styles = {
   subtitle: { color: "#64748b", marginTop: 4, fontSize: 14 },
   addBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   assignBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#f59e0b", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
+  seedBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   loading: { textAlign: "center", padding: 60, color: "#64748b", fontSize: 16 },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 16 },
   card: { background: "#fff", borderRadius: 16, padding: 16, border: "2px solid", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative" },

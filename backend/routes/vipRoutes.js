@@ -10,6 +10,7 @@ const {
   updateVipLevel,
   deleteVipLevel,
   assignVipToUser,
+  seedVipLevels,
 } = require("../controllers/vipController");
 
 // Public / user routes
@@ -23,5 +24,6 @@ router.post("/admin/levels", protect, createVipLevel);
 router.put("/admin/levels/:level", protect, updateVipLevel);
 router.delete("/admin/levels/:level", protect, deleteVipLevel);
 router.post("/admin/assign", protect, assignVipToUser);
+router.post("/admin/seed", protect, seedVipLevels);
 
 module.exports = router;
