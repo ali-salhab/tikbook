@@ -226,6 +226,34 @@ const InboxScreen = ({ navigation }) => {
     );
   };
 
+  // ── Grouped statuses (group flat `statuses` array by user) ───────────────
+  const groupedStatuses = useMemo(() => {
+    const map = new Map();
+    for (const s of statuses) {
+      const uid = s.user?._id?.toString();
+      if (!uid) continue;
+      if (!map.has(uid)) {
+        map.set(uid, { _id: uid, user: s.user, items: [] });
+      }
+      map.get(uid).items.push(s);
+    }
+    return Array.from(map.values());
+  }, [statuses]);
+
+  const openGroupStatus = useCallback(
+    (groupIndex) => {
+      const group = groupedStatuses[groupIndex];
+      if (!group) return;
+      const firstId = group.items[0]?._id;
+      const idx = statuses.findIndex((s) => s._id === firstId);
+      navigation.navigate("StatusViewer", {
+        statuses,
+        initialIndex: idx >= 0 ? idx : 0,
+      });
+    },
+    [groupedStatuses, statuses, navigation],
+  );
+
   // ── Circle users for contacts row ─────────────────────────────────────────
   const allCircleUsers = useMemo(() => {
     const seen = new Set();

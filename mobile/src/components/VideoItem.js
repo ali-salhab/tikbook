@@ -87,16 +87,14 @@ const VideoItem = memo(
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const rotationRef = useRef(null);
     const itemHeight = Math.max(viewportHeight || SCREEN_HEIGHT, 1);
-    const isViewportConstrained =
-      tabBarHeight > 0 &&
-      itemHeight < SCREEN_HEIGHT - Math.max(Math.round(tabBarHeight * 0.45), 16);
-    const overlayBottomOffset = isViewportConstrained
-      ? Math.max(Math.min(Math.round(itemHeight * 0.04), 24), 16)
-      : tabBarHeight + 20;
-    const progressBottomOffset = isViewportConstrained
-      ? Math.max(Math.min(Math.round(itemHeight * 0.008), 6), 2)
-      : tabBarHeight + 8;
-    const actionGap = Math.max(Math.min(Math.round(itemHeight * 0.014), 14), 8);
+
+    // Simple, device-independent bottom positioning.
+    // The video container's bottom edge sits exactly at the top of the bottom nav bar
+    // (since itemHeight = SCREEN_HEIGHT - tabBarHeight from the parent).
+    // Using fixed pixel offsets keeps the layout identical across all screen sizes.
+    const progressBottomOffset = 0;        // progress bar flush at nav bar top edge
+    const overlayBottomOffset = 44;        // username/description/audio above progress bar
+    const actionGap = Math.max(Math.round(itemHeight * 0.014), 8);
     const zoomScale = useSharedValue(1);
     const zoomBase = useSharedValue(1);
 
@@ -451,7 +449,7 @@ const VideoItem = memo(
 
         {/* Progress bar with draggable thumb */}
         {!isImage(item.videoUrl) && (
-          <View style={[styles.progressMetaRow, { bottom: progressBottomOffset + 18 }]}> 
+          <View style={[styles.progressMetaRow, { bottom: 22 }]}> 
             <Text style={styles.progressMetaText}>
               {formatTime(progress * duration)}
             </Text>
