@@ -26,9 +26,29 @@ const vipLevelSchema = new mongoose.Schema(
     color: { type: String, default: "#FFD700" },
     usernameColor: { type: String, default: "#FFD700" },
     badgeImageUrl: { type: String, default: "" },
+    // Lottie JSON URL for the animated main badge (used on VipProfileScreen)
+    badgeLottieUrl: { type: String, default: "" },
     commentFrameLottieUrl: { type: String, default: "" },
     joinAnimationLottieUrl: { type: String, default: "" },
     specialJoinText: { type: String, default: "" },
+    // Benefits list shown on the VIP profile page
+    benefits: [
+      {
+        titleAr: { type: String, required: true },
+        title: { type: String, default: "" },
+        descriptionAr: { type: String, default: "" },
+        description: { type: String, default: "" },
+        type: {
+          type: String,
+          enum: ["badge", "frame", "chat", "points", "medal", "entry", "other"],
+          default: "other",
+        },
+        imageUrl: { type: String, default: "" },
+        lottieUrl: { type: String, default: "" },
+        isLocked: { type: Boolean, default: false },
+        sortOrder: { type: Number, default: 0 },
+      },
+    ],
     features: {
       animatedCommentFrame: { type: Boolean, default: true },
       coloredUsername: { type: Boolean, default: true },

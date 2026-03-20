@@ -11,11 +11,30 @@ const VIP_COLORS = {
   13: "#FF1493", 14: "#00FF7F", 15: "#FFD700",
 };
 
+const BENEFIT_TYPES = [
+  { value: "badge",  label: "شارة (Badge)" },
+  { value: "frame",  label: "إطار صورة (Frame)" },
+  { value: "chat",   label: "فقاعة دردشة (Chat)" },
+  { value: "points", label: "نقاط (Points)" },
+  { value: "medal",  label: "وسام (Medal)" },
+  { value: "entry",  label: "انيميشن دخول (Entry)" },
+  { value: "other",  label: "أخرى" },
+];
+
+const defaultBenefitForm = {
+  titleAr: "", title: "", descriptionAr: "", description: "",
+  type: "other", imageUrl: "", imageFile: null,
+  lottieUrl: "", lottieFile: null, isLocked: false, sortOrder: 0,
+};
+
 const defaultForm = {
   level: 1, name: "", nameAr: "", price: 99, color: "#FFD700",
   commentBorderWidth: 1.4,
   commentBubbleShape: "classic",
-  imageUrl: "", imageFile: null, isActive: true, sortOrder: 0,
+  imageUrl: "", imageFile: null,
+  badgeLottieUrl: "", badgeLottieFile: null,
+  benefits: [],
+  isActive: true, sortOrder: 0,
 };
 
 const ALLOWED_BUBBLE_SHAPES = ["classic", "rounded", "square", "pill"];
@@ -61,8 +80,20 @@ const VipManagement = ({ onLogout }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [badgeLottieName, setBadgeLottieName] = useState("");
   const [uploading, setUploading] = useState(false);
+  // Benefits sub-form
+  const [showBenefitForm, setShowBenefitForm] = useState(false);
+  const [editingBenefitIdx, setEditingBenefitIdx] = useState(null);
+  const [benefitForm, setBenefitForm] = useState({ ...defaultBenefitForm });
+  const [benefitImgPreview, setBenefitImgPreview] = useState(null);
+  const [benefitLottieName, setBenefitLottieName] = useState("");
+  const [uploadingBenefit, setUploadingBenefit] = useState(false);
+
   const fileInputRef = useRef(null);
+  const badgeLottieRef = useRef(null);
+  const benefitImgRef = useRef(null);
+  const benefitLottieRef = useRef(null);
 
   const CLOUD_NAME = "dah8ui33p";
   const UPLOAD_PRESET = "badges_preset";
@@ -76,6 +107,66 @@ const VipManagement = ({ onLogout }) => {
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
     return data.secure_url;
+  };
+
+  // Upload Lottie JSON as raw file to Cloudinary
+  const uploadLottieToCloudinary = async (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    fd.append("folder", "tikbook/vip/lottie");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.secure_url;
+  };
+
+  // ── Benefit sub-form helpers ────────────────────────────────────────────────
+  const openAddBenefit = () => {
+    setEditingBenefitIdx(null);
+    setBenefitForm({ ...defaultBenefitForm });
+    setBenefitImgPreview(null);
+    setBenefitLottieName("");
+    setShowBenefitForm(true);
+  };
+
+  const openEditBenefit = (idx) => {
+    const b = form.benefits[idx];
+    setEditingBenefitIdx(idx);
+    setBenefitForm({ ...defaultBenefitForm, ...b, imageFile: null, lottieFile: null });
+    setBenefitImgPreview(b.imageUrl || null);
+    setBenefitLottieName(b.lottieUrl ? "(ملف محفوظ)" : "");
+    setShowBenefitForm(true);
+  };
+
+  const saveBenefit = async () => {
+    if (!benefitForm.titleAr) { setError("عنوان الميزة مطلوب"); return; }
+    setUploadingBenefit(true);
+    try {
+      let imgUrl = benefitForm.imageUrl;
+      let lottieUrl = benefitForm.lottieUrl;
+      if (benefitForm.imageFile) imgUrl = await uploadToCloudinary(benefitForm.imageFile);
+      if (benefitForm.lottieFile) lottieUrl = await uploadLottieToCloudinary(benefitForm.lottieFile);
+      const saved = { ...benefitForm, imageUrl: imgUrl, lottieUrl, imageFile: undefined, lottieFile: undefined };
+      const updated = [...form.benefits];
+      if (editingBenefitIdx !== null) {
+        updated[editingBenefitIdx] = saved;
+      } else {
+        updated.push(saved);
+      }
+      setForm({ ...form, benefits: updated });
+      setShowBenefitForm(false);
+      setError("");
+    } catch (e) {
+      setError(e.message || "فشل رفع ملفات الميزة");
+    } finally {
+      setUploadingBenefit(false);
+    }
+  };
+
+  const deleteBenefit = (idx) => {
+    const updated = form.benefits.filter((_, i) => i !== idx);
+    setForm({ ...form, benefits: updated });
   };
 
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -101,6 +192,8 @@ const VipManagement = ({ onLogout }) => {
     setEditingLevel(null);
     setForm({ ...defaultForm });
     setImagePreview(null);
+    setBadgeLottieName("");
+    setShowBenefitForm(false);
     setError("");
     setShowModal(true);
   };
@@ -113,10 +206,15 @@ const VipManagement = ({ onLogout }) => {
       commentBorderWidth:
         typeof lvl.commentBorderWidth === "number" ? lvl.commentBorderWidth : 1.4,
       commentBubbleShape: lvl.commentBubbleShape || "classic",
-      imageUrl: lvl.imageUrl || "", imageFile: null, isActive: lvl.isActive,
+      imageUrl: lvl.imageUrl || "", imageFile: null,
+      badgeLottieUrl: lvl.badgeLottieUrl || "", badgeLottieFile: null,
+      benefits: Array.isArray(lvl.benefits) ? lvl.benefits : [],
+      isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
     });
     setImagePreview(lvl.imageUrl || null);
+    setBadgeLottieName(lvl.badgeLottieUrl ? "(ملف محفوظ)" : "");
+    setShowBenefitForm(false);
     setError("");
     setShowModal(true);
   };
@@ -126,12 +224,12 @@ const VipManagement = ({ onLogout }) => {
     setSaving(true);
     setError("");
     try {
+      setUploading(true);
       let finalImageUrl = form.imageUrl;
-      if (form.imageFile) {
-        setUploading(true);
-        finalImageUrl = await uploadToCloudinary(form.imageFile);
-        setUploading(false);
-      }
+      if (form.imageFile) finalImageUrl = await uploadToCloudinary(form.imageFile);
+      let finalBadgeLottieUrl = form.badgeLottieUrl;
+      if (form.badgeLottieFile) finalBadgeLottieUrl = await uploadLottieToCloudinary(form.badgeLottieFile);
+      setUploading(false);
       const payload = {
         ...form,
         level: Number(form.level),
@@ -140,8 +238,10 @@ const VipManagement = ({ onLogout }) => {
         commentBorderWidth: normalizeBorderWidth(form.commentBorderWidth),
         commentBubbleShape: normalizeBubbleShape(form.commentBubbleShape),
         imageUrl: finalImageUrl,
+        badgeLottieUrl: finalBadgeLottieUrl,
       };
       delete payload.imageFile;
+      delete payload.badgeLottieFile;
       if (editingLevel) {
         await api.put(`/vip/admin/levels/${editingLevel.level}`, payload, authHeader);
       } else {
@@ -152,6 +252,7 @@ const VipManagement = ({ onLogout }) => {
       setEditingLevel(null);
       setForm({ ...defaultForm });
       setImagePreview(null);
+      setBadgeLottieName("");
       alert(editingLevel ? "تم تحديث مستوى VIP بنجاح" : "تم إضافة مستوى VIP بنجاح");
     } catch (e) {
       setUploading(false);
@@ -257,6 +358,16 @@ const VipManagement = ({ onLogout }) => {
                   </div>
                   {lvl.imageUrl && (
                     <img src={lvl.imageUrl} alt={lvl.nameAr} style={styles.cardImg} />
+                  )}
+                  {lvl.badgeLottieUrl && (
+                    <div style={{ fontSize: 10, color: "#6366f1", marginTop: 2, textAlign: "center" }}>
+                      🎞 Lottie ✓
+                    </div>
+                  )}
+                  {lvl.benefits?.length > 0 && (
+                    <div style={{ fontSize: 10, color: "#10b981", textAlign: "center" }}>
+                      🎁 {lvl.benefits.length} مزايا
+                    </div>
                   )}
                   <div style={styles.cardName}>{lvl.nameAr}</div>
                   {lvl.name && <div style={styles.cardNameEn}>{lvl.name}</div>}
@@ -424,6 +535,140 @@ const VipManagement = ({ onLogout }) => {
                 </div>
                 {uploading && <div style={{ color: "#6366f1", fontSize: 13, marginTop: 6 }}>جاري رفع الصورة...</div>}
               </div>
+              {/* Badge Lottie Animation Upload */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>🎞 انيميشن الشارة (Lottie JSON) — للتطبيق</label>
+                <input ref={badgeLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setForm({ ...form, badgeLottieFile: file, badgeLottieUrl: "" });
+                    setBadgeLottieName(file.name);
+                  }} />
+                <div style={styles.uploadZone} onClick={() => badgeLottieRef.current?.click()}>
+                  {badgeLottieName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 28 }}>🎞</span>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{badgeLottieName}</div>
+                        {form.badgeLottieUrl && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>محفوظ ✓</div>}
+                      </div>
+                      <button style={{ ...styles.removeImgBtn, position: "static" }}
+                        onClick={(e) => { e.stopPropagation(); setBadgeLottieName(""); setForm({ ...form, badgeLottieFile: null, badgeLottieUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 28, marginBottom: 4 }}>🎞</div>
+                      <div style={{ fontSize: 13 }}>اضغط لرفع ملف Lottie (.json)</div>
+                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يُستخدم في التطبيق لعرض انيميشن متحرك</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Benefits Editor */}
+              <div style={{ ...styles.formGroup, border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, background: "#f8fafc" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <label style={{ ...styles.label, marginBottom: 0 }}>🎁 مزايا المستوى (Benefits)</label>
+                  <button style={{ ...styles.saveBtn, padding: "6px 12px", fontSize: 12 }} onClick={openAddBenefit}>
+                    <FiPlus size={12} /> إضافة ميزة
+                  </button>
+                </div>
+                {form.benefits.length === 0 && (
+                  <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "12px 0" }}>لا توجد مزايا بعد</div>
+                )}
+                {form.benefits.map((b, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#fff", borderRadius: 8, marginBottom: 6, border: "1px solid #e2e8f0" }}>
+                    {b.imageUrl && <img src={b.imageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} />}
+                    {b.lottieUrl && !b.imageUrl && <span style={{ fontSize: 22 }}>🎞</span>}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{b.titleAr}</div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>{BENEFIT_TYPES.find(t => t.value === b.type)?.label || b.type}</div>
+                    </div>
+                    {b.isLocked && <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>🔒</span>}
+                    <button style={styles.editBtn} onClick={() => openEditBenefit(idx)}><FiEdit size={12} /></button>
+                    <button style={styles.deleteBtn} onClick={() => deleteBenefit(idx)}><FiTrash2 size={12} /></button>
+                  </div>
+                ))}
+
+                {/* Inline benefit sub-form */}
+                {showBenefitForm && (
+                  <div style={{ background: "#fff", border: "1px solid #6366f1", borderRadius: 10, padding: 14, marginTop: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <strong style={{ fontSize: 13 }}>{editingBenefitIdx !== null ? "تعديل ميزة" : "إضافة ميزة جديدة"}</strong>
+                      <button style={styles.closeBtn} onClick={() => setShowBenefitForm(false)}><FiX /></button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <label style={styles.label}>العنوان العربي *</label>
+                        <input style={styles.input} value={benefitForm.titleAr}
+                          onChange={(e) => setBenefitForm({ ...benefitForm, titleAr: e.target.value })} placeholder="مثال: إطار الصورة" />
+                      </div>
+                      <div>
+                        <label style={styles.label}>النوع</label>
+                        <select style={styles.input} value={benefitForm.type}
+                          onChange={(e) => setBenefitForm({ ...benefitForm, type: e.target.value })}>
+                          {BENEFIT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ gridColumn: "1/-1" }}>
+                        <label style={styles.label}>الوصف العربي</label>
+                        <input style={styles.input} value={benefitForm.descriptionAr}
+                          onChange={(e) => setBenefitForm({ ...benefitForm, descriptionAr: e.target.value })} placeholder="وصف قصير للميزة" />
+                      </div>
+                      {/* Benefit image upload */}
+                      <div>
+                        <label style={styles.label}>📷 صورة الميزة</label>
+                        <input ref={benefitImgRef} type="file" accept="image/*" style={{ display: "none" }}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]; if (!f) return;
+                            setBenefitForm({ ...benefitForm, imageFile: f, imageUrl: "" });
+                            setBenefitImgPreview(URL.createObjectURL(f));
+                          }} />
+                        <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitImgRef.current?.click()}>
+                          {benefitImgPreview
+                            ? <img src={benefitImgPreview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} />
+                            : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}><FiImage size={18} /><br/>صورة</div>}
+                        </div>
+                      </div>
+                      {/* Benefit lottie upload */}
+                      <div>
+                        <label style={styles.label}>🎞 انيميشن (Lottie JSON)</label>
+                        <input ref={benefitLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]; if (!f) return;
+                            setBenefitForm({ ...benefitForm, lottieFile: f, lottieUrl: "" });
+                            setBenefitLottieName(f.name);
+                          }} />
+                        <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitLottieRef.current?.click()}>
+                          {benefitLottieName
+                            ? <div style={{ fontSize: 11, color: "#6366f1", textAlign: "center", fontWeight: 600 }}>🎞 {benefitLottieName}</div>
+                            : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}>🎞<br/>Lottie JSON</div>}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
+                          onChange={(e) => setBenefitForm({ ...benefitForm, isLocked: e.target.checked })} />
+                        <label htmlFor="bLocked" style={{ fontSize: 13, color: "#374151" }}>مقفل (يحتاج مستوى أعلى)</label>
+                      </div>
+                      <div>
+                        <label style={styles.label}>الترتيب</label>
+                        <input style={styles.input} type="number" value={benefitForm.sortOrder}
+                          onChange={(e) => setBenefitForm({ ...benefitForm, sortOrder: +e.target.value })} />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                      <button style={styles.cancelBtn} onClick={() => setShowBenefitForm(false)}>إلغاء</button>
+                      <button style={styles.saveBtn} onClick={saveBenefit} disabled={uploadingBenefit}>
+                        {uploadingBenefit ? "جاري الرفع..." : <><FiCheck size={12} /> حفظ الميزة</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div style={styles.formGroup}>
                 <label style={styles.label}>الترتيب</label>
                 <input style={styles.input} type="number" value={form.sortOrder}

@@ -409,7 +409,11 @@ export default function VipStoreScreen({ navigation }) {
             ListHeaderComponent={
               <>
                 {/* ── Current VIP status card ── */}
-                <View style={styles.statusCard}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => myVipLevel > 0 && navigation.navigate("VipProfile")}
+                  style={styles.statusCard}
+                >
                   <LinearGradient
                     colors={myVipLevel > 0 ? (VIP_GRADIENT[myVipLevel] || ["#1A1A2E", "#2D2D4E"]) : ["#1A1A2E", "#2D2D4E"]}
                     start={{ x: 0, y: 0 }}
@@ -440,7 +444,7 @@ export default function VipStoreScreen({ navigation }) {
                     </View>
                     <Text style={styles.progressLabel}>{myVipLevel} / {levels.length}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
 
                 {/* ── Global perks strip ── */}
                 <View style={styles.globalPerks}>
