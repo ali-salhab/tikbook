@@ -24,7 +24,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../context/AuthContext";
-import LevelBadgeIcon from "../components/LevelBadgeIcon";
 import { ms, fs } from "../utils/responsive";
 
 const { width } = Dimensions.get("window");
@@ -103,7 +102,11 @@ const RewardItem = ({ item, level }) => {
   return (
     <View style={[styles.rewardItem, { borderColor: config.borderColor }]}>
       <View style={[styles.rewardIconBox, { backgroundColor: item.color + "22", borderColor: item.color + "44" }]}>
-        <LevelBadgeIcon level={level} size="small" />
+        <Image
+          source={LEVEL_DETAIL_IMAGES[level]}
+          style={styles.rewardIcon}
+          resizeMode="contain"
+        />
       </View>
       <View style={styles.rewardTexts}>
         <Text style={styles.rewardTitle}>{item.title}</Text>
@@ -146,7 +149,11 @@ export default function LevelScreen({ navigation, route }) {
                 onPress={() => setSelectedLevel(lvl)}
                 activeOpacity={0.8}
               >
-                <LevelBadgeIcon level={lvl} size="medium" />
+                <Image
+                  source={LEVEL_DETAIL_IMAGES[lvl]}
+                  style={styles.tabIcon}
+                  resizeMode="contain"
+                />
               </TouchableOpacity>
             ))}
           </View>
@@ -155,12 +162,6 @@ export default function LevelScreen({ navigation, route }) {
           <View style={styles.heroCardWrapper}>
             {/* Floating badge above the card */}
             <View style={styles.floatingBadge}>
-              <View
-                style={[
-                  styles.badgeGlow,
-                  { backgroundColor: data.accentColor + "40" },
-                ]}
-              />
               <Image
                 source={LEVEL_DETAIL_IMAGES[selectedLevel]}
                 style={styles.heroBadgeImage}
@@ -196,13 +197,7 @@ export default function LevelScreen({ navigation, route }) {
             ))}
           </View>
 
-          {/* Show all rewards button */}
-          <TouchableOpacity style={[styles.showMoreBtn, { borderColor: data.accentColor + "66" }]}>
-            <Text style={[styles.showMoreText, { color: data.accentColor }]}>
-              عرض المزيد من المكافآت
-            </Text>
-            <Ionicons name="chevron-forward" size={ms(14)} color={data.accentColor} />
-          </TouchableOpacity>
+      
 
           <View style={{ height: ms(40) }} />
         </ScrollView>
@@ -244,23 +239,29 @@ const styles = StyleSheet.create({
   levelTabs: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: ms(16),
+    gap: ms(12),
     marginBottom: ms(24),
   },
   levelTab: {
     padding: ms(8),
-    borderRadius: ms(12),
+    borderRadius: ms(16),
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabIcon: {
+    width: ms(72),
+    height: ms(72),
   },
   levelTabActive: {
-    backgroundColor: "rgba(85,153,255,0.2)",
+    backgroundColor: "rgba(85,153,255,0.15)",
     borderColor: "rgba(100,160,255,0.6)",
     shadowColor: "#5599FF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 6,
   },
   // ── Hero card ─────────────────────────────────────────────────────
@@ -309,13 +310,6 @@ const styles = StyleSheet.create({
     width: ms(160),
     height: ms(160),
   },
-  badgeGlow: {
-    position: "absolute",
-    width: ms(140),
-    height: ms(140),
-    borderRadius: ms(70),
-    zIndex: -1,
-  },
   heroRange: {
     fontSize: fs(16),
     fontWeight: "bold",
@@ -357,6 +351,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  rewardIcon: {
+    width: ms(42),
+    height: ms(42),
   },
   rewardTexts: {
     flex: 1,
