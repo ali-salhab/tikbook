@@ -42,6 +42,7 @@ import BadgeShopScreen from "../screens/BadgeShopScreen";
 import MyBadgesScreen from "../screens/MyBadgesScreen";
 import VipStoreScreen from "../screens/VipStoreScreen";
 import VipProfileScreen from "../screens/VipProfileScreen";
+import LevelScreen from "../screens/LevelScreen";
 import CreateStatusScreen from "../screens/CreateStatusScreen";
 import StatusViewerScreen from "../screens/StatusViewerScreen";
 import AllStatusesScreen from "../screens/AllStatusesScreen";
@@ -463,6 +464,7 @@ const AppNavigator = () => {
                 <Stack.Screen name="MyBadges" component={MyBadgesScreen} />
                 <Stack.Screen name="VipStore" component={VipStoreScreen} />
                 <Stack.Screen name="VipProfile" component={VipProfileScreen} />
+                <Stack.Screen name="Levels" component={LevelScreen} />
                 <Stack.Screen
                   name="CreateStatus"
                   component={CreateStatusScreen}

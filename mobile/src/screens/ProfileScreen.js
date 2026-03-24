@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import VipBadge from "../components/VipBadge";
+import LevelBadgeIcon from "../components/LevelBadgeIcon";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 import ProfileMenuModal from "../components/ProfileMenuModal";
@@ -577,9 +577,7 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.displayName}>
               {profile?.username || "User"}
             </Text>
-            {profile?.vipLevel > 0 && (
-              <VipBadge level={profile.vipLevel} size="medium" />
-            )}
+            <LevelBadgeIcon level={Math.min(Math.max(Math.floor((profile?.level || 0) / 10) + 1, 1), 3)} size="small" />
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
@@ -639,13 +637,11 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.vipButton}
-              onPress={() => navigation.navigate("VipStore")}
+              style={styles.levelsButton}
+              onPress={() => navigation.navigate("Levels")}
             >
-              <MaterialCommunityIcons name="crown" size={15} color="#FFF" />
-              <Text style={styles.vipButtonLabel}>
-                {profile?.vipLevel > 0 ? `VIP${profile.vipLevel}` : "VIP"}
-              </Text>
+              <LevelBadgeIcon level={Math.min(Math.max(Math.floor((profile?.level || 0) / 10) + 1, 1), 3)} size="small" />
+              <Text style={styles.levelsButtonLabel}>المستويات</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -931,23 +927,23 @@ const makeStyles = (theme) =>
       flex: 1,
       justifyContent: "center",
     },
-    vipButton: {
+    levelsButton: {
       flexDirection: "row",
       alignItems: "center",
       gap: ms(5),
       paddingHorizontal: ms(12),
       paddingVertical: ms(11),
-      backgroundColor: "#7B4A00",
+      backgroundColor: theme.id === "dark" ? "#0A1A3A" : "#1A3A7A",
       borderRadius: ms(10),
       borderWidth: 1,
-      borderColor: "#FFD700",
+      borderColor: "rgba(100,160,255,0.6)",
       flex: 1,
       justifyContent: "center",
     },
-    vipButtonLabel: {
+    levelsButtonLabel: {
       fontSize: fs(12),
       fontWeight: "bold",
-      color: "#FFD700",
+      color: "#89C4FF",
     },
     buttonLabel: {
       fontSize: fs(13),
