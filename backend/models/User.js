@@ -112,6 +112,10 @@ const userSchema = mongoose.Schema(
     // VIP membership
     vipLevel: { type: Number, default: 0, min: 0, max: 15 },
     vipPurchasedAt: { type: Date, default: null },
+    // User Level System based on spending
+    level: { type: Number, default: 0, min: 0 },
+    totalSpent: { type: Number, default: 0, min: 0 },
+    totalRecharged: { type: Number, default: 0, min: 0 },
   },
   {
     timestamps: true,

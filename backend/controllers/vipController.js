@@ -2,6 +2,7 @@ const VipLevel = require("../models/VipLevel");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
+const { calculateLevelFromSpent } = require("../services/userLevelingService");
 
 // Default VIP levels seeded on first boot if none exist
 const DEFAULT_LEVELS = [
@@ -76,6 +77,11 @@ const purchaseVipLevel = async (req, res) => {
 
     user.vipLevel = levelNum;
     user.vipPurchasedAt = new Date();
+    
+    // Update user's total spent and level
+    user.totalSpent = (user.totalSpent || 0) + vipLevel.price;
+    user.level = calculateLevelFromSpent(user.totalSpent);
+    
     await user.save();
 
     await Transaction.create({

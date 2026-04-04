@@ -251,7 +251,7 @@ export default function LevelScreen({ navigation, route }) {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => String(item.level)}
-          style={{ flexShrink: 0 }}
+          style={{ flexGrow: 0, flexShrink: 0 }}
           contentContainerStyle={styles.tabsContainer}
           onScrollToIndexFailed={() => {}}
           renderItem={({ item, index }) => {
@@ -275,7 +275,7 @@ export default function LevelScreen({ navigation, route }) {
                 activeOpacity={0.8}
               >
                 <View style={styles.tabIconWrapper}>
-                  <LevelBadge level={item} size={ms(68)} />
+                  <LevelBadge level={item} size={ms(56)} />
                 </View>
               </TouchableOpacity>
             );
@@ -298,9 +298,6 @@ export default function LevelScreen({ navigation, route }) {
               end={{ x: 1, y: 1 }}
             >
               <View style={styles.cardRow}>
-                {/* Space for floating badge */}
-                <View style={styles.cardBadgeSpace} />
-
                 {/* Text */}
                 <View style={styles.cardTexts}>
                   {(userInfo?.vipLevel ?? 0) === sel?.level && (
@@ -324,7 +321,7 @@ export default function LevelScreen({ navigation, route }) {
 
             {/* Floating badge */}
             <View style={styles.floatingBadge}>
-              <LevelBadge level={sel} size={ms(140)} />
+              <LevelBadge level={sel} size={ms(100)} />
             </View>
           </View>
 
@@ -351,6 +348,7 @@ export default function LevelScreen({ navigation, route }) {
           )}
 
           <View style={{ height: ms(40) }} />
+          
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -359,7 +357,7 @@ export default function LevelScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  safe: { flex: 1 },
+  safe: { flex: 1, justifyContent: "flex-start" },
   center: { justifyContent: "center", alignItems: "center" },
 
   // ── Header ──
@@ -375,54 +373,54 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   headerTitle: {
-    fontSize: fs(18), fontWeight: "bold", color: "#FFF",
+    fontSize: fs(18), fontWeight: "bold", color: "#6f6e6e",
   },
 
   // ── Tabs ──
   tabsContainer: {
     paddingHorizontal: ms(12),
-    paddingVertical: ms(10),
-    gap: ms(12),
+    paddingVertical: ms(4),
+    gap: ms(10),
     alignItems: "center",
   },
   levelTab: {
-    borderRadius: ms(16),
+    borderRadius: ms(14),
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    width: ms(100),
-    height: ms(100),
+    width: ms(88),
+    height: ms(88),
   },
   tabIconWrapper: {
-    width: ms(78), height: ms(78),
+    width: ms(64), height: ms(64),
     alignItems: "center", justifyContent: "center",
   },
 
   // ── Scroll ──
   scrollContent: {
     paddingHorizontal: ms(16),
-    paddingTop: ms(12),
+    paddingTop: ms(4),
   },
 
   // ── Hero card ──
   heroWrapper: {
     position: "relative",
-    marginLeft: ms(80),
-    marginBottom: ms(20),
-    paddingVertical: ms(2),
+    marginBottom: ms(12),
+    marginLeft: ms(20),
+    marginRight: ms(2), // Leaves space for the badge to hover over the right edge
   },
   heroCard: {
-    borderRadius: ms(20),
+    borderRadius: ms(12),
     borderWidth: 1,
     overflow: "visible",
-    minHeight: ms(110),
+    minHeight: ms(96),
     justifyContent: "center",
   },
   floatingBadge: {
     position: "absolute",
-    left: -ms(105),
+    left: -ms(40),      // Pulls the badge out to hover over the margin space
     top: 0, bottom: 0,
     justifyContent: "center",
     alignItems: "center",
@@ -431,10 +429,10 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: ms(22),
-    paddingHorizontal: ms(16),
+    paddingVertical: ms(16),
+    paddingLeft: ms(16),
+    paddingRight: ms(50), // Ensures text stays clear of the hovering badge on the right
   },
-  cardBadgeSpace: { width: ms(75) },
   cardTexts: { flex: 1, alignItems: "flex-end" },
   currentTag: {
     flexDirection: "row", alignItems: "center", gap: ms(4),

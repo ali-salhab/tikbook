@@ -9,6 +9,7 @@ const {
   deleteVideo,
   sendBroadcastNotification,
   grantCoinsToUser,
+  updateUserLevel,
 } = require("../controllers/adminController");
 const { protect, admin } = require("../middleware/authMiddleware");
 
@@ -20,6 +21,7 @@ router.post("/notify/:userId", protect, admin, sendNotificationToUser);
 router.get("/videos", protect, admin, getAllVideos);
 router.delete("/videos/:id", protect, admin, deleteVideo);
 router.post("/wallet/grant", protect, admin, grantCoinsToUser);
+router.put("/users/:id/level", protect, admin, updateUserLevel);
 
 // Withdrawal requests management
 router.get("/withdrawals", protect, admin, async (req, res) => {

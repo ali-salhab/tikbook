@@ -482,59 +482,6 @@ const sendBroadcastNotification = async (req, res) => {
   }
 };
 
-// @desc    Update user level (admin)
-// @route   PUT /api/admin/users/:id/level
-// @access  Private/Admin
-const updateUserLevel = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { level } = req.body;
-
-    if (level === undefined || level === null) {
-      return res.status(400).json({
-        success: false,
-        message: "Level is required",
-      });
-    }
-
-    if (level < 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Level cannot be negative",
-      });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      id,
-      { level },
-      { new: true, runValidators: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "تم تحديث مستوى المستخدم بنجاح",
-      user: {
-        _id: user._id,
-        username: user.username,
-        level: user.level,
-        totalSpent: user.totalSpent,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -544,7 +491,6 @@ module.exports = {
   deleteVideo,
   sendBroadcastNotification,
   grantCoinsToUser,
-  updateUserLevel,
 };
 
 // @desc    Grant coins to a user (admin)
@@ -556,3 +502,4 @@ async function grantCoinsToUser(req, res) {
       "Wallet grant endpoint is disabled. Users must purchase coins via Stripe gateway.",
   });
 }
+

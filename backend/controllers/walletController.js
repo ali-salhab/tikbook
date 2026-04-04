@@ -1,5 +1,7 @@
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
+const User = require("../models/User");
+const { calculateLevelFromSpent } = require("../services/userLevelingService");
 const {
   isStripeReady,
   createCoinPurchaseIntent,
@@ -62,6 +64,13 @@ const completeTopUpTransaction = async ({ transaction, paymentIntent, source }) 
 
   wallet.balance += Number(transaction.amount || 0);
   await wallet.save();
+
+  // Update totalRecharged for leveling
+  const user = await User.findById(transaction.user);
+  if (user) {
+    user.totalRecharged = (user.totalRecharged || 0) + Number(transaction.amount || 0);
+    await user.save();
+  }
 
   transaction.status = "completed";
   transaction.platformTransactionId = paymentIntent?.id || transaction.platformTransactionId;
@@ -144,6 +153,12 @@ const sendGift = async (req, res) => {
 
     senderWallet.balance -= amount;
     await senderWallet.save({ session });
+
+    // Update sender level based on spending
+    const sender = await User.findById(req.user._id).session(session);
+    sender.totalSpent = (sender.totalSpent || 0) + amount;
+    sender.level = calculateLevelFromSpent(sender.totalSpent);
+    await sender.save({ session });
 
     let receiverWallet = await Wallet.findOne({ user: receiverId }).session(
       session,

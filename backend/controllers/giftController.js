@@ -6,6 +6,7 @@ const Transaction = require("../models/Transaction");
 const { LiveRoom } = require("../models/LiveRoom");
 const { uploadToCloudinary } = require("../services/cloudinaryService");
 const fs = require("fs");
+const { calculateLevelFromSpent } = require("../services/userLevelingService");
 
 // Get all active gifts
 exports.getGifts = async (req, res) => {
@@ -111,7 +112,11 @@ exports.sendGift = async (req, res) => {
     // Deduct from sender
     senderWallet.balance -= totalCoins;
     await senderWallet.save();
-
+      // Update sender level based on spending
+      const sender = await User.findById(senderId);
+      sender.totalSpent = (sender.totalSpent || 0) + totalCoins;
+      sender.level = calculateLevelFromSpent(sender.totalSpent);
+      await sender.save();
     // Add to receiver's earnings (since it's a gift)
     receiverWallet.earnings = (receiverWallet.earnings || 0) + receiverEarnings;
     // Also update balance if that's the desired behavior, but typically gifts go to earnings

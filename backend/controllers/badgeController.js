@@ -3,8 +3,7 @@ const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
-const { sendNotificationToUser } = require("./pushNotificationController");
-
+const { sendNotificationToUser } = require("./pushNotificationController");const { calculateLevelFromSpent } = require("../services/userLevelingService");
 // @desc    Get all available badges
 // @route   GET /api/badges
 // @access  Public
@@ -147,12 +146,11 @@ const purchaseBadge = async (req, res) => {
         acquiredAt: new Date(),
       });
     }
-    await user.save();
 
-    // Populate and return
-    await user.populate("ownedBadges.badge ownedBackgrounds.badge");
-
-    res.json({
+      // Update user's total spent and level
+      user.totalSpent = (user.totalSpent || 0) + badge.price;
+      user.level = calculateLevelFromSpent(user.totalSpent);
+      
       success: true,
       message: "Badge purchased successfully",
       badge,
