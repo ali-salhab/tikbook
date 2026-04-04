@@ -251,6 +251,7 @@ export default function LevelScreen({ navigation, route }) {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => String(item.level)}
+          style={{ flexShrink: 0 }}
           contentContainerStyle={styles.tabsContainer}
           onScrollToIndexFailed={() => {}}
           renderItem={({ item, index }) => {
@@ -274,7 +275,7 @@ export default function LevelScreen({ navigation, route }) {
                 activeOpacity={0.8}
               >
                 <View style={styles.tabIconWrapper}>
-                  <LevelBadge level={item} size={ms(46)} />
+                  <LevelBadge level={item} size={ms(68)} />
                 </View>
               </TouchableOpacity>
             );
@@ -283,6 +284,7 @@ export default function LevelScreen({ navigation, route }) {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} />}
         >
@@ -379,27 +381,29 @@ const styles = StyleSheet.create({
   // ── Tabs ──
   tabsContainer: {
     paddingHorizontal: ms(12),
-    paddingBottom: ms(6),
+    paddingVertical: ms(10),
     gap: ms(12),
+    alignItems: "center",
   },
   levelTab: {
-    padding: ms(6),
-    borderRadius: ms(14),
+    borderRadius: ms(16),
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
+    width: ms(100),
+    height: ms(100),
   },
   tabIconWrapper: {
-    width: ms(58), height: ms(44),
+    width: ms(78), height: ms(78),
     alignItems: "center", justifyContent: "center",
   },
 
   // ── Scroll ──
   scrollContent: {
     paddingHorizontal: ms(16),
-    paddingTop: ms(20),
+    paddingTop: ms(12),
   },
 
   // ── Hero card ──

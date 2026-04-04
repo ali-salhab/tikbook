@@ -483,302 +483,279 @@ const VipManagement = ({ onLogout }) => {
                 <button style={styles.closeBtn} onClick={() => setShowModal(false)}><FiX /></button>
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>المستوى (Level)</label>
-                <input style={styles.input} type="number" min="1" value={form.level}
-                  onChange={(e) => setForm({ ...form, level: +e.target.value })}
-                  disabled={!!editingLevel} />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>الاسم العربي *</label>
-                <input style={styles.input} value={form.nameAr}
-                  onChange={(e) => setForm({ ...form, nameAr: e.target.value })}
-                  placeholder="مثال: ملكي" />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>الاسم الإنجليزي</label>
-                <input style={styles.input} value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Royal" />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>السعر (💎 ماس)</label>
-                <input style={styles.input} type="number" min="0" value={form.price}
-                  onChange={(e) => setForm({ ...form, price: +e.target.value })} />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>اللون</label>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <input type="color" value={form.color}
-                    onChange={(e) => setForm({ ...form, color: e.target.value })}
-                    style={{ width: 48, height: 36, border: "none", borderRadius: 8, cursor: "pointer" }} />
-                  <input style={{ ...styles.input, flex: 1 }} value={form.color}
-                    onChange={(e) => setForm({ ...form, color: e.target.value })} />
+
+              {/* ── Row 1: Level + Arabic name ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>المستوى (Level)</label>
+                  <input style={styles.input} type="number" min="1" value={form.level}
+                    onChange={(e) => setForm({ ...form, level: +e.target.value })}
+                    disabled={!!editingLevel} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>الاسم العربي *</label>
+                  <input style={styles.input} value={form.nameAr}
+                    onChange={(e) => setForm({ ...form, nameAr: e.target.value })}
+                    placeholder="مثال: ملكي" />
                 </div>
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>لون اسم المستخدم (VIP Username Color)</label>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <input type="color" value={form.usernameColor || form.color}
-                    onChange={(e) => setForm({ ...form, usernameColor: e.target.value })}
-                    style={{ width: 48, height: 36, border: "none", borderRadius: 8, cursor: "pointer" }} />
-                  <input style={{ ...styles.input, flex: 1 }} value={form.usernameColor || form.color}
-                    onChange={(e) => setForm({ ...form, usernameColor: e.target.value })} />
+
+              {/* ── Row 2: English name + Price ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>الاسم الإنجليزي</label>
+                  <input style={styles.input} value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g. Royal" />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>السعر (💎 ماس)</label>
+                  <input style={styles.input} type="number" min="0" value={form.price}
+                    onChange={(e) => setForm({ ...form, price: +e.target.value })} />
                 </div>
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>سماكة إطار التعليق (VIP)</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  min="0"
-                  max="8"
-                  step="0.1"
-                  value={form.commentBorderWidth}
-                  onChange={(e) => setForm({ ...form, commentBorderWidth: +e.target.value })}
-                />
+
+              {/* ── Row 3: Level color + Username color ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>لون المستوى</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="color" value={form.color}
+                      onChange={(e) => setForm({ ...form, color: e.target.value })}
+                      style={{ width: 40, height: 36, border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0 }} />
+                    <input style={{ ...styles.input, flex: 1 }} value={form.color}
+                      onChange={(e) => setForm({ ...form, color: e.target.value })} />
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>لون اسم المستخدم</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="color" value={form.usernameColor || form.color}
+                      onChange={(e) => setForm({ ...form, usernameColor: e.target.value })}
+                      style={{ width: 40, height: 36, border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0 }} />
+                    <input style={{ ...styles.input, flex: 1 }} value={form.usernameColor || form.color}
+                      onChange={(e) => setForm({ ...form, usernameColor: e.target.value })} />
+                  </div>
+                </div>
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>شكل إطار التعليق (VIP)</label>
-                <select
-                  style={styles.input}
-                  value={form.commentBubbleShape}
-                  onChange={(e) => setForm({ ...form, commentBubbleShape: e.target.value })}
-                >
-                  <option value="classic">Classic</option>
-                  <option value="rounded">Rounded</option>
-                  <option value="square">Square</option>
-                  <option value="pill">Pill</option>
-                </select>
+
+              {/* ── Row 4: Border width + Bubble shape ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>سماكة إطار التعليق</label>
+                  <input style={styles.input} type="number" min="0" max="8" step="0.1"
+                    value={form.commentBorderWidth}
+                    onChange={(e) => setForm({ ...form, commentBorderWidth: +e.target.value })} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>شكل فقاعة التعليق</label>
+                  <select style={styles.input} value={form.commentBubbleShape}
+                    onChange={(e) => setForm({ ...form, commentBubbleShape: e.target.value })}>
+                    <option value="classic">Classic</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="square">Square</option>
+                    <option value="pill">Pill</option>
+                  </select>
+                </div>
               </div>
+
+              {/* ── Comment preview (full width) ── */}
               <div style={styles.formGroup}>
-                <label style={styles.label}>معاينة إطار التعليق (VIP)</label>
+                <label style={styles.label}>معاينة التعليق</label>
                 <div style={styles.previewWrap}>
-                  <div
-                    style={{
-                      ...styles.previewBubble,
-                      ...getBubbleShapeStyle(form.commentBubbleShape),
-                      borderColor: form.color || "#FFD700",
-                      borderWidth: normalizeBorderWidth(form.commentBorderWidth),
-                    }}
-                  >
+                  <div style={{ ...styles.previewBubble, ...getBubbleShapeStyle(form.commentBubbleShape), borderColor: form.color || "#FFD700", borderWidth: normalizeBorderWidth(form.commentBorderWidth) }}>
                     <div style={styles.previewHeader}>
-                      <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>
-                        مستخدم VIP{Number(form.level) || 1}
-                      </span>
-                      <span
-                        style={{
-                          ...styles.previewChip,
-                          backgroundColor: form.color || "#FFD700",
-                        }}
-                      >
-                        VIP{Number(form.level) || 1}
-                      </span>
+                      <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>مستخدم VIP{Number(form.level) || 1}</span>
+                      <span style={{ ...styles.previewChip, backgroundColor: form.color || "#FFD700" }}>VIP{Number(form.level) || 1}</span>
                     </div>
                     <div style={styles.previewMessage}>هذا شكل التعليق داخل صفحة البث المباشر.</div>
                   </div>
                 </div>
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>صورة المستوى</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setForm({ ...form, imageFile: file, imageUrl: "" });
-                    setImagePreview(URL.createObjectURL(file));
-                  }}
-                />
-                <div
-                  style={styles.uploadZone}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {imagePreview ? (
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                      <img src={imagePreview} alt="preview" style={styles.imagePreview} />
-                      <button
-                        style={styles.removeImgBtn}
-                        onClick={(e) => { e.stopPropagation(); setImagePreview(null); setForm({ ...form, imageFile: null, imageUrl: "" }); }}
-                      >
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                      <FiImage size={32} style={{ marginBottom: 8 }} />
-                      <div style={{ fontSize: 13 }}>اضغط لاختيار صورة</div>
-                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>PNG, JPG, WebP</div>
-                    </div>
-                  )}
-                </div>
-                {uploading && <div style={{ color: "#6366f1", fontSize: 13, marginTop: 6 }}>جاري رفع الصورة...</div>}
-              </div>
-              {/* Badge Lottie Animation Upload */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>🎞 انيميشن الشارة (Lottie JSON) — للتطبيق</label>
-                <input ref={badgeLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setForm({ ...form, badgeLottieFile: file, badgeLottieUrl: "" });
-                    setBadgeLottieName(file.name);
-                  }} />
-                <div style={styles.uploadZone} onClick={() => badgeLottieRef.current?.click()}>
-                  {badgeLottieName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 28 }}>🎞</span>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{badgeLottieName}</div>
-                        {form.badgeLottieUrl && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>محفوظ ✓</div>}
+
+              {/* ── Row 5: Badge image + Badge Lottie ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>🖼 صورة المستوى</label>
+                  <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, imageFile: file, imageUrl: "" });
+                      setImagePreview(URL.createObjectURL(file));
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => fileInputRef.current?.click()}>
+                    {imagePreview ? (
+                      <div style={{ position: "relative", display: "inline-block" }}>
+                        <img src={imagePreview} alt="preview" style={styles.imagePreview} />
+                        <button style={styles.removeImgBtn}
+                          onClick={(e) => { e.stopPropagation(); setImagePreview(null); setForm({ ...form, imageFile: null, imageUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
                       </div>
-                      <button style={{ ...styles.removeImgBtn, position: "static" }}
-                        onClick={(e) => { e.stopPropagation(); setBadgeLottieName(""); setForm({ ...form, badgeLottieFile: null, badgeLottieUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                      <div style={{ fontSize: 28, marginBottom: 4 }}>🎞</div>
-                      <div style={{ fontSize: 13 }}>اضغط لرفع ملف Lottie (.json)</div>
-                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يُستخدم في التطبيق لعرض انيميشن متحرك</div>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <FiImage size={28} style={{ marginBottom: 6 }} />
+                        <div style={{ fontSize: 12 }}>PNG, JPG, WebP</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>🎞 انيميشن الشارة (Lottie)</label>
+                  <input ref={badgeLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, badgeLottieFile: file, badgeLottieUrl: "" });
+                      setBadgeLottieName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => badgeLottieRef.current?.click()}>
+                    {badgeLottieName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>🎞</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{badgeLottieName}</div>
+                          {form.badgeLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => { e.stopPropagation(); setBadgeLottieName(""); setForm({ ...form, badgeLottieFile: null, badgeLottieUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>🎞</div>
+                        <div style={{ fontSize: 12 }}>Lottie JSON</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Comment Frame Lottie */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>💬 إطار التعليق المتحرك (Lottie JSON) — داخل الغرفة</label>
-                <input ref={commentFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    setForm({ ...form, commentFrameLottieFile: file, commentFrameLottieUrl: "" });
-                    setCommentFrameLottieName(file.name);
-                  }} />
-                <div style={styles.uploadZone} onClick={() => commentFrameLottieRef.current?.click()}>
-                  {commentFrameLottieName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 28 }}>💬</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{commentFrameLottieName}</div>
-                        {form.commentFrameLottieUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
+              {/* ── Row 6: Comment frame + Profile frame ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>💬 إطار التعليق (Lottie)</label>
+                  <input ref={commentFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, commentFrameLottieFile: file, commentFrameLottieUrl: "" });
+                      setCommentFrameLottieName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => commentFrameLottieRef.current?.click()}>
+                    {commentFrameLottieName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>💬</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{commentFrameLottieName}</div>
+                          {form.commentFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => { e.stopPropagation(); setCommentFrameLottieName(""); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
                       </div>
-                      <button style={{ ...styles.removeImgBtn, position: "static" }}
-                        onClick={(e) => { e.stopPropagation(); setCommentFrameLottieName(""); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                      <div style={{ fontSize: 28, marginBottom: 4 }}>💬</div>
-                      <div style={{ fontSize: 13 }}>رفع Lottie JSON لإطار التعليق</div>
-                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يظهر كإطار حول فقاعة التعليق في البث</div>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>💬</div>
+                        <div style={{ fontSize: 12 }}>إطار فقاعة التعليق</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>👤 إطار الصورة الشخصية (Lottie)</label>
+                  <input ref={profileFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
+                      setProfileFrameLottieName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => profileFrameLottieRef.current?.click()}>
+                    {profileFrameLottieName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>👤</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profileFrameLottieName}</div>
+                          {form.profileFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>👤</div>
+                        <div style={{ fontSize: 12 }}>إطار الأفاتار في الغرفة</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Profile Frame Lottie */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>👤 إطار الصورة الشخصية (Lottie JSON) — في الغرفة</label>
-                <input ref={profileFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
-                    setProfileFrameLottieName(file.name);
-                  }} />
-                <div style={styles.uploadZone} onClick={() => profileFrameLottieRef.current?.click()}>
-                  {profileFrameLottieName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 28 }}>👤</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{profileFrameLottieName}</div>
-                        {form.profileFrameLottieUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
+              {/* ── Row 7: Join animation + Join sound ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>✨ انيميشن دخول الغرفة (Lottie)</label>
+                  <input ref={joinAnimationLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, joinAnimationLottieFile: file, joinAnimationLottieUrl: "" });
+                      setJoinAnimationLottieName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => joinAnimationLottieRef.current?.click()}>
+                    {joinAnimationLottieName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>✨</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{joinAnimationLottieName}</div>
+                          {form.joinAnimationLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => { e.stopPropagation(); setJoinAnimationLottieName(""); setForm({ ...form, joinAnimationLottieFile: null, joinAnimationLottieUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
                       </div>
-                      <button style={{ ...styles.removeImgBtn, position: "static" }}
-                        onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                      <div style={{ fontSize: 28, marginBottom: 4 }}>👤</div>
-                      <div style={{ fontSize: 13 }}>رفع Lottie JSON لإطار الصورة الشخصية</div>
-                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يظهر حول الأفاتار داخل الغرفة المباشرة</div>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>✨</div>
+                        <div style={{ fontSize: 12 }}>انيميشن عند دخول VIP</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>🔊 صوت دخول الغرفة (MP3 / WAV / M4A)</label>
+                  <input ref={joinSoundRef} type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, joinSoundFile: file, joinSoundUrl: "" });
+                      setJoinSoundName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => joinSoundRef.current?.click()}>
+                    {joinSoundName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>🎵</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{joinSoundName}</div>
+                          {form.joinSoundUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => { e.stopPropagation(); setJoinSoundName(""); setForm({ ...form, joinSoundFile: null, joinSoundUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>🔊</div>
+                        <div style={{ fontSize: 12 }}>صوت دخول المستوى</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Join Animation Lottie */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>✨ انيميشن دخول الغرفة (Lottie JSON)</label>
-                <input ref={joinAnimationLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    setForm({ ...form, joinAnimationLottieFile: file, joinAnimationLottieUrl: "" });
-                    setJoinAnimationLottieName(file.name);
-                  }} />
-                <div style={styles.uploadZone} onClick={() => joinAnimationLottieRef.current?.click()}>
-                  {joinAnimationLottieName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 28 }}>✨</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{joinAnimationLottieName}</div>
-                        {form.joinAnimationLottieUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
-                      </div>
-                      <button style={{ ...styles.removeImgBtn, position: "static" }}
-                        onClick={(e) => { e.stopPropagation(); setJoinAnimationLottieName(""); setForm({ ...form, joinAnimationLottieFile: null, joinAnimationLottieUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                      <div style={{ fontSize: 28, marginBottom: 4 }}>✨</div>
-                      <div style={{ fontSize: 13 }}>رفع Lottie JSON لانيميشن الدخول</div>
-                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يظهر عند دخول VIP إلى الغرفة المباشرة</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Join Sound */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>🔊 صوت دخول الغرفة (MP3 / WAV / M4A)</label>
-                <input ref={joinSoundRef} type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    setForm({ ...form, joinSoundFile: file, joinSoundUrl: "" });
-                    setJoinSoundName(file.name);
-                  }} />
-                <div style={styles.uploadZone} onClick={() => joinSoundRef.current?.click()}>
-                  {joinSoundName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 28 }}>🎵</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{joinSoundName}</div>
-                        {form.joinSoundUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
-                      </div>
-                      <button style={{ ...styles.removeImgBtn, position: "static" }}
-                        onClick={(e) => { e.stopPropagation(); setJoinSoundName(""); setForm({ ...form, joinSoundFile: null, joinSoundUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                      <div style={{ fontSize: 28, marginBottom: 4 }}>🔊</div>
-                      <div style={{ fontSize: 13 }}>رفع ملف صوت الدخول</div>
-                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يُشغَّل عند دخول هذا المستوى إلى الغرفة</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Special Join Text */}
+              {/* ── Special Join Text (full width) ── */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>📢 نص الدخول الخاص (Special Join Text)</label>
                 <input style={styles.input} value={form.specialJoinText}
@@ -887,17 +864,20 @@ const VipManagement = ({ onLogout }) => {
                 )}
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>الترتيب</label>
-                <input style={styles.input} type="number" value={form.sortOrder}
-                  onChange={(e) => setForm({ ...form, sortOrder: +e.target.value })} />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={{ ...styles.label, display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" checked={form.isActive}
-                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                  مفعّل
-                </label>
+              {/* ── Row 8: Sort order + Active toggle ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>الترتيب</label>
+                  <input style={styles.input} type="number" value={form.sortOrder}
+                    onChange={(e) => setForm({ ...form, sortOrder: +e.target.value })} />
+                </div>
+                <div style={{ ...styles.formGroup, display: "flex", alignItems: "center", paddingTop: 24 }}>
+                  <label style={{ ...styles.label, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                    <input type="checkbox" checked={form.isActive}
+                      onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                    مفعّل
+                  </label>
+                </div>
               </div>
               <div style={styles.modalFooter}>
                 <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>إلغاء</button>
@@ -999,7 +979,7 @@ const styles = {
   editBtn: { padding: "6px 10px", backgroundColor: "#e0e7ff", color: "#6366f1", border: "none", borderRadius: 8, cursor: "pointer" },
   deleteBtn: { padding: "6px 10px", backgroundColor: "#fee2e2", color: "#ef4444", border: "none", borderRadius: 8, cursor: "pointer" },
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", borderRadius: 16, padding: 28, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto", direction: "rtl" },
+  modal: { backgroundColor: "#fff", borderRadius: 16, padding: 32, width: "95%", maxWidth: 860, maxHeight: "92vh", overflowY: "auto", direction: "rtl" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b" },
   modalFooter: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 },
@@ -1021,6 +1001,7 @@ const styles = {
   userList: { border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", marginBottom: 12 },
   userItem: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", transition: "background 0.15s" },
   selectedUser: { backgroundColor: "#f0fdf4", color: "#16a34a", padding: "8px 12px", borderRadius: 8, fontSize: 14, marginBottom: 12 },
+  twoCol: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
 };
 
 export default VipManagement;
