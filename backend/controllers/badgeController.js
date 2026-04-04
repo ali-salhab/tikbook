@@ -151,7 +151,10 @@ const purchaseBadge = async (req, res) => {
       user.totalSpent = (user.totalSpent || 0) + badge.price;
       user.level = calculateLevelFromSpent(user.totalSpent);
       
-      success: true,
+      await user.save();
+
+      res.json({
+        success: true,
       message: "Badge purchased successfully",
       badge,
       remainingBalance: wallet.balance,

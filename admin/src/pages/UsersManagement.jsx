@@ -11,6 +11,9 @@ import {
   FiMail,
   FiCalendar,
   FiActivity,
+  FiTrendingUp,
+  FiDollarSign,
+  FiPlusCircle,
 } from "react-icons/fi";
 
 const UsersManagement = () => {
@@ -18,6 +21,9 @@ const UsersManagement = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [levelEditId, setLevelEditId] = useState(null);
+  const [levelEditValue, setLevelEditValue] = useState(0);
+  const [levelUpdating, setLevelUpdating] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
@@ -80,6 +86,26 @@ const UsersManagement = () => {
     if (diffDays <= 30) return "thisMonth";
     if (diffDays <= 365) return "thisYear";
     return "older";
+  };
+
+  const updateUserLevel = async (userId, newLevel) => {
+    setLevelUpdating(true);
+    try {
+      const response = await api.put(`/admin/users/${userId}/level`, { level: Number(newLevel) }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        setUsers((prev) => prev.map((u) => u._id === userId ? { ...u, level: Number(newLevel) } : u));
+        if (selectedUser?._id === userId) setSelectedUser((prev) => ({ ...prev, level: Number(newLevel) }));
+        setLevelEditId(null);
+        alert("تم تحديث المستوى بنجاح");
+      }
+    } catch (error) {
+      alert("حدث خطأ أثناء تحديث المستوى");
+      console.error("Update level error:", error);
+    } finally {
+      setLevelUpdating(false);
+    }
   };
 
   const applyFilters = () => {
@@ -316,6 +342,9 @@ const UsersManagement = () => {
                           {activityLevelLabel(activity)}
                         </span>
                       </td>
+                      <td className="metric">{user.level || 0}</td>
+                      <td className="metric">{(user.totalSpent || 0).toFixed(2)}</td>
+                      <td className="metric">{(user.totalRecharged || 0).toFixed(2)}</td>
                       <td className="date-cell">
                         {new Date(user.createdAt).toLocaleDateString("ar-EG")}
                       </td>
@@ -383,8 +412,30 @@ const UsersManagement = () => {
                   </div>
                 </div>
 
-                <div className="detail-item">
-                  <FiCalendar size={18} />
+                <div className="detail-item">                    <FiTrendingUp size={18} />
+                    <div>
+                      <p className="label">المستوى</p>
+                      <p className="value">{selectedUser.level || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="detail-item">
+                    <FiDollarSign size={18} />
+                    <div>
+                      <p className="label">إجمالي الإنفاق</p>
+                      <p className="value">{(selectedUser.totalSpent || 0).toFixed(2)} عملة</p>
+                    </div>
+                  </div>
+
+                  <div className="detail-item">
+                    <FiPlusCircle size={18} />
+                    <div>
+                      <p className="label">إجمالي الشحن</p>
+                      <p className="value">{(selectedUser.totalRecharged || 0).toFixed(2)} عملة</p>
+                    </div>
+                  </div>
+
+                  <div className="detail-item">                  <FiCalendar size={18} />
                   <div>
                     <p className="label">تاريخ الانضمام</p>
                     <p className="value">
@@ -394,6 +445,34 @@ const UsersManagement = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Level update section */}
+              <div style={{ padding: "12px 0", borderTop: "1px solid #eee", marginBottom: "8px" }}>
+                <p style={{ fontWeight: "600", marginBottom: "8px" }}>تحديث المستوى يدوياً</p>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input
+                    type="number"
+                    min="0"
+                    defaultValue={selectedUser.level || 0}
+                    key={selectedUser._id}
+                    id="admin-level-input"
+                    style={{ width: "80px", padding: "6px 10px", border: "1px solid #ccc", borderRadius: "6px", fontSize: "14px" }}
+                  />
+                  <button
+                    disabled={levelUpdating}
+                    onClick={() => {
+                      const val = document.getElementById("admin-level-input").value;
+                      updateUserLevel(selectedUser._id, val);
+                    }}
+                    style={{ padding: "6px 16px", backgroundColor: "#6c3fdb", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
+                  >
+                    {levelUpdating ? "جارٍ الحفظ..." : "حفظ"}
+                  </button>
+                </div>
+                <p style={{ fontSize: "12px", color: "#888", marginTop: "4px" }}>
+                  المستوى الحالي: {selectedUser.level || 0} | إجمالي الإنفاق: {(selectedUser.totalSpent || 0).toFixed(2)} عملة
+                </p>
               </div>
 
               <div className="modal-actions">

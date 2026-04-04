@@ -159,25 +159,46 @@ export default function LevelScreen({ navigation, route }) {
   const fetchLevels = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await fetch(`${BASE_URL}/vip/levels`);
+      const res = await fetch(`${BASE_URL}/vip/levels`, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const list = (data.levels || []).filter((l) => l.isActive !== false);
+      if (list.length === 0) throw new Error("no_levels");
       setLevels(list);
-      if (list.length > 0) {
-        const target = initialLevelNum ?? userInfo?.vipLevel ?? list[0].level;
-        const idx = list.findIndex((l) => l.level === target);
-        setSelectedIdx(idx >= 0 ? idx : 0);
+      setError(null);
+      const target = initialLevelNum ?? userInfo?.vipLevel ?? list[0].level;
+      const idx = list.findIndex((l) => l.level === target);
+      setSelectedIdx(idx >= 0 ? idx : 0);
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === "AbortError") {
+        setError("انتهت مهلة الاتصال، يرجى إعادة المحاولة.");
+      } else if (e.message === "no_levels") {
+        setError("لا توجد مستويات حالياً.");
+      } else {
+        setError("تعذّر تحميل المستويات.");
       }
-    } catch {
-      setError("تعذّر تحميل المستويات.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [initialLevelNum, userInfo?.vipLevel]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLevelNum]);
 
+  // Fetch once on mount; re-select tab when userInfo.vipLevel becomes available
   useEffect(() => { fetchLevels(); }, [fetchLevels]);
+
+  useEffect(() => {
+    if (levels.length === 0) return;
+    const target = initialLevelNum ?? userInfo?.vipLevel ?? levels[0].level;
+    const idx = levels.findIndex((l) => l.level === target);
+    if (idx >= 0) setSelectedIdx(idx);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInfo?.vipLevel]);
 
   const onRefresh = () => { setRefreshing(true); fetchLevels(true); };
 
