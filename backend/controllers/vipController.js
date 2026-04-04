@@ -112,7 +112,7 @@ const createVipLevel = async (req, res) => {
   }
 };
 
-// Admin: PUT /api/vip/admin/levels/:level
+// Admin: PUT /api/vip/admin/levels/:level — by level number (no max restriction)
 const updateVipLevel = async (req, res) => {
   try {
     const level = await VipLevel.findOneAndUpdate(

@@ -9,8 +9,10 @@ export interface LiveRoomUser {
   profileImage?: string;
   vipLevel?: SupportedVipLevel | number;
   frameAnimationUrl?: string;
+  profileFrameLottieUrl?: string;
   usernameColor?: string;
   joinAnimationLottieUrl?: string;
+  joinSoundUrl?: string;
 }
 
 export interface LiveChatMessage {
@@ -32,6 +34,8 @@ export interface GiftCatalogItem {
   rarity: GiftRarity;
   animationUrl?: string;
   lottieUrl?: string;
+  webmUrl?: string;
+  animationType?: string;
   previewImage?: string;
   soundUrl?: string;
   duration?: number;
@@ -53,8 +57,12 @@ export interface VipTierConfig {
   name: string;
   nameAr?: string;
   usernameColor: string;
+  color?: string;
   badgeImageUrl?: string;
+  badgeLottieUrl?: string;
   commentFrameLottieUrl?: string;
+  profileFrameLottieUrl?: string;
   joinAnimationLottieUrl?: string;
+  joinSoundUrl?: string;
   specialJoinText?: string;
 }

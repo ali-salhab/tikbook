@@ -54,10 +54,11 @@ const LEVEL_DATA = {
       { id: "r3", title: "ظهور مميز في التوصيات", subtitle: "تصفح وضع اكتشاف الأصدقاء", icon: "people-outline", color: "#34D399" },
       { id: "r4", title: "رمز تعبيري حصري", subtitle: "للتعليقات والمحادثات", icon: "happy-outline", color: "#FBBF24" },
     ],
-    gradient: ["#0D0B2B", "#1A1A50", "#0F0F30"],
-    cardGradient: ["#1A2A6C", "#2A3D8A", "#1E2D70"],
-    accentColor: "#5599FF",
-    borderColor: "rgba(100,160,255,0.4)",
+    gradient: ["#020A1A", "#04152E", "#03101F"],
+    cardGradient: ["#07254A", "#0E3F7A", "#092E5C"],
+    accentColor: "#60A5FA",
+    borderColor: "rgba(96,165,250,0.5)",
+    descriptionColor: "rgba(186,230,253,0.9)",
   },
   2: {
     title: "المستوى 2",
@@ -71,10 +72,11 @@ const LEVEL_DATA = {
       { id: "r4", title: "رموز تعبيرية حصرية", subtitle: "مجموعة موسعة", icon: "happy-outline", color: "#34D399" },
       { id: "r5", title: "إشعار بالمتابعين الجدد", subtitle: "قائمة مميزة", icon: "notifications-outline", color: "#60A5FA" },
     ],
-    gradient: ["#0D0B2B", "#1A1A50", "#0F0F30"],
-    cardGradient: ["#1C2A6E", "#2C3D8E", "#1E2F72"],
-    accentColor: "#7AB8FF",
-    borderColor: "rgba(120,180,255,0.4)",
+    gradient: ["#030B22", "#061840", "#040E28"],
+    cardGradient: ["#0C2D6A", "#1648A0", "#0E3578"],
+    accentColor: "#3B82F6",
+    borderColor: "rgba(59,130,246,0.55)",
+    descriptionColor: "rgba(147,197,253,0.9)",
   },
   3: {
     title: "المستوى 3",
@@ -89,10 +91,11 @@ const LEVEL_DATA = {
       { id: "r5", title: "بث مباشر ممتد", subtitle: "وقت بث إضافي", icon: "videocam-outline", color: "#60A5FA" },
       { id: "r6", title: "دعم أولوية", subtitle: "وصول لفريق الدعم", icon: "headset-outline", color: "#FB923C" },
     ],
-    gradient: ["#0D0B2B", "#1A1A50", "#0F0F30"],
-    cardGradient: ["#1E2E72", "#2E3F92", "#203176"],
-    accentColor: "#9ACFFF",
-    borderColor: "rgba(150,200,255,0.4)",
+    gradient: ["#1A0800", "#2E1400", "#130600"],
+    cardGradient: ["#5C1C00", "#8C3000", "#4A1600"],
+    accentColor: "#F97316",
+    borderColor: "rgba(249,115,22,0.5)",
+    descriptionColor: "rgba(253,186,116,0.9)",
   },
 };
 
@@ -105,7 +108,7 @@ const RewardItem = ({ item, level }) => {
         <Image
           source={LEVEL_DETAIL_IMAGES[level]}
           style={styles.rewardIcon}
-          resizeMode="contain"
+          resizeMode="cover"
         />
       </View>
       <View style={styles.rewardTexts}>
@@ -144,31 +147,32 @@ export default function LevelScreen({ navigation, route }) {
                 key={lvl}
                 style={[
                   styles.levelTab,
-                  selectedLevel === lvl && styles.levelTabActive,
+                  selectedLevel === lvl && {
+                    backgroundColor: LEVEL_DATA[lvl].accentColor + "26",
+                    borderColor: LEVEL_DATA[lvl].accentColor + "99",
+                    shadowColor: LEVEL_DATA[lvl].accentColor,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.6,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  },
                 ]}
                 onPress={() => setSelectedLevel(lvl)}
                 activeOpacity={0.8}
               >
-                <Image
-                  source={LEVEL_DETAIL_IMAGES[lvl]}
-                  style={styles.tabIcon}
-                  resizeMode="contain"
-                />
+                <View style={styles.tabIconWrapper}>
+                  <Image
+                    source={LEVEL_DETAIL_IMAGES[lvl]}
+                    style={styles.tabIcon}
+                    resizeMode="stretch"
+                  />
+                </View>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Hero card wrapper — badge floats over the top edge */}
+          {/* Hero card wrapper — badge floats off the left edge */}
           <View style={styles.heroCardWrapper}>
-            {/* Floating badge above the card */}
-            <View style={styles.floatingBadge}>
-              <Image
-                source={LEVEL_DETAIL_IMAGES[selectedLevel]}
-                style={styles.heroBadgeImage}
-                resizeMode="contain"
-              />
-            </View>
-
             {/* Card */}
             <LinearGradient
               colors={data.cardGradient}
@@ -176,17 +180,27 @@ export default function LevelScreen({ navigation, route }) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              {/* Glowing corner accents */}
-              <View style={[styles.cornerAccentTL, { backgroundColor: data.accentColor }]} />
-              <View style={[styles.cornerAccentBR, { backgroundColor: data.accentColor }]} />
+              {/* Row: icon space on left + text on right */}
+              <View style={styles.cardRow}>
+                {/* Empty space for the icon that overflows left */}
+                <View style={styles.cardIconSpace} />
 
-              {/* Spacer so text sits below the overlapping badge */}
-              <View style={styles.badgeSpacer} />
-
-              {/* Level range label */}
-              <Text style={styles.heroRange}>{data.subtitle}</Text>
-              <Text style={styles.heroDescription}>{data.description}</Text>
+                {/* Text content */}
+                <View style={styles.cardTexts}>
+                  <Text style={styles.heroRange}>{data.subtitle}</Text>
+                  <Text style={[styles.heroDescription, { color: data.descriptionColor }]}>{data.description}</Text>
+                </View>
+              </View>
             </LinearGradient>
+
+            {/* Floating badge on the left, vertically centered over the card */}
+            <View style={styles.floatingBadge}>
+              <Image
+                source={LEVEL_DETAIL_IMAGES[selectedLevel]}
+                style={styles.heroBadgeImage}
+                resizeMode="contain"
+              />
+            </View>
           </View>
 
           {/* Rewards section */}
@@ -243,85 +257,78 @@ const styles = StyleSheet.create({
     marginBottom: ms(24),
   },
   levelTab: {
-    padding: ms(8),
+    padding: ms(10),
     borderRadius: ms(16),
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(151, 60, 60, 0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
   tabIcon: {
-    width: ms(72),
-    height: ms(72),
+    width: ms(100),
+    height: ms(100),
   },
-  levelTabActive: {
-    backgroundColor: "rgba(85,153,255,0.15)",
-    borderColor: "rgba(100,160,255,0.6)",
-    shadowColor: "#5599FF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 6,
+  tabIconWrapper: {
+    width: ms(100),
+    height: ms(100),
+    alignItems: "center",
+    justifyContent: "center",
   },
+  levelTabActive: {},
   // ── Hero card ─────────────────────────────────────────────────────
   heroCardWrapper: {
     position: "relative",
-    marginTop: ms(70),         // make room for the top half of the floating badge
-    marginBottom: ms(24),
+    marginLeft: ms(80),
+    marginBottom: ms(8),
+    paddingVertical: ms(2),   // breathing room so icon can overflow card top/bottom
   },
   floatingBadge: {
     position: "absolute",
-    top: -ms(80),              // half of heroBadgeImage height (160/2)
-    left: 0,
-    right: 0,
+    left: -ms(100),
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
   },
-  badgeSpacer: {
-    height: ms(88),            // half badge height + small gap so text clears the icon
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: ms(24),
+    paddingHorizontal: ms(16),
+  },
+  cardIconSpace: {
+    width: ms(80),             // gap that the overflowing icon visually occupies
+  },
+  cardTexts: {
+    flex: 1,
+    alignItems: "flex-end",
   },
   heroCard: {
     borderRadius: ms(20),
     borderWidth: 1,
-    paddingBottom: ms(30),
-    paddingHorizontal: ms(20),
-    alignItems: "center",
     overflow: "visible",
     position: "relative",
-  },
-  cornerAccentTL: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: ms(60),
-    height: ms(2),
-    opacity: 0.7,
-  },
-  cornerAccentBR: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: ms(60),
-    height: ms(2),
-    opacity: 0.7,
+    minHeight: ms(110),
+    justifyContent: "center",
   },
   heroBadgeImage: {
-    width: ms(160),
-    height: ms(160),
+    width: ms(200),
+    height: ms(200),
   },
   heroRange: {
     fontSize: fs(16),
     fontWeight: "bold",
     color: "#FFF",
     marginBottom: ms(8),
-    textAlign: "center",
+    textAlign: "right",
     letterSpacing: 0.5,
   },
   heroDescription: {
     fontSize: fs(13),
     color: "rgba(200,220,255,0.8)",
-    textAlign: "center",
+    textAlign: "right",
   },
   // ── Rewards ───────────────────────────────────────────────────────
   sectionTitle: {

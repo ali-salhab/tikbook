@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import LottieView, { type AnimationObject } from "lottie-react-native";
+import { Video, ResizeMode } from "expo-av";
 import type { GiftEventPayload } from "../types";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
@@ -99,7 +100,17 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
         </Text>
 
         <View style={styles.animationWrap}>
-          {animationJson ? (
+          {event.gift.webmUrl ? (
+            <Video
+              source={{ uri: event.gift.webmUrl }}
+              style={styles.webmVideo}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              isLooping
+              isMuted={false}
+              useNativeControls={false}
+            />
+          ) : animationJson ? (
             <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
           ) : (
             <Text style={styles.fallback}>{event.gift.name}</Text>
@@ -141,6 +152,11 @@ const styles = StyleSheet.create({
   animation: {
     width: "100%",
     height: "100%",
+  },
+  webmVideo: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "transparent",
   },
   fallback: {
     color: "#E5E7EB",

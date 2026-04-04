@@ -168,6 +168,7 @@ const toGiftResponse = (giftDoc) => ({
   lottieUrl:
     giftDoc.lottieUrl ||
     (giftDoc.animationType === "lottie" ? giftDoc.animationUrl : ""),
+  webmUrl: giftDoc.webmUrl || "",
   previewImage: giftDoc.previewImage || giftDoc.thumbnailUrl,
   thumbnailUrl: giftDoc.thumbnailUrl || giftDoc.previewImage,
   sound: giftDoc.soundUrl || "",
@@ -215,16 +216,13 @@ exports.getVipLevels = async (_req, res) => {
   try {
     await ensureDefaultVipTiers();
 
-    const [levels, frames] = await Promise.all([
-      VipLevel.find({
-        level: { $in: SUPPORTED_VIP_LEVELS },
-        isActive: true,
-      }).sort({ level: 1 }),
-      VipFrame.find({
-        vipLevel: { $in: SUPPORTED_VIP_LEVELS },
-        isActive: true,
-      }).sort({ vipLevel: 1, isDefault: -1, sortOrder: 1 }),
-    ]);
+    const levels = await VipLevel.find({ isActive: true }).sort({ level: 1 });
+    const levelNums = levels.map((l) => l.level);
+
+    const frames = await VipFrame.find({
+      vipLevel: { $in: levelNums },
+      isActive: true,
+    }).sort({ vipLevel: 1, isDefault: -1, sortOrder: 1 });
 
     const frameByLevel = new Map();
     for (const frame of frames) {
@@ -242,11 +240,15 @@ exports.getVipLevels = async (_req, res) => {
         name: levelDoc.name,
         nameAr: levelDoc.nameAr,
         price: levelDoc.price,
+        color: levelDoc.color,
         usernameColor: levelDoc.usernameColor || levelDoc.color,
         badgeImageUrl: levelDoc.badgeImageUrl || levelDoc.imageUrl || "",
+        badgeLottieUrl: levelDoc.badgeLottieUrl || "",
         commentFrameLottieUrl:
           levelDoc.commentFrameLottieUrl || frame?.lottieUrl || "",
+        profileFrameLottieUrl: levelDoc.profileFrameLottieUrl || "",
         joinAnimationLottieUrl: levelDoc.joinAnimationLottieUrl || "",
+        joinSoundUrl: levelDoc.joinSoundUrl || "",
         specialJoinText: levelDoc.specialJoinText || "",
         features: levelDoc.features || SHARED_VIP_FEATURES,
       };
@@ -265,7 +267,7 @@ exports.getVipFrames = async (req, res) => {
     const levelFilter = Number(req.query.vipLevel);
     const query = { isActive: true };
 
-    if (Number.isFinite(levelFilter) && SUPPORTED_VIP_LEVELS.includes(levelFilter)) {
+    if (Number.isFinite(levelFilter) && levelFilter > 0) {
       query.vipLevel = levelFilter;
     }
 
@@ -328,10 +330,10 @@ exports.createVipFrame = async (req, res) => {
   try {
     const vipLevel = Number(req.body.vipLevel);
 
-    if (!SUPPORTED_VIP_LEVELS.includes(vipLevel)) {
+    if (!Number.isFinite(vipLevel) || vipLevel < 1) {
       return res.status(400).json({
         success: false,
-        message: "vipLevel must be one of VIP1, VIP2, VIP3, VIP5, VIP7, or VIP10",
+        message: "vipLevel must be a positive number",
       });
     }
 
@@ -390,10 +392,10 @@ exports.updateVipFrame = async (req, res) => {
     ]);
 
     const nextLevel = Number(req.body.vipLevel || current.vipLevel);
-    if (!SUPPORTED_VIP_LEVELS.includes(nextLevel)) {
+    if (!Number.isFinite(nextLevel) || nextLevel < 1) {
       return res.status(400).json({
         success: false,
-        message: "vipLevel must be one of VIP1, VIP2, VIP3, VIP5, VIP7, or VIP10",
+        message: "vipLevel must be a positive number",
       });
     }
 

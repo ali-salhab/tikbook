@@ -1,28 +1,37 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import LottieView, { type AnimationObject } from "lottie-react-native";
-import type { LiveRoomUser } from "../types";
+import { Audio } from "expo-av";
+import type { LiveRoomUser, VipTierConfig } from "../types";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
 type Props = {
   user: LiveRoomUser | null;
   /** Optional Lottie URL override — used when the URL comes from VIP level config rather than the user object */
   joinAnimationUrl?: string | null;
+  /** Sound URL to play on entry */
+  joinSoundUrl?: string | null;
+  /** Special join text from VIP tier config */
+  specialJoinText?: string | null;
+  /** VIP tier config for this user — used to pull color */
+  vipTier?: VipTierConfig | null;
   onDone?: () => void;
 };
 
-const JoinAnimation = ({ user, joinAnimationUrl, onDone }: Props) => {
+const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, vipTier, onDone }: Props) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-24)).current;
   const [animationJson, setAnimationJson] = useState<unknown | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const isVisible = Boolean(user?._id && Number(user?.vipLevel || 0) > 0);
 
   const joinTitle = useMemo(() => {
     if (!user) return "";
+    if (specialJoinText) return specialJoinText.replace("{username}", user.username);
     const vip = Number(user.vipLevel || 0);
     return `${user.username} joined${vip > 0 ? ` (VIP${vip})` : ""}`;
-  }, [user]);
+  }, [user, specialJoinText]);
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +52,23 @@ const JoinAnimation = ({ user, joinAnimationUrl, onDone }: Props) => {
         if (!mounted) return;
         setAnimationJson(json);
       });
+    }
+
+    // Play join sound
+    const soundUrl = joinSoundUrl || user?.joinSoundUrl;
+    if (soundUrl) {
+      Audio.Sound.createAsync({ uri: soundUrl }, { shouldPlay: true, volume: 1.0 })
+        .then(({ sound }) => {
+          soundRef.current = sound;
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (!status.isLoaded) return;
+            if (status.didJustFinish) {
+              sound.unloadAsync().catch(() => {});
+              soundRef.current = null;
+            }
+          });
+        })
+        .catch(() => {});
     }
 
     Animated.sequence([
@@ -79,6 +105,10 @@ const JoinAnimation = ({ user, joinAnimationUrl, onDone }: Props) => {
       mounted = false;
       opacity.stopAnimation();
       translateY.stopAnimation();
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
     };
   }, [user?._id]);
 
@@ -97,8 +127,8 @@ const JoinAnimation = ({ user, joinAnimationUrl, onDone }: Props) => {
         },
       ]}
     >
-      <View style={styles.card}>
-        <Text style={styles.label} numberOfLines={1}>
+      <View style={[styles.card, vipTier?.color ? { borderColor: vipTier.color } : undefined]}>
+        <Text style={[styles.label, vipTier?.usernameColor ? { color: vipTier.usernameColor } : undefined]} numberOfLines={1}>
           {joinTitle}
         </Text>
         {animationJson ? (

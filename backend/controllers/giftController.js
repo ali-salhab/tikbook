@@ -234,6 +234,8 @@ exports.createGift = async (req, res) => {
     let soundUrl = "";
 
     // Handle uploaded files (supports new multi-file upload)
+    let webmUrl = "";
+
     if (req.files) {
       if (req.files.animation && req.files.animation[0]) {
         const file = req.files.animation[0];
@@ -259,6 +261,18 @@ exports.createGift = async (req, res) => {
         // Cleanup
         try {
           fs.unlinkSync(file.path);
+        } catch (e) {}
+      }
+      // WebM with alpha channel (transparent background)
+      if (req.files.webm && req.files.webm[0]) {
+        const result = await uploadToCloudinary(
+          req.files.webm[0].path,
+          "gifts/webm",
+          "video",
+        );
+        webmUrl = result;
+        try {
+          fs.unlinkSync(req.files.webm[0].path);
         } catch (e) {}
       }
       if (req.files.thumbnail && req.files.thumbnail[0]) {
@@ -298,12 +312,22 @@ exports.createGift = async (req, res) => {
       return res.status(400).json({ message: "Animation file is required" });
     }
 
+    // Determine animationType: if WebM uploaded, mark as webm_alpha
+    let resolvedAnimationType = rawAnimationType || "lottie";
+    if (webmUrl && !animationUrl) {
+      animationUrl = webmUrl;
+      resolvedAnimationType = "webm_alpha";
+    } else if (webmUrl) {
+      resolvedAnimationType = rawAnimationType || "webm_alpha";
+    }
+
     const gift = await Gift.create({
       name,
       nameAr: req.body.nameAr || name,
       price: parseInt(price) || 10,
-      animationType: rawAnimationType || "lottie",
+      animationType: resolvedAnimationType,
       animationUrl,
+      webmUrl,
       thumbnailUrl: thumbnailUrl || animationUrl,
       soundUrl,
       isActive: true,
@@ -375,6 +399,33 @@ exports.updateGift = async (req, res) => {
       }
 
       fs.unlinkSync(req.file.path);
+    }
+
+    // Handle multi-file updates
+    if (req.files) {
+      if (req.files.animation && req.files.animation[0]) {
+        const file = req.files.animation[0];
+        const mime = file.mimetype || "";
+        const ext = file.originalname.toLowerCase();
+        const isVideo = mime.startsWith("video/") || ext.endsWith(".mp4") || ext.endsWith(".webm") || ext.endsWith(".mov");
+        const isImage = mime.startsWith("image/") || ext.endsWith(".gif") || ext.endsWith(".webp");
+        const resourceType = isVideo ? "video" : isImage ? "image" : "raw";
+        updateData.animationUrl = await uploadToCloudinary(file.path, "gifts/animations", resourceType);
+        try { fs.unlinkSync(file.path); } catch (e) {}
+      }
+      if (req.files.webm && req.files.webm[0]) {
+        updateData.webmUrl = await uploadToCloudinary(req.files.webm[0].path, "gifts/webm", "video");
+        updateData.animationType = "webm_alpha";
+        try { fs.unlinkSync(req.files.webm[0].path); } catch (e) {}
+      }
+      if (req.files.thumbnail && req.files.thumbnail[0]) {
+        updateData.thumbnailUrl = await uploadToCloudinary(req.files.thumbnail[0].path, "gifts/thumbnails", "image");
+        try { fs.unlinkSync(req.files.thumbnail[0].path); } catch (e) {}
+      }
+      if (req.files.sound && req.files.sound[0]) {
+        updateData.soundUrl = await uploadToCloudinary(req.files.sound[0].path, "gifts/sounds", "video");
+        try { fs.unlinkSync(req.files.sound[0].path); } catch (e) {}
+      }
     }
 
     const gift = await Gift.findByIdAndUpdate(id, updateData, { new: true });

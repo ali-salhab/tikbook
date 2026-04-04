@@ -25,6 +25,7 @@ router.post(
   protect,
   giftUpload.fields([
     { name: "animation", maxCount: 1 },
+    { name: "webm", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
     { name: "sound", maxCount: 1 },
   ]),
@@ -35,6 +36,7 @@ router.put(
   protect,
   giftUpload.fields([
     { name: "animation", maxCount: 1 },
+    { name: "webm", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
     { name: "sound", maxCount: 1 },
   ]),

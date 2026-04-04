@@ -9,6 +9,7 @@ type Props = {
   message: string;
   vipLevel?: number;
   frameAnimationUrl?: string;
+  usernameColor?: string;
   shouldAnimateFrame?: boolean;
 };
 
@@ -27,6 +28,7 @@ const VipCommentMessage = ({
   message,
   vipLevel = 0,
   frameAnimationUrl,
+  usernameColor: usernameColorProp,
   shouldAnimateFrame = true,
 }: Props) => {
   const [frameJson, setFrameJson] = useState<unknown | null>(() =>
@@ -54,8 +56,9 @@ const VipCommentMessage = ({
   }, [frameAnimationUrl, vipLevel, shouldAnimateFrame]);
 
   const usernameColor = useMemo(() => {
+    if (usernameColorProp) return usernameColorProp;
     return vipColorMap[vipLevel] || "#F5F6FB";
-  }, [vipLevel]);
+  }, [vipLevel, usernameColorProp]);
 
   return (
     <View style={styles.row}>

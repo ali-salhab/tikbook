@@ -13,7 +13,7 @@ import {
   LIVE_CHAT_INITIAL_RENDER,
   LIVE_CHAT_WINDOW_SIZE,
 } from "../constants";
-import type { LiveChatMessage } from "../types";
+import type { LiveChatMessage, VipTierConfig } from "../types";
 import VipCommentMessage from "./VipCommentMessage";
 
 type Props = {
@@ -21,6 +21,7 @@ type Props = {
   onSendMessage: (message: string) => Promise<boolean> | boolean;
   sendingDisabled?: boolean;
   animatedFrameBudget?: number;
+  vipTiers?: VipTierConfig[];
 };
 
 const LiveChat = ({
@@ -28,6 +29,7 @@ const LiveChat = ({
   onSendMessage,
   sendingDisabled = false,
   animatedFrameBudget = 8,
+  vipTiers = [],
 }: Props) => {
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -55,6 +57,7 @@ const LiveChat = ({
   const renderItem: ListRenderItem<LiveChatMessage> = useCallback(
     ({ item, index }) => {
       const shouldAnimateFrame = index >= Math.max(messages.length - animatedFrameBudget, 0);
+      const tierConfig = vipTiers.find((t) => Number(t.level) === Number(item.vipLevel || 0));
 
       return (
         <VipCommentMessage
@@ -62,12 +65,13 @@ const LiveChat = ({
           username={item.username}
           message={item.message}
           vipLevel={Number(item.vipLevel || 0)}
-          frameAnimationUrl={item.frameAnimationUrl}
+          frameAnimationUrl={item.frameAnimationUrl || tierConfig?.commentFrameLottieUrl}
+          usernameColor={tierConfig?.usernameColor}
           shouldAnimateFrame={shouldAnimateFrame}
         />
       );
     },
-    [animatedFrameBudget, messages.length],
+    [animatedFrameBudget, messages.length, vipTiers],
   );
 
   const listFooter = useMemo(() => <View style={{ height: 8 }} />, []);

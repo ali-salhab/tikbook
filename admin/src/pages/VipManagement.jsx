@@ -29,10 +29,16 @@ const defaultBenefitForm = {
 
 const defaultForm = {
   level: 1, name: "", nameAr: "", price: 99, color: "#FFD700",
+  usernameColor: "#FFD700",
   commentBorderWidth: 1.4,
   commentBubbleShape: "classic",
   imageUrl: "", imageFile: null,
   badgeLottieUrl: "", badgeLottieFile: null,
+  commentFrameLottieUrl: "", commentFrameLottieFile: null,
+  profileFrameLottieUrl: "", profileFrameLottieFile: null,
+  joinAnimationLottieUrl: "", joinAnimationLottieFile: null,
+  joinSoundUrl: "", joinSoundFile: null,
+  specialJoinText: "",
   benefits: [],
   isActive: true, sortOrder: 0,
 };
@@ -81,6 +87,10 @@ const VipManagement = ({ onLogout }) => {
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [badgeLottieName, setBadgeLottieName] = useState("");
+  const [commentFrameLottieName, setCommentFrameLottieName] = useState("");
+  const [profileFrameLottieName, setProfileFrameLottieName] = useState("");
+  const [joinAnimationLottieName, setJoinAnimationLottieName] = useState("");
+  const [joinSoundName, setJoinSoundName] = useState("");
   const [uploading, setUploading] = useState(false);
   // Benefits sub-form
   const [showBenefitForm, setShowBenefitForm] = useState(false);
@@ -92,6 +102,10 @@ const VipManagement = ({ onLogout }) => {
 
   const fileInputRef = useRef(null);
   const badgeLottieRef = useRef(null);
+  const commentFrameLottieRef = useRef(null);
+  const profileFrameLottieRef = useRef(null);
+  const joinAnimationLottieRef = useRef(null);
+  const joinSoundRef = useRef(null);
   const benefitImgRef = useRef(null);
   const benefitLottieRef = useRef(null);
 
@@ -116,6 +130,18 @@ const VipManagement = ({ onLogout }) => {
     fd.append("upload_preset", UPLOAD_PRESET);
     fd.append("folder", "tikbook/vip/lottie");
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.secure_url;
+  };
+
+  // Upload audio file to Cloudinary
+  const uploadSoundToCloudinary = async (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", UPLOAD_PRESET);
+    fd.append("folder", "tikbook/vip/sounds");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: "POST", body: fd });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
     return data.secure_url;
@@ -193,6 +219,10 @@ const VipManagement = ({ onLogout }) => {
     setForm({ ...defaultForm });
     setImagePreview(null);
     setBadgeLottieName("");
+    setCommentFrameLottieName("");
+    setProfileFrameLottieName("");
+    setJoinAnimationLottieName("");
+    setJoinSoundName("");
     setShowBenefitForm(false);
     setError("");
     setShowModal(true);
@@ -203,17 +233,27 @@ const VipManagement = ({ onLogout }) => {
     setForm({
       level: lvl.level, name: lvl.name || "", nameAr: lvl.nameAr || "",
       price: lvl.price, color: lvl.color || "#FFD700",
+      usernameColor: lvl.usernameColor || lvl.color || "#FFD700",
       commentBorderWidth:
         typeof lvl.commentBorderWidth === "number" ? lvl.commentBorderWidth : 1.4,
       commentBubbleShape: lvl.commentBubbleShape || "classic",
       imageUrl: lvl.imageUrl || "", imageFile: null,
       badgeLottieUrl: lvl.badgeLottieUrl || "", badgeLottieFile: null,
+      commentFrameLottieUrl: lvl.commentFrameLottieUrl || "", commentFrameLottieFile: null,
+      profileFrameLottieUrl: lvl.profileFrameLottieUrl || "", profileFrameLottieFile: null,
+      joinAnimationLottieUrl: lvl.joinAnimationLottieUrl || "", joinAnimationLottieFile: null,
+      joinSoundUrl: lvl.joinSoundUrl || "", joinSoundFile: null,
+      specialJoinText: lvl.specialJoinText || "",
       benefits: Array.isArray(lvl.benefits) ? lvl.benefits : [],
       isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
     });
     setImagePreview(lvl.imageUrl || null);
     setBadgeLottieName(lvl.badgeLottieUrl ? "(ملف محفوظ)" : "");
+    setCommentFrameLottieName(lvl.commentFrameLottieUrl ? "(ملف محفوظ)" : "");
+    setProfileFrameLottieName(lvl.profileFrameLottieUrl ? "(ملف محفوظ)" : "");
+    setJoinAnimationLottieName(lvl.joinAnimationLottieUrl ? "(ملف محفوظ)" : "");
+    setJoinSoundName(lvl.joinSoundUrl ? "(ملف محفوظ)" : "");
     setShowBenefitForm(false);
     setError("");
     setShowModal(true);
@@ -229,6 +269,14 @@ const VipManagement = ({ onLogout }) => {
       if (form.imageFile) finalImageUrl = await uploadToCloudinary(form.imageFile);
       let finalBadgeLottieUrl = form.badgeLottieUrl;
       if (form.badgeLottieFile) finalBadgeLottieUrl = await uploadLottieToCloudinary(form.badgeLottieFile);
+      let finalCommentFrameLottieUrl = form.commentFrameLottieUrl;
+      if (form.commentFrameLottieFile) finalCommentFrameLottieUrl = await uploadLottieToCloudinary(form.commentFrameLottieFile);
+      let finalProfileFrameLottieUrl = form.profileFrameLottieUrl;
+      if (form.profileFrameLottieFile) finalProfileFrameLottieUrl = await uploadLottieToCloudinary(form.profileFrameLottieFile);
+      let finalJoinAnimationLottieUrl = form.joinAnimationLottieUrl;
+      if (form.joinAnimationLottieFile) finalJoinAnimationLottieUrl = await uploadLottieToCloudinary(form.joinAnimationLottieFile);
+      let finalJoinSoundUrl = form.joinSoundUrl;
+      if (form.joinSoundFile) finalJoinSoundUrl = await uploadSoundToCloudinary(form.joinSoundFile);
       setUploading(false);
       const payload = {
         ...form,
@@ -239,9 +287,17 @@ const VipManagement = ({ onLogout }) => {
         commentBubbleShape: normalizeBubbleShape(form.commentBubbleShape),
         imageUrl: finalImageUrl,
         badgeLottieUrl: finalBadgeLottieUrl,
+        commentFrameLottieUrl: finalCommentFrameLottieUrl,
+        profileFrameLottieUrl: finalProfileFrameLottieUrl,
+        joinAnimationLottieUrl: finalJoinAnimationLottieUrl,
+        joinSoundUrl: finalJoinSoundUrl,
       };
       delete payload.imageFile;
       delete payload.badgeLottieFile;
+      delete payload.commentFrameLottieFile;
+      delete payload.profileFrameLottieFile;
+      delete payload.joinAnimationLottieFile;
+      delete payload.joinSoundFile;
       if (editingLevel) {
         await api.put(`/vip/admin/levels/${editingLevel.level}`, payload, authHeader);
       } else {
@@ -253,6 +309,10 @@ const VipManagement = ({ onLogout }) => {
       setForm({ ...defaultForm });
       setImagePreview(null);
       setBadgeLottieName("");
+      setCommentFrameLottieName("");
+      setProfileFrameLottieName("");
+      setJoinAnimationLottieName("");
+      setJoinSoundName("");
       alert(editingLevel ? "تم تحديث مستوى VIP بنجاح" : "تم إضافة مستوى VIP بنجاح");
     } catch (e) {
       setUploading(false);
@@ -361,8 +421,20 @@ const VipManagement = ({ onLogout }) => {
                   )}
                   {lvl.badgeLottieUrl && (
                     <div style={{ fontSize: 10, color: "#6366f1", marginTop: 2, textAlign: "center" }}>
-                      🎞 Lottie ✓
+                      🎞 شارة ✓
                     </div>
+                  )}
+                  {lvl.commentFrameLottieUrl && (
+                    <div style={{ fontSize: 10, color: "#8b5cf6", textAlign: "center" }}>💬 إطار تعليق ✓</div>
+                  )}
+                  {lvl.profileFrameLottieUrl && (
+                    <div style={{ fontSize: 10, color: "#06b6d4", textAlign: "center" }}>👤 إطار صورة ✓</div>
+                  )}
+                  {lvl.joinAnimationLottieUrl && (
+                    <div style={{ fontSize: 10, color: "#f59e0b", textAlign: "center" }}>✨ دخول ✓</div>
+                  )}
+                  {lvl.joinSoundUrl && (
+                    <div style={{ fontSize: 10, color: "#10b981", textAlign: "center" }}>🔊 صوت ✓</div>
                   )}
                   {lvl.benefits?.length > 0 && (
                     <div style={{ fontSize: 10, color: "#10b981", textAlign: "center" }}>
@@ -413,7 +485,7 @@ const VipManagement = ({ onLogout }) => {
               {error && <div style={styles.errorBox}>{error}</div>}
               <div style={styles.formGroup}>
                 <label style={styles.label}>المستوى (Level)</label>
-                <input style={styles.input} type="number" min="1" max="15" value={form.level}
+                <input style={styles.input} type="number" min="1" value={form.level}
                   onChange={(e) => setForm({ ...form, level: +e.target.value })}
                   disabled={!!editingLevel} />
               </div>
@@ -442,6 +514,16 @@ const VipManagement = ({ onLogout }) => {
                     style={{ width: 48, height: 36, border: "none", borderRadius: 8, cursor: "pointer" }} />
                   <input style={{ ...styles.input, flex: 1 }} value={form.color}
                     onChange={(e) => setForm({ ...form, color: e.target.value })} />
+                </div>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>لون اسم المستخدم (VIP Username Color)</label>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <input type="color" value={form.usernameColor || form.color}
+                    onChange={(e) => setForm({ ...form, usernameColor: e.target.value })}
+                    style={{ width: 48, height: 36, border: "none", borderRadius: 8, cursor: "pointer" }} />
+                  <input style={{ ...styles.input, flex: 1 }} value={form.usernameColor || form.color}
+                    onChange={(e) => setForm({ ...form, usernameColor: e.target.value })} />
                 </div>
               </div>
               <div style={styles.formGroup}>
@@ -566,6 +648,142 @@ const VipManagement = ({ onLogout }) => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Comment Frame Lottie */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>💬 إطار التعليق المتحرك (Lottie JSON) — داخل الغرفة</label>
+                <input ref={commentFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    setForm({ ...form, commentFrameLottieFile: file, commentFrameLottieUrl: "" });
+                    setCommentFrameLottieName(file.name);
+                  }} />
+                <div style={styles.uploadZone} onClick={() => commentFrameLottieRef.current?.click()}>
+                  {commentFrameLottieName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 28 }}>💬</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{commentFrameLottieName}</div>
+                        {form.commentFrameLottieUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
+                      </div>
+                      <button style={{ ...styles.removeImgBtn, position: "static" }}
+                        onClick={(e) => { e.stopPropagation(); setCommentFrameLottieName(""); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 28, marginBottom: 4 }}>💬</div>
+                      <div style={{ fontSize: 13 }}>رفع Lottie JSON لإطار التعليق</div>
+                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يظهر كإطار حول فقاعة التعليق في البث</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Profile Frame Lottie */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>👤 إطار الصورة الشخصية (Lottie JSON) — في الغرفة</label>
+                <input ref={profileFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
+                    setProfileFrameLottieName(file.name);
+                  }} />
+                <div style={styles.uploadZone} onClick={() => profileFrameLottieRef.current?.click()}>
+                  {profileFrameLottieName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 28 }}>👤</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{profileFrameLottieName}</div>
+                        {form.profileFrameLottieUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
+                      </div>
+                      <button style={{ ...styles.removeImgBtn, position: "static" }}
+                        onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 28, marginBottom: 4 }}>👤</div>
+                      <div style={{ fontSize: 13 }}>رفع Lottie JSON لإطار الصورة الشخصية</div>
+                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يظهر حول الأفاتار داخل الغرفة المباشرة</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Join Animation Lottie */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>✨ انيميشن دخول الغرفة (Lottie JSON)</label>
+                <input ref={joinAnimationLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    setForm({ ...form, joinAnimationLottieFile: file, joinAnimationLottieUrl: "" });
+                    setJoinAnimationLottieName(file.name);
+                  }} />
+                <div style={styles.uploadZone} onClick={() => joinAnimationLottieRef.current?.click()}>
+                  {joinAnimationLottieName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 28 }}>✨</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{joinAnimationLottieName}</div>
+                        {form.joinAnimationLottieUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
+                      </div>
+                      <button style={{ ...styles.removeImgBtn, position: "static" }}
+                        onClick={(e) => { e.stopPropagation(); setJoinAnimationLottieName(""); setForm({ ...form, joinAnimationLottieFile: null, joinAnimationLottieUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 28, marginBottom: 4 }}>✨</div>
+                      <div style={{ fontSize: 13 }}>رفع Lottie JSON لانيميشن الدخول</div>
+                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يظهر عند دخول VIP إلى الغرفة المباشرة</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Join Sound */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>🔊 صوت دخول الغرفة (MP3 / WAV / M4A)</label>
+                <input ref={joinSoundRef} type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    setForm({ ...form, joinSoundFile: file, joinSoundUrl: "" });
+                    setJoinSoundName(file.name);
+                  }} />
+                <div style={styles.uploadZone} onClick={() => joinSoundRef.current?.click()}>
+                  {joinSoundName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 28 }}>🎵</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "#6366f1" }}>{joinSoundName}</div>
+                        {form.joinSoundUrl && <div style={{ fontSize: 11, color: "#64748b" }}>محفوظ ✓</div>}
+                      </div>
+                      <button style={{ ...styles.removeImgBtn, position: "static" }}
+                        onClick={(e) => { e.stopPropagation(); setJoinSoundName(""); setForm({ ...form, joinSoundFile: null, joinSoundUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 28, marginBottom: 4 }}>🔊</div>
+                      <div style={{ fontSize: 13 }}>رفع ملف صوت الدخول</div>
+                      <div style={{ fontSize: 11, marginTop: 4, color: "#cbd5e1" }}>يُشغَّل عند دخول هذا المستوى إلى الغرفة</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Special Join Text */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>📢 نص الدخول الخاص (Special Join Text)</label>
+                <input style={styles.input} value={form.specialJoinText}
+                  onChange={(e) => setForm({ ...form, specialJoinText: e.target.value })}
+                  placeholder="مثال: لقد انضم الملك إلى الغرفة 👑" />
               </div>
 
               {/* Benefits Editor */}

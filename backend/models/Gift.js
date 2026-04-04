@@ -20,6 +20,11 @@ const giftSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // WebM video with alpha channel (transparent background) for rich gift animations
+    webmUrl: {
+      type: String,
+      default: "",
+    },
     // Static thumbnail for gift selection
     thumbnailUrl: {
       type: String,
@@ -33,7 +38,7 @@ const giftSchema = new mongoose.Schema(
     // Animation type
     animationType: {
       type: String,
-      enum: ["lottie", "gif", "svga", "video", "glb"],
+      enum: ["lottie", "gif", "svga", "video", "glb", "webm_alpha"],
       default: "lottie",
     },
     // Sound effect URL (optional, e.g. for roaring lion)

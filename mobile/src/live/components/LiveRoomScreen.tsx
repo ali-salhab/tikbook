@@ -151,6 +151,11 @@ const LiveRoomScreen = ({
     [balance, onSendGiftTransaction, sendGiftEvent],
   );
 
+  const joinTierForLatest = useMemo(() => {
+    if (!latestJoinUser) return undefined;
+    return vipTiers.find((t) => Number(t.level) === Number(latestJoinUser.vipLevel || 0));
+  }, [vipTiers, latestJoinUser]);
+
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right", "bottom"]}>
       <LiveVideoPlayer
@@ -176,7 +181,13 @@ const LiveRoomScreen = ({
           </TouchableOpacity>
         </View>
 
-        <JoinAnimation user={latestJoinUser} />
+        <JoinAnimation
+          user={latestJoinUser}
+          joinAnimationUrl={joinTierForLatest?.joinAnimationLottieUrl}
+          joinSoundUrl={joinTierForLatest?.joinSoundUrl}
+          specialJoinText={joinTierForLatest?.specialJoinText}
+          vipTier={joinTierForLatest}
+        />
         <GiftOverlay giftEvents={giftEvents} />
 
         <View style={styles.bottomArea}>
@@ -196,6 +207,7 @@ const LiveRoomScreen = ({
                 messages={messages}
                 onSendMessage={handleSendMessage}
                 sendingDisabled={!connected}
+                vipTiers={vipTiers}
               />
             )}
           </View>

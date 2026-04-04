@@ -54,7 +54,7 @@ const ANIM_TYPES = ["lottie", "gif", "svga", "video", "glb"];
 const defaultForm = {
   name: "", nameAr: "", price: 10, rarity: "common", category: "basic",
   duration: 3, comboEnabled: true, fullScreen: false, isActive: true, sortOrder: 0,
-  animationFile: null, thumbnailFile: null, soundFile: null,
+  animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null,
 };
 
 const GiftManagement = ({ onLogout }) => {
@@ -74,6 +74,7 @@ const GiftManagement = ({ onLogout }) => {
   const animRef = useRef(null);
   const thumbRef = useRef(null);
   const soundRef = useRef(null);
+  const webmRef = useRef(null);
 
   useEffect(() => {
     if (!token) { navigate("/"); return; }
@@ -123,6 +124,7 @@ const GiftManagement = ({ onLogout }) => {
       if (type === "animation") next.animationFile = file;
       if (type === "thumbnail") next.thumbnailFile = file;
       if (type === "sound") next.soundFile = file;
+      if (type === "webm") next.webmFile = file;
       return next;
     });
     if (type === "thumbnail" || (type === "animation" && file.type.startsWith("video/"))) {
@@ -136,7 +138,7 @@ const GiftManagement = ({ onLogout }) => {
 
   const handleSave = async () => {
     if (!form.nameAr) { setError("الاسم العربي مطلوب"); return; }
-    if (!editingGift && !form.animationFile) { setError("ملف الحركة مطلوب للهدايا الجديدة"); return; }
+        if (!editingGift && !form.animationFile && !form.webmFile) { setError("ملف الحركة أو ملف WebM مطلوب للهدايا الجديدة"); return; }
     if (!editingGift && !form.thumbnailFile) { setError("الصورة المصغرة مطلوبة للهدايا الجديدة"); return; }
 
     setSaving(true);
@@ -162,8 +164,9 @@ const GiftManagement = ({ onLogout }) => {
         data.append("comboEnabled", form.comboEnabled);
         data.append("fullScreen", form.fullScreen);
         data.append("sortOrder", form.sortOrder);
-        data.append("animation", form.animationFile);
-        data.append("thumbnail", form.thumbnailFile);
+        if (form.animationFile) data.append("animation", form.animationFile);
+        if (form.webmFile) data.append("webm", form.webmFile);
+        if (form.thumbnailFile) data.append("thumbnail", form.thumbnailFile);
         if (form.soundFile) data.append("sound", form.soundFile);
         await api.post("/gifts/admin/create", data, {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
@@ -377,11 +380,22 @@ const GiftManagement = ({ onLogout }) => {
                   <div style={styles.filesTitle}><FiBox size={14} /> ملفات الهدية</div>
                   <div style={styles.fileRow}>
                     <button style={styles.fileBtn} onClick={() => animRef.current?.click()}>
-                      <FiBox size={14} /> ملف الحركة *
+                      <FiBox size={14} /> ملف الحركة (Lottie/GIF)
                     </button>
                     <span style={styles.fileName}>{form.animationFile?.name || "لم يُختر"}</span>
                     <input ref={animRef} type="file" accept=".json,.mp4,.gif,.glb" style={{ display: "none" }}
                       onChange={(e) => handleFileChange(e, "animation")} />
+                  </div>
+                  <div style={{ ...styles.fileRow, border: "1px dashed #a855f7", borderRadius: 8, padding: "8px 10px", background: "#faf5ff" }}>
+                    <button style={{ ...styles.fileBtn, background: "#ede9fe", color: "#7c3aed" }} onClick={() => webmRef.current?.click()}>
+                      🎬 WebM شفاف (Alpha)
+                    </button>
+                    <div style={{ flex: 1 }}>
+                      <span style={styles.fileName}>{form.webmFile?.name || "لم يُختر"}</span>
+                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>فيديو WebM بخلفية شفافة — يظهر فوق البث بدون خلفية</div>
+                    </div>
+                    <input ref={webmRef} type="file" accept=".webm,video/webm" style={{ display: "none" }}
+                      onChange={(e) => handleFileChange(e, "webm")} />
                   </div>
                   <div style={styles.fileRow}>
                     <button style={styles.fileBtn} onClick={() => thumbRef.current?.click()}>

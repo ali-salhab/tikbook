@@ -12,10 +12,9 @@ const LEVEL_CODE_MAP = {
 
 const vipLevelSchema = new mongoose.Schema(
   {
-    level: { type: Number, required: true, unique: true, min: 1, max: 15 },
+    level: { type: Number, required: true, unique: true, min: 1 },
     code: {
       type: String,
-      enum: ["VIP1", "VIP2", "VIP3", "VIP5", "VIP7", "VIP10"],
       default: null,
     },
     name: { type: String, required: true },
@@ -29,7 +28,9 @@ const vipLevelSchema = new mongoose.Schema(
     // Lottie JSON URL for the animated main badge (used on VipProfileScreen)
     badgeLottieUrl: { type: String, default: "" },
     commentFrameLottieUrl: { type: String, default: "" },
+    profileFrameLottieUrl: { type: String, default: "" },
     joinAnimationLottieUrl: { type: String, default: "" },
+    joinSoundUrl: { type: String, default: "" },
     specialJoinText: { type: String, default: "" },
     // Benefits list shown on the VIP profile page
     benefits: [
@@ -68,8 +69,9 @@ const vipLevelSchema = new mongoose.Schema(
 );
 
 vipLevelSchema.pre("validate", async function syncLiveEngagementFields() {
-  if (!this.code && LEVEL_CODE_MAP[this.level]) {
-    this.code = LEVEL_CODE_MAP[this.level];
+  // Auto-generate code if not set
+  if (!this.code) {
+    this.code = LEVEL_CODE_MAP[this.level] || `VIP${this.level}`;
   }
 
   if (!this.usernameColor && this.color) {

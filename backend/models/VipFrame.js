@@ -10,7 +10,7 @@ const vipFrameSchema = new mongoose.Schema(
     vipLevel: {
       type: Number,
       required: true,
-      enum: [1, 2, 3, 5, 7, 10],
+      min: 1,
       index: true,
     },
     lottieUrl: {
