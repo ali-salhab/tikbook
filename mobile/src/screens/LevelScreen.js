@@ -1,119 +1,143 @@
 /**
- * LevelScreen — shows the current user's level and level benefits.
- * Displays 3 levels total (1, 2, 3), styled with the blue glassmorphism
- * badge design. Accepts route.params.level (defaults to current user level).
- *
- * The overall style mirrors the reference screenshots:
- *   - Dark purple/navy gradient background
- *   - Horizontal level selector at top
- *   - Large hero badge card in the middle
- *   - Rewards section below
+ * LevelScreen — dynamic levels screen.
+ * Design matches the reference screenshot: dark navy gradient, horizontal
+ * level tabs, hero card with floating badge, rewards list below.
+ * All data fetched from the backend — admin controls everything.
  */
 
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   Dimensions,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
+import { BASE_URL } from "../config/api";
 import { ms, fs } from "../utils/responsive";
+import { fetchLottieJson, getCachedLottieJson } from "../live/services/lottieCache";
 
 const { width } = Dimensions.get("window");
 
-const LEVEL_IMAGES = {
-  1: require("../../assets/images/level1.png"),
-  2: require("../../assets/images/level2.png"),
-  3: require("../../assets/images/level3.png"),
+// ─── Color helpers ────────────────────────────────────────────────────────────
+const hexToRgb = (hex = "#1e40af") => {
+  try {
+    const c = hex.replace("#", "");
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return { r, g, b };
+  } catch {
+    return { r: 30, g: 64, b: 175 };
+  }
 };
 
-// Larger detail icons used in the hero card inside the level page
-const LEVEL_DETAIL_IMAGES = {
-  1: require("../../assets/images/level_1details.png"),
-  2: require("../../assets/images/level_2details.png"),
-  3: require("../../assets/images/level_3details.png"),
+/** Dark bg gradient derived from the level accent color */
+const makeBgGradient = (color = "#60A5FA") => {
+  const { r, g, b } = hexToRgb(color);
+  return [
+    `rgb(${Math.max(2, Math.round(r * 0.04))}, ${Math.max(2, Math.round(g * 0.06))}, ${Math.max(10, Math.round(b * 0.12))})`,
+    `rgb(${Math.max(4, Math.round(r * 0.06))}, ${Math.max(5, Math.round(g * 0.10))}, ${Math.max(16, Math.round(b * 0.18))})`,
+    `rgb(${Math.max(2, Math.round(r * 0.04))}, ${Math.max(2, Math.round(g * 0.06))}, ${Math.max(10, Math.round(b * 0.12))})`,
+  ];
 };
 
-// ─── Level data ───────────────────────────────────────────────────────────────
-const LEVEL_DATA = {
-  1: {
-    title: "المستوى 1",
-    subtitle: "المستوى 1 - المستوى 9",
-    description: "أرسل هدية لإعادة تفعيل مكافآتك",
-    range: "1 – 9",
-    rewards: [
-      { id: "r1", title: "شارة الداعمين", subtitle: "المستوى 1", icon: "shield-checkmark-outline", color: "#60A5FA" },
-      { id: "r2", title: "شارة الداعمين", subtitle: "المستوى 5", icon: "shield-checkmark-outline", color: "#818CF8" },
-      { id: "r3", title: "ظهور مميز في التوصيات", subtitle: "تصفح وضع اكتشاف الأصدقاء", icon: "people-outline", color: "#34D399" },
-      { id: "r4", title: "رمز تعبيري حصري", subtitle: "للتعليقات والمحادثات", icon: "happy-outline", color: "#FBBF24" },
-    ],
-    gradient: ["#020A1A", "#04152E", "#03101F"],
-    cardGradient: ["#07254A", "#0E3F7A", "#092E5C"],
-    accentColor: "#60A5FA",
-    borderColor: "rgba(96,165,250,0.5)",
-    descriptionColor: "rgba(186,230,253,0.9)",
-  },
-  2: {
-    title: "المستوى 2",
-    subtitle: "المستوى 10 - المستوى 19",
-    description: "أرسل هدية لإعادة تفعيل مكافآتك",
-    range: "10 – 19",
-    rewards: [
-      { id: "r1", title: "شارة داعم نشط", subtitle: "المستوى 10", icon: "star-outline", color: "#FBBF24" },
-      { id: "r2", title: "إطار ملف شخصي", subtitle: "حصري للمستوى 2", icon: "person-circle-outline", color: "#A78BFA" },
-      { id: "r3", title: "دخول VIP للغرف", subtitle: "أولوية في البث المباشر", icon: "radio-outline", color: "#F472B6" },
-      { id: "r4", title: "رموز تعبيرية حصرية", subtitle: "مجموعة موسعة", icon: "happy-outline", color: "#34D399" },
-      { id: "r5", title: "إشعار بالمتابعين الجدد", subtitle: "قائمة مميزة", icon: "notifications-outline", color: "#60A5FA" },
-    ],
-    gradient: ["#030B22", "#061840", "#040E28"],
-    cardGradient: ["#0C2D6A", "#1648A0", "#0E3578"],
-    accentColor: "#3B82F6",
-    borderColor: "rgba(59,130,246,0.55)",
-    descriptionColor: "rgba(147,197,253,0.9)",
-  },
-  3: {
-    title: "المستوى 3",
-    subtitle: "المستوى 20 - المستوى 29",
-    description: "أرسل هدية لإعادة تفعيل مكافآتك",
-    range: "20 – 29",
-    rewards: [
-      { id: "r1", title: "شارة داعم أسطوري", subtitle: "المستوى 20", icon: "trophy-outline", color: "#FBBF24" },
-      { id: "r2", title: "إطار ملف شخصي ماسي", subtitle: "حصري للمستوى 3", icon: "diamond-outline", color: "#E879F9" },
-      { id: "r3", title: "دخول VIP للغرف", subtitle: "أولوية قصوى في البث", icon: "radio-outline", color: "#F472B6" },
-      { id: "r4", title: "تأثيرات هدايا خاصة", subtitle: "إضافة تأثيرات بصرية", icon: "sparkles-outline", color: "#34D399" },
-      { id: "r5", title: "بث مباشر ممتد", subtitle: "وقت بث إضافي", icon: "videocam-outline", color: "#60A5FA" },
-      { id: "r6", title: "دعم أولوية", subtitle: "وصول لفريق الدعم", icon: "headset-outline", color: "#FB923C" },
-    ],
-    gradient: ["#1A0800", "#2E1400", "#130600"],
-    cardGradient: ["#5C1C00", "#8C3000", "#4A1600"],
-    accentColor: "#F97316",
-    borderColor: "rgba(249,115,22,0.5)",
-    descriptionColor: "rgba(253,186,116,0.9)",
-  },
+/** Card gradient derived from level color */
+const makeCardGradient = (color = "#60A5FA") => {
+  const { r, g, b } = hexToRgb(color);
+  return [
+    `rgb(${Math.max(7, Math.round(r * 0.16))}, ${Math.max(18, Math.round(g * 0.22))}, ${Math.max(40, Math.round(b * 0.42))})`,
+    `rgb(${Math.max(10, Math.round(r * 0.24))}, ${Math.max(28, Math.round(g * 0.34))}, ${Math.max(60, Math.round(b * 0.60))})`,
+    `rgb(${Math.max(7, Math.round(r * 0.16))}, ${Math.max(18, Math.round(g * 0.22))}, ${Math.max(40, Math.round(b * 0.42))})`,
+  ];
 };
 
-// ─── Reward item ──────────────────────────────────────────────────────────────
-const RewardItem = ({ item, level }) => {
-  const config = LEVEL_DATA[level];
+// ─── Remote Lottie hook ───────────────────────────────────────────────────────
+const useRemoteLottie = (url) => {
+  const [json, setJson] = useState(() => (url ? getCachedLottieJson(url) : null));
+  useEffect(() => {
+    let active = true;
+    if (!url) { setJson(null); return; }
+    const cached = getCachedLottieJson(url);
+    if (cached) { setJson(cached); return; }
+    fetchLottieJson(url)
+      .then((data) => { if (active && data) setJson(data); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [url]);
+  return json;
+};
+
+// ─── Level badge (tab + hero) ─────────────────────────────────────────────────
+const LevelBadge = ({ level, size }) => {
+  const lottieJson = useRemoteLottie(level?.badgeLottieUrl);
+  if (lottieJson) {
+    return <LottieView source={lottieJson} autoPlay loop style={{ width: size, height: size }} />;
+  }
+  const imgUri = level?.badgeImageUrl || level?.imageUrl;
+  if (imgUri) {
+    return <Image source={{ uri: imgUri }} style={{ width: size, height: size }} resizeMode="contain" />;
+  }
+  // Fallback numeric badge
+  const color = level?.color || "#60A5FA";
   return (
-    <View style={[styles.rewardItem, { borderColor: config.borderColor }]}>
-      <View style={[styles.rewardIconBox, { backgroundColor: item.color + "22", borderColor: item.color + "44" }]}>
-        <Image
-          source={LEVEL_DETAIL_IMAGES[level]}
-          style={styles.rewardIcon}
-          resizeMode="cover"
-        />
+    <View style={[styles.fallbackBadge, { width: size, height: size, borderColor: color, backgroundColor: color + "22" }]}>
+      <Text style={[styles.fallbackNum, { color, fontSize: size * 0.38 }]}>{level?.level ?? "?"}</Text>
+    </View>
+  );
+};
+
+// ─── Reward row ───────────────────────────────────────────────────────────────
+const RewardRow = ({ benefit, level, accentColor }) => {
+  const lottieJson = useRemoteLottie(benefit?.lottieUrl);
+  const levelLottieJson = useRemoteLottie(level?.badgeLottieUrl);
+  const borderColor = accentColor + "55";
+  const iconBg = accentColor + "1A";
+  const iconBorder = accentColor + "44";
+
+  const renderIcon = () => {
+    // 1. Benefit's own Lottie
+    if (lottieJson) {
+      return <LottieView source={lottieJson} autoPlay loop style={{ width: ms(38), height: ms(38) }} />;
+    }
+    // 2. Benefit's own image
+    if (benefit?.imageUrl) {
+      return <Image source={{ uri: benefit.imageUrl }} style={{ width: ms(38), height: ms(38) }} resizeMode="contain" />;
+    }
+    // 3. Level badge Lottie (matches screenshot style)
+    if (levelLottieJson) {
+      return <LottieView source={levelLottieJson} autoPlay loop style={{ width: ms(38), height: ms(38) }} />;
+    }
+    // 4. Level badge image
+    const lvlImg = level?.badgeImageUrl || level?.imageUrl;
+    if (lvlImg) {
+      return <Image source={{ uri: lvlImg }} style={{ width: ms(38), height: ms(38) }} resizeMode="contain" />;
+    }
+    // 5. Icon fallback
+    const ICONS = { badge:"shield-checkmark-outline",frame:"person-circle-outline",chat:"chatbubble-ellipses-outline",points:"star-outline",medal:"medal-outline",entry:"rocket-outline",other:"sparkles-outline" };
+    return <Ionicons name={ICONS[benefit?.type] || ICONS.other} size={ms(22)} color={accentColor} />;
+  };
+
+  return (
+    <View style={[styles.rewardRow, { borderColor }]}>
+      <View style={[styles.rewardIconBox, { backgroundColor: iconBg, borderColor: iconBorder }]}>
+        {renderIcon()}
       </View>
       <View style={styles.rewardTexts}>
-        <Text style={styles.rewardTitle}>{item.title}</Text>
-        <Text style={styles.rewardSubtitle}>{item.subtitle}</Text>
+        <Text style={styles.rewardTitle}>{benefit?.titleAr || benefit?.title || "ميزة"}</Text>
+        {(benefit?.descriptionAr || benefit?.description) ? (
+          <Text style={styles.rewardSubtitle}>{benefit?.descriptionAr || benefit?.description}</Text>
+        ) : null}
       </View>
     </View>
   );
@@ -122,15 +146,96 @@ const RewardItem = ({ item, level }) => {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function LevelScreen({ navigation, route }) {
   const { userInfo } = useContext(AuthContext);
-  const initialLevel = route?.params?.level || 1;
-  const [selectedLevel, setSelectedLevel] = useState(initialLevel);
+  const initialLevelNum = route?.params?.level ?? null;
 
-  const data = LEVEL_DATA[selectedLevel];
+  const [levels, setLevels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+
+  const tabListRef = useRef(null);
+
+  const fetchLevels = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE_URL}/vip/levels`);
+      const data = await res.json();
+      const list = (data.levels || []).filter((l) => l.isActive !== false);
+      setLevels(list);
+      if (list.length > 0) {
+        const target = initialLevelNum ?? userInfo?.vipLevel ?? list[0].level;
+        const idx = list.findIndex((l) => l.level === target);
+        setSelectedIdx(idx >= 0 ? idx : 0);
+      }
+    } catch {
+      setError("تعذّر تحميل المستويات.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [initialLevelNum, userInfo?.vipLevel]);
+
+  useEffect(() => { fetchLevels(); }, [fetchLevels]);
+
+  const onRefresh = () => { setRefreshing(true); fetchLevels(true); };
+
+  const selectLevel = (idx) => {
+    setSelectedIdx(idx);
+    tabListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+  };
+
+  const sel = levels[selectedIdx] || null;
+  const accent = sel?.color || "#60A5FA";
+  const bgGradient = sel ? makeBgGradient(accent) : ["#020A1A", "#04152E", "#03101F"];
+  const cardGradient = sel ? makeCardGradient(accent) : ["#07254A", "#0E3F7A", "#092E5C"];
+  const borderColor = accent + "80";
+  const rewards = (sel?.benefits || [])
+    .slice()
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  // Loading screen
+  if (loading) {
+    return (
+      <LinearGradient colors={["#020A1A","#04152E","#020A1A"]} style={styles.root}>
+        <SafeAreaView style={[styles.safe, styles.center]} edges={["top"]}>
+          <ActivityIndicator size="large" color="#60A5FA" />
+          <Text style={styles.loadingText}>جارٍ التحميل…</Text>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+
+  // Error screen
+  if (error || levels.length === 0) {
+    return (
+      <LinearGradient colors={["#020A1A","#04152E","#020A1A"]} style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={["top"]}>
+          <View style={styles.headerBar}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={ms(26)} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>المستويات</Text>
+            <View style={{ width: ms(40) }} />
+          </View>
+          <View style={[styles.safe, styles.center, { paddingHorizontal: ms(24) }]}>
+            <Ionicons name="alert-circle-outline" size={ms(52)} color="#60A5FA" />
+            <Text style={[styles.loadingText, { marginTop: ms(12) }]}>{error || "لا توجد مستويات حالياً"}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => fetchLevels()}>
+              <Text style={{ color: "#60A5FA", fontWeight: "700", fontSize: fs(14) }}>إعادة المحاولة</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
-    <LinearGradient colors={data.gradient} style={styles.root}>
+    <LinearGradient colors={bgGradient} style={styles.root}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        {/* Header bar */}
+
+        {/* ── Header ── */}
         <View style={styles.headerBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={ms(26)} color="#FFF" />
@@ -139,79 +244,109 @@ export default function LevelScreen({ navigation, route }) {
           <View style={{ width: ms(40) }} />
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Level selector tabs */}
-          <View style={styles.levelTabs}>
-            {[1, 2, 3].map((lvl) => (
+        {/* ── Level tabs ── */}
+        <FlatList
+          ref={tabListRef}
+          data={levels}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => String(item.level)}
+          contentContainerStyle={styles.tabsContainer}
+          onScrollToIndexFailed={() => {}}
+          renderItem={({ item, index }) => {
+            const isSelected = index === selectedIdx;
+            const tabColor = item.color || "#60A5FA";
+            return (
               <TouchableOpacity
-                key={lvl}
                 style={[
                   styles.levelTab,
-                  selectedLevel === lvl && {
-                    backgroundColor: LEVEL_DATA[lvl].accentColor + "26",
-                    borderColor: LEVEL_DATA[lvl].accentColor + "99",
-                    shadowColor: LEVEL_DATA[lvl].accentColor,
+                  isSelected && {
+                    backgroundColor: tabColor + "26",
+                    borderColor: tabColor + "99",
+                    shadowColor: tabColor,
                     shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.6,
+                    shadowOpacity: 0.65,
                     shadowRadius: 12,
                     elevation: 8,
                   },
                 ]}
-                onPress={() => setSelectedLevel(lvl)}
+                onPress={() => selectLevel(index)}
                 activeOpacity={0.8}
               >
                 <View style={styles.tabIconWrapper}>
-                  <Image
-                    source={LEVEL_DETAIL_IMAGES[lvl]}
-                    style={styles.tabIcon}
-                    resizeMode="stretch"
-                  />
+                  <LevelBadge level={item} size={ms(46)} />
                 </View>
               </TouchableOpacity>
-            ))}
-          </View>
+            );
+          }}
+        />
 
-          {/* Hero card wrapper — badge floats off the left edge */}
-          <View style={styles.heroCardWrapper}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} />}
+        >
+          {/* ── Hero card ── */}
+          <View style={styles.heroWrapper}>
             {/* Card */}
             <LinearGradient
-              colors={data.cardGradient}
-              style={[styles.heroCard, { borderColor: data.borderColor }]}
+              colors={cardGradient}
+              style={[styles.heroCard, { borderColor }]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              {/* Row: icon space on left + text on right */}
               <View style={styles.cardRow}>
-                {/* Empty space for the icon that overflows left */}
-                <View style={styles.cardIconSpace} />
+                {/* Space for floating badge */}
+                <View style={styles.cardBadgeSpace} />
 
-                {/* Text content */}
+                {/* Text */}
                 <View style={styles.cardTexts}>
-                  <Text style={styles.heroRange}>{data.subtitle}</Text>
-                  <Text style={[styles.heroDescription, { color: data.descriptionColor }]}>{data.description}</Text>
+                  {(userInfo?.vipLevel ?? 0) === sel?.level && (
+                    <View style={[styles.currentTag, { backgroundColor: accent + "33", borderColor: accent }]}>
+                      <Ionicons name="checkmark-circle" size={ms(13)} color={accent} />
+                      <Text style={[styles.currentTagText, { color: accent }]}>مستواك الحالي</Text>
+                    </View>
+                  )}
+                  <Text style={styles.heroTitle}>
+                    {sel?.nameAr || sel?.name || `المستوى ${sel?.level}`}
+                    {sel?.nameAr && sel?.level ? ` - المستوى ${sel.level}` : ""}
+                  </Text>
+                  {sel?.description ? (
+                    <Text style={[styles.heroDesc, { color: accent + "DD" }]}>{sel.description}</Text>
+                  ) : (
+                    <Text style={[styles.heroDesc, { color: accent + "DD" }]}>أرسل هدية لإعادة تفعيل مكافآتك</Text>
+                  )}
                 </View>
               </View>
             </LinearGradient>
 
-            {/* Floating badge on the left, vertically centered over the card */}
+            {/* Floating badge */}
             <View style={styles.floatingBadge}>
-              <Image
-                source={LEVEL_DETAIL_IMAGES[selectedLevel]}
-                style={styles.heroBadgeImage}
-                resizeMode="contain"
-              />
+              <LevelBadge level={sel} size={ms(140)} />
             </View>
           </View>
 
-          {/* Rewards section */}
+          {/* ── Rewards ── */}
           <Text style={styles.sectionTitle}>المكافآت</Text>
-          <View style={styles.rewardsList}>
-            {data.rewards.map((item) => (
-              <RewardItem key={item.id} item={item} level={selectedLevel} />
-            ))}
-          </View>
 
-      
+          {rewards.length === 0 ? (
+            <View style={[styles.emptyRewards, { borderColor: accent + "33" }]}>
+              <Ionicons name="gift-outline" size={ms(32)} color={accent + "88"} />
+              <Text style={[styles.emptyText, { color: accent + "88" }]}>لا توجد مكافآت بعد</Text>
+              <Text style={styles.emptyHint}>يمكن للأدمن إضافة مكافآت لهذا المستوى</Text>
+            </View>
+          ) : (
+            <View style={styles.rewardsList}>
+              {rewards.map((benefit, idx) => (
+                <RewardRow
+                  key={benefit._id || idx}
+                  benefit={benefit}
+                  level={sel}
+                  accentColor={accent}
+                />
+              ))}
+            </View>
+          )}
 
           <View style={{ height: ms(40) }} />
         </ScrollView>
@@ -221,12 +356,11 @@ export default function LevelScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  safe: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+  safe: { flex: 1 },
+  center: { justifyContent: "center", alignItems: "center" },
+
+  // ── Header ──
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -235,59 +369,57 @@ const styles = StyleSheet.create({
     paddingVertical: ms(10),
   },
   backBtn: {
-    width: ms(40),
-    height: ms(40),
-    justifyContent: "center",
-    alignItems: "center",
+    width: ms(40), height: ms(40),
+    justifyContent: "center", alignItems: "center",
   },
   headerTitle: {
-    fontSize: fs(18),
-    fontWeight: "bold",
-    color: "#FFF",
+    fontSize: fs(18), fontWeight: "bold", color: "#FFF",
   },
-  scrollContent: {
-    paddingHorizontal: ms(16),
-    paddingTop: ms(8),
-  },
-  // ── Level selector ────────────────────────────────────────────────
-  levelTabs: {
-    flexDirection: "row",
-    justifyContent: "center",
+
+  // ── Tabs ──
+  tabsContainer: {
+    paddingHorizontal: ms(12),
+    paddingBottom: ms(6),
     gap: ms(12),
-    marginBottom: ms(24),
   },
   levelTab: {
-    padding: ms(10),
-    borderRadius: ms(16),
-    backgroundColor: "rgba(151, 60, 60, 0.05)",
+    padding: ms(6),
+    borderRadius: ms(14),
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  tabIcon: {
-    width: ms(100),
-    height: ms(100),
   },
   tabIconWrapper: {
-    width: ms(100),
-    height: ms(100),
-    alignItems: "center",
-    justifyContent: "center",
+    width: ms(58), height: ms(44),
+    alignItems: "center", justifyContent: "center",
   },
-  levelTabActive: {},
-  // ── Hero card ─────────────────────────────────────────────────────
-  heroCardWrapper: {
+
+  // ── Scroll ──
+  scrollContent: {
+    paddingHorizontal: ms(16),
+    paddingTop: ms(20),
+  },
+
+  // ── Hero card ──
+  heroWrapper: {
     position: "relative",
     marginLeft: ms(80),
-    marginBottom: ms(8),
-    paddingVertical: ms(2),   // breathing room so icon can overflow card top/bottom
+    marginBottom: ms(20),
+    paddingVertical: ms(2),
+  },
+  heroCard: {
+    borderRadius: ms(20),
+    borderWidth: 1,
+    overflow: "visible",
+    minHeight: ms(110),
+    justifyContent: "center",
   },
   floatingBadge: {
     position: "absolute",
-    left: -ms(100),
-    top: 0,
-    bottom: 0,
+    left: -ms(105),
+    top: 0, bottom: 0,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
@@ -295,53 +427,35 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: ms(24),
+    paddingVertical: ms(22),
     paddingHorizontal: ms(16),
   },
-  cardIconSpace: {
-    width: ms(80),             // gap that the overflowing icon visually occupies
+  cardBadgeSpace: { width: ms(75) },
+  cardTexts: { flex: 1, alignItems: "flex-end" },
+  currentTag: {
+    flexDirection: "row", alignItems: "center", gap: ms(4),
+    borderWidth: 1, borderRadius: ms(20),
+    paddingHorizontal: ms(8), paddingVertical: ms(3),
+    marginBottom: ms(6), alignSelf: "flex-end",
   },
-  cardTexts: {
-    flex: 1,
-    alignItems: "flex-end",
+  currentTagText: { fontSize: fs(11), fontWeight: "700" },
+  heroTitle: {
+    fontSize: fs(16), fontWeight: "bold", color: "#FFF",
+    textAlign: "right", marginBottom: ms(6), letterSpacing: 0.3,
   },
-  heroCard: {
-    borderRadius: ms(20),
-    borderWidth: 1,
-    overflow: "visible",
-    position: "relative",
-    minHeight: ms(110),
-    justifyContent: "center",
+  heroDesc: {
+    fontSize: fs(13), textAlign: "right",
   },
-  heroBadgeImage: {
-    width: ms(200),
-    height: ms(200),
-  },
-  heroRange: {
-    fontSize: fs(16),
-    fontWeight: "bold",
-    color: "#FFF",
-    marginBottom: ms(8),
-    textAlign: "right",
-    letterSpacing: 0.5,
-  },
-  heroDescription: {
-    fontSize: fs(13),
-    color: "rgba(200,220,255,0.8)",
-    textAlign: "right",
-  },
-  // ── Rewards ───────────────────────────────────────────────────────
+
+  // ── Section title ──
   sectionTitle: {
-    fontSize: fs(17),
-    fontWeight: "bold",
-    color: "#FFF",
-    marginBottom: ms(12),
-    textAlign: "right",
+    fontSize: fs(17), fontWeight: "bold", color: "#FFF",
+    marginBottom: ms(14), textAlign: "right",
   },
-  rewardsList: {
-    gap: ms(10),
-  },
-  rewardItem: {
+
+  // ── Reward rows ──
+  rewardsList: { gap: ms(10) },
+  rewardRow: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -352,47 +466,50 @@ const styles = StyleSheet.create({
     gap: ms(14),
   },
   rewardIconBox: {
-    width: ms(50),
-    height: ms(50),
-    borderRadius: ms(12),
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    width: ms(52), height: ms(52),
+    borderRadius: ms(12), borderWidth: 1,
+    justifyContent: "center", alignItems: "center",
   },
-  rewardIcon: {
-    width: ms(42),
-    height: ms(42),
-  },
-  rewardTexts: {
-    flex: 1,
-    alignItems: "flex-end",
-  },
+  rewardTexts: { flex: 1, alignItems: "flex-end" },
   rewardTitle: {
-    fontSize: fs(14),
-    fontWeight: "bold",
-    color: "#FFF",
-    marginBottom: ms(3),
-    textAlign: "right",
+    fontSize: fs(14), fontWeight: "bold", color: "#FFF",
+    textAlign: "right", marginBottom: ms(3),
   },
   rewardSubtitle: {
-    fontSize: fs(12),
-    color: "rgba(180,200,255,0.8)",
+    fontSize: fs(12), color: "rgba(180,200,255,0.75)",
     textAlign: "right",
   },
-  // ── Show more ─────────────────────────────────────────────────────
-  showMoreBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(6),
-    marginTop: ms(16),
-    paddingVertical: ms(12),
-    borderRadius: ms(12),
-    borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
+
+  // ── Empty rewards ──
+  emptyRewards: {
+    alignItems: "center", justifyContent: "center",
+    paddingVertical: ms(32),
+    borderWidth: 1, borderRadius: ms(16),
+    borderStyle: "dashed",
+    gap: ms(8),
   },
-  showMoreText: {
-    fontSize: fs(13),
-    fontWeight: "600",
+  emptyText: {
+    fontSize: fs(14), fontWeight: "600",
+  },
+  emptyHint: {
+    fontSize: fs(12), color: "rgba(255,255,255,0.3)",
+    textAlign: "center",
+  },
+
+  // ── Fallback badge ──
+  fallbackBadge: {
+    borderRadius: ms(16), borderWidth: 2,
+    justifyContent: "center", alignItems: "center",
+  },
+  fallbackNum: { fontWeight: "900" },
+
+  // ── Loading/error ──
+  loadingText: {
+    color: "rgba(255,255,255,0.7)", fontSize: fs(14),
+    marginTop: ms(12), textAlign: "center",
+  },
+  retryBtn: {
+    marginTop: ms(20), borderWidth: 1, borderColor: "#60A5FA",
+    borderRadius: ms(12), paddingHorizontal: ms(24), paddingVertical: ms(12),
   },
 });

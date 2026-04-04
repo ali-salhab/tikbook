@@ -14,6 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -203,6 +204,12 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
+    <LinearGradient
+      colors={["#0d0d0d", "#1c0a12", "#2a0d1a", "#1c0a12", "#0d0d0d"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradient}
+    >
     <SafeAreaView style={styles.container}>
       <Animated.ScrollView
         style={{ opacity: fadeAnim }}
@@ -494,13 +501,17 @@ const RegisterScreen = ({ navigation }) => {
         </View>
       </Modal>
     </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
   logo: {
     width: ms(110),

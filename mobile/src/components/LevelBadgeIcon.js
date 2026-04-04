@@ -1,14 +1,20 @@
 /**
- * LevelBadgeIcon — renders the level badge PNG image for levels 1, 2, 3.
- * Uses the PNG files from assets/images/level1.png, level2.png, level3.png.
+ * LevelBadgeIcon — renders a level badge.
+ * Accepts either a dynamic imageUrl/lottieUrl (from backend)
+ * or falls back to static level number display.
  *
- * @param {number} level - 1, 2, or 3
- * @param {string} size  - "small" | "medium" | "large"
+ * @param {number}  level    - level number
+ * @param {string}  size     - "small" | "medium" | "large"
+ * @param {string}  imageUrl - remote image URL (optional)
+ * @param {string}  color    - accent color for fallback badge
  */
-import React from "react";
-import { Image, StyleSheet } from "react-native";
-import { ms } from "../utils/responsive";
+import React, { useEffect, useRef, useState } from "react";
+import { Image, StyleSheet, View, Text } from "react-native";
+import LottieView from "lottie-react-native";
+import { ms, fs } from "../utils/responsive";
+import { fetchLottieJson, getCachedLottieJson } from "../live/services/lottieCache";
 
+// Static assets for legacy numeric levels 1-3
 const LEVEL_IMAGES = {
   1: require("../../assets/images/level1.png"),
   2: require("../../assets/images/level2.png"),
@@ -21,22 +27,76 @@ const SIZE_MAP = {
   large:  ms(100),
 };
 
-const LevelBadgeIcon = ({ level = 1, size = "small" }) => {
-  const source = LEVEL_IMAGES[level] || LEVEL_IMAGES[1];
+const LevelBadgeIcon = ({ level = 1, size = "small", imageUrl, lottieUrl, color = "#FFD700" }) => {
   const dim = SIZE_MAP[size] || SIZE_MAP.small;
+  const lottieRef = useRef(null);
+  const [lottieJson, setLottieJson] = useState(() => (lottieUrl ? getCachedLottieJson(lottieUrl) : null));
 
+  useEffect(() => {
+    let active = true;
+    if (!lottieUrl) { setLottieJson(null); return; }
+    const cached = getCachedLottieJson(lottieUrl);
+    if (cached) { setLottieJson(cached); return; }
+    fetchLottieJson(lottieUrl)
+      .then((data) => { if (active && data) setLottieJson(data); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [lottieUrl]);
+
+  // 1. Remote Lottie
+  if (lottieJson) {
+    return (
+      <LottieView
+        ref={lottieRef}
+        source={lottieJson}
+        autoPlay
+        loop
+        style={{ width: dim, height: dim }}
+      />
+    );
+  }
+
+  // 2. Remote image URL
+  if (imageUrl) {
+    return (
+      <Image
+        source={{ uri: imageUrl }}
+        style={[styles.img, { width: dim, height: dim }]}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  // 3. Static asset for levels 1-3
+  const staticSource = LEVEL_IMAGES[level];
+  if (staticSource) {
+    return (
+      <Image
+        source={staticSource}
+        style={[styles.img, { width: dim, height: dim * 0.46 }]}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  // 4. Numeric fallback
   return (
-    <Image
-      source={source}
-      style={[styles.img, { width: dim, height: dim * 0.46 }]}
-      resizeMode="contain"
-    />
+    <View style={[styles.fallback, { width: dim, height: dim, borderColor: color, backgroundColor: color + "22" }]}>
+      <Text style={[styles.fallbackText, { color, fontSize: dim * 0.38 }]}>{level}</Text>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  img: {
-    // transparent PNG — no background needed
+  img: {},
+  fallback: {
+    borderRadius: ms(12),
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fallbackText: {
+    fontWeight: "900",
   },
 });
 

@@ -208,7 +208,7 @@ const VipManagement = ({ onLogout }) => {
       const res = await api.get("/vip/admin/levels", authHeader);
       setLevels(res.data.levels || res.data || []);
     } catch (e) {
-      setError("فشل تحميل مستويات VIP");
+      setError("فشل تحميل المستويات");
     } finally {
       setLoading(false);
     }
@@ -313,7 +313,7 @@ const VipManagement = ({ onLogout }) => {
       setProfileFrameLottieName("");
       setJoinAnimationLottieName("");
       setJoinSoundName("");
-      alert(editingLevel ? "تم تحديث مستوى VIP بنجاح" : "تم إضافة مستوى VIP بنجاح");
+      alert(editingLevel ? "تم تحديث المستوى بنجاح ✅" : "تم إضافة المستوى بنجاح ✅");
     } catch (e) {
       setUploading(false);
       setError(e.response?.data?.message || e.message || "حدث خطأ");
@@ -324,7 +324,7 @@ const VipManagement = ({ onLogout }) => {
   };
 
   const handleDelete = async (level) => {
-    if (!window.confirm(`هل تريد حذف VIP${level}؟`)) return;
+    if (!window.confirm(`هل تريد حذف المستوى ${level}؟`)) return;
     try {
       await api.delete(`/vip/admin/levels/${level}`, authHeader);
       fetchLevels();
@@ -353,7 +353,7 @@ const VipManagement = ({ onLogout }) => {
       setAssignData({ userId: "", username: "", vipLevel: 1 });
       setUserSearchResults([]);
       setSearchQuery("");
-      alert("تم تعيين VIP بنجاح");
+      alert("تم تعيين المستوى بنجاح ✅");
     } catch (e) {
       setError(e.response?.data?.message || "فشل التعيين");
     } finally {
@@ -362,12 +362,12 @@ const VipManagement = ({ onLogout }) => {
   };
 
   const handleSeedVip = async () => {
-    if (!window.confirm("سيتم إضافة 7 مستويات VIP تجريبية (برونزي، فضي، ذهبي...). هل تريد المتابعة؟")) return;
+    if (!window.confirm("سيتم إضافة 7 مستويات تجريبية (برونزي، فضي، ذهبي...). هل تريد المتابعة؟")) return;
     try {
       setLoading(true);
       const res = await api.post("/vip/admin/seed", {}, authHeader);
       await fetchLevels();
-      alert(res.data?.message || "تم تحميل بيانات VIP التجريبية بنجاح ✅");
+      alert(res.data?.message || "تم تحميل المستويات التجريبية بنجاح ✅");
     } catch (e) {
       alert(e.response?.data?.message || "فشل تحميل البيانات التجريبية");
     } finally {
@@ -381,15 +381,15 @@ const VipManagement = ({ onLogout }) => {
         {/* Header */}
         <div style={styles.header}>
           <div>
-            <h2 style={styles.title}>⭐ إدارة VIP</h2>
-            <p style={styles.subtitle}>إدارة مستويات VIP وتعيينها للمستخدمين</p>
+            <h2 style={styles.title}>⭐ إدارة المستويات</h2>
+            <p style={styles.subtitle}>إدارة مستويات التطبيق وتعيينها للمستخدمين — مع تخصيص كامل لكل مستوى</p>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <button style={styles.seedBtn} onClick={handleSeedVip} disabled={loading}>
               🌱 بيانات تجريبية
             </button>
             <button style={styles.assignBtn} onClick={() => { setShowAssignModal(true); setError(""); }}>
-              <FiUser size={16} /> تعيين VIP لمستخدم
+              <FiUser size={16} /> تعيين مستوى لمستخدم
             </button>
             <button style={styles.addBtn} onClick={openCreate}>
               <FiPlus size={16} /> إضافة مستوى
@@ -405,7 +405,7 @@ const VipManagement = ({ onLogout }) => {
             {levels.length === 0 && (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 48, color: "#94a3b8" }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>⭐</div>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>لا توجد مستويات VIP بعد</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>لا توجد مستويات بعد</div>
                 <div style={{ fontSize: 13, marginTop: 6 }}>اضغط "بيانات تجريبية" لإضافة مستويات افتراضية</div>
               </div>
             )}
@@ -414,7 +414,7 @@ const VipManagement = ({ onLogout }) => {
               return (
                 <div key={lvl.level} style={{ ...styles.card, borderColor: color, boxShadow: `0 4px 16px ${color}33` }}>
                   <div style={{ ...styles.cardBadge, background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
-                    ⭐ VIP {lvl.level}
+                    ⭐ المستوى {lvl.level}
                   </div>
                   {lvl.imageUrl && (
                     <img src={lvl.imageUrl} alt={lvl.nameAr} style={styles.cardImg} />
@@ -479,7 +479,7 @@ const VipManagement = ({ onLogout }) => {
           <div style={styles.overlay} onClick={() => setShowModal(false)}>
             <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div style={styles.modalHeader}>
-                <h3>{editingLevel ? `تعديل VIP${editingLevel.level}` : "إضافة مستوى جديد"}</h3>
+                <h3>{editingLevel ? `تعديل المستوى ${editingLevel.level}` : "إضافة مستوى جديد"}</h3>
                 <button style={styles.closeBtn} onClick={() => setShowModal(false)}><FiX /></button>
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}

@@ -14,6 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../context/AuthContext";
 import { useApp } from "../context/AppContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -189,6 +190,12 @@ const LoginScreen = ({ navigation, route }) => {
   };
 
   return (
+    <LinearGradient
+      colors={["#0d0d0d", "#1c0a12", "#2a0d1a", "#1c0a12", "#0d0d0d"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradient}
+    >
     <SafeAreaView style={styles.container}>
       <Animated.ScrollView
         style={{ opacity: fadeAnim }}
@@ -474,14 +481,18 @@ const LoginScreen = ({ navigation, route }) => {
         </View>
       </Modal>
     </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const makeStyles = (theme) =>
   StyleSheet.create({
+    gradient: {
+      flex: 1,
+    },
     container: {
       flex: 1,
-      backgroundColor: theme.bg,
+      backgroundColor: "transparent",
       justifyContent: "space-between",
       paddingHorizontal: ms(20),
     },
