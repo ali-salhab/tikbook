@@ -181,7 +181,20 @@ export const AuthProvider = ({ children }) => {
       console.log("Error fetching notification count:", error.message);
     }
   };
-
+  const refreshUserInfo = async () => {
+    if (!userToken || !userInfo?._id) return;
+    try {
+      const res = await axios.get(`${BASE_URL}/users/${userInfo._id}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+        timeout: 10000,
+      });
+      const fresh = { ...userInfo, ...res.data, token: userToken };
+      setUserInfo(fresh);
+      await AsyncStorage.setItem("userInfo", JSON.stringify(fresh));
+    } catch (error) {
+      console.log("refreshUserInfo error:", error.message);
+    }
+  };
   return (
     <AuthContext.Provider
       value={{
@@ -195,6 +208,7 @@ export const AuthProvider = ({ children }) => {
         notificationCount,
         setNotificationCount,
         fetchNotificationCount,
+        refreshUserInfo,
       }}
     >
       {children}

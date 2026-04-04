@@ -145,7 +145,7 @@ const RewardRow = ({ benefit, level, accentColor }) => {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function LevelScreen({ navigation, route }) {
-  const { userInfo } = useContext(AuthContext);
+  const { userInfo, refreshUserInfo } = useContext(AuthContext);
   const initialLevelNum = route?.params?.level ?? null;
 
   const [levels, setLevels] = useState([]);
@@ -188,6 +188,12 @@ export default function LevelScreen({ navigation, route }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLevelNum]);
+
+  // Fetch fresh user data to sync vipLevel from server
+  useEffect(() => {
+    refreshUserInfo?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch once on mount; re-select tab when userInfo.vipLevel becomes available
   useEffect(() => { fetchLevels(); }, [fetchLevels]);
@@ -283,7 +289,7 @@ export default function LevelScreen({ navigation, route }) {
                 style={[
                   styles.levelTab,
                   isSelected && {
-                    backgroundColor: tabColor + "26",
+                    // backgroundColor: tabColor + "26",
                     borderColor: tabColor + "99",
                     shadowColor: tabColor,
                     shadowOffset: { width: 0, height: 0 },
@@ -406,7 +412,7 @@ const styles = StyleSheet.create({
   },
   levelTab: {
     borderRadius: ms(14),
-    backgroundColor: "rgba(255,255,255,0.05)",
+    // backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",

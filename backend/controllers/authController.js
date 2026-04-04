@@ -125,6 +125,11 @@ const registerUser = async (req, res) => {
         username: user.username,
         email: user.email,
         isAdmin: user.isAdmin,
+        profileImage: user.profileImage || "",
+        vipLevel: user.vipLevel || 0,
+        level: user.level || 0,
+        totalSpent: user.totalSpent || 0,
+        totalRecharged: user.totalRecharged || 0,
         token: generateToken(user._id),
       });
     } else {
@@ -170,6 +175,10 @@ const loginUser = async (req, res) => {
           email: user.email,
           isAdmin: user.isAdmin,
           profileImage: user.profileImage,
+          vipLevel: user.vipLevel || 0,
+          level: user.level || 0,
+          totalSpent: user.totalSpent || 0,
+          totalRecharged: user.totalRecharged || 0,
           token: generateToken(user._id),
         });
         return;
