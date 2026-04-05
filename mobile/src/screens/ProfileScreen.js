@@ -43,6 +43,7 @@ const ProfileScreen = ({ navigation }) => {
     fetchNotificationCount,
   } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
+  const [vipLevels, setVipLevels] = useState([]);
   const [activeTab, setActiveTab] = useState("videos");
   const [videos, setVideos] = useState([]);
   const [savedVideos, setSavedVideos] = useState([]);
@@ -93,6 +94,16 @@ const ProfileScreen = ({ navigation }) => {
       setVideos([]);
     }
   }, [userInfo, userToken, BASE_URL]);
+
+  // Fetch VIP levels once to get images/colors for the level badge
+  useEffect(() => {
+    let active = true;
+    fetch(`${BASE_URL}/vip/levels`)
+      .then((r) => r.json())
+      .then((d) => { if (active && d.levels) setVipLevels(d.levels); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [BASE_URL]);
 
   useFocusEffect(
     useCallback(() => {
@@ -577,7 +588,18 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.displayName}>
               {profile?.username || "User"}
             </Text>
-            <LevelBadgeIcon level={Math.min(Math.max(Math.floor((profile?.level || 0) / 10) + 1, 1), 3)} size="small" />
+            {(profile?.vipLevel > 0) && (() => {
+              const vl = vipLevels.find((l) => l.level === profile.vipLevel);
+              return (
+                <LevelBadgeIcon
+                  level={profile.vipLevel}
+                  size="small"
+                  imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
+                  lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
+                  color={vl?.color || "#FFD700"}
+                />
+              );
+            })()}>
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
@@ -640,7 +662,20 @@ const ProfileScreen = ({ navigation }) => {
               style={styles.levelsButton}
               onPress={() => navigation.navigate("Levels")}
             >
-              <LevelBadgeIcon level={Math.min(Math.max(Math.floor((profile?.level || 0) / 10) + 1, 1), 3)} size="small" />
+              {(() => {
+                const vipLvl = profile?.vipLevel || 0;
+                const vl = vipLevels.find((l) => l.level === vipLvl);
+                return (
+                  <LevelBadgeIcon
+                    level={vipLvl || 1}
+                    size="small"
+                    imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
+                    lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
+                    color={vl?.color || "#60A5FA"}
+                  />
+                );
+              })()
+              }
               <Text style={styles.levelsButtonLabel}>المستويات</Text>
             </TouchableOpacity>
 

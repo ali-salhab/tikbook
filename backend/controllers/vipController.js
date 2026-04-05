@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const { calculateLevelFromSpent } = require("../services/userLevelingService");
+const { sendNotificationToUser } = require("./pushNotificationController");
 
 // Default VIP levels seeded on first boot if none exist
 const DEFAULT_LEVELS = [
@@ -146,10 +147,11 @@ const deleteVipLevel = async (req, res) => {
 // Admin: POST /api/vip/admin/assign
 const assignVipToUser = async (req, res) => {
   try {
-    const { userId, level } = req.body;
-    const levelNum = parseInt(level);
+    // Accept both 'level' and 'vipLevel' from the request body
+    const { userId, level, vipLevel } = req.body;
+    const levelNum = parseInt(level ?? vipLevel ?? 0);
 
-    const vipLevelDoc = await VipLevel.findOne({ level: levelNum });
+    const vipLevelDoc = levelNum > 0 ? await VipLevel.findOne({ level: levelNum }) : null;
     if (!vipLevelDoc && levelNum > 0) {
       return res.status(404).json({ message: "مستوى VIP غير موجود" });
     }
@@ -158,11 +160,35 @@ const assignVipToUser = async (req, res) => {
       userId,
       { vipLevel: levelNum, vipPurchasedAt: levelNum > 0 ? new Date() : null },
       { new: true }
-    ).select("username vipLevel");
+    ).select("username vipLevel fcmToken pushToken");
 
     if (!user) return res.status(404).json({ message: "المستخدم غير موجود" });
 
-    res.json({ success: true, message: levelNum > 0 ? `تم تعيين VIP${levelNum} للمستخدم ${user.username}` : `تم إزالة VIP من المستخدم ${user.username}`, user });
+    // Send push notification to the user
+    if (levelNum > 0 && vipLevelDoc) {
+      const levelName = vipLevelDoc.nameAr || vipLevelDoc.name || `VIP${levelNum}`;
+      sendNotificationToUser(
+        userId,
+        "🎉 تمت ترقيتك!",
+        `تهانينا! تمت ترقيتك إلى مستوى ${levelName} (المستوى ${levelNum})`,
+        { type: "vip_assigned", vipLevel: levelNum }
+      ).catch(() => {});
+    } else if (levelNum === 0) {
+      sendNotificationToUser(
+        userId,
+        "تم تعديل مستواك",
+        "تم إعادة تعيين مستوى VIP الخاص بك من قبل الإدارة.",
+        { type: "vip_removed" }
+      ).catch(() => {});
+    }
+
+    res.json({
+      success: true,
+      message: levelNum > 0
+        ? `تم تعيين VIP${levelNum} للمستخدم ${user.username}`
+        : `تم إزالة VIP من المستخدم ${user.username}`,
+      user,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

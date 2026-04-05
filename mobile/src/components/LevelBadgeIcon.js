@@ -13,7 +13,6 @@ import { Image, StyleSheet, View, Text } from "react-native";
 import LottieView from "lottie-react-native";
 import { ms, fs } from "../utils/responsive";
 import { fetchLottieJson, getCachedLottieJson } from "../live/services/lottieCache";
-
 // Static assets for legacy numeric levels 1-3
 const LEVEL_IMAGES = {
   1: require("../../assets/images/level1.png"),
@@ -30,20 +29,50 @@ const SIZE_MAP = {
 const LevelBadgeIcon = ({ level = 1, size = "small", imageUrl, lottieUrl, color = "#FFD700" }) => {
   const dim = SIZE_MAP[size] || SIZE_MAP.small;
   const lottieRef = useRef(null);
-  const [lottieJson, setLottieJson] = useState(() => (lottieUrl ? getCachedLottieJson(lottieUrl) : null));
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const [lottieJson, setLottieJson] = useState(() => (lottieUrl && !imageUrl ? getCachedLottieJson(lottieUrl) : null));
+
+  useEffect(() => {
+    setImgLoaded(false);
+    setImgError(false);
+  }, [imageUrl]);
 
   useEffect(() => {
     let active = true;
-    if (!lottieUrl) { setLottieJson(null); return; }
+    if (!lottieUrl || imageUrl) { setLottieJson(null); return; }
     const cached = getCachedLottieJson(lottieUrl);
     if (cached) { setLottieJson(cached); return; }
     fetchLottieJson(lottieUrl)
       .then((data) => { if (active && data) setLottieJson(data); })
       .catch(() => {});
     return () => { active = false; };
-  }, [lottieUrl]);
+  }, [lottieUrl, imageUrl]);
 
-  // 1. Remote Lottie
+  // Numeric fallback (shown while loading or when nothing set)
+  const Fallback = (
+    <View style={[styles.fallback, { width: dim, height: dim, borderColor: color, backgroundColor: color + "22" }]}>
+      <Text style={[styles.fallbackText, { color, fontSize: dim * 0.38 }]}>{level}</Text>
+    </View>
+  );
+
+  // 1. Remote image URL (priority)
+  if (imageUrl && !imgError) {
+    return (
+      <View style={{ width: dim, height: dim }}>
+        {!imgLoaded && Fallback}
+        <Image
+          source={{ uri: imageUrl }}
+          style={[styles.img, { width: dim, height: dim, position: imgLoaded ? "relative" : "absolute", opacity: imgLoaded ? 1 : 0 }]}
+          resizeMode="contain"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgError(true)}
+        />
+      </View>
+    );
+  }
+
+  // 2. Remote Lottie (when no image)
   if (lottieJson) {
     return (
       <LottieView
@@ -52,17 +81,6 @@ const LevelBadgeIcon = ({ level = 1, size = "small", imageUrl, lottieUrl, color 
         autoPlay
         loop
         style={{ width: dim, height: dim }}
-      />
-    );
-  }
-
-  // 2. Remote image URL
-  if (imageUrl) {
-    return (
-      <Image
-        source={{ uri: imageUrl }}
-        style={[styles.img, { width: dim, height: dim }]}
-        resizeMode="contain"
       />
     );
   }
@@ -80,11 +98,7 @@ const LevelBadgeIcon = ({ level = 1, size = "small", imageUrl, lottieUrl, color 
   }
 
   // 4. Numeric fallback
-  return (
-    <View style={[styles.fallback, { width: dim, height: dim, borderColor: color, backgroundColor: color + "22" }]}>
-      <Text style={[styles.fallbackText, { color, fontSize: dim * 0.38 }]}>{level}</Text>
-    </View>
-  );
+  return Fallback;
 };
 
 const styles = StyleSheet.create({

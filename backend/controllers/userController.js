@@ -174,6 +174,25 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// @desc    Search users by username or email
+// @route   GET /api/users/search?q=...
+// @access  Public
+const searchUsers = async (req, res) => {
+  try {
+    const q = (req.query.q || "").trim();
+    if (!q) return res.json([]);
+    const regex = new RegExp(q, "i");
+    const users = await User.find({
+      $or: [{ username: regex }, { email: regex }],
+    })
+      .select("_id username email profileImage vipLevel level")
+      .limit(20);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Upload profile image
 // @route   PUT /api/users/profile/image
 // @access  Private
@@ -333,6 +352,7 @@ module.exports = {
   updateUserProfile,
   uploadProfileImage,
   getAllUsers,
+  searchUsers,
   updateFcmToken,
   getSuggestedUsers,
   getMyConnections,

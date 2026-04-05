@@ -80,50 +80,96 @@ const useRemoteLottie = (url) => {
 
 // ─── Level badge (tab + hero) ─────────────────────────────────────────────────
 const LevelBadge = ({ level, size }) => {
-  const lottieJson = useRemoteLottie(level?.badgeLottieUrl);
-  if (lottieJson) {
-    return <LottieView source={lottieJson} autoPlay loop style={{ width: size, height: size }} />;
-  }
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  // Static image takes priority for the badge display (set by admin in imageUrl/badgeImageUrl)
   const imgUri = level?.badgeImageUrl || level?.imageUrl;
-  if (imgUri) {
-    return <Image source={{ uri: imgUri }} style={{ width: size, height: size }} resizeMode="contain" />;
-  }
-  // Fallback numeric badge
+  // Lottie is used ONLY when there is no static image available
+  const lottieJson = useRemoteLottie(imgUri ? null : level?.badgeLottieUrl);
   const color = level?.color || "#60A5FA";
-  return (
+
+  // Fallback (numeric) shown while loading or when nothing is set
+  const Fallback = (
     <View style={[styles.fallbackBadge, { width: size, height: size, borderColor: color, backgroundColor: color + "22" }]}>
       <Text style={[styles.fallbackNum, { color, fontSize: size * 0.38 }]}>{level?.level ?? "?"}</Text>
     </View>
   );
+
+  // If we have a static image URL — show it, keep fallback visible until loaded
+  if (imgUri && !imgError) {
+    return (
+      <View style={{ width: size, height: size }}>
+        {!imgLoaded && Fallback}
+        <Image
+          source={{ uri: imgUri }}
+          style={{ width: size, height: size, position: imgLoaded ? "relative" : "absolute", opacity: imgLoaded ? 1 : 0 }}
+          resizeMode="contain"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgError(true)}
+        />
+      </View>
+    );
+  }
+
+  // If no image but lottie available
+  if (lottieJson) {
+    return <LottieView source={lottieJson} autoPlay loop style={{ width: size, height: size }} />;
+  }
+
+  // Numeric fallback
+  return Fallback;
 };
 
 // ─── Reward row ───────────────────────────────────────────────────────────────
 const RewardRow = ({ benefit, level, accentColor }) => {
-  const lottieJson = useRemoteLottie(benefit?.lottieUrl);
-  const levelLottieJson = useRemoteLottie(level?.badgeLottieUrl);
+  const [benefitImgLoaded, setBenefitImgLoaded] = useState(false);
+  const [levelImgLoaded, setLevelImgLoaded] = useState(false);
+  const benefitHasImg = !!benefit?.imageUrl;
+  const lottieJson = useRemoteLottie(benefitHasImg ? null : benefit?.lottieUrl);
   const borderColor = accentColor + "55";
   const iconBg = accentColor + "1A";
   const iconBorder = accentColor + "44";
 
   const renderIcon = () => {
-    // 1. Benefit's own Lottie
+    // 1. Benefit's own image (priority over lottie)
+    if (benefit?.imageUrl) {
+      return (
+        <View style={{ width: ms(38), height: ms(38) }}>
+          {!benefitImgLoaded && (
+            <Ionicons name="sparkles-outline" size={ms(22)} color={accentColor} style={{ position: "absolute", alignSelf: "center", top: ms(8) }} />
+          )}
+          <Image
+            source={{ uri: benefit.imageUrl }}
+            style={{ width: ms(38), height: ms(38), opacity: benefitImgLoaded ? 1 : 0 }}
+            resizeMode="contain"
+            onLoad={() => setBenefitImgLoaded(true)}
+          />
+        </View>
+      );
+    }
+    // 2. Benefit's own Lottie
     if (lottieJson) {
       return <LottieView source={lottieJson} autoPlay loop style={{ width: ms(38), height: ms(38) }} />;
     }
-    // 2. Benefit's own image
-    if (benefit?.imageUrl) {
-      return <Image source={{ uri: benefit.imageUrl }} style={{ width: ms(38), height: ms(38) }} resizeMode="contain" />;
-    }
-    // 3. Level badge Lottie (matches screenshot style)
-    if (levelLottieJson) {
-      return <LottieView source={levelLottieJson} autoPlay loop style={{ width: ms(38), height: ms(38) }} />;
-    }
-    // 4. Level badge image
+    // 3. Level badge image
     const lvlImg = level?.badgeImageUrl || level?.imageUrl;
     if (lvlImg) {
-      return <Image source={{ uri: lvlImg }} style={{ width: ms(38), height: ms(38) }} resizeMode="contain" />;
+      return (
+        <View style={{ width: ms(38), height: ms(38) }}>
+          {!levelImgLoaded && (
+            <Ionicons name="medal-outline" size={ms(22)} color={accentColor} style={{ position: "absolute", alignSelf: "center", top: ms(8) }} />
+          )}
+          <Image
+            source={{ uri: lvlImg }}
+            style={{ width: ms(38), height: ms(38), opacity: levelImgLoaded ? 1 : 0 }}
+            resizeMode="contain"
+            onLoad={() => setLevelImgLoaded(true)}
+          />
+        </View>
+      );
     }
-    // 5. Icon fallback
+    // 4. Icon fallback
     const ICONS = { badge:"shield-checkmark-outline",frame:"person-circle-outline",chat:"chatbubble-ellipses-outline",points:"star-outline",medal:"medal-outline",entry:"rocket-outline",other:"sparkles-outline" };
     return <Ionicons name={ICONS[benefit?.type] || ICONS.other} size={ms(22)} color={accentColor} />;
   };
