@@ -1051,6 +1051,46 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
   };
 
+  const ListenersRow = () => {
+    const listeners = (room?.listeners || [])
+      .map((l) => l.user)
+      .filter(Boolean)
+      .slice(0, 20);
+    if (listeners.length === 0) return null;
+    return (
+      <View style={styles.listenersSection}>
+        <Text style={styles.listenersSectionTitle}>
+          👥 المستمعون ({room?.listeners?.length ?? 0})
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listenersScroll}
+        >
+          {listeners.map((u) => (
+            <View key={u._id} style={styles.listenerItem}>
+              {u.profileImage ? (
+                <Image
+                  source={{ uri: u.profileImage }}
+                  style={styles.listenerAvatar}
+                />
+              ) : (
+                <View style={[styles.listenerAvatar, styles.listenerAvatarPlaceholder]}>
+                  <Text style={styles.listenerInitial}>
+                    {(u.username || "?").charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.listenerName} numberOfLines={1}>
+                {u.username || "—"}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   const BottomBar = () => {
     const isHost = room?.host?._id === currentUser?._id;
     const isSpeaker = room?.speakers?.some(
@@ -1761,6 +1801,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
         {HostSection()}
         {SeatGrid()}
+        {ListenersRow()}
       </View>
 
       {/* Floating comments — bottom tracks keyboard so comments stay above input */}
@@ -2100,6 +2141,48 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     fontSize: fs(9),
     marginTop: ms(4),
+  },
+
+  // ── Listeners row ─────────────────────────────────────────────────────────────
+  listenersSection: {
+    marginTop: ms(10),
+    paddingHorizontal: ms(12),
+  },
+  listenersSectionTitle: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: fs(10),
+    marginBottom: ms(6),
+  },
+  listenersScroll: {
+    flexDirection: "row",
+    gap: ms(10),
+    paddingRight: ms(8),
+  },
+  listenerItem: {
+    alignItems: "center",
+    width: ms(44),
+  },
+  listenerAvatar: {
+    width: ms(38),
+    height: ms(38),
+    borderRadius: ms(19),
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  listenerAvatarPlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listenerInitial: {
+    color: "#FFF",
+    fontSize: fs(14),
+    fontWeight: "bold",
+  },
+  listenerName: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: fs(8),
+    marginTop: ms(3),
   },
 
   // ── Bottom bar ────────────────────────────────────────────────────────────────

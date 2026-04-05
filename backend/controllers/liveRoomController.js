@@ -77,7 +77,7 @@ exports.createLiveRoom = async (req, res) => {
         select: "username profileImage activeBadge isVerified",
         populate: { path: "activeBadge" },
       })
-      .populate("listeners.user", "username profileImage isVerified");
+      .populate("listeners.user", "username profileImage vipLevel isVerified");
 
     // Send notifications to all followers
     try {
@@ -183,7 +183,7 @@ exports.getLiveRoom = async (req, res) => {
         select: "username profileImage activeBadge isVerified bio",
         populate: { path: "activeBadge" },
       })
-      .populate("listeners.user", "username profileImage isVerified")
+      .populate("listeners.user", "username profileImage vipLevel isVerified")
       .populate("handRaised.user", "username profileImage isVerified");
 
     if (!liveRoom) {
@@ -236,7 +236,7 @@ exports.joinLiveRoom = async (req, res) => {
           select: "username profileImage activeBadge isVerified",
           populate: { path: "activeBadge" },
         })
-        .populate("listeners.user", "username profileImage isVerified")
+        .populate("listeners.user", "username profileImage vipLevel isVerified")
         .populate("handRaised.user", "username profileImage isVerified");
 
       return res.json({
@@ -261,7 +261,7 @@ exports.joinLiveRoom = async (req, res) => {
         select: "username profileImage activeBadge isVerified",
         populate: { path: "activeBadge" },
       })
-      .populate("listeners.user", "username profileImage isVerified")
+      .populate("listeners.user", "username profileImage vipLevel isVerified")
       .populate("handRaised.user", "username profileImage isVerified");
 
     res.json({
@@ -410,7 +410,7 @@ exports.makeSpeaker = async (req, res) => {
         select: "username profileImage activeBadge isVerified",
         populate: { path: "activeBadge" },
       })
-      .populate("listeners.user", "username profileImage isVerified")
+      .populate("listeners.user", "username profileImage vipLevel isVerified")
       .populate("handRaised.user", "username profileImage isVerified");
 
     res.json({
@@ -456,7 +456,7 @@ exports.removeSpeaker = async (req, res) => {
         select: "username profileImage activeBadge isVerified",
         populate: { path: "activeBadge" },
       })
-      .populate("listeners.user", "username profileImage isVerified");
+      .populate("listeners.user", "username profileImage vipLevel isVerified");
 
     res.json({
       success: true,
