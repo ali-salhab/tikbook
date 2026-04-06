@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+const fs = require('fs');
+
+const content = `import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -57,7 +59,7 @@ const SettingsTab = ({ room, roomId, userToken, onSaved }) => {
     setSaving(true);
     try {
       await axios.patch(
-        `${BASE_URL}/live-rooms/${roomId}/settings`,
+        \`\${BASE_URL}/live-rooms/\${roomId}/settings\`,
         {
           title: title.trim(),
           description: description.trim(),
@@ -65,7 +67,7 @@ const SettingsTab = ({ room, roomId, userToken, onSaved }) => {
           isPrivate,
           permissions: { canChat, canSendGifts, requestToSpeak },
         },
-        { headers: { Authorization: `Bearer ${userToken}` } },
+        { headers: { Authorization: \`Bearer \${userToken}\` } },
       );
       Alert.alert("تم", "تم حفظ الإعدادات بنجاح");
       onSaved?.();
@@ -163,7 +165,7 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
   const hostId = room?.host?._id;
 
   const handleKick = (userId, username) => {
-    Alert.alert("طرد المستخدم", `هل تريد طرد "${username}" من الغرفة؟`, [
+    Alert.alert("طرد المستخدم", \`هل تريد طرد "\${username}" من الغرفة؟\`, [
       { text: "إلغاء", style: "cancel" },
       {
         text: "طرد",
@@ -172,9 +174,9 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
           setLoading(true);
           try {
             await axios.post(
-              `${BASE_URL}/live-rooms/${roomId}/kick`,
+              \`\${BASE_URL}/live-rooms/\${roomId}/kick\`,
               { userId },
-              { headers: { Authorization: `Bearer ${userToken}` } },
+              { headers: { Authorization: \`Bearer \${userToken}\` } },
             );
             onChanged?.();
           } catch (e) {
@@ -188,7 +190,7 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
   };
 
   const handleBan = (userId, username) => {
-    Alert.alert("حظر المستخدم", `هل تريد حظر "${username}" من الغرفة؟`, [
+    Alert.alert("حظر المستخدم", \`هل تريد حظر "\${username}" من الغرفة؟\`, [
       { text: "إلغاء", style: "cancel" },
       {
         text: "حظر",
@@ -197,9 +199,9 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
           setLoading(true);
           try {
             await axios.post(
-              `${BASE_URL}/live-rooms/${roomId}/ban`,
+              \`\${BASE_URL}/live-rooms/\${roomId}/ban\`,
               { userId },
-              { headers: { Authorization: `Bearer ${userToken}` } },
+              { headers: { Authorization: \`Bearer \${userToken}\` } },
             );
             onChanged?.();
           } catch (e) {
@@ -274,7 +276,7 @@ const BannedTab = ({ room, roomId, userToken, isHost, onChanged }) => {
   const banned = room?.bannedUsers || [];
 
   const handleUnban = (userId, username) => {
-    Alert.alert("إلغاء الحظر", `هل تريد رفع الحظر عن "${username}"?`, [
+    Alert.alert("إلغاء الحظر", \`هل تريد رفع الحظر عن "\${username}"?\`, [
       { text: "إلغاء", style: "cancel" },
       {
         text: "رفع الحظر",
@@ -282,9 +284,9 @@ const BannedTab = ({ room, roomId, userToken, isHost, onChanged }) => {
           setLoading(true);
           try {
             await axios.post(
-              `${BASE_URL}/live-rooms/${roomId}/unban`,
+              \`\${BASE_URL}/live-rooms/\${roomId}/unban\`,
               { userId },
-              { headers: { Authorization: `Bearer ${userToken}` } },
+              { headers: { Authorization: \`Bearer \${userToken}\` } },
             );
             onChanged?.();
           } catch (e) {
@@ -673,3 +675,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+`;
+
+fs.writeFileSync('mobile/src/components/RoomManagementModal.js', content, 'utf8');
+console.log('Written OK, lines:', content.split('\n').length);

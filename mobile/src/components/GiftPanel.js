@@ -122,6 +122,7 @@ const GiftPanel = ({
     const isSelected = selectedGift?._id === item._id;
     const canAfford = userBalance >= item.price;
     const isLottie = item.animationType === "lottie";
+    const isVideo = item.animationType === "video" || item.animationType === "webm_alpha";
     const hasThumb = item.thumbnailUrl && item.thumbnailUrl.startsWith("http");
     const hasAnim = item.animationUrl && item.animationUrl.startsWith("http");
 
@@ -135,19 +136,19 @@ const GiftPanel = ({
         onPress={() => setSelectedGift(isSelected ? null : item)}
         activeOpacity={0.75}
       >
-        {/* Thumbnail */}
-        {isLottie && hasAnim ? (
+        {/* Thumbnail — always prefer static thumbnailUrl for performance in grid */}
+        {hasThumb ? (
+          <Image
+            source={{ uri: item.thumbnailUrl }}
+            style={styles.giftImage}
+            resizeMode="contain"
+          />
+        ) : isLottie && hasAnim ? (
           <LottieView
             source={{ uri: item.animationUrl }}
             autoPlay
             loop
             style={styles.giftImage}
-          />
-        ) : hasThumb ? (
-          <Image
-            source={{ uri: item.thumbnailUrl }}
-            style={styles.giftImage}
-            resizeMode="contain"
           />
         ) : (
           <View style={styles.giftPlaceholder}>
@@ -156,7 +157,7 @@ const GiftPanel = ({
         )}
 
         {/* Video badge */}
-        {item.animationType === "video" && (
+        {isVideo && (
           <View style={styles.videoIndicator}>
             <Ionicons name="play-circle" size={16} color="#FFF" />
           </View>

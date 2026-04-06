@@ -48,7 +48,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       })();
     }
 
-    const isVideo = gift.animationType === "video";
+  const isVideo = gift.animationType === "video" || gift.animationType === "webm_alpha";
     const duration = (gift.duration || 3) * 1000;
 
     if (isVideo) {
@@ -104,7 +104,8 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   // ── FULL-SCREEN VIDEO (TikTok style) ─────────────────────────────────────
   // Any gift with animationType === "video" is rendered full-screen.
   // The fullScreen flag on the gift is also respected as an opt-in.
-  if (gift.animationType === "video") {
+  if (gift.animationType === "video" || gift.animationType === "webm_alpha") {
+    const videoUri = gift.webmUrl || gift.animationUrl;
     return (
       <Animated.View
         style={[styles.tiktokContainer, videoFadeStyle]}
@@ -112,9 +113,9 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       >
         {/* Video fills every pixel — no black bars */}
         <Video
-          source={{ uri: gift.animationUrl }}
+          source={{ uri: videoUri }}
           style={styles.tiktokVideo}
-          resizeMode="cover"
+          resizeMode={gift.animationType === "webm_alpha" ? "contain" : "cover"}
           shouldPlay
           isLooping={false}
           isMuted={!!gift.soundUrl}
@@ -173,10 +174,11 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         />
       );
     }
-    if (gift.animationType === "video") {
+    if (gift.animationType === "video" || gift.animationType === "webm_alpha") {
+      const videoUri = gift.webmUrl || gift.animationUrl;
       return (
         <Video
-          source={{ uri: gift.animationUrl }}
+          source={{ uri: videoUri }}
           style={styles.smallVideoAnim}
           resizeMode="contain"
           shouldPlay

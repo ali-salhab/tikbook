@@ -1032,21 +1032,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const speakers = (room?.speakers || []).filter(
       (s) => s.user._id !== hostId,
     );
-    const slots = Array(8)
-      .fill(null)
-      .map((_, i) => speakers[i] || null);
+    const maxSeats = Math.max(1, Math.min(12, room?.maxSpeakers ?? 8));
+    const slots = Array(maxSeats).fill(null).map((_, i) => speakers[i] || null);
+    const rows = [];
+    for (let r = 0; r < Math.ceil(maxSeats / 4); r++) {
+      rows.push(slots.slice(r * 4, r * 4 + 4));
+    }
     return (
       <View style={styles.seatGrid}>
-        <View style={styles.seatRow}>
-          {[0, 1, 2, 3].map((i) => (
-            <Seat key={i} index={i} speaker={slots[i]} />
-          ))}
-        </View>
-        <View style={styles.seatRow}>
-          {[4, 5, 6, 7].map((i) => (
-            <Seat key={i} index={i} speaker={slots[i]} />
-          ))}
-        </View>
+        {rows.map((row, r) => (
+          <View key={r} style={styles.seatRow}>
+            {row.map((speaker, i) => (
+              <Seat key={r * 4 + i} index={r * 4 + i} speaker={speaker} />
+            ))}
+          </View>
+        ))}
       </View>
     );
   };
@@ -1854,8 +1854,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <RoomManagementModal
         visible={showManagementModal}
         onClose={() => setShowManagementModal(false)}
+        room={room}
         roomId={roomId}
         isHost={room?.host?._id === userInfo?._id}
+        userToken={userToken}
+        currentUserId={userInfo?._id}
+        fetchRoomData={fetchRoomData}
       />
 
       <GiftPanel

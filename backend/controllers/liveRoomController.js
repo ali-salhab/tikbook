@@ -1073,3 +1073,33 @@ exports.getAgoraToken = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// Update room settings (host only) — PATCH /api/live-rooms/:roomId/settings
+exports.updateRoomSettings = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const hostId = req.user.id;
+    const { title, description, maxSpeakers, permissions, isPrivate } = req.body;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+    if (liveRoom.host.toString() !== hostId.toString())
+      return res.status(403).json({ message: "Only the host can update settings" });
+
+    if (title !== undefined) liveRoom.title = title.trim() || liveRoom.title;
+    if (description !== undefined) liveRoom.description = description;
+    if (isPrivate !== undefined) liveRoom.isPrivate = !!isPrivate;
+    if (maxSpeakers !== undefined) {
+      const seats = Math.max(1, Math.min(12, parseInt(maxSpeakers) || 8));
+      liveRoom.maxSpeakers = seats;
+    }
+    if (permissions !== undefined) {
+      liveRoom.permissions = { ...liveRoom.permissions, ...permissions };
+    }
+
+    await liveRoom.save();
+    res.json({ success: true, message: "Settings updated", data: liveRoom });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

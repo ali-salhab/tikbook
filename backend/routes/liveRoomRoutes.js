@@ -20,6 +20,7 @@ const {
   removeModerator,
   controlMusic,
   getAgoraToken,
+  updateRoomSettings,
 } = require("../controllers/liveRoomController");
 const { protect } = require("../middleware/authMiddleware");
 const { imageUpload } = require("../middleware/uploadMiddleware");
@@ -54,6 +55,9 @@ router.post("/:roomId/remove-moderator", protect, removeModerator);
 
 // Music control (host only)
 router.post("/:roomId/music", protect, controlMusic);
+
+// Room settings (host only)
+router.patch("/:roomId/settings", protect, updateRoomSettings);
 
 // Agora token
 router.post("/agora-token", protect, getAgoraToken);
