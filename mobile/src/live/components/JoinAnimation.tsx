@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import LottieView, { type AnimationObject } from "lottie-react-native";
 import { Audio } from "expo-av";
 import type { LiveRoomUser, VipTierConfig } from "../types";
@@ -24,7 +24,8 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
   const [animationJson, setAnimationJson] = useState<unknown | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const isVisible = Boolean(user?._id && Number(user?.vipLevel || 0) > 0);
+  // Show for every user — no VIP gate
+  const isVisible = Boolean(user?._id);
 
   const joinTitle = useMemo(() => {
     if (!user) return "";
@@ -128,9 +129,18 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
       ]}
     >
       <View style={[styles.card, vipTier?.color ? { borderColor: vipTier.color } : undefined]}>
-        <Text style={[styles.label, vipTier?.usernameColor ? { color: vipTier.usernameColor } : undefined]} numberOfLines={1}>
-          {joinTitle}
-        </Text>
+        {/* Avatar */}
+        {user?.profileImage ? (
+          <Image source={{ uri: user.profileImage }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder} />
+        )}
+        <View style={styles.textWrap}>
+          <Text style={[styles.label, vipTier?.usernameColor ? { color: vipTier.usernameColor } : undefined]} numberOfLines={1}>
+            {joinTitle}
+          </Text>
+          <Text style={styles.subLabel}>انضم للغرفة</Text>
+        </View>
         {animationJson ? (
           <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
         ) : null}
@@ -155,15 +165,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  avatarPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  textWrap: {
+    flex: 1,
   },
   label: {
     color: "#F9FAFB",
     fontSize: 13,
     fontWeight: "800",
   },
+  subLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    marginTop: 1,
+  },
   animation: {
-    height: 54,
-    width: "100%",
+    height: 48,
+    width: 48,
   },
 });
 

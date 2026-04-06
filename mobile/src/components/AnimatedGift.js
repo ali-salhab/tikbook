@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import LottieView from "lottie-react-native";
 import { Video, Audio } from "expo-av";
+import { WebView } from "react-native-webview";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,7 +19,8 @@ import Animated, {
   Easing,
   runOnJS,
 } from "react-native-reanimated";
-
+const {widths,heights} = Dimensions.get("screen")
+console.log(widths,heights);
 const { width, height } = Dimensions.get("window");
 
 const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
@@ -101,10 +103,82 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     transform: [{ scale: scale.value }, { translateY: translateY.value }],
   }));
 
-  // ── FULL-SCREEN VIDEO (TikTok style) ─────────────────────────────────────
-  // Any gift with animationType === "video" is rendered full-screen.
-  // The fullScreen flag on the gift is also respected as an opt-in.
-  if (gift.animationType === "video" || gift.animationType === "webm_alpha") {
+  // ── WEBM with alpha channel — rendered via WebView for true transparency ────
+  if (gift.animationType === "webm_alpha") {
+    const videoUri = gift.webmUrl || gift.animationUrl;
+    // Build a self-contained HTML page.
+    // • background:transparent on html/body lets native layer show through
+    // • androidLayerType="software" forces software compositing so alpha is respected
+    // • object-fit:contain keeps the lion's proportions
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    width:100%;height:100%;
+    background:transparent !important;
+    overflow:hidden;
+  }
+  video{
+    position:absolute;top:0;left:0;
+    width:100%;height:100%;
+    object-fit:contain;
+    background:transparent;
+  }
+</style>
+</head>
+<body>
+<video
+  src="${videoUri}"
+  autoplay
+  playsinline
+  webkit-playsinline
+  muted
+  preload="auto"
+  onended="window.ReactNativeWebView && window.ReactNativeWebView.postMessage('ended')"
+></video>
+</body>
+</html>`;
+
+    return (
+      <Animated.View
+        style={[styles.webmAlphaContainer, videoFadeStyle]}
+        pointerEvents="none"
+      >
+        <WebView
+          source={{ html }}
+          style={styles.webmAlphaVideo}
+          scrollEnabled={false}
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          androidLayerType="software"
+          backgroundColor="transparent"
+          allowsFullscreenVideo={false}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          onMessage={(e) => {
+            if (e.nativeEvent.data === "ended") exitAnimation();
+          }}
+        />
+        {/* Sender tag — bottom left */}
+        <View style={styles.tiktokSender} pointerEvents="none">
+          <Image
+            source={{ uri: sender?.profileImage || sender?.avatar }}
+            style={styles.tiktokAvatar}
+          />
+          <View>
+            <Text style={styles.tiktokUsername}>{sender?.username}</Text>
+            <Text style={styles.tiktokGiftLabel}>🎁 {gift.nameAr || gift.name}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  // ── Full-screen opaque video (TikTok dark-overlay style) ─────────────────
+  if (gift.animationType === "video") {
     const videoUri = gift.webmUrl || gift.animationUrl;
     return (
       <Animated.View
@@ -115,7 +189,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         <Video
           source={{ uri: videoUri }}
           style={styles.tiktokVideo}
-          resizeMode={gift.animationType === "webm_alpha" ? "contain" : "cover"}
+          resizeMode="cover"
           shouldPlay
           isLooping={false}
           isMuted={!!gift.soundUrl}
@@ -179,7 +253,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       return (
         <Video
           source={{ uri: videoUri }}
-          style={styles.smallVideoAnim}
+          style={[styles.smallVideoAnim, { backgroundColor: "transparent" }]}
           resizeMode="contain"
           shouldPlay
           isLooping={false}
@@ -242,6 +316,27 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
 
 /* ─────────────────────────── styles ─────────────────────────── */
 const styles = StyleSheet.create({
+  // ── WebM alpha: full-screen, fully transparent ─────────────────────────
+  webmAlphaContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2000,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  webmAlphaVideo: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "transparent",
+  },
+
   // ── TikTok half-screen (middle → bottom) ──────────────────────────────
   tiktokContainer: {
     position: "absolute",

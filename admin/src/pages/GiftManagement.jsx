@@ -49,11 +49,12 @@ const RARITY_META = {
 };
 
 const CATEGORY_LABELS = { basic: "أساسي", premium: "مميز", vip: "VIP", special: "خاص" };
-const ANIM_TYPES = ["lottie", "gif", "svga", "video", "glb"];
+const ANIM_TYPES = ["lottie", "gif", "svga", "video", "glb", "webm_alpha"];
 
 const defaultForm = {
   name: "", nameAr: "", price: 10, rarity: "common", category: "basic",
   duration: 3, comboEnabled: true, fullScreen: false, isActive: true, sortOrder: 0,
+  animationType: "lottie",
   animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null,
 };
 
@@ -109,7 +110,8 @@ const GiftManagement = ({ onLogout }) => {
       category: gift.category || "basic", duration: gift.duration || 3,
       comboEnabled: gift.comboEnabled !== false, fullScreen: !!gift.fullScreen,
       isActive: gift.isActive !== false, sortOrder: gift.sortOrder || 0,
-      animationFile: null, thumbnailFile: null, soundFile: null,
+      animationType: gift.animationType || "lottie",
+      animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null,
     });
     setPreviews({ animation: gift.thumbnailUrl || null, thumbnail: gift.thumbnailUrl || null, sound: null });
     setError("");
@@ -151,6 +153,7 @@ const GiftManagement = ({ onLogout }) => {
           rarity: form.rarity, category: form.category, duration: Number(form.duration),
           comboEnabled: form.comboEnabled, fullScreen: form.fullScreen,
           isActive: form.isActive, sortOrder: Number(form.sortOrder),
+          animationType: form.animationType,
         };
         await api.put(`/gifts/admin/${editingGift._id}`, payload, authHeader);
       } else {
@@ -164,6 +167,7 @@ const GiftManagement = ({ onLogout }) => {
         data.append("comboEnabled", form.comboEnabled);
         data.append("fullScreen", form.fullScreen);
         data.append("sortOrder", form.sortOrder);
+        data.append("animationType", form.animationType || "lottie");
         if (form.animationFile) data.append("animation", form.animationFile);
         if (form.webmFile) data.append("webm", form.webmFile);
         if (form.thumbnailFile) data.append("thumbnail", form.thumbnailFile);
@@ -354,6 +358,15 @@ const GiftManagement = ({ onLogout }) => {
                   <label style={styles.label}>الترتيب</label>
                   <input style={styles.input} type="number" value={form.sortOrder}
                     onChange={(e) => setForm({ ...form, sortOrder: +e.target.value })} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>نوع الحركة *</label>
+                  <select style={styles.input} value={form.animationType}
+                    onChange={(e) => setForm({ ...form, animationType: e.target.value })}>
+                    {ANIM_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

@@ -449,15 +449,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
       user: userInfo,
     });
 
-    socket.on("liveroom:user_joined", fetchRoomData);
+    socket.on("liveroom:user_joined", ({ user }) => {
+      fetchRoomData();
+      // Show join banner for every user (VIP or not) except ourselves
+      if (user && user._id !== userInfo?._id) {
+        setJoinAnimationUser(user);
+        SoundService.play("join");
+      }
+    });
     socket.on("liveroom:agora_uid", ({ userId, agoraUid }) => {
       agoraUidMapRef.current[agoraUid] = userId;
-    });
-    // Show VIP join animation when a VIP user enters the room
-    socket.on("live:room:user-joined", ({ user }) => {
-      if (user && Number(user.vipLevel) > 0) {
-        setJoinAnimationUser(user);
-      }
     });
     socket.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();

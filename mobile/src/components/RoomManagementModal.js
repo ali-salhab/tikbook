@@ -362,11 +362,12 @@ const RoomManagementModal = ({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={onClose}
-      />
+      <View style={styles.modalRoot}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        />
       <View style={styles.sheet}>
         {/* Handle */}
         <View style={styles.handle} />
@@ -430,6 +431,7 @@ const RoomManagementModal = ({
           )}
         </View>
       </View>
+      </View>
     </Modal>
   );
 };
@@ -439,8 +441,9 @@ export default RoomManagementModal;
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalRoot: {
     flex: 1,
+    justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.6)",
   },
   sheet: {
