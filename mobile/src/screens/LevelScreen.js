@@ -121,7 +121,15 @@ const LevelBadge = ({ level, size }) => {
   return Fallback;
 };
 
-// ─── Reward row ───────────────────────────────────────────────────────────────
+// ─── Feature list meta ───────────────────────────────────────────────────────
+const FEATURE_LIST = [
+  { key: "animatedCommentFrame", label: "إطار تعليق متحرك",   icon: "chatbubble-ellipses-outline" },
+  { key: "coloredUsername",      label: "اسم ملون",               icon: "color-palette-outline" },
+  { key: "specialBadge",         label: "شارة خاصة",             icon: "shield-checkmark-outline" },
+  { key: "specialJoinAnimation", label: "انيميشن دخول خاص", icon: "sparkles-outline" },
+];
+
+// ─── Reward row ─────────────────────────────────────────────────────────────────────────
 const RewardRow = ({ benefit, level, accentColor }) => {
   const [benefitImgLoaded, setBenefitImgLoaded] = useState(false);
   const [levelImgLoaded, setLevelImgLoaded] = useState(false);
@@ -175,9 +183,14 @@ const RewardRow = ({ benefit, level, accentColor }) => {
   };
 
   return (
-    <View style={[styles.rewardRow, { borderColor }]}>
+    <View style={[styles.rewardRow, { borderColor, opacity: benefit?.isLocked ? 0.55 : 1 }]}>
       <View style={[styles.rewardIconBox, { backgroundColor: iconBg, borderColor: iconBorder }]}>
         {renderIcon()}
+        {benefit?.isLocked && (
+          <View style={styles.lockOverlay}>
+            <Ionicons name="lock-closed" size={ms(13)} color="#FFF" />
+          </View>
+        )}
       </View>
       <View style={styles.rewardTexts}>
         <Text style={styles.rewardTitle}>{benefit?.titleAr || benefit?.title || "ميزة"}</Text>
@@ -185,6 +198,9 @@ const RewardRow = ({ benefit, level, accentColor }) => {
           <Text style={styles.rewardSubtitle}>{benefit?.descriptionAr || benefit?.description}</Text>
         ) : null}
       </View>
+      {benefit?.isLocked && (
+        <Ionicons name="lock-closed" size={ms(16)} color="rgba(255,255,255,0.35)" />
+      )}
     </View>
   );
 };
@@ -335,20 +351,20 @@ export default function LevelScreen({ navigation, route }) {
                 style={[
                   styles.levelTab,
                   isSelected && {
-                    // backgroundColor: tabColor + "26",
+                    backgroundColor: tabColor + "26",
                     borderColor: tabColor + "99",
                     shadowColor: tabColor,
                     shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.65,
-                    shadowRadius: 12,
-                    elevation: 8,
+                    shadowOpacity: 0.7,
+                    shadowRadius: 14,
+                    elevation: 10,
                   },
                 ]}
                 onPress={() => selectLevel(index)}
                 activeOpacity={0.8}
               >
                 <View style={styles.tabIconWrapper}>
-                  <LevelBadge level={item} size={ms(56)} />
+                  <LevelBadge level={item} size={isSelected ? ms(62) : ms(50)} />
                 </View>
               </TouchableOpacity>
             );
@@ -362,41 +378,88 @@ export default function LevelScreen({ navigation, route }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} />}
         >
           {/* ── Hero card ── */}
-          <View style={styles.heroWrapper}>
-            {/* Card */}
-            <LinearGradient
-              colors={cardGradient}
-              style={[styles.heroCard, { borderColor }]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.cardRow}>
-                {/* Text */}
-                <View style={styles.cardTexts}>
-                  {(userInfo?.vipLevel ?? 0) === sel?.level && (
-                    <View style={[styles.currentTag, { backgroundColor: accent + "33", borderColor: accent }]}>
-                      <Ionicons name="checkmark-circle" size={ms(13)} color={accent} />
-                      <Text style={[styles.currentTagText, { color: accent }]}>مستواك الحالي</Text>
-                    </View>
-                  )}
-                  <Text style={styles.heroTitle}>
-                    {sel?.nameAr || sel?.name || `المستوى ${sel?.level}`}
-                    {sel?.nameAr && sel?.level ? ` - المستوى ${sel.level}` : ""}
-                  </Text>
-                  {sel?.description ? (
-                    <Text style={[styles.heroDesc, { color: accent + "DD" }]}>{sel.description}</Text>
-                  ) : (
-                    <Text style={[styles.heroDesc, { color: accent + "DD" }]}>أرسل هدية لإعادة تفعيل مكافآتك</Text>
-                  )}
-                </View>
+          <LinearGradient
+            colors={cardGradient}
+            style={[styles.heroCard, { borderColor }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.cardRow}>
+              {/* Text — takes remaining space */}
+              <View style={styles.cardTexts}>
+                {(userInfo?.vipLevel ?? 0) === sel?.level && (
+                  <View style={[styles.currentTag, { backgroundColor: accent + "33", borderColor: accent }]}>
+                    <Ionicons name="checkmark-circle" size={ms(13)} color={accent} />
+                    <Text style={[styles.currentTagText, { color: accent }]}>مستواك الحالي</Text>
+                  </View>
+                )}
+                <Text style={styles.heroTitle}>
+                  {sel?.nameAr || sel?.name || `المستوى ${sel?.level}`}
+                </Text>
+                <Text style={[styles.heroDesc, { color: accent + "DD" }]}>
+                  {sel?.description || "أرسل هدية لإعادة تفعيل مكافآتك"}
+                </Text>
+                {/* Price */}
+                {sel?.price > 0 && (
+                  <View style={[styles.priceChip, { backgroundColor: accent + "22", borderColor: accent + "66" }]}>
+                    <Ionicons name="logo-bitcoin" size={ms(13)} color={accent} />
+                    <Text style={[styles.priceText, { color: accent }]}>{sel.price} عملة</Text>
+                  </View>
+                )}
               </View>
-            </LinearGradient>
-
-            {/* Floating badge */}
-            <View style={styles.floatingBadge}>
-              <LevelBadge level={sel} size={ms(100)} />
+              {/* Badge — right side */}
+              <View style={styles.heroBadgeWrap}>
+                <LevelBadge level={sel} size={ms(102)} />
+              </View>
             </View>
-          </View>
+            {/* Special join text */}
+            {!!sel?.specialJoinText && (
+              <View style={[styles.joinTextRow, { borderTopColor: accent + "33" }]}>
+                <Ionicons name="megaphone-outline" size={ms(14)} color={accent} />
+                <Text style={[styles.joinText, { color: accent + "EE" }]}>{sel.specialJoinText}</Text>
+              </View>
+            )}
+          </LinearGradient>
+
+          {/* ── Features ── */}
+          {sel?.features && (
+            <View style={[styles.featuresCard, { borderColor: accent + "33" }]}>
+              <Text style={[styles.featuresSectionTitle, { color: accent }]}>✨ الخصائص</Text>
+              <View style={styles.featuresGrid}>
+                {FEATURE_LIST.map((f) => {
+                  const enabled = sel?.features?.[f.key];
+                  return (
+                    <View key={f.key} style={[styles.featureItem, { borderColor: enabled ? accent + "55" : "rgba(255,255,255,0.08)" }]}>
+                      <Ionicons
+                        name={enabled ? f.icon : f.icon}
+                        size={ms(18)}
+                        color={enabled ? accent : "rgba(255,255,255,0.22)"}
+                      />
+                      <Text style={[styles.featureLabel, { color: enabled ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.25)" }]}>
+                        {f.label}
+                      </Text>
+                      <Ionicons
+                        name={enabled ? "checkmark-circle" : "close-circle"}
+                        size={ms(13)}
+                        color={enabled ? accent : "rgba(255,255,255,0.18)"}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* ── Username color preview ── */}
+          {sel?.usernameColor && (
+            <View style={[styles.usernamePreviewRow, { borderColor: accent + "33" }]}>
+              <View style={styles.usernamePreviewLeft}>
+                <Ionicons name="at-outline" size={ms(16)} color={accent} />
+                <Text style={styles.usernamePreviewLabel}>لون اسم المستخدم</Text>
+              </View>
+              <View style={[styles.colorDot, { backgroundColor: sel.usernameColor }]} />
+            </View>
+          )}
 
           {/* ── Rewards ── */}
           <Text style={styles.sectionTitle}>المكافآت</Text>
@@ -478,35 +541,27 @@ const styles = StyleSheet.create({
   },
 
   // ── Hero card ──
-  heroWrapper: {
-    position: "relative",
-    marginBottom: ms(12),
-    marginLeft: ms(20),
-    marginRight: ms(2), // Leaves space for the badge to hover over the right edge
-  },
   heroCard: {
-    borderRadius: ms(12),
+    borderRadius: ms(14),
     borderWidth: 1,
-    overflow: "visible",
-    minHeight: ms(96),
-    justifyContent: "center",
-  },
-  floatingBadge: {
-    position: "absolute",
-    left: -ms(40),      // Pulls the badge out to hover over the margin space
-    top: 0, bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
+    marginBottom: ms(14),
+    overflow: "hidden",
   },
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: ms(16),
-    paddingLeft: ms(16),
-    paddingRight: ms(50), // Ensures text stays clear of the hovering badge on the right
+    paddingVertical: ms(18),
+    paddingHorizontal: ms(16),
+    gap: ms(10),
   },
   cardTexts: { flex: 1, alignItems: "flex-end" },
+  heroBadgeWrap: {
+    width: ms(110),
+    height: ms(110),
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   currentTag: {
     flexDirection: "row", alignItems: "center", gap: ms(4),
     borderWidth: 1, borderRadius: ms(20),
@@ -528,6 +583,54 @@ const styles = StyleSheet.create({
     marginBottom: ms(14), textAlign: "right",
   },
 
+  // ── Price ──
+  priceChip: {
+    flexDirection: "row", alignItems: "center", gap: ms(4),
+    borderWidth: 1, borderRadius: ms(20),
+    paddingHorizontal: ms(8), paddingVertical: ms(3),
+    marginTop: ms(8), alignSelf: "flex-end",
+  },
+  priceText: { fontSize: fs(12), fontWeight: "700" },
+
+  // ── Special join text ──
+  joinTextRow: {
+    flexDirection: "row", alignItems: "center", gap: ms(6),
+    paddingHorizontal: ms(16), paddingVertical: ms(10),
+    borderTopWidth: 1,
+  },
+  joinText: { flex: 1, fontSize: fs(12), textAlign: "right" },
+
+  // ── Features section ──
+  featuresCard: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: ms(14), borderWidth: 1,
+    padding: ms(14), marginBottom: ms(14),
+  },
+  featuresSectionTitle: {
+    fontSize: fs(14), fontWeight: "700",
+    marginBottom: ms(10), textAlign: "right",
+  },
+  featuresGrid: { gap: ms(8) },
+  featureItem: {
+    flexDirection: "row", alignItems: "center",
+    gap: ms(8), paddingVertical: ms(8), paddingHorizontal: ms(10),
+    borderRadius: ms(10), borderWidth: 1,
+  },
+  featureLabel: { flex: 1, fontSize: fs(12), textAlign: "right" },
+
+  // ── Username color preview ──
+  usernamePreviewRow: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: ms(14), borderWidth: 1,
+    paddingHorizontal: ms(14), paddingVertical: ms(10),
+    marginBottom: ms(14),
+  },
+  usernamePreviewLeft: { flexDirection: "row", alignItems: "center", gap: ms(6) },
+  usernamePreviewLabel: { color: "rgba(255,255,255,0.7)", fontSize: fs(13) },
+  colorDot: { width: ms(20), height: ms(20), borderRadius: ms(10), borderWidth: 1.5, borderColor: "rgba(255,255,255,0.2)" },
+
   // ── Reward rows ──
   rewardsList: { gap: ms(10) },
   rewardRow: {
@@ -544,6 +647,13 @@ const styles = StyleSheet.create({
     width: ms(52), height: ms(52),
     borderRadius: ms(12), borderWidth: 1,
     justifyContent: "center", alignItems: "center",
+    flexShrink: 0,
+    position: "relative",
+  },
+  lockOverlay: {
+    position: "absolute", bottom: -ms(4), right: -ms(4),
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: ms(8), padding: ms(2),
   },
   rewardTexts: { flex: 1, alignItems: "flex-end" },
   rewardTitle: {
