@@ -103,14 +103,15 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
           {event.gift.webmUrl ? (
             <WebView
               source={{
-                html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{background:transparent;width:100%;height:100%;overflow:hidden}video{width:100%;height:100%;object-fit:contain;background:transparent}</style></head><body><video autoplay loop muted playsinline><source src="${event.gift.webmUrl}" type="video/webm"></video></body></html>`,
+                html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{background:transparent !important;width:100%;height:100%;overflow:hidden}video{display:block;width:100%;height:100%;object-fit:contain;background:transparent}</style></head><body><video autoplay loop muted playsinline webkit-playsinline><source src="${event.gift.webmUrl}" type="video/webm"></video></body></html>`,
               }}
               style={styles.webmVideo}
-              backgroundColor="transparent"
+              backgroundColor="#00000000"
               scrollEnabled={false}
               originWhitelist={["*"]}
               allowsInlineMediaPlayback
               mediaPlaybackRequiresUserAction={false}
+              androidLayerType="hardware"
             />
           ) : animationJson ? (
             <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
@@ -146,7 +147,6 @@ const styles = StyleSheet.create({
   animationWrap: {
     height: 70,
     borderRadius: 10,
-    overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "transparent",
