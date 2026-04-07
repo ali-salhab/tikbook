@@ -17,6 +17,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+app.set("io", io);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",

@@ -450,8 +450,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#111",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: "75%",
-    paddingBottom: 24,
+    height: "85%",
+    paddingBottom: 34,
   },
   handle: {
     width: 40,
@@ -514,6 +514,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabContent: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
   },

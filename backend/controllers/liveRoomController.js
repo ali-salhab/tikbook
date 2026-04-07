@@ -1098,6 +1098,15 @@ exports.updateRoomSettings = async (req, res) => {
     }
 
     await liveRoom.save();
+
+    // Notify all room participants so their grids update
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`liveroom:${roomId}`).emit("liveroom:settings_updated", {
+        maxSpeakers: liveRoom.maxSpeakers,
+      });
+    }
+
     res.json({ success: true, message: "Settings updated", data: liveRoom });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });

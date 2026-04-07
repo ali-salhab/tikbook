@@ -546,6 +546,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         ]);
       }
     });
+    socket.on("liveroom:settings_updated", fetchRoomData);
   };
 
   // ─── BACKEND ─────────────────────────────────────────────────────────────────
@@ -990,6 +991,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         <View
           style={[
             styles.seatCircle,
+            !user && styles.seatEmpty,
             !speaker?.isMuted && user && styles.seatActive,
             isSpeaking && styles.seatSpeaking,
           ]}
@@ -1034,7 +1036,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
       (s) => s.user._id !== hostId,
     );
     const maxSeats = Math.max(1, Math.min(12, room?.maxSpeakers ?? 8));
-    const slots = Array(maxSeats).fill(null).map((_, i) => speakers[i] || null);
+    const listenerSlots = (room?.listeners || [])
+      .filter((l) => l.user && l.user._id !== hostId)
+      .map((l) => ({ user: l.user, isListener: true, isMuted: true }));
+    const combined = [...speakers, ...listenerSlots].slice(0, maxSeats);
+    const slots = Array(maxSeats).fill(null).map((_, i) => combined[i] || null);
     const rows = [];
     for (let r = 0; r < Math.ceil(maxSeats / 4); r++) {
       rows.push(slots.slice(r * 4, r * 4 + 4));
@@ -2079,21 +2085,33 @@ const styles = StyleSheet.create({
   hostRoleText: { color: "#00F2EA", fontSize: fs(11) },
 
   // ── Seat grid ─────────────────────────────────────────────────────────────────
-  seatGrid: { paddingHorizontal: ms(8), gap: ms(6), marginTop: ms(4) },
-  seatRow: { flexDirection: "row", justifyContent: "space-around" },
-  seatWrap: { alignItems: "center", width: SEAT_SIZE + 12 },
+  seatGrid: {
+    paddingHorizontal: ms(4),
+    gap: ms(8),
+    marginTop: ms(10),
+    backgroundColor: "rgba(0,0,0,0.32)",
+    borderRadius: ms(18),
+    paddingVertical: ms(14),
+    marginHorizontal: ms(6),
+  },
+  seatRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center" },
+  seatWrap: { alignItems: "center", width: SEAT_SIZE + ms(14) },
   seatCircle: {
     width: SEAT_SIZE,
     height: SEAT_SIZE,
     borderRadius: SEAT_SIZE / 2,
-    backgroundColor: "rgba(0,0,0,0.52)",
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.22)",
+    borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    // No overflow:hidden — badge frames extend beyond the circle
   },
-  seatActive: { borderColor: "#00BB55", borderWidth: 2 },
+  seatEmpty: {
+    borderStyle: "dashed",
+    borderColor: "rgba(255,255,255,0.28)",
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  seatActive: { borderColor: "#00CC55", borderWidth: 2.5 },
   seatSpeaking: {
     borderColor: "#00F2EA",
     borderWidth: 3,
@@ -2111,15 +2129,15 @@ const styles = StyleSheet.create({
   seatNum: {
     position: "absolute",
     bottom: ms(-2),
-    left: ms(-4),
-    backgroundColor: "rgba(0,0,0,0.72)",
-    paddingHorizontal: ms(4),
+    right: ms(-2),
+    backgroundColor: "rgba(254,44,85,0.82)",
+    paddingHorizontal: ms(3.5),
     paddingVertical: ms(1),
     borderRadius: ms(6),
-    minWidth: ms(16),
+    minWidth: ms(14),
     alignItems: "center",
   },
-  seatNumText: { color: "#FFF", fontSize: fs(8) },
+  seatNumText: { color: "#FFF", fontSize: fs(7.5), fontWeight: "700" },
   mutedDot: {
     position: "absolute",
     top: 0,
@@ -2143,9 +2161,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   seatLabel: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: fs(9),
-    marginTop: ms(4),
+    color: "rgba(255,255,255,0.88)",
+    fontSize: fs(9.5),
+    marginTop: ms(5),
+    fontWeight: "500",
   },
 
   // ── Listeners row ─────────────────────────────────────────────────────────────

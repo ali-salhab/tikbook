@@ -5,11 +5,9 @@ import {
   Dimensions,
   Text,
   Image,
-  TouchableOpacity,
 } from "react-native";
 import LottieView from "lottie-react-native";
 import { Video, Audio } from "expo-av";
-import { WebView } from "react-native-webview";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,8 +17,7 @@ import Animated, {
   Easing,
   runOnJS,
 } from "react-native-reanimated";
-const {widths,heights} = Dimensions.get("screen")
-console.log(widths,heights);
+
 const { width, height } = Dimensions.get("window");
 
 const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
@@ -32,7 +29,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const scale = useSharedValue(0.6);
   const translateY = useSharedValue(60);
 
-  // ── Play optional separate sound ──────────────────────────────────────────
+  // ── Sound + entrance animation ─────────────────────────────────────
   useEffect(() => {
     if (gift.soundUrl) {
       (async () => {
@@ -50,14 +47,19 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       })();
     }
 
-  const isVideo = gift.animationType === "video" || gift.animationType === "webm_alpha";
+    const isVideo =
+      gift.animationType === "video" || gift.animationType === "webm_alpha";
     const duration = (gift.duration || 3) * 1000;
 
     if (isVideo) {
-      // Full-screen video gift: fade in only — exit triggered when video finishes
       opacity.value = withTiming(1, { duration: 350 });
+      // Fallback timer — exits if onPlaybackStatusUpdate never fires
+      const timer = setTimeout(exitAnimation, duration + 500);
+      return () => {
+        clearTimeout(timer);
+        if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
+      };
     } else {
-      // Non-video gift: spring entrance + fixed-duration timer
       opacity.value = withTiming(1, { duration: 300 });
       scale.value = withSequence(
         withSpring(isCombo ? 1.8 : 1.2, { damping: 8, stiffness: 100 }),
@@ -73,10 +75,6 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
       };
     }
-
-    return () => {
-      if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
-    };
   }, []);
 
   // ── Exit ──────────────────────────────────────────────────────────────────
@@ -103,66 +101,26 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     transform: [{ scale: scale.value }, { translateY: translateY.value }],
   }));
 
-  // ── WEBM with alpha channel — rendered via WebView for true transparency ────
+  // ── WEBM alpha: rendered as full-screen video (transparent in future rebuild) ──
   if (gift.animationType === "webm_alpha") {
     const videoUri = gift.webmUrl || gift.animationUrl;
-    // Build a self-contained HTML page.
-    // • background:transparent on html/body lets native layer show through
-    // • androidLayerType="software" forces software compositing so alpha is respected
-    // • object-fit:contain keeps the lion's proportions
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{
-    width:100%;height:100%;
-    background:transparent !important;
-    overflow:hidden;
-  }
-  video{
-    position:absolute;top:0;left:0;
-    width:100%;height:100%;
-    object-fit:contain;
-    background:transparent;
-  }
-</style>
-</head>
-<body>
-<video
-  src="${videoUri}"
-  autoplay
-  playsinline
-  webkit-playsinline
-  muted
-  preload="auto"
-  onended="window.ReactNativeWebView && window.ReactNativeWebView.postMessage('ended')"
-></video>
-</body>
-</html>`;
-
     return (
       <Animated.View
         style={[styles.webmAlphaContainer, videoFadeStyle]}
         pointerEvents="none"
       >
-        <WebView
-          source={{ html }}
+        <Video
+          source={{ uri: videoUri }}
           style={styles.webmAlphaVideo}
-          scrollEnabled={false}
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          androidLayerType="software"
-          backgroundColor="transparent"
-          allowsFullscreenVideo={false}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          onMessage={(e) => {
-            if (e.nativeEvent.data === "ended") exitAnimation();
+          resizeMode="contain"
+          shouldPlay
+          isLooping={false}
+          isMuted={!!gift.soundUrl}
+          volume={gift.soundUrl ? 0 : 1.0}
+          onPlaybackStatusUpdate={(status) => {
+            if (status.didJustFinish) exitAnimation();
           }}
         />
-        {/* Sender tag — bottom left */}
         <View style={styles.tiktokSender} pointerEvents="none">
           <Image
             source={{ uri: sender?.profileImage || sender?.avatar }}
