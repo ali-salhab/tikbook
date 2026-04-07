@@ -269,13 +269,11 @@ exports.createGift = async (req, res) => {
         } catch (e) {}
       }
       // WebM with alpha channel (transparent background)
-      // Upload as "raw" so Cloudinary does NOT re-encode the file,
-      // which would strip the VP8/VP9 alpha channel.
       if (req.files.webm && req.files.webm[0]) {
         const result = await uploadToCloudinary(
           req.files.webm[0].path,
           "gifts/webm",
-          "raw",
+          "video",
         );
         webmUrl = result;
         try {
@@ -421,8 +419,7 @@ exports.updateGift = async (req, res) => {
         try { fs.unlinkSync(file.path); } catch (e) {}
       }
       if (req.files.webm && req.files.webm[0]) {
-        // Upload as "raw" to preserve the VP8/VP9 alpha channel (transparency).
-        updateData.webmUrl = await uploadToCloudinary(req.files.webm[0].path, "gifts/webm", "raw");
+        updateData.webmUrl = await uploadToCloudinary(req.files.webm[0].path, "gifts/webm", "video");
         updateData.animationType = "webm_alpha";
         try { fs.unlinkSync(req.files.webm[0].path); } catch (e) {}
       }

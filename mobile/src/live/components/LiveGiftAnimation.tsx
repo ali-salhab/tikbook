@@ -103,7 +103,7 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
           {event.gift.webmUrl ? (
             <WebView
               source={{
-                html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{background:transparent !important;width:100%;height:100%;overflow:hidden}video{display:block;width:100%;height:100%;object-fit:contain;background:transparent}</style></head><body><video autoplay loop muted playsinline webkit-playsinline><source src="${event.gift.webmUrl}" type="video/webm"></video></body></html>`,
+                html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><style>*{margin:0;padding:0}html,body{background:transparent;width:100%;height:100%;overflow:hidden}canvas{position:absolute;top:0;left:0}</style></head><body><canvas id="c"></canvas><video id="v" muted loop playsinline webkit-playsinline style="display:none"><source src="${event.gift.webmUrl}" type="video/webm"></video><script>var v=document.getElementById('v'),c=document.getElementById('c'),ctx=c.getContext('2d');var W=window.innerWidth||300,H=window.innerHeight||300;c.width=W;c.height=H;function frame(){ctx.clearRect(0,0,W,H);ctx.drawImage(v,0,0,W,H);requestAnimationFrame(frame)}v.addEventListener('playing',function(){frame()});v.play().catch(function(){setTimeout(function(){v.play()},200)});<\/script></body></html>`,
               }}
               style={styles.webmVideo}
               backgroundColor="#00000000"
@@ -111,7 +111,7 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
               originWhitelist={["*"]}
               allowsInlineMediaPlayback
               mediaPlaybackRequiresUserAction={false}
-              androidLayerType="hardware"
+              androidLayerType="software"
             />
           ) : animationJson ? (
             <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
