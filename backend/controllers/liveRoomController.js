@@ -184,25 +184,13 @@ exports.getLiveRoom = async (req, res) => {
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified")
-      .populate("handRaised.user", "username profileImage isVerified");
+      .populate("handRaised.user", "username profileImage isVerified")
+      .populate("moderators.user", "username profileImage isVerified")
+      .populate("bannedUsers.user", "username profileImage");
 
     if (!liveRoom) {
       return res.status(404).json({ message: "Live room not found" });
     }
-
-    res.json({
-      success: true,
-      data: liveRoom,
-    });
-  } catch (error) {
-    console.error("Error getting live room:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// Join live room
-exports.joinLiveRoom = async (req, res) => {
-  try {
     const { roomId } = req.params;
     const userId = req.user.id;
 
@@ -237,7 +225,9 @@ exports.joinLiveRoom = async (req, res) => {
           populate: { path: "activeBadge" },
         })
         .populate("listeners.user", "username profileImage vipLevel isVerified")
-        .populate("handRaised.user", "username profileImage isVerified");
+        .populate("handRaised.user", "username profileImage isVerified")
+        .populate("moderators.user", "username profileImage isVerified")
+        .populate("bannedUsers.user", "username profileImage");
 
       return res.json({
         success: true,
@@ -262,7 +252,9 @@ exports.joinLiveRoom = async (req, res) => {
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified")
-      .populate("handRaised.user", "username profileImage isVerified");
+      .populate("handRaised.user", "username profileImage isVerified")
+      .populate("moderators.user", "username profileImage isVerified")
+      .populate("bannedUsers.user", "username profileImage");
 
     res.json({
       success: true,

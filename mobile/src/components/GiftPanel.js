@@ -16,7 +16,6 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import LottieView from "lottie-react-native";
 import giftService from "../services/giftService";
 
 const { width } = Dimensions.get("window");
@@ -143,12 +142,11 @@ const GiftPanel = ({
             style={styles.giftImage}
             resizeMode="contain"
           />
-        ) : isLottie && hasAnim ? (
-          <LottieView
+        ) : hasAnim ? (
+          <Image
             source={{ uri: item.animationUrl }}
-            autoPlay
-            loop
             style={styles.giftImage}
+            resizeMode="contain"
           />
         ) : (
           <View style={styles.giftPlaceholder}>

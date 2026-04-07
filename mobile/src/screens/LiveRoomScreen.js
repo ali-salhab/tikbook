@@ -986,8 +986,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
       : user?.activeBadge?.imageUrl || user?.activeBadge?.image || null;
     const isSpeaking = user && speakingUserIds.has(user._id);
 
+    const isListener = room?.listeners?.some((l) => l.user?._id === userInfo?._id);
+    const isHostSeat = room?.host?._id === userInfo?._id;
+    const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
+    const canRequestSeat = !user && !isHostSeat && !isSpeakerAlready;
+
+    const SeatWrapper = canRequestSeat ? TouchableOpacity : View;
+    const wrapperProps = canRequestSeat
+      ? { onPress: handleRaiseHand, activeOpacity: 0.7 }
+      : {};
+
     return (
-      <View style={styles.seatWrap}>
+      <SeatWrapper style={styles.seatWrap} {...wrapperProps}>
         <View
           style={[
             styles.seatCircle,
@@ -1025,7 +1035,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           {user ? user.username : `${index + 1}`}
         </Text>
         {user?.vipLevel > 0 && <VipBadge level={user.vipLevel} size="small" />}
-      </View>
+      </SeatWrapper>
     );
   };
 

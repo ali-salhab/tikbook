@@ -27,7 +27,7 @@ const TABS = [
 
 // ─── SETTINGS TAB ─────────────────────────────────────────────────────────────
 
-const SettingsTab = ({ room, roomId, userToken, onSaved }) => {
+const SettingsTab = ({ room, roomId, userToken, onSaved, fetchRoomData }) => {
   const [title, setTitle] = useState(room?.title || "");
   const [description, setDescription] = useState(room?.description || "");
   const [maxSpeakers, setMaxSpeakers] = useState(room?.maxSpeakers ?? 8);
@@ -67,8 +67,10 @@ const SettingsTab = ({ room, roomId, userToken, onSaved }) => {
         },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
-      Alert.alert("تم", "تم حفظ الإعدادات بنجاح");
+      // Directly refresh room data so the seat grid updates immediately
+      fetchRoomData?.();
       onSaved?.();
+      Alert.alert("تم", "تم حفظ الإعدادات بنجاح");
     } catch (e) {
       Alert.alert("خطأ", e?.response?.data?.message || "تعذّر الحفظ");
     } finally {
@@ -155,6 +157,8 @@ const SettingsTab = ({ room, roomId, userToken, onSaved }) => {
 const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged }) => {
   const [loading, setLoading] = useState(false);
 
+  const moderatorIds = new Set((room?.moderators || []).map((m) => m.user?._id || m.user?.toString()));
+
   const participants = [
     ...(room?.speakers || []).map((s) => ({ ...s, role: "متحدث" })),
     ...(room?.listeners || []).map((l) => ({ ...l, role: "مستمع" })),
@@ -212,11 +216,42 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
     ]);
   };
 
+  const handleToggleModerator = (userId, username, isMod) => {
+    const action = isMod ? "إزالة صلاحيات" : "تعيين كمشرف";
+    const endpoint = isMod ? "remove-moderator" : "assign-moderator";
+    Alert.alert(
+      `${action}`,
+      `هل تريد ${action} "${username}"؟`,
+      [
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: action,
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await axios.post(
+                `${BASE_URL}/live-rooms/${roomId}/${endpoint}`,
+                { userId },
+                { headers: { Authorization: `Bearer ${userToken}` } },
+              );
+              onChanged?.();
+            } catch (e) {
+              Alert.alert("خطأ", e?.response?.data?.message || "تعذّر تغيير الصلاحية");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderItem = ({ item }) => {
     const user = item.user;
     if (!user) return null;
     const isCurrentUser = user._id === currentUserId;
     const isRoomHost = user._id === hostId;
+    const isModerator = moderatorIds.has(user._id);
 
     return (
       <View style={styles.userRow}>
@@ -230,25 +265,41 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
         <View style={styles.userInfo}>
           <Text style={styles.userName} numberOfLines={1}>
             {user.username || user.name}
-            {isRoomHost ? " 👑" : ""}
+            {isRoomHost ? " 👑" : isModerator ? " 🛡️" : ""}
           </Text>
-          <Text style={styles.userRole}>{item.role}</Text>
+          <Text style={styles.userRole}>
+            {isRoomHost ? "صاحب الغرفة" : isModerator ? "مشرف" : item.role}
+          </Text>
         </View>
         {isHost && !isCurrentUser && !isRoomHost && (
           <View style={styles.userActions}>
+            {/* Promote / Demote moderator */}
+            <TouchableOpacity
+              style={[styles.actionBtn, isModerator && styles.actionBtnActive]}
+              onPress={() => handleToggleModerator(user._id, user.username, isModerator)}
+              disabled={loading}
+            >
+              <Ionicons
+                name={isModerator ? "shield" : "shield-outline"}
+                size={19}
+                color={isModerator ? "#FE2C55" : "#aaa"}
+              />
+            </TouchableOpacity>
+            {/* Kick */}
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => handleKick(user._id, user.username)}
               disabled={loading}
             >
-              <Ionicons name="exit-outline" size={20} color="#FF9800" />
+              <Ionicons name="exit-outline" size={19} color="#FF9800" />
             </TouchableOpacity>
+            {/* Ban */}
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => handleBan(user._id, user.username)}
               disabled={loading}
             >
-              <Ionicons name="ban-outline" size={20} color="#F44336" />
+              <Ionicons name="ban-outline" size={19} color="#F44336" />
             </TouchableOpacity>
           </View>
         )}
@@ -408,6 +459,7 @@ const RoomManagementModal = ({
               roomId={roomId}
               userToken={userToken}
               onSaved={onChanged}
+              fetchRoomData={fetchRoomData}
             />
           )}
           {activeTab === "users" && (
@@ -658,6 +710,9 @@ const styles = StyleSheet.create({
     padding: 7,
     borderRadius: 8,
     backgroundColor: "#1e1e1e",
+  },
+  actionBtnActive: {
+    backgroundColor: "rgba(254,44,85,0.15)",
   },
   unbanBtn: {
     paddingHorizontal: 12,

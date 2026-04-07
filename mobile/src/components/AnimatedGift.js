@@ -6,7 +6,6 @@ import {
   Text,
   Image,
 } from "react-native";
-import LottieView from "lottie-react-native";
 import { Video, Audio } from "expo-av";
 import Animated, {
   useSharedValue,
@@ -21,7 +20,6 @@ import Animated, {
 const { width, height } = Dimensions.get("window");
 
 const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
-  const lottieRef = useRef(null);
   const soundRef = useRef(null);
 
   // Shared values — used by both render paths
@@ -188,12 +186,10 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
       // Support both legacy `animationUrl` and new `lottieUrl` field
       const lottieSource = gift.animationUrl || gift.lottieUrl;
       return (
-        <LottieView
-          ref={lottieRef}
+        <Image
           source={{ uri: lottieSource }}
-          autoPlay
-          loop={false}
           style={[styles.lottieAnim, gift.fullScreen && styles.largeAnim]}
+          resizeMode="contain"
         />
       );
     }
@@ -226,12 +222,10 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     // Fallback: if gift has lottieUrl with no explicit animationType
     if (gift.lottieUrl) {
       return (
-        <LottieView
-          ref={lottieRef}
+        <Image
           source={{ uri: gift.lottieUrl }}
-          autoPlay
-          loop={false}
           style={[styles.lottieAnim, gift.fullScreen && styles.largeAnim]}
+          resizeMode="contain"
         />
       );
     }

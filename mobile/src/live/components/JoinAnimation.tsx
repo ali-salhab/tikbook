@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
-import LottieView, { type AnimationObject } from "lottie-react-native";
 import { Audio } from "expo-av";
 import type { LiveRoomUser, VipTierConfig } from "../types";
-import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
 type Props = {
   user: LiveRoomUser | null;
@@ -21,7 +19,6 @@ type Props = {
 const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, vipTier, onDone }: Props) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-24)).current;
-  const [animationJson, setAnimationJson] = useState<unknown | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
   // Show for every user — no VIP gate
@@ -38,21 +35,9 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
     let mounted = true;
 
     if (!isVisible) {
-      setAnimationJson(null);
       return () => {
         mounted = false;
       };
-    }
-
-    const url = joinAnimationUrl || user?.joinAnimationLottieUrl;
-    const cached = getCachedLottieJson(url);
-    if (cached) {
-      setAnimationJson(cached);
-    } else if (url) {
-      fetchLottieJson(url).then((json) => {
-        if (!mounted) return;
-        setAnimationJson(json);
-      });
     }
 
     // Play join sound
@@ -141,9 +126,7 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
           </Text>
           <Text style={styles.subLabel}>انضم للغرفة</Text>
         </View>
-        {animationJson ? (
-          <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
-        ) : null}
+        {null /* lottie overlay reserved for future native build */}
       </View>
     </Animated.View>
   );

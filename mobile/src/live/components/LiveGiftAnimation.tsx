@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import LottieView, { type AnimationObject } from "lottie-react-native";
-import { Video, ResizeMode } from "expo-av";
+import { WebView } from "react-native-webview";
 import type { GiftEventPayload } from "../types";
 import { fetchLottieJson, getCachedLottieJson } from "../services/lottieCache";
 
@@ -101,14 +101,16 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
 
         <View style={styles.animationWrap}>
           {event.gift.webmUrl ? (
-            <Video
-              source={{ uri: event.gift.webmUrl }}
+            <WebView
+              source={{
+                html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{background:transparent;width:100%;height:100%;overflow:hidden}video{width:100%;height:100%;object-fit:contain;background:transparent}</style></head><body><video autoplay loop muted playsinline><source src="${event.gift.webmUrl}" type="video/webm"></video></body></html>`,
+              }}
               style={styles.webmVideo}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
-              isLooping
-              isMuted={false}
-              useNativeControls={false}
+              backgroundColor="transparent"
+              scrollEnabled={false}
+              originWhitelist={["*"]}
+              allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
             />
           ) : animationJson ? (
             <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
@@ -147,7 +149,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "transparent",
   },
   animation: {
     width: "100%",
