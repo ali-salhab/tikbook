@@ -168,6 +168,7 @@ const FloatingComments = ({
   bottomOffset = 90,
   maxHeight = 400,
   vipLevelStyles = {},
+  inline = false,
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -233,7 +234,12 @@ const FloatingComments = ({
   return (
     // box-none: outer container passes taps through to content behind it
     <View
-      style={[styles.container, { bottom: bottomOffset, maxHeight }]}
+      style={[
+        styles.container,
+        inline
+          ? { position: "relative", bottom: undefined, left: undefined, width: "100%", maxHeight }
+          : { bottom: bottomOffset, maxHeight },
+      ]}
       pointerEvents="box-none"
     >
       <FlatList

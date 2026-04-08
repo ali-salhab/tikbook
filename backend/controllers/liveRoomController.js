@@ -191,6 +191,17 @@ exports.getLiveRoom = async (req, res) => {
     if (!liveRoom) {
       return res.status(404).json({ message: "Live room not found" });
     }
+
+    res.json({ success: true, data: liveRoom });
+  } catch (error) {
+    console.error("Error getting live room:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Join live room
+exports.joinLiveRoom = async (req, res) => {
+  try {
     const { roomId } = req.params;
     const userId = req.user.id;
 

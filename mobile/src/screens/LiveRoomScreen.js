@@ -2110,13 +2110,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
   }
 
-  const liveCommentsBottomOffset =
-    keyboardOffset > 0 ? keyboardOffset + ms(72) : insets.bottom + ms(92);
-  const liveCommentsMaxHeight =
-    keyboardOffset > 0
-      ? Math.min(height * 0.2, ms(160))
-      : Math.min(height * 0.34, ms(280));
-
   // ─── RENDER ───────────────────────────────────────────────────────────────────
 
   return (
@@ -2168,15 +2161,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {SeatGrid()}
         {GiftTargetBar()}
         {ListenersRow()}
-      </View>
 
-      {/* Floating comments — bottom tracks keyboard so comments stay above input */}
-      <FloatingComments
-        comments={messages}
-        bottomOffset={liveCommentsBottomOffset}
-        maxHeight={liveCommentsMaxHeight}
-        vipLevelStyles={vipLevelCommentStyles}
-      />
+        {/* Comments inline — flows below seats */}
+        <FloatingComments
+          comments={messages}
+          maxHeight={
+            keyboardOffset > 0
+              ? Math.min(height * 0.18, ms(140))
+              : Math.min(height * 0.22, ms(200))
+          }
+          vipLevelStyles={vipLevelCommentStyles}
+          inline
+        />
+      </View>
 
       {/* Animated gifts */}
       {activeGifts.map((d) => (
