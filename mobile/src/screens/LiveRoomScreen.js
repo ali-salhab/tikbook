@@ -15,7 +15,6 @@ import {
   Modal,
   ScrollView,
   Keyboard,
-  InteractionManager,
   PanResponder,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
@@ -176,11 +175,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
     } catch (_) {}
   };
 
-  const playGiftSound = () => {
+  const playGiftSound = (gift) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
       () => {},
     );
-    SoundService.play("gift_receive");
+    // Only play generic sound if the gift doesn't have its own custom sound
+    if (!gift?.soundUrl) {
+      SoundService.play("gift_receive");
+    }
   };
 
   const playTap = () => {
@@ -560,15 +562,24 @@ const LiveRoomScreen = ({ route, navigation }) => {
       SoundService.play("notification");
     });
     socket.on("liveroom:gift_received", ({ gift, sender }) => {
+      // Skip if this is our own gift — we already showed it locally in handleSendGiftRequest
+      if (sender?._id && userInfo?._id && sender._id === userInfo._id) {
+        // Still track coins for the viewers modal
+        setUserCoinsInRoom((prev) => ({
+          ...prev,
+          [sender._id]: (prev[sender._id] || 0) + (gift.price || 0) * (gift.quantity || 1),
+        }));
+        return;
+      }
       const id = `${Date.now()}${Math.random()}`;
       giftsReceivedRef.current += 1;
-      playGiftSound();
+      playGiftSound(gift);
       setActiveGifts((prev) => [...prev, { id, gift, sender }]);
       appendLiveMessage({
         id,
         clientMessageId: id,
         user: sender,
-        message: `أرسل هدية ${gift.name}!`,
+        message: `أرسل هدية ${gift.nameAr || gift.name}!`,
         isSystem: true,
         giftUrl: gift.thumbnailUrl,
       });
@@ -876,13 +887,35 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (lastSuccess) {
         if (lastSuccess.data.senderBalance !== undefined)
           setUserBalance(lastSuccess.data.senderBalance);
-        SoundService.play("gift_send");
+        // Play generic send sound only if the gift doesn't have its own custom sound
+        if (!gift.soundUrl) {
+          SoundService.play("gift_send");
+        }
         Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success,
         ).catch(() => {});
+
+        // Show the gift animation immediately on the sender's own screen
+        const localId = `local_${Date.now()}${Math.random()}`;
+        giftsReceivedRef.current += 1;
+        setActiveGifts((prev) => [
+          ...prev,
+          { id: localId, gift: { ...gift, quantity }, sender: userInfo },
+        ]);
+        // Add the gift message to live chat
+        appendLiveMessage({
+          id: localId,
+          clientMessageId: localId,
+          user: userInfo,
+          message: `أرسل هدية ${gift.nameAr || gift.name}!`,
+          isSystem: true,
+          giftUrl: gift.thumbnailUrl,
+        });
+
+        // Emit socket event so OTHER viewers also see the gift
         socketRef.current?.emit("liveroom:send_gift", {
           roomId,
-          gift,
+          gift: { ...gift, quantity },
           sender: userInfo,
         });
         setShowGiftModal(false);
@@ -1903,18 +1936,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ─── KEYBOARD LISTENER ───────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!showInput) return;
-
-    let retryTimer = null;
-    const task = InteractionManager.runAfterInteractions(() => {
+    if (showInput) {
       inputRef.current?.focus();
-      retryTimer = setTimeout(() => inputRef.current?.focus(), 120);
-    });
-
-    return () => {
-      if (retryTimer) clearTimeout(retryTimer);
-      task?.cancel?.();
-    };
+    }
   }, [showInput]);
 
   useEffect(() => {
@@ -2161,18 +2185,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {SeatGrid()}
         {GiftTargetBar()}
         {ListenersRow()}
-
-        {/* Comments inline — flows below seats */}
-        <FloatingComments
-          comments={messages}
-          maxHeight={
-            keyboardOffset > 0
-              ? Math.min(height * 0.18, ms(140))
-              : Math.min(height * 0.22, ms(200))
-          }
-          vipLevelStyles={vipLevelCommentStyles}
-          inline
-        />
       </View>
 
       {/* Animated gifts */}
@@ -2200,6 +2212,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       {/* Mini music bar */}
       {MiniMusicBar()}
+
+      {/* Floating comments — absolute, fills space between seat grid and bottom bar */}
+      <FloatingComments
+        comments={messages}
+        bottomOffset={insets.bottom + ms(70)}
+        topOffset={showInput ? keyboardOffset + ms(56) : ms(0)}
+        vipLevelStyles={vipLevelCommentStyles}
+      />
 
       {/* Bottom action bar */}
       {!showInput && BottomBar()}
@@ -2647,11 +2667,17 @@ const styles = StyleSheet.create({
   chatBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(4,0,16,0.97)",
-    paddingHorizontal: ms(12),
-    paddingTop: ms(10),
-    borderTopWidth: 1,
-    borderTopColor: "rgba(160,32,240,0.3)",
+    backgroundColor: "rgba(8,0,28,0.98)",
+    paddingHorizontal: ms(14),
+    paddingTop: ms(12),
+    paddingBottom: ms(4),
+    borderTopWidth: 1.5,
+    borderTopColor: "rgba(160,32,240,0.5)",
+    shadowColor: "#A020F0",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 20,
   },
   summaryOverlay: {
     flex: 1,
@@ -2728,15 +2754,15 @@ const styles = StyleSheet.create({
   chatField: {
     flex: 1,
     color: "#FFF",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: ms(20),
-    height: ms(40),
-    paddingHorizontal: ms(14),
+    backgroundColor: "rgba(30,0,60,0.7)",
+    borderRadius: ms(22),
+    height: ms(44),
+    paddingHorizontal: ms(16),
     paddingVertical: 0,
-    fontSize: fs(14),
-    marginRight: ms(8),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    fontSize: fs(15),
+    marginRight: ms(10),
+    borderWidth: 1.5,
+    borderColor: "rgba(160,32,240,0.6)",
     textAlign: "right",
   },
   inlineCommentContainer: {

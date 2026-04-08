@@ -535,6 +535,39 @@ const updateUserLevel = async (req, res) => {
   }
 };
 
+const updateUserVipLevel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vipLevel } = req.body;
+
+    if (vipLevel === undefined || vipLevel === null) {
+      return res.status(400).json({ success: false, message: "vipLevel is required" });
+    }
+    const v = Number(vipLevel);
+    if (!Number.isFinite(v) || v < 0 || v > 15) {
+      return res.status(400).json({ success: false, message: "vipLevel must be 0–15" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      { vipLevel: v },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "تم تحديث مستوى VIP بنجاح",
+      user: { _id: user._id, username: user.username, vipLevel: user.vipLevel },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -545,6 +578,7 @@ module.exports = {
   sendBroadcastNotification,
   grantCoinsToUser,
   updateUserLevel,
+  updateUserVipLevel,
 };
 
 // @desc    Grant coins to a user (admin)

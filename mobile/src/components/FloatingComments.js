@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import LottieView from "lottie-react-native";
+import { ms, fs } from "../utils/responsive";
 
 const { width } = Dimensions.get("window");
 const MAX_COMMENTS = 40;
@@ -16,27 +17,23 @@ const MAX_COMMENTS = 40;
 const getVipBubbleShapeStyle = (bubbleShape) => {
   switch (bubbleShape) {
     case "rounded":
-      return {
-        borderRadius: 16,
-        borderTopLeftRadius: 16,
-      };
+      return { borderRadius: 16, borderTopLeftRadius: 16 };
     case "square":
-      return {
-        borderRadius: 8,
-        borderTopLeftRadius: 8,
-      };
+      return { borderRadius: 8, borderTopLeftRadius: 8 };
     case "pill":
-      return {
-        borderRadius: 24,
-        borderTopLeftRadius: 24,
-      };
+      return { borderRadius: 24, borderTopLeftRadius: 24 };
     case "classic":
     default:
-      return {
-        borderRadius: 18,
-        borderTopLeftRadius: 4,
-      };
+      return { borderRadius: 18, borderTopLeftRadius: 4 };
   }
+};
+
+// Level color — spending-based tier colours
+const getLevelColor = (level) => {
+  if (level >= 11) return "#FFD700"; // gold
+  if (level >= 6) return "#C0C0C0";  // silver
+  if (level >= 1) return "#CD7F32";  // bronze
+  return null;
 };
 
 // ─── Single animated comment row ─────────────────────────────────────────
@@ -48,55 +45,37 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   useEffect(() => {
     if (isNew) {
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 240,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideY, {
-          toValue: 0,
-          duration: 240,
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(slideY,   { toValue: 0, duration: 220, useNativeDriver: true }),
       ]).start();
     }
   }, []);
 
-  const isSystem = item.isSystem;
-  const imageUri = item.user?.profileImage || item.user?.avatar;
-  const initials = item.user?.username
-    ? item.user.username.charAt(0).toUpperCase()
-    : "?";
+  const isSystem   = item.isSystem;
+  const imageUri   = item.user?.profileImage || item.user?.avatar;
+  const initials   = item.user?.username ? item.user.username.charAt(0).toUpperCase() : "?";
   const messageText = item.message || item.text || item.body || "";
-  const vipLevel = Number(item.user?.vipLevel || 0);
-  const isVip = vipLevel > 0;
-  const vipStyleEntry = isVip ? vipLevelStyles?.[vipLevel] : null;
-  const vipColor = isVip
-    ? typeof vipStyleEntry === "string"
-      ? vipStyleEntry
-      : vipStyleEntry?.color || "#FFD700"
+  const vipLevel   = Number(item.user?.vipLevel || 0);
+  const userLevel  = Number(item.user?.level    || 0);
+  const isVip      = vipLevel > 0;
+
+  const vipStyleEntry  = isVip ? vipLevelStyles?.[vipLevel] : null;
+  const vipColor       = isVip
+    ? typeof vipStyleEntry === "string" ? vipStyleEntry : vipStyleEntry?.color || "#FFD700"
     : null;
   const borderWidthValue =
-    isVip && typeof vipStyleEntry === "object"
-      ? Number(vipStyleEntry?.borderWidth)
-      : 1.4;
+    isVip && typeof vipStyleEntry === "object" ? Number(vipStyleEntry?.borderWidth) : 1.4;
   const vipBorderWidth = Number.isFinite(borderWidthValue)
     ? Math.max(0, Math.min(8, borderWidthValue))
     : 1.4;
-  const bubbleShape =
-    isVip && typeof vipStyleEntry === "object"
-      ? vipStyleEntry?.bubbleShape
-      : "classic";
-  const vipBubbleShapeStyle = getVipBubbleShapeStyle(bubbleShape);
+  const bubbleShape     = isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.bubbleShape : "classic";
   const commentFrameLottieUrl =
-    isVip && typeof vipStyleEntry === "object"
-      ? vipStyleEntry?.commentFrameLottieUrl || null
-      : null;
+    isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameLottieUrl || null : null;
+
+  const levelColor = getLevelColor(userLevel);
 
   return (
-    <Animated.View
-      style={[styles.row, { opacity, transform: [{ translateY: slideY }] }]}
-    >
+    <Animated.View style={[styles.row, { opacity, transform: [{ translateY: slideY }] }]}>
       {imageUri && !imgError ? (
         <Image
           source={{ uri: imageUri }}
@@ -108,45 +87,41 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
           <Text style={styles.avatarInitial}>{initials}</Text>
         </View>
       )}
+
       <View
         style={[
           styles.bubble,
           isVip && styles.vipBubble,
-          isVip && vipBubbleShapeStyle,
-          isVip && vipColor
-            ? {
-                borderColor: vipColor,
-                borderWidth: vipBorderWidth,
-              }
-            : null,
+          isVip && getVipBubbleShapeStyle(bubbleShape),
+          isVip && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
         ]}
       >
-        {item.user?.username ? (
-          <View style={styles.headerRow}>
-            <Text
-              style={[
-                styles.username,
-                isVip && vipColor ? { color: vipColor } : null,
-              ]}
-            >
+        {/* Header row: level badge + username + VIP chip */}
+        <View style={styles.headerRow}>
+          {/* Spending-level badge */}
+          {userLevel > 0 && (
+            <View style={[styles.levelChip, { backgroundColor: levelColor + "30", borderColor: levelColor }]}>
+              <Text style={[styles.levelChipText, { color: levelColor }]}>Lv{userLevel}</Text>
+            </View>
+          )}
+
+          {item.user?.username ? (
+            <Text style={[styles.username, isVip && vipColor ? { color: vipColor } : null]}>
               {item.user.username}
             </Text>
-            {isVip && (
-              <View
-                style={[
-                  styles.vipChip,
-                  vipColor ? { backgroundColor: vipColor } : null,
-                ]}
-              >
-                <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
-              </View>
-            )}
-          </View>
-        ) : null}
+          ) : null}
+
+          {isVip && (
+            <View style={[styles.vipChip, vipColor ? { backgroundColor: vipColor } : null]}>
+              <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
+            </View>
+          )}
+        </View>
+
         <Text style={[styles.message, isSystem && styles.systemMessage]}>
           {messageText}
         </Text>
-        {/* VIP animated comment frame overlay - rendered only when URL is available */}
+
         {commentFrameLottieUrl ? (
           <LottieView
             source={{ uri: commentFrameLottieUrl }}
@@ -166,9 +141,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
 const FloatingComments = ({
   comments,
   bottomOffset = 90,
-  maxHeight = 400,
+  topOffset = 0,
   vipLevelStyles = {},
-  inline = false,
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -212,7 +186,6 @@ const FloatingComments = ({
     setUserScrolled(true);
   };
 
-  // When new message arrives and user is manually scrolled, show "↓ رسائل جديدة" hint
   const handleScrollEnd = ({ nativeEvent }) => {
     const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
     const isAtBottom =
@@ -232,14 +205,8 @@ const FloatingComments = ({
   if (visible.length === 0) return null;
 
   return (
-    // box-none: outer container passes taps through to content behind it
     <View
-      style={[
-        styles.container,
-        inline
-          ? { position: "relative", bottom: undefined, left: undefined, width: "100%", maxHeight }
-          : { bottom: bottomOffset, maxHeight },
-      ]}
+      style={[styles.container, { bottom: bottomOffset, top: topOffset }]}
       pointerEvents="box-none"
     >
       <FlatList
@@ -257,7 +224,6 @@ const FloatingComments = ({
         nestedScrollEnabled={true}
       />
 
-      {/* "↓" scroll-to-bottom pill when user has scrolled up */}
       {userScrolled && (
         <View style={styles.newMsgPill} pointerEvents="box-none">
           <Text style={styles.newMsgText} onPress={scrollToBottom}>
@@ -272,62 +238,61 @@ const FloatingComments = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    left: 10,
-    width: width * 0.78,
+    left: ms(10),
+    width: width * 0.75,
     zIndex: 220,
     elevation: 10,
-    // maxHeight is now passed as prop — no static value here
   },
   listContent: {
     flexGrow: 1,
     justifyContent: "flex-end",
     paddingVertical: 4,
-    paddingBottom: 8,
+    paddingBottom: ms(6),
   },
   row: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginBottom: 10,
+    marginBottom: ms(8),
     alignSelf: "flex-start",
     maxWidth: "100%",
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 8,
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(17),
+    marginRight: ms(6),
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
+    borderColor: "rgba(255,255,255,0.4)",
     flexShrink: 0,
   },
   avatarFallback: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 8,
-    backgroundColor: "rgba(120,80,200,0.6)",
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(17),
+    marginRight: ms(6),
+    backgroundColor: "rgba(120,80,200,0.65)",
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: fs(13),
     fontWeight: "700",
   },
   bubble: {
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    borderTopLeftRadius: 4,
-    maxWidth: "86%",
+    backgroundColor: "rgba(0,0,0,0.62)",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(7),
+    borderRadius: ms(18),
+    borderTopLeftRadius: ms(4),
+    maxWidth: "88%",
   },
   vipBubble: {
-    backgroundColor: "rgba(8,8,20,0.8)",
+    backgroundColor: "rgba(8,8,20,0.82)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.28,
     shadowRadius: 3,
     elevation: 2,
   },
@@ -335,47 +300,58 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 6,
-    marginBottom: 2,
+    gap: ms(5),
+    marginBottom: ms(2),
+    flexWrap: "wrap",
+  },
+  levelChip: {
+    paddingHorizontal: ms(5),
+    paddingVertical: ms(1),
+    borderRadius: ms(8),
+    borderWidth: 1,
+  },
+  levelChipText: {
+    fontSize: fs(9),
+    fontWeight: "900",
   },
   username: {
-    color: "rgba(180,180,255,0.9)",
-    fontSize: 13,
+    color: "rgba(190,185,255,0.95)",
+    fontSize: fs(13),
     fontWeight: "700",
   },
   vipChip: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: ms(6),
+    paddingVertical: ms(2),
+    borderRadius: ms(10),
   },
   vipChipText: {
     color: "#FFF",
-    fontSize: 10,
+    fontSize: fs(10),
     fontWeight: "800",
   },
   message: {
     color: "#FFF",
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: fs(14),
+    lineHeight: fs(19),
   },
   systemMessage: {
     color: "#FFD700",
-    fontSize: 15,
+    fontSize: fs(14),
     fontStyle: "italic",
   },
   newMsgPill: {
     alignSelf: "flex-start",
-    marginTop: 4,
-    marginLeft: 4,
+    marginTop: ms(4),
+    marginLeft: ms(4),
   },
   newMsgText: {
     backgroundColor: "rgba(0,191,255,0.85)",
     color: "#FFF",
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: "700",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
+    borderRadius: ms(20),
     overflow: "hidden",
   },
   commentFrame: {

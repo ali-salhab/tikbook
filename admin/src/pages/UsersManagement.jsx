@@ -24,6 +24,7 @@ const UsersManagement = () => {
   const [levelEditId, setLevelEditId] = useState(null);
   const [levelEditValue, setLevelEditValue] = useState(0);
   const [levelUpdating, setLevelUpdating] = useState(false);
+  const [vipLevelUpdating, setVipLevelUpdating] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
@@ -105,6 +106,30 @@ const UsersManagement = () => {
       console.error("Update level error:", error);
     } finally {
       setLevelUpdating(false);
+    }
+  };
+
+  const updateUserVipLevel = async (userId, newVipLevel) => {
+    setVipLevelUpdating(true);
+    try {
+      const v = Number(newVipLevel);
+      if (!Number.isFinite(v) || v < 0 || v > 15) {
+        alert("مستوى VIP يجب أن يكون بين 0 و 15");
+        return;
+      }
+      const response = await api.put(`/admin/users/${userId}/vip-level`, { vipLevel: v }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        setUsers((prev) => prev.map((u) => u._id === userId ? { ...u, vipLevel: v } : u));
+        if (selectedUser?._id === userId) setSelectedUser((prev) => ({ ...prev, vipLevel: v }));
+        alert("تم تحديث مستوى VIP بنجاح");
+      }
+    } catch (error) {
+      alert("حدث خطأ أثناء تحديث مستوى VIP");
+      console.error("Update vipLevel error:", error);
+    } finally {
+      setVipLevelUpdating(false);
     }
   };
 
@@ -472,6 +497,36 @@ const UsersManagement = () => {
                 </div>
                 <p style={{ fontSize: "12px", color: "#888", marginTop: "4px" }}>
                   المستوى الحالي: {selectedUser.level || 0} | إجمالي الإنفاق: {(selectedUser.totalSpent || 0).toFixed(2)} عملة
+                </p>
+              </div>
+
+              {/* VIP Level update section */}
+              <div style={{ padding: "12px 0", borderTop: "1px solid #eee", marginBottom: "8px" }}>
+                <p style={{ fontWeight: "600", marginBottom: "8px" }}>تحديث مستوى VIP يدوياً (0–15)</p>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <select
+                    defaultValue={selectedUser.vipLevel || 0}
+                    key={"vip-" + selectedUser._id}
+                    id="admin-vip-level-input"
+                    style={{ width: "90px", padding: "6px 10px", border: "1px solid #ccc", borderRadius: "6px", fontSize: "14px" }}
+                  >
+                    {Array.from({ length: 16 }, (_, i) => (
+                      <option key={i} value={i}>{i === 0 ? "0 (بدون)" : `VIP ${i}`}</option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={vipLevelUpdating}
+                    onClick={() => {
+                      const val = document.getElementById("admin-vip-level-input").value;
+                      updateUserVipLevel(selectedUser._id, val);
+                    }}
+                    style={{ padding: "6px 16px", backgroundColor: "#c026d3", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "600" }}
+                  >
+                    {vipLevelUpdating ? "جارٍ الحفظ..." : "حفظ VIP"}
+                  </button>
+                </div>
+                <p style={{ fontSize: "12px", color: "#888", marginTop: "4px" }}>
+                  مستوى VIP الحالي: {selectedUser.vipLevel || 0}
                 </p>
               </div>
 
