@@ -73,14 +73,18 @@ const SPEED_MAP_P = { slow:2.8, medium:1.6, fast:0.8 };
 const GiftLivePreview = ({ form, previews, editingGift }) => {
   useEffect(() => { ensurePreviewCSS(); }, []);
 
-  const imgSrc = previews.png
-    ? (typeof previews.png === "string" && previews.png.startsWith("data:") ? previews.png : null)
-    : previews.thumbnail
-      ? (typeof previews.thumbnail === "string" && previews.thumbnail.startsWith("data:") ? previews.thumbnail : null)
-      : editingGift ? (editingGift.pngUrl || editingGift.thumbnailUrl || editingGift.animationUrl || null) : null;
-  const isLottieImg = imgSrc && (imgSrc.endsWith(".json") || (editingGift?.animationType === "lottie"));
+  // Accept any non-empty string URL (data:, https:, etc.), skip .json lottie files
+  const isImgUrl = (v) => typeof v === "string" && v.length > 4 && !v.endsWith(".json");
 
-  const effectType  = form.effectType  || "sparkles";
+  const imgSrc =
+    isImgUrl(previews.png)       ? previews.png :
+    isImgUrl(previews.thumbnail) ? previews.thumbnail :
+    editingGift ? (editingGift.pngUrl || editingGift.thumbnailUrl || editingGift.animationUrl || null) : null;
+
+  const isLottieImg = !imgSrc || (editingGift?.animationType === "lottie" && !editingGift?.pngUrl && !editingGift?.thumbnailUrl?.match(/\.(png|jpg|jpeg|webp|gif)$/i));
+
+  const effectTypes = Array.isArray(form.effectType) ? form.effectType : (form.effectType ? [form.effectType] : ["sparkles"]);
+  const effectType  = effectTypes[0] || "sparkles"; // primary for particle chars
   const effectCount = Math.min(Math.max(form.effectCount ?? 8, 0), 16);
   const pSize       = SIZE_MAP_P[form.effectSize   || "medium"] || 22;
   const spd         = SPEED_MAP_P[form.effectSpeed || "medium"] || 1.6;
@@ -90,7 +94,7 @@ const GiftLivePreview = ({ form, previews, editingGift }) => {
   const danceKf  = { wiggle:"gift-wiggle", bounce:"gift-bounce", spin:"gift-spin", float:"gift-float", pulse:"gift-pulse", none:"none" }[form.danceStyle  || "wiggle"] || "gift-wiggle";
   const entryKf  = { pop:"entry-pop",      zoom:"entry-zoom",    slide:"entry-slide", flip:"entry-flip", rubber:"entry-rubber" }[form.entryEffect || "pop"]   || "entry-pop";
 
-  const chars = effectType === "custom" ? [form.effectCustomChar || "✨"] : (EFFECT_CHARS_PREVIEW[effectType] || ["✨"]);
+  const chars = effectTypes.flatMap(t => t === "custom" ? [form.effectCustomChar || "✨"] : (EFFECT_CHARS_PREVIEW[t] || ["✨"])).filter((c, i, a) => a.indexOf(c) === i) || ["✨"];
 
   const particles = effectType !== "none" && effectCount > 0
     ? Array.from({ length: effectCount }, (_, i) => ({
@@ -107,8 +111,11 @@ const GiftLivePreview = ({ form, previews, editingGift }) => {
     <div style={pvStyles.wrap}>
       <div style={pvStyles.header}>👁️ معاينة مباشرة</div>
       <div style={pvStyles.stage}>
-        {/* Glow */}
-        <div style={{ ...pvStyles.glow, background: glowColor, opacity: glowOpacity, boxShadow: `0 0 55px 25px ${glowColor}` }} />
+        {/* Glow — layered box-shadow only, no solid background */}
+        <div style={{
+          ...pvStyles.glow,
+          boxShadow: `0 0 30px 20px ${glowColor}${Math.round(glowOpacity * 180).toString(16).padStart(2,"0")}, 0 0 70px 50px ${glowColor}${Math.round(glowOpacity * 90).toString(16).padStart(2,"0")}, 0 0 130px 90px ${glowColor}${Math.round(glowOpacity * 45).toString(16).padStart(2,"0")}`,
+        }} />
         {/* Gift image */}
         {imgSrc && !isLottieImg ? (
           <img
@@ -139,7 +146,10 @@ const GiftLivePreview = ({ form, previews, editingGift }) => {
       <div style={pvStyles.footer}>
         <span style={{ color: "#6b7280", fontSize: 11 }}>الرقصة: <b>{form.danceStyle || "wiggle"}</b></span>
         <span style={{ color: "#6b7280", fontSize: 11 }}>الدخول: <b>{form.entryEffect || "pop"}</b></span>
-        <span style={{ fontSize: 16 }}>{EFFECT_CHARS_PREVIEW[effectType]?.[0] || (effectType !== "none" ? form.effectCustomChar : "🚫")} ×{effectCount}</span>
+        <span style={{ fontSize: 15 }}>
+          {effectTypes.filter(t => t !== "none").map(t => EFFECT_CHARS_PREVIEW[t]?.[0] || (t === "custom" ? form.effectCustomChar : "\u2728")).join(" ")}
+          {" "}×{effectCount}
+        </span>
       </div>
     </div>
   );
@@ -187,7 +197,7 @@ const ENTRY_EFFECTS = [
 ];
 
 const defaultEffects = {
-  effectType: "sparkles",
+  effectType: ["sparkles"],
   effectCount: 8,
   effectSize: "medium",
   effectSpeed: "medium",
@@ -266,7 +276,7 @@ const GiftManagement = ({ onLogout }) => {
       isActive: gift.isActive !== false, sortOrder: gift.sortOrder || 0,
       animationType: gift.animationType || "lottie",
       animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null, pngFile: null,
-      effectType: gift.effectType || "sparkles",
+      effectType: Array.isArray(gift.effectType) ? gift.effectType : (gift.effectType ? [gift.effectType] : ["sparkles"]),
       effectCount: gift.effectCount ?? 8,
       effectSize: gift.effectSize || "medium",
       effectSpeed: gift.effectSpeed || "medium",
@@ -317,7 +327,7 @@ const GiftManagement = ({ onLogout }) => {
     setError("");
     try {
       const effectPayload = {
-        effectType: form.effectType,
+        effectType: Array.isArray(form.effectType) ? form.effectType.join(",") : (form.effectType || "sparkles"),
         effectCount: form.effectCount,
         effectSize: form.effectSize,
         effectSpeed: form.effectSpeed,
@@ -394,8 +404,6 @@ const GiftManagement = ({ onLogout }) => {
       setSeeding(false);
     }
   };
-
-  const selectedEffect = EFFECT_TYPES.find((e) => e.value === form.effectType) || EFFECT_TYPES[1];
 
   return (
     <AdminLayout onLogout={onLogout}>
@@ -625,28 +633,40 @@ const GiftManagement = ({ onLogout }) => {
                 <button style={styles.effectsToggle} onClick={() => setShowEffects(!showEffects)}>
                   <FiSliders size={15} />
                   🎨 إعدادات التأثيرات والحركة
-                  <span style={{ marginRight: "auto", fontSize: 12, color: "#94a3b8" }}>{selectedEffect.emoji} {selectedEffect.label} · {DANCE_STYLES.find(d=>d.value===form.danceStyle)?.label || form.danceStyle}</span>
+                  <span style={{ marginRight: "auto", fontSize: 12, color: "#94a3b8" }}>
+                    {(Array.isArray(form.effectType) ? form.effectType : [form.effectType]).filter(t => t !== "none").map(t => EFFECT_TYPES.find(e => e.value === t)?.emoji || "✨").join(" ")} · {DANCE_STYLES.find(d=>d.value===form.danceStyle)?.label || form.danceStyle}
+                  </span>
                   <span>{showEffects ? "▲" : "▼"}</span>
                 </button>
 
                 {showEffects && (
                   <div style={styles.effectsBody}>
                     {/* Effect type grid */}
-                    <div style={styles.sectionLabel}>نوع الجسيمات حول الهدية</div>
+                    <div style={styles.sectionLabel}>نوع الجسيمات حول الهدية <span style={{ fontWeight: 400, color: "#94a3b8" }}>(اختر واحداً أو أكثر)</span></div>
                     <div style={styles.effectGrid}>
-                      {EFFECT_TYPES.map((et) => (
-                        <button
-                          key={et.value}
-                          style={{ ...styles.effectChipBtn, ...(form.effectType === et.value ? styles.effectChipBtnActive : {}) }}
-                          onClick={() => setF("effectType", et.value)}
-                        >
-                          <span style={{ fontSize: 20 }}>{et.emoji}</span>
-                          <span style={{ fontSize: 11 }}>{et.label}</span>
-                        </button>
-                      ))}
+                      {EFFECT_TYPES.map((et) => {
+                        const isActive = Array.isArray(form.effectType) ? form.effectType.includes(et.value) : form.effectType === et.value;
+                        const toggle = () => {
+                          const cur = Array.isArray(form.effectType) ? form.effectType : [form.effectType];
+                          if (et.value === "none") { setF("effectType", ["none"]); return; }
+                          const filtered = cur.filter(v => v !== "none");
+                          const next = isActive ? filtered.filter(v => v !== et.value) : [...filtered, et.value];
+                          setF("effectType", next.length ? next : ["none"]);
+                        };
+                        return (
+                          <button
+                            key={et.value}
+                            style={{ ...styles.effectChipBtn, ...(isActive ? styles.effectChipBtnActive : {}) }}
+                            onClick={toggle}
+                          >
+                            <span style={{ fontSize: 20 }}>{et.emoji}</span>
+                            <span style={{ fontSize: 11 }}>{et.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {form.effectType === "custom" && (
+                    {(Array.isArray(form.effectType) ? form.effectType : [form.effectType]).includes("custom") && (
                       <div style={styles.formGroupRow}>
                         <label style={styles.label}>رمز مخصص</label>
                         <input style={{ ...styles.input, width: 80, textAlign: "center", fontSize: 20 }} value={form.effectCustomChar} onChange={(e) => setF("effectCustomChar", e.target.value)} maxLength={4} />
@@ -688,9 +708,14 @@ const GiftManagement = ({ onLogout }) => {
                       </div>
                     </div>
 
-                    {/* Glow preview */}
+                    {/* Glow preview — no solid circle, only soft radial shadow */}
                     <div style={{ display: "flex", justifyContent: "center", margin: "8px 0" }}>
-                      <div style={{ width: 80, height: 80, borderRadius: 40, background: form.glowColor, opacity: form.glowOpacity, boxShadow: `0 0 40px 20px ${form.glowColor}88` }} />
+                      <div style={{
+                        width: 90, height: 90, borderRadius: "50%",
+                        background: "transparent",
+                        boxShadow: `0 0 25px 18px ${form.glowColor}88, 0 0 55px 35px ${form.glowColor}44, 0 0 90px 60px ${form.glowColor}22`,
+                        opacity: Math.max(form.glowOpacity, 0.08),
+                      }} />
                     </div>
 
                     <div style={styles.effectRow}>
@@ -792,7 +817,7 @@ const pvStyles = {
   wrap:       { marginTop: 16, border: "1.5px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#0f172a" },
   header:     { padding: "8px 14px", background: "#1e293b", color: "#94a3b8", fontSize: 12, fontWeight: 700, letterSpacing: 1 },
   stage:      { position: "relative", height: 220, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "linear-gradient(160deg,#0f172a 0%,#1e1b4b 100%)" },
-  glow:       { position: "absolute", width: 180, height: 180, borderRadius: "50%", pointerEvents: "none", zIndex: 0 },
+  glow:       { position: "absolute", width: 0, height: 0, borderRadius: "50%", background: "transparent", pointerEvents: "none", zIndex: 0 },
   giftImg:    { width: 140, height: 140, objectFit: "contain", position: "relative", zIndex: 2, filter: "drop-shadow(0 0 18px rgba(255,215,0,0.5))" },
   placeholder:{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 48, textAlign: "center", color: "#475569", zIndex: 2 },
   pill:       { position: "absolute", bottom: 12, left: 12, display: "flex", alignItems: "center", gap: 7, background: "rgba(0,0,0,0.75)", padding: "6px 12px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.12)", zIndex: 10 },

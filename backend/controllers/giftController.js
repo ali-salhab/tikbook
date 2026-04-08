@@ -224,8 +224,20 @@ exports.getGiftHistory = async (req, res) => {
 
 // Admin: Create a gift
 // Helper: extract effect config from req.body
-const pickEffectConfig = (body) => ({
-  effectType: body.effectType || "sparkles",
+const pickEffectConfig = (body) => {
+  // effectType can arrive as array (JSON edit) or comma-separated string (FormData create)
+  let effectType = body.effectType;
+  if (Array.isArray(effectType)) {
+    // already an array - filter empties
+    effectType = effectType.filter(Boolean);
+  } else if (typeof effectType === "string" && effectType.length > 0) {
+    effectType = effectType.split(",").map((s) => s.trim()).filter(Boolean);
+  } else {
+    effectType = ["sparkles"];
+  }
+  if (effectType.length === 0) effectType = ["sparkles"];
+  return {
+  effectType,
   effectCount: parseInt(body.effectCount) || 8,
   effectSize: body.effectSize || "medium",
   effectSpeed: body.effectSpeed || "medium",
@@ -235,7 +247,8 @@ const pickEffectConfig = (body) => ({
   glowOpacity: parseFloat(body.glowOpacity) || 0.25,
   danceStyle: body.danceStyle || "wiggle",
   entryEffect: body.entryEffect || "pop",
-});
+  };
+};
 
 exports.createGift = async (req, res) => {
   try {

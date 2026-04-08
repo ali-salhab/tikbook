@@ -104,11 +104,10 @@ const giftSchema = new mongoose.Schema(
     },
 
     // ── Animation Effect Config (controlled by admin) ──────────────────────
-    // Type of floating particles around the gift
+    // Type of floating particles around the gift (can be multiple)
     effectType: {
-      type: String,
-      enum: ["none", "hearts", "stars", "sparkles", "confetti", "bubbles", "roses", "fire", "snow", "custom"],
-      default: "sparkles",
+      type: [String],
+      default: ["sparkles"],
     },
     // Number of particles
     effectCount: {

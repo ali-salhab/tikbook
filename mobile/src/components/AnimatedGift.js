@@ -90,25 +90,31 @@ const Particle = ({ char, x, delay, size, speedMs }) => {
 
 // ─── Particle field ───────────────────────────────────────────────────────────
 const ParticleField = ({ gift }) => {
-  const effectType  = gift.effectType  || "sparkles";
+  const rawTypes    = gift.effectType;
+  const effectTypes = Array.isArray(rawTypes) ? rawTypes : (rawTypes ? [rawTypes] : ["sparkles"]);
   const effectCount = Math.max(0, Math.min(30, gift.effectCount ?? 8));
   const effectSize  = EFFECT_SIZE_MAP[gift.effectSize  || "medium"] || 20;
   const speedMs     = EFFECT_SPEED_MAP[gift.effectSpeed || "medium"] || 850;
 
-  if (effectType === "none" || effectCount === 0) return null;
+  if ((effectTypes.length === 1 && effectTypes[0] === "none") || effectCount === 0) return null;
 
-  const chars = effectType === "custom"
+  const chars = effectTypes.length === 1 && effectTypes[0] === "custom"
     ? [gift.effectCustomChar || "✨"]
-    : (EFFECT_CHARS[effectType] || EFFECT_CHARS.sparkles);
+    : [...new Set(effectTypes.flatMap(t =>
+        t === "custom" ? [gift.effectCustomChar || "✨"] :
+        t === "none"   ? [] :
+        (EFFECT_CHARS[t] || EFFECT_CHARS.sparkles)
+      ))].filter(Boolean);
 
   const particles = useMemo(
     () => Array.from({ length: effectCount }, (_, i) => ({
       key: i,
-      char: chars[i % chars.length],
+      char: chars.length ? chars[i % chars.length] : "✨",
       x: 10 + ((i * 43) % 220),
       delay: i * (effectCount > 12 ? 80 : 120),
     })),
-    [effectCount, effectType, gift.effectCustomChar]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectCount, JSON.stringify(effectTypes), gift.effectCustomChar]
   );
 
   return (
@@ -332,7 +338,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     return (
       <View style={styles.standardContainer} pointerEvents="none">
         <Animated.View style={[styles.card, danceStyleAnim]}>
-          <View style={[styles.glow, { backgroundColor: glowColor, opacity: glowOpacity, shadowColor: glowColor }]} />
+          <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
           {lottieJson
             ? <LottieView source={lottieJson} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
             : <Image source={{ uri: gift.thumbnailUrl || gift.animationUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
@@ -352,7 +358,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   return (
     <View style={styles.standardContainer} pointerEvents="none">
       <Animated.View style={[styles.card, danceStyleAnim]}>
-        <View style={[styles.glow, { backgroundColor: glowColor, opacity: glowOpacity, shadowColor: glowColor }]} />
+        <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
         <Image source={{ uri: imgUri }} style={{ width: imgSize, height: imgSize }} resizeMode="contain" />
         <SenderPill sender={sender} gift={gift} />
         {isCombo && <ComboBadge />}
