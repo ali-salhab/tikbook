@@ -40,6 +40,111 @@ const GiftPreview = ({ animationUrl, thumbnailUrl, name, style }) => {
   return <span style={{ fontSize: 36 }}>🎁</span>;
 };
 
+// ─── CSS keyframes for live preview (injected once) ─────────────────────────
+const PREVIEW_ANIM_ID = "gift-preview-css";
+const ensurePreviewCSS = () => {
+  if (document.getElementById(PREVIEW_ANIM_ID)) return;
+  const s = document.createElement("style");
+  s.id = PREVIEW_ANIM_ID;
+  s.textContent = `
+    @keyframes gift-wiggle  { 0%,100%{transform:rotate(0) translateX(0) scale(1)} 20%{transform:rotate(9deg) translateX(5px) scale(1.12)} 40%{transform:rotate(-9deg) translateX(-5px) scale(0.95)} 60%{transform:rotate(6deg) translateX(4px) scale(1.08)} 80%{transform:rotate(-5deg) translateX(-3px) scale(0.97)} }
+    @keyframes gift-bounce  { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(1.22)} }
+    @keyframes gift-spin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes gift-float   { 0%,100%{transform:translateX(0) scale(1)} 50%{transform:translateX(10px) scale(1.05)} }
+    @keyframes gift-pulse   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.28)} }
+    @keyframes entry-pop    { 0%{transform:scale(0.2);opacity:0} 60%{transform:scale(1.35);opacity:1} 80%{transform:scale(0.95)} 100%{transform:scale(1)} }
+    @keyframes entry-zoom   { 0%{transform:scale(0.1) rotate(-10deg);opacity:0} 100%{transform:scale(1) rotate(0);opacity:1} }
+    @keyframes entry-slide  { 0%{transform:translateY(80px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+    @keyframes entry-flip   { 0%{transform:rotateY(180deg) scale(0.5);opacity:0} 100%{transform:rotateY(0) scale(1);opacity:1} }
+    @keyframes entry-rubber { 0%{transform:scale(0.1)} 40%{transform:scale(1.5)} 65%{transform:scale(0.75)} 82%{transform:scale(1.2)} 92%{transform:scale(0.9)} 100%{transform:scale(1)} }
+    @keyframes float-up     { 0%{opacity:0;transform:translateY(0) scale(0.5) rotate(0deg)} 15%{opacity:1} 85%{opacity:0.7} 100%{opacity:0;transform:translateY(-90px) scale(1) rotate(${Math.random() > .5 ? '':'-'}${30+Math.round(Math.random()*60)}deg)} }
+  `;
+  document.head.appendChild(s);
+};
+
+const EFFECT_CHARS_PREVIEW = {
+  sparkles:["✨","💫","⭐"],hearts:["❤️","🩷","💛"],stars:["⭐","🌟","✨"],
+  confetti:["🎊","🎉","🎈"],bubbles:["🫧","⚪","🔵"],roses:["🌹","🌸","🌺"],
+  fire:["🔥","💥","⚡"],snow:["❄️","🌨","⛄"],none:[],
+};
+const SIZE_MAP_P  = { tiny:11, small:15, medium:22, large:28, huge:36 };
+const SPEED_MAP_P = { slow:2.8, medium:1.6, fast:0.8 };
+
+const GiftLivePreview = ({ form, previews, editingGift }) => {
+  useEffect(() => { ensurePreviewCSS(); }, []);
+
+  const imgSrc = previews.png
+    ? (typeof previews.png === "string" && previews.png.startsWith("data:") ? previews.png : null)
+    : previews.thumbnail
+      ? (typeof previews.thumbnail === "string" && previews.thumbnail.startsWith("data:") ? previews.thumbnail : null)
+      : editingGift ? (editingGift.pngUrl || editingGift.thumbnailUrl || editingGift.animationUrl || null) : null;
+  const isLottieImg = imgSrc && (imgSrc.endsWith(".json") || (editingGift?.animationType === "lottie"));
+
+  const effectType  = form.effectType  || "sparkles";
+  const effectCount = Math.min(Math.max(form.effectCount ?? 8, 0), 16);
+  const pSize       = SIZE_MAP_P[form.effectSize   || "medium"] || 22;
+  const spd         = SPEED_MAP_P[form.effectSpeed || "medium"] || 1.6;
+  const glowColor   = form.glowColor   || "#FFD700";
+  const glowOpacity = form.glowOpacity ?? 0.25;
+
+  const danceKf  = { wiggle:"gift-wiggle", bounce:"gift-bounce", spin:"gift-spin", float:"gift-float", pulse:"gift-pulse", none:"none" }[form.danceStyle  || "wiggle"] || "gift-wiggle";
+  const entryKf  = { pop:"entry-pop",      zoom:"entry-zoom",    slide:"entry-slide", flip:"entry-flip", rubber:"entry-rubber" }[form.entryEffect || "pop"]   || "entry-pop";
+
+  const chars = effectType === "custom" ? [form.effectCustomChar || "✨"] : (EFFECT_CHARS_PREVIEW[effectType] || ["✨"]);
+
+  const particles = effectType !== "none" && effectCount > 0
+    ? Array.from({ length: effectCount }, (_, i) => ({
+        key: i,
+        char: chars[i % chars.length],
+        left:  `${5 + ((i * 47) % 88)}%`,
+        bottom:`${12 + ((i * 23) % 55)}%`,
+        delay: `${((i * 0.18) % spd).toFixed(2)}s`,
+        dur:   `${(spd + 0.2 + (i % 3) * 0.3).toFixed(2)}s`,
+      }))
+    : [];
+
+  return (
+    <div style={pvStyles.wrap}>
+      <div style={pvStyles.header}>👁️ معاينة مباشرة</div>
+      <div style={pvStyles.stage}>
+        {/* Glow */}
+        <div style={{ ...pvStyles.glow, background: glowColor, opacity: glowOpacity, boxShadow: `0 0 55px 25px ${glowColor}` }} />
+        {/* Gift image */}
+        {imgSrc && !isLottieImg ? (
+          <img
+            key={imgSrc}  /* re-trigger entry anim when image changes */
+            src={imgSrc}
+            style={{ ...pvStyles.giftImg, animation: `${entryKf} 0.55s cubic-bezier(.34,1.56,.64,1) forwards, ${danceKf === "none" ? "" : `${danceKf} ${spd + 0.4}s ease ${0.6}s infinite`}` }}
+            alt="preview"
+          />
+        ) : (
+          <div style={pvStyles.placeholder}>🎁<div style={{ fontSize: 11, marginTop: 6, color: "#94a3b8" }}>ارفع صورة للمعاينة</div></div>
+        )}
+        {/* Particles */}
+        {particles.map(p => (
+          <span key={p.key} style={{ position:"absolute", left:p.left, bottom:p.bottom, fontSize:pSize, animation:`float-up ${p.dur} ${p.delay} ease-out infinite`, pointerEvents:"none", zIndex:5, userSelect:"none" }}>{p.char}</span>
+        ))}
+        {/* Sender pill */}
+        <div style={pvStyles.pill}>
+          <div style={pvStyles.pillAvatar}>أ</div>
+          <div>
+            <div style={{ color:"#fff", fontSize:11, fontWeight:700 }}>المرسل</div>
+            <div style={{ color:"#FFD700", fontSize:10 }}>🎁 {form.nameAr || "اسم الهدية"}</div>
+          </div>
+        </div>
+        {/* Badges */}
+        <div style={pvStyles.priceBadge}>💎 {form.price || 10}</div>
+        {form.comboEnabled && <div style={pvStyles.comboBadge}>🔥 COMBO</div>}
+      </div>
+      <div style={pvStyles.footer}>
+        <span style={{ color: "#6b7280", fontSize: 11 }}>الرقصة: <b>{form.danceStyle || "wiggle"}</b></span>
+        <span style={{ color: "#6b7280", fontSize: 11 }}>الدخول: <b>{form.entryEffect || "pop"}</b></span>
+        <span style={{ fontSize: 16 }}>{EFFECT_CHARS_PREVIEW[effectType]?.[0] || (effectType !== "none" ? form.effectCustomChar : "🚫")} ×{effectCount}</span>
+      </div>
+    </div>
+  );
+};
+
 const RARITY_META = {
   common:    { label: "عادي",   color: "#6b7280", bg: "#f3f4f6" },
   rare:      { label: "نادر",   color: "#3b82f6", bg: "#eff6ff" },
@@ -606,6 +711,9 @@ const GiftManagement = ({ onLogout }) => {
                 )}
               </div>
 
+              {/* Live preview */}
+              <GiftLivePreview form={form} previews={previews} editingGift={editingGift} />
+
               <div style={styles.modalFooter}>
                 <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>إلغاء</button>
                 <button style={styles.saveBtn} onClick={handleSave} disabled={saving}>
@@ -649,7 +757,7 @@ const styles = {
   editBtn: { flex: 1, padding: "6px 0", background: "#e0e7ff", color: "#6366f1", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, fontWeight: 600 },
   deleteBtn: { flex: 1, padding: "6px 0", background: "#fee2e2", color: "#ef4444", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, fontWeight: 600 },
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 580, maxHeight: "92vh", overflowY: "auto", direction: "rtl" },
+  modal: { background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 640, maxHeight: "92vh", overflowY: "auto", direction: "rtl" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b" },
   formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" },
@@ -677,6 +785,21 @@ const styles = {
   saveBtn: { padding: "10px 20px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
   cancelBtn: { padding: "10px 20px", background: "#f1f5f9", color: "#374151", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   errorBox: { background: "#fee2e2", color: "#ef4444", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 14 },
+};
+
+// Preview panel styles
+const pvStyles = {
+  wrap:       { marginTop: 16, border: "1.5px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#0f172a" },
+  header:     { padding: "8px 14px", background: "#1e293b", color: "#94a3b8", fontSize: 12, fontWeight: 700, letterSpacing: 1 },
+  stage:      { position: "relative", height: 220, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "linear-gradient(160deg,#0f172a 0%,#1e1b4b 100%)" },
+  glow:       { position: "absolute", width: 180, height: 180, borderRadius: "50%", pointerEvents: "none", zIndex: 0 },
+  giftImg:    { width: 140, height: 140, objectFit: "contain", position: "relative", zIndex: 2, filter: "drop-shadow(0 0 18px rgba(255,215,0,0.5))" },
+  placeholder:{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 48, textAlign: "center", color: "#475569", zIndex: 2 },
+  pill:       { position: "absolute", bottom: 12, left: 12, display: "flex", alignItems: "center", gap: 7, background: "rgba(0,0,0,0.75)", padding: "6px 12px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.12)", zIndex: 10 },
+  pillAvatar: { width: 28, height: 28, borderRadius: 14, background: "rgba(160,32,240,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, border: "2px solid #FFD700" },
+  priceBadge: { position: "absolute", top: 10, right: 12, background: "rgba(0,0,0,0.7)", color: "#6366f1", fontWeight: 800, fontSize: 13, padding: "3px 10px", borderRadius: 14, zIndex: 10 },
+  comboBadge: { position: "absolute", top: 10, left: 12, background: "#FF4444", color: "#fff", fontWeight: 800, fontSize: 11, padding: "3px 9px", borderRadius: 12, border: "1.5px solid #FFD700", zIndex: 10, transform: "rotate(-8deg)" },
+  footer:     { display: "flex", alignItems: "center", gap: 16, padding: "8px 14px", background: "#1e293b", justifyContent: "space-between" },
 };
 
 export default GiftManagement;

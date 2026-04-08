@@ -26,6 +26,7 @@ router.post(
   giftUpload.fields([
     { name: "animation", maxCount: 1 },
     { name: "webm", maxCount: 1 },
+    { name: "png", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
     { name: "sound", maxCount: 1 },
   ]),
@@ -37,6 +38,7 @@ router.put(
   giftUpload.fields([
     { name: "animation", maxCount: 1 },
     { name: "webm", maxCount: 1 },
+    { name: "png", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
     { name: "sound", maxCount: 1 },
   ]),
