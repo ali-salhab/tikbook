@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import LottieView, { type AnimationObject } from "lottie-react-native";
 import { WebView } from "react-native-webview";
 import type { GiftEventPayload } from "../types";
@@ -114,7 +114,28 @@ const LiveGiftAnimation = ({ event, stackIndex, onComplete }: Props) => {
               androidLayerType="software"
             />
           ) : animationJson ? (
-            <LottieView source={animationJson as AnimationObject} autoPlay loop style={styles.animation} />
+            // Lottie JSON loaded — render animated Lottie
+            <LottieView
+              source={animationJson as AnimationObject}
+              autoPlay
+              loop
+              style={styles.animation}
+              resizeMode="contain"
+            />
+          ) : (event.gift.animationType === "lottie" || event.gift.lottieUrl) ? (
+            // Lottie JSON still loading — show thumbnail while waiting
+            <Image
+              source={{ uri: event.gift.thumbnailUrl || undefined }}
+              style={styles.animation}
+              resizeMode="contain"
+            />
+          ) : (event.gift.thumbnailUrl || event.gift.animationUrl) ? (
+            // PNG / image gift
+            <Image
+              source={{ uri: event.gift.thumbnailUrl || event.gift.animationUrl }}
+              style={styles.animation}
+              resizeMode="contain"
+            />
           ) : (
             <Text style={styles.fallback}>{event.gift.name}</Text>
           )}
