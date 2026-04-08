@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { View, StyleSheet, Dimensions, Text, Image } from "react-native";
 import { Video, Audio } from "expo-av";
 import LottieView from "lottie-react-native";
@@ -16,6 +16,7 @@ import Animated, {
 
 const { width, height } = Dimensions.get("window");
 
+// ─── Lottie JSON cache ────────────────────────────────────────────────────────
 const _lottieCache = {};
 const fetchLottieJson = async (url) => {
   if (!url) return null;
@@ -26,77 +27,104 @@ const fetchLottieJson = async (url) => {
     const json = await res.json();
     _lottieCache[url] = json;
     return json;
-  } catch (_) {
-    return null;
-  }
+  } catch (_) { return null; }
 };
 
-const SPARKLE_CHARS = ["✨", "⭐", "💫", "🌟", "❤️", "🎉", "💥", "🔥"];
+// ─── Effect particle definitions ─────────────────────────────────────────────
+const EFFECT_CHARS = {
+  sparkles: ["✨","💫","⭐","🌟"],
+  hearts:   ["❤️","🩷","💛","💜","🧡","💚","💙"],
+  stars:    ["⭐","🌟","✨","💫","⚡"],
+  confetti: ["🎊","🎉","🎈","🎀","🎁"],
+  bubbles:  ["🫧","⚪","🔵","🟣","🟡"],
+  roses:    ["🌹","🌸","🌺","💐","🌻"],
+  fire:     ["🔥","💥","⚡","✨"],
+  snow:     ["❄️","🌨","⛄","🤍","🌸"],
+  none:     [],
+  custom:   null, // use gift.effectCustomChar
+};
 
-const Sparkle = ({ delay, x }) => {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const scaleS = useSharedValue(0.3);
+const EFFECT_SIZE_MAP = { tiny: 10, small: 14, medium: 20, large: 26, huge: 34 };
+const EFFECT_SPEED_MAP = { slow: 1400, medium: 850, fast: 450 };
+
+// ─── Single floating particle ─────────────────────────────────────────────────
+const Particle = ({ char, x, delay, size, speedMs }) => {
+  const opacity   = useSharedValue(0);
+  const tY        = useSharedValue(0);
+  const tX        = useSharedValue(0);
+  const sc        = useSharedValue(0.4);
+  const rot       = useSharedValue(0);
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      const driftX = (Math.random() - 0.5) * 60;
+      const driftY = 90 + Math.random() * 70;
       opacity.value = withSequence(
-        withTiming(1, { duration: 180 }),
-        withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) })
+        withTiming(1, { duration: 220 }),
+        withTiming(0, { duration: speedMs * 0.55, easing: Easing.out(Easing.cubic) })
       );
-      translateY.value = withTiming(-90 - Math.random() * 50, {
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-      });
-      scaleS.value = withSequence(
-        withSpring(1.3, { damping: 8 }),
-        withTiming(0.4, { duration: 400 })
-      );
+      tY.value  = withTiming(-driftY, { duration: speedMs, easing: Easing.out(Easing.quad) });
+      tX.value  = withTiming(driftX,  { duration: speedMs, easing: Easing.inOut(Easing.sin) });
+      sc.value  = withSequence(withSpring(1.4, { damping: 7 }), withTiming(0.5, { duration: speedMs * 0.6 }));
+      rot.value = withTiming((Math.random() - 0.5) * 360, { duration: speedMs, easing: Easing.linear });
     }, delay);
     return () => clearTimeout(timer);
   }, []);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scaleS.value }],
+    transform: [
+      { translateY: tY.value },
+      { translateX: tX.value },
+      { scale: sc.value },
+      { rotate: `${rot.value}deg` },
+    ],
   }));
 
-  const char = SPARKLE_CHARS[Math.floor(x * 7) % SPARKLE_CHARS.length];
-
   return (
-    <Animated.Text
-      style={[
-        { position: "absolute", left: x, bottom: 0, fontSize: 20, zIndex: 1100 },
-        style,
-      ]}
-    >
+    <Animated.Text style={[{ position: "absolute", left: x, bottom: 0, fontSize: size, zIndex: 1200 }, style]}>
       {char}
     </Animated.Text>
   );
 };
 
-const Sparkles = () => {
-  const items = Array.from({ length: 8 }, (_, i) => ({
-    key: i,
-    x: 20 + ((i * 37) % 210),
-    delay: i * 110,
-  }));
+// ─── Particle field ───────────────────────────────────────────────────────────
+const ParticleField = ({ gift }) => {
+  const effectType  = gift.effectType  || "sparkles";
+  const effectCount = Math.max(0, Math.min(30, gift.effectCount ?? 8));
+  const effectSize  = EFFECT_SIZE_MAP[gift.effectSize  || "medium"] || 20;
+  const speedMs     = EFFECT_SPEED_MAP[gift.effectSpeed || "medium"] || 850;
+
+  if (effectType === "none" || effectCount === 0) return null;
+
+  const chars = effectType === "custom"
+    ? [gift.effectCustomChar || "✨"]
+    : (EFFECT_CHARS[effectType] || EFFECT_CHARS.sparkles);
+
+  const particles = useMemo(
+    () => Array.from({ length: effectCount }, (_, i) => ({
+      key: i,
+      char: chars[i % chars.length],
+      x: 10 + ((i * 43) % 220),
+      delay: i * (effectCount > 12 ? 80 : 120),
+    })),
+    [effectCount, effectType, gift.effectCustomChar]
+  );
+
   return (
-    <View style={styles.sparkleContainer} pointerEvents="none">
-      {items.map((s) => (
-        <Sparkle key={s.key} x={s.x} delay={s.delay} />
+    <View style={styles.particleContainer} pointerEvents="none">
+      {particles.map((p) => (
+        <Particle key={p.key} char={p.char} x={p.x} delay={p.delay} size={effectSize} speedMs={speedMs} />
       ))}
     </View>
   );
 };
 
+// ─── Sender pill ─────────────────────────────────────────────────────────────
 const SenderPill = ({ sender, gift, bottom = false }) => (
   <View style={[styles.senderRow, bottom && styles.senderRowBottom]}>
     {sender?.profileImage || sender?.avatar ? (
-      <Image
-        source={{ uri: sender.profileImage || sender.avatar }}
-        style={styles.senderAvatar}
-      />
+      <Image source={{ uri: sender.profileImage || sender.avatar }} style={styles.senderAvatar} />
     ) : (
       <View style={[styles.senderAvatar, styles.senderAvatarPlaceholder]}>
         <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 14 }}>
@@ -105,59 +133,123 @@ const SenderPill = ({ sender, gift, bottom = false }) => (
       </View>
     )}
     <View>
-      <Text style={styles.senderName} numberOfLines={1}>
-        {sender?.username || ""}
-      </Text>
+      <Text style={styles.senderName} numberOfLines={1}>{sender?.username || ""}</Text>
       <Text style={styles.giftName}>🎁 {gift.nameAr || gift.name}</Text>
     </View>
   </View>
 );
 
 const ComboBadge = () => (
-  <View style={styles.comboBadge}>
-    <Text style={styles.comboText}>🔥 COMBO!</Text>
-  </View>
+  <View style={styles.comboBadge}><Text style={styles.comboText}>🔥 COMBO!</Text></View>
 );
 
+// ─── Entry animation builder ──────────────────────────────────────────────────
+const buildEntryAnimation = (scale, translateY, rotate, entryEffect, isCombo) => {
+  const big = isCombo ? 2.1 : 1.4;
+  const settle = isCombo ? 1.7 : 1.05;
+  switch (entryEffect) {
+    case "zoom":
+      scale.value = withSequence(withTiming(big * 1.1, { duration: 350, easing: Easing.out(Easing.back(3)) }), withSpring(settle, { damping: 8 }));
+      translateY.value = withSpring(0, { damping: 8, stiffness: 120 });
+      break;
+    case "slide":
+      scale.value = withSpring(settle, { damping: 10 });
+      translateY.value = withSequence(withTiming(-30, { duration: 40 }), withSpring(0, { damping: 8, stiffness: 100 }));
+      break;
+    case "flip":
+      rotate.value = withSequence(withTiming(180, { duration: 250 }), withTiming(0, { duration: 250 }));
+      scale.value = withSpring(settle, { damping: 8 });
+      translateY.value = withSpring(0, { damping: 10 });
+      break;
+    case "rubber":
+      scale.value = withSequence(
+        withTiming(big * 1.3, { duration: 200 }),
+        withTiming(settle * 0.85, { duration: 120 }),
+        withTiming(big * 1.1, { duration: 100 }),
+        withSpring(settle, { damping: 10 })
+      );
+      translateY.value = withSpring(0, { damping: 10 });
+      break;
+    default: // pop
+      scale.value = withSequence(withSpring(big, { damping: 5, stiffness: 180 }), withSpring(settle, { damping: 9, stiffness: 120 }));
+      translateY.value = withSpring(0, { damping: 10, stiffness: 100 });
+  }
+};
+
+// ─── Dance animation builder ──────────────────────────────────────────────────
+const buildDanceAnimation = (rotate, translateX, scaleLoop, danceStyle) => {
+  switch (danceStyle) {
+    case "bounce":
+      scaleLoop.value = withRepeat(withSequence(withTiming(1.22, { duration: 220 }), withTiming(0.9, { duration: 220 })), -1, true);
+      break;
+    case "spin":
+      rotate.value = withRepeat(withTiming(360, { duration: 900, easing: Easing.linear }), -1, false);
+      break;
+    case "float":
+      translateX.value = withRepeat(withSequence(withTiming(10, { duration: 600, easing: Easing.inOut(Easing.sin) }), withTiming(-10, { duration: 600, easing: Easing.inOut(Easing.sin) })), -1, true);
+      scaleLoop.value = withRepeat(withSequence(withTiming(1.06, { duration: 500 }), withTiming(0.96, { duration: 500 })), -1, true);
+      break;
+    case "pulse":
+      scaleLoop.value = withRepeat(withSequence(withTiming(1.3, { duration: 300 }), withTiming(0.9, { duration: 300 })), -1, true);
+      break;
+    case "none":
+      break;
+    default: // wiggle
+      rotate.value = withRepeat(withSequence(
+        withTiming(9,  { duration: 90, easing: Easing.linear }),
+        withTiming(-9, { duration: 90, easing: Easing.linear }),
+        withTiming(6,  { duration: 90, easing: Easing.linear }),
+        withTiming(-6, { duration: 90, easing: Easing.linear }),
+        withTiming(0,  { duration: 70, easing: Easing.linear }),
+        withTiming(0,  { duration: 200 }),
+      ), -1, false);
+      translateX.value = withRepeat(withSequence(
+        withTiming(14,  { duration: 320, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-14, { duration: 320, easing: Easing.inOut(Easing.sin) }),
+      ), -1, true);
+      scaleLoop.value = withRepeat(withSequence(withTiming(1.18, { duration: 260 }), withTiming(0.93, { duration: 260 })), -1, true);
+  }
+};
+
+// ─── Main AnimatedGift ────────────────────────────────────────────────────────
 const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
-  const soundRef = useRef(null);
+  const soundRef  = useRef(null);
   const hasExited = useRef(false);
   const [lottieJson, setLottieJson] = useState(null);
 
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.3);
+  const opacity    = useSharedValue(0);
+  const scale      = useSharedValue(0.3);
   const translateY = useSharedValue(80);
   const translateX = useSharedValue(0);
-  const rotate = useSharedValue(0);
-  const scaleLoop = useSharedValue(1);
+  const rotate     = useSharedValue(0);
+  const scaleLoop  = useSharedValue(1);
 
-  const type = gift?.animationType || "";
-  const isVideo = type === "video";
+  const type        = gift?.animationType || "";
+  const isVideo     = type === "video";
   const isWebmAlpha = type === "webm_alpha";
-  const isLottie =
-    type === "lottie" ||
-    (!isVideo && !isWebmAlpha && !!(gift.lottieUrl || "").match(/\.json$/i));
+  const isPng       = type === "png";
+  const isLottie    = type === "lottie" || (!isVideo && !isWebmAlpha && !isPng && !!(gift.lottieUrl || "").match(/\.json$/i));
+  // PNG path also fires for untyped gifts with a pngUrl
+  const showPng     = isPng || (!isVideo && !isWebmAlpha && !isLottie && !!gift.pngUrl);
+
+  const danceStyle  = gift.danceStyle  || "wiggle";
+  const entryEffect = gift.entryEffect || "pop";
+  const glowColor   = gift.glowColor   || "#FFD700";
+  const glowOpacity = gift.glowOpacity ?? 0.25;
 
   useEffect(() => {
     if (!isLottie) return;
     const url = gift.lottieUrl || gift.animationUrl;
-    fetchLottieJson(url).then((json) => {
-      if (json) setLottieJson(json);
-    });
+    fetchLottieJson(url).then((json) => { if (json) setLottieJson(json); });
   }, [isLottie, gift.lottieUrl, gift.animationUrl]);
 
   const playSound = async () => {
     if (!gift.soundUrl) return;
     try {
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: gift.soundUrl },
-        { shouldPlay: true, volume: 1.0 }
-      );
+      const { sound } = await Audio.Sound.createAsync({ uri: gift.soundUrl }, { shouldPlay: true, volume: 1.0 });
       soundRef.current = sound;
-      sound.setOnPlaybackStatusUpdate((s) => {
-        if (s.didJustFinish) sound.unloadAsync().catch(() => {});
-      });
+      sound.setOnPlaybackStatusUpdate((s) => { if (s.didJustFinish) sound.unloadAsync().catch(() => {}); });
     } catch (_) {}
   };
 
@@ -167,14 +259,9 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     cancelAnimation(scaleLoop);
     cancelAnimation(rotate);
     cancelAnimation(translateX);
-    opacity.value = withTiming(0, { duration: 420 }, (done) => {
-      if (done && onComplete) runOnJS(onComplete)();
-    });
-    scale.value = withTiming(0.15, { duration: 420 });
-    translateY.value = withTiming(-160, {
-      duration: 420,
-      easing: Easing.in(Easing.cubic),
-    });
+    opacity.value    = withTiming(0, { duration: 420 }, (done) => { if (done && onComplete) runOnJS(onComplete)(); });
+    scale.value      = withTiming(0.15, { duration: 420 });
+    translateY.value = withTiming(-180, { duration: 420, easing: Easing.in(Easing.cubic) });
   };
 
   useEffect(() => {
@@ -184,51 +271,14 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     if (isVideo || isWebmAlpha) {
       opacity.value = withTiming(1, { duration: 350 });
       const fallback = setTimeout(exitAnimation, duration + 600);
-      return () => {
-        clearTimeout(fallback);
-        soundRef.current?.unloadAsync().catch(() => {});
-      };
+      return () => { clearTimeout(fallback); soundRef.current?.unloadAsync().catch(() => {}); };
     }
 
-    opacity.value = withTiming(1, { duration: 220 });
-    scale.value = withSequence(
-      withSpring(isCombo ? 2.1 : 1.4, { damping: 5, stiffness: 180 }),
-      withSpring(isCombo ? 1.7 : 1.05, { damping: 9, stiffness: 120 })
-    );
-    translateY.value = withSpring(0, { damping: 10, stiffness: 100 });
+    opacity.value = withTiming(1, { duration: 200 });
+    buildEntryAnimation(scale, translateY, rotate, entryEffect, isCombo);
 
-    const danceTimer = setTimeout(() => {
-      rotate.value = withRepeat(
-        withSequence(
-          withTiming(9, { duration: 90, easing: Easing.linear }),
-          withTiming(-9, { duration: 90, easing: Easing.linear }),
-          withTiming(6, { duration: 90, easing: Easing.linear }),
-          withTiming(-6, { duration: 90, easing: Easing.linear }),
-          withTiming(0, { duration: 70, easing: Easing.linear }),
-          withTiming(0, { duration: 220 })
-        ),
-        -1,
-        false
-      );
-      translateX.value = withRepeat(
-        withSequence(
-          withTiming(14, { duration: 320, easing: Easing.inOut(Easing.sin) }),
-          withTiming(-14, { duration: 320, easing: Easing.inOut(Easing.sin) })
-        ),
-        -1,
-        true
-      );
-      scaleLoop.value = withRepeat(
-        withSequence(
-          withTiming(1.18, { duration: 260 }),
-          withTiming(0.93, { duration: 260 })
-        ),
-        -1,
-        true
-      );
-    }, 380);
-
-    const exitTimer = setTimeout(exitAnimation, duration);
+    const danceTimer = setTimeout(() => buildDanceAnimation(rotate, translateX, scaleLoop, danceStyle), 380);
+    const exitTimer  = setTimeout(exitAnimation, duration);
 
     return () => {
       clearTimeout(danceTimer);
@@ -238,8 +288,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   }, []);
 
   const videoFadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-
-  const danceStyle = useAnimatedStyle(() => ({
+  const danceStyleAnim = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [
       { translateY: translateY.value },
@@ -249,47 +298,25 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     ],
   }));
 
+  // ── WebM alpha ───────────────────────────────────────────────────────────────
   if (isWebmAlpha) {
-    const videoUri = gift.webmUrl || gift.animationUrl;
     return (
-      <Animated.View
-        style={[styles.webmAlphaContainer, videoFadeStyle]}
-        pointerEvents="none"
-      >
-        <Video
-          source={{ uri: videoUri }}
-          style={styles.webmAlphaVideo}
-          resizeMode="contain"
-          shouldPlay
-          isLooping={false}
-          isMuted={!!gift.soundUrl}
-          onPlaybackStatusUpdate={(s) => {
-            if (s.didJustFinish) exitAnimation();
-          }}
-        />
+      <Animated.View style={[styles.webmAlphaContainer, videoFadeStyle]} pointerEvents="none">
+        <Video source={{ uri: gift.webmUrl || gift.animationUrl }} style={styles.webmAlphaVideo}
+          resizeMode="contain" shouldPlay isLooping={false} isMuted={!!gift.soundUrl}
+          onPlaybackStatusUpdate={(s) => { if (s.didJustFinish) exitAnimation(); }} />
         <SenderPill sender={sender} gift={gift} />
       </Animated.View>
     );
   }
 
+  // ── Full-screen video ────────────────────────────────────────────────────────
   if (isVideo) {
-    const videoUri = gift.webmUrl || gift.animationUrl;
     return (
-      <Animated.View
-        style={[styles.tiktokContainer, videoFadeStyle]}
-        pointerEvents="none"
-      >
-        <Video
-          source={{ uri: videoUri }}
-          style={styles.tiktokVideo}
-          resizeMode="cover"
-          shouldPlay
-          isLooping={false}
-          isMuted={!!gift.soundUrl}
-          onPlaybackStatusUpdate={(s) => {
-            if (s.didJustFinish) exitAnimation();
-          }}
-        />
+      <Animated.View style={[styles.tiktokContainer, videoFadeStyle]} pointerEvents="none">
+        <Video source={{ uri: gift.webmUrl || gift.animationUrl }} style={styles.tiktokVideo}
+          resizeMode="cover" shouldPlay isLooping={false} isMuted={!!gift.soundUrl}
+          onPlaybackStatusUpdate={(s) => { if (s.didJustFinish) exitAnimation(); }} />
         <View style={styles.tiktokGradient} />
         <SenderPill sender={sender} gift={gift} bottom />
         <View style={styles.tiktokTitleWrap}>
@@ -299,217 +326,62 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     );
   }
 
+  // ── Lottie ───────────────────────────────────────────────────────────────────
   if (isLottie) {
-    const lottieSize = gift.fullScreen ? width * 0.85 : 230;
+    const sz = gift.fullScreen ? width * 0.85 : 230;
     return (
       <View style={styles.standardContainer} pointerEvents="none">
-        <Animated.View style={[styles.card, danceStyle]}>
-          <View
-            style={[
-              styles.glow,
-              { backgroundColor: gift.glowColor || "#A020F0" },
-            ]}
-          />
-          {lottieJson ? (
-            <LottieView
-              source={lottieJson}
-              autoPlay
-              loop
-              style={{ width: lottieSize, height: lottieSize }}
-              resizeMode="contain"
-            />
-          ) : (
-            <Image
-              source={{ uri: gift.thumbnailUrl || gift.animationUrl || undefined }}
-              style={{ width: lottieSize, height: lottieSize }}
-              resizeMode="contain"
-            />
-          )}
+        <Animated.View style={[styles.card, danceStyleAnim]}>
+          <View style={[styles.glow, { backgroundColor: glowColor, opacity: glowOpacity, shadowColor: glowColor }]} />
+          {lottieJson
+            ? <LottieView source={lottieJson} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
+            : <Image source={{ uri: gift.thumbnailUrl || gift.animationUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
+          }
           <SenderPill sender={sender} gift={gift} />
           {isCombo && <ComboBadge />}
         </Animated.View>
-        <Sparkles />
+        <ParticleField gift={gift} />
       </View>
     );
   }
 
-  const imgUri =
-    gift.thumbnailUrl || gift.animationUrl || gift.imageUrl || gift.url;
+  // ── PNG / image (TikTok dance + admin-configured effects) ────────────────────
+  const imgUri  = gift.pngUrl || gift.thumbnailUrl || gift.animationUrl || gift.imageUrl || gift.url;
   const imgSize = gift.fullScreen ? width * 0.88 : 230;
 
   return (
     <View style={styles.standardContainer} pointerEvents="none">
-      <Animated.View style={[styles.card, danceStyle]}>
-        <View
-          style={[
-            styles.glow,
-            { backgroundColor: gift.glowColor || "#FFD700" },
-          ]}
-        />
-        <Image
-          source={{ uri: imgUri }}
-          style={{ width: imgSize, height: imgSize }}
-          resizeMode="contain"
-        />
+      <Animated.View style={[styles.card, danceStyleAnim]}>
+        <View style={[styles.glow, { backgroundColor: glowColor, opacity: glowOpacity, shadowColor: glowColor }]} />
+        <Image source={{ uri: imgUri }} style={{ width: imgSize, height: imgSize }} resizeMode="contain" />
         <SenderPill sender={sender} gift={gift} />
         {isCombo && <ComboBadge />}
       </Animated.View>
-      <Sparkles />
+      <ParticleField gift={gift} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  webmAlphaContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 2000,
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  webmAlphaVideo: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "transparent",
-  },
-  tiktokContainer: {
-    position: "absolute",
-    top: height * 0.42,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 2000,
-    backgroundColor: "transparent",
-    overflow: "hidden",
-  },
-  tiktokVideo: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  tiktokGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: height * 0.35,
-    backgroundColor: "rgba(0,0,0,0.38)",
-  },
-  tiktokTitleWrap: {
-    position: "absolute",
-    top: 16,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  tiktokTitle: {
-    color: "#FFF",
-    fontSize: 28,
-    fontWeight: "900",
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 8,
-    letterSpacing: 1,
-  },
-  standardContainer: {
-    position: "absolute",
-    top: height * 0.1,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 1500,
-  },
-  card: {
-    alignItems: "center",
-  },
-  glow: {
-    position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    opacity: 0.22,
-    shadowColor: "#FFD700",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 60,
-    elevation: 24,
-  },
-  senderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 14,
-    backgroundColor: "rgba(0,0,0,0.76)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  senderRowBottom: {
-    position: "absolute",
-    bottom: 24,
-    left: 16,
-    marginTop: 0,
-  },
-  senderAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2,
-    borderColor: "#FFD700",
-  },
-  senderAvatarPlaceholder: {
-    backgroundColor: "rgba(160,32,240,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  senderName: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "700",
-    maxWidth: 160,
-  },
-  giftName: {
-    color: "#FFD700",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  comboBadge: {
-    position: "absolute",
-    top: -28,
-    right: -16,
-    backgroundColor: "#FF4444",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    transform: [{ rotate: "12deg" }],
-    borderWidth: 2,
-    borderColor: "#FFD700",
-  },
-  comboText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  sparkleContainer: {
-    position: "absolute",
-    bottom: 60,
-    left: 0,
-    width: 250,
-    height: 130,
-    overflow: "visible",
-  },
+  webmAlphaContainer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2000, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
+  webmAlphaVideo:     { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "transparent" },
+  tiktokContainer:    { position: "absolute", top: height * 0.42, left: 0, right: 0, bottom: 0, zIndex: 2000, backgroundColor: "transparent", overflow: "hidden" },
+  tiktokVideo:        { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  tiktokGradient:     { position: "absolute", bottom: 0, left: 0, right: 0, height: height * 0.35, backgroundColor: "rgba(0,0,0,0.38)" },
+  tiktokTitleWrap:    { position: "absolute", top: 16, left: 0, right: 0, alignItems: "center" },
+  tiktokTitle:        { color: "#FFF", fontSize: 28, fontWeight: "900", textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 8, letterSpacing: 1 },
+  standardContainer:  { position: "absolute", top: height * 0.1, left: 0, right: 0, alignItems: "center", zIndex: 1500 },
+  card:               { alignItems: "center" },
+  glow:               { position: "absolute", width: 290, height: 290, borderRadius: 145, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 65, elevation: 24 },
+  senderRow:          { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14, backgroundColor: "rgba(0,0,0,0.76)", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 28, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },
+  senderRowBottom:    { position: "absolute", bottom: 24, left: 16, marginTop: 0 },
+  senderAvatar:       { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: "#FFD700" },
+  senderAvatarPlaceholder: { backgroundColor: "rgba(160,32,240,0.5)", justifyContent: "center", alignItems: "center" },
+  senderName:         { color: "#FFF", fontSize: 14, fontWeight: "700", maxWidth: 160 },
+  giftName:           { color: "#FFD700", fontSize: 12, fontWeight: "600", marginTop: 2 },
+  comboBadge:         { position: "absolute", top: -28, right: -16, backgroundColor: "#FF4444", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, transform: [{ rotate: "12deg" }], borderWidth: 2, borderColor: "#FFD700" },
+  comboText:          { color: "#FFF", fontSize: 14, fontWeight: "800" },
+  particleContainer:  { position: "absolute", bottom: 60, left: 0, width: 260, height: 150, overflow: "visible" },
 });
 
 export default AnimatedGift;

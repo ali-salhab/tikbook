@@ -38,8 +38,13 @@ const giftSchema = new mongoose.Schema(
     // Animation type
     animationType: {
       type: String,
-      enum: ["lottie", "gif", "svga", "video", "glb", "webm_alpha"],
+      enum: ["lottie", "gif", "svga", "video", "glb", "webm_alpha", "png"],
       default: "lottie",
+    },
+    // Transparent PNG file URL (for animated PNG gifts)
+    pngUrl: {
+      type: String,
+      default: "",
     },
     // Sound effect URL (optional, e.g. for roaring lion)
     soundUrl: {
@@ -96,6 +101,67 @@ const giftSchema = new mongoose.Schema(
     sortOrder: {
       type: Number,
       default: 0,
+    },
+
+    // ── Animation Effect Config (controlled by admin) ──────────────────────
+    // Type of floating particles around the gift
+    effectType: {
+      type: String,
+      enum: ["none", "hearts", "stars", "sparkles", "confetti", "bubbles", "roses", "fire", "snow", "custom"],
+      default: "sparkles",
+    },
+    // Number of particles
+    effectCount: {
+      type: Number,
+      default: 8,
+      min: 0,
+      max: 30,
+    },
+    // Particle size
+    effectSize: {
+      type: String,
+      enum: ["tiny", "small", "medium", "large", "huge"],
+      default: "medium",
+    },
+    // Particle animation speed
+    effectSpeed: {
+      type: String,
+      enum: ["slow", "medium", "fast"],
+      default: "medium",
+    },
+    // Particle color override (hex, e.g. #FF4444). Empty = use emoji default.
+    effectColor: {
+      type: String,
+      default: "",
+    },
+    // Custom effect emoji/char when effectType === 'custom'
+    effectCustomChar: {
+      type: String,
+      default: "✨",
+    },
+    // Glow color behind the gift image
+    glowColor: {
+      type: String,
+      default: "#FFD700",
+    },
+    // Glow opacity (0–1)
+    glowOpacity: {
+      type: Number,
+      default: 0.25,
+      min: 0,
+      max: 1,
+    },
+    // Dance animation style when gift is displayed
+    danceStyle: {
+      type: String,
+      enum: ["wiggle", "bounce", "spin", "float", "pulse", "none"],
+      default: "wiggle",
+    },
+    // Entry (entrance) animation style
+    entryEffect: {
+      type: String,
+      enum: ["pop", "zoom", "slide", "flip", "rubber"],
+      default: "pop",
     },
   },
   {

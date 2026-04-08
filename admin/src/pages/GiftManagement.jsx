@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { api } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
-import { FiEdit, FiTrash2, FiPlus, FiX, FiCheck, FiBox, FiImage, FiMusic, FiGift } from "react-icons/fi";
+import { FiEdit, FiTrash2, FiPlus, FiX, FiCheck, FiBox, FiImage, FiMusic, FiGift, FiSliders } from "react-icons/fi";
 import Lottie from "lottie-react";
 
 const isLottieUrl = (url) => {
@@ -49,13 +49,57 @@ const RARITY_META = {
 };
 
 const CATEGORY_LABELS = { basic: "أساسي", premium: "مميز", vip: "VIP", special: "خاص" };
-const ANIM_TYPES = ["lottie", "gif", "svga", "video", "glb", "webm_alpha"];
+const ANIM_TYPES = ["lottie", "gif", "svga", "video", "glb", "webm_alpha", "png"];
+
+const EFFECT_TYPES = [
+  { value: "none",      label: "بلا تأثير",    emoji: "🚫" },
+  { value: "sparkles",  label: "بريق",          emoji: "✨" },
+  { value: "hearts",    label: "قلوب",          emoji: "❤️" },
+  { value: "stars",     label: "نجوم",          emoji: "⭐" },
+  { value: "confetti",  label: "كونفيتي",       emoji: "🎊" },
+  { value: "bubbles",   label: "فقاعات",        emoji: "🫧" },
+  { value: "roses",     label: "ورود",          emoji: "🌹" },
+  { value: "fire",      label: "نار",           emoji: "🔥" },
+  { value: "snow",      label: "ثلج",           emoji: "❄️" },
+  { value: "custom",    label: "مخصص",          emoji: "🎨" },
+];
+
+const DANCE_STYLES = [
+  { value: "wiggle", label: "اهتزاز (Wiggle)" },
+  { value: "bounce", label: "قفز (Bounce)" },
+  { value: "spin",   label: "دوران (Spin)" },
+  { value: "float",  label: "طفو (Float)" },
+  { value: "pulse",  label: "نبض (Pulse)" },
+  { value: "none",   label: "بلا رقصة" },
+];
+
+const ENTRY_EFFECTS = [
+  { value: "pop",    label: "انبثاق (Pop)" },
+  { value: "zoom",   label: "تكبير (Zoom)" },
+  { value: "slide",  label: "انزلاق (Slide)" },
+  { value: "flip",   label: "قلب (Flip)" },
+  { value: "rubber", label: "مطاطي (Rubber)" },
+];
+
+const defaultEffects = {
+  effectType: "sparkles",
+  effectCount: 8,
+  effectSize: "medium",
+  effectSpeed: "medium",
+  effectColor: "",
+  effectCustomChar: "✨",
+  glowColor: "#FFD700",
+  glowOpacity: 0.25,
+  danceStyle: "wiggle",
+  entryEffect: "pop",
+};
 
 const defaultForm = {
   name: "", nameAr: "", price: 10, rarity: "common", category: "basic",
   duration: 3, comboEnabled: true, fullScreen: false, isActive: true, sortOrder: 0,
   animationType: "lottie",
-  animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null,
+  animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null, pngFile: null,
+  ...defaultEffects,
 };
 
 const GiftManagement = ({ onLogout }) => {
@@ -71,11 +115,13 @@ const GiftManagement = ({ onLogout }) => {
   const [form, setForm] = useState({ ...defaultForm });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [previews, setPreviews] = useState({ animation: null, thumbnail: null, sound: null });
+  const [previews, setPreviews] = useState({ animation: null, thumbnail: null, sound: null, png: null });
+  const [showEffects, setShowEffects] = useState(false);
   const animRef = useRef(null);
   const thumbRef = useRef(null);
   const soundRef = useRef(null);
   const webmRef = useRef(null);
+  const pngRef = useRef(null);
 
   useEffect(() => {
     if (!token) { navigate("/"); return; }
@@ -94,10 +140,13 @@ const GiftManagement = ({ onLogout }) => {
     }
   };
 
+  const setF = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+
   const openCreate = () => {
     setEditingGift(null);
     setForm({ ...defaultForm });
-    setPreviews({ animation: null, thumbnail: null, sound: null });
+    setPreviews({ animation: null, thumbnail: null, sound: null, png: null });
+    setShowEffects(false);
     setError("");
     setShowModal(true);
   };
@@ -111,9 +160,20 @@ const GiftManagement = ({ onLogout }) => {
       comboEnabled: gift.comboEnabled !== false, fullScreen: !!gift.fullScreen,
       isActive: gift.isActive !== false, sortOrder: gift.sortOrder || 0,
       animationType: gift.animationType || "lottie",
-      animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null,
+      animationFile: null, thumbnailFile: null, soundFile: null, webmFile: null, pngFile: null,
+      effectType: gift.effectType || "sparkles",
+      effectCount: gift.effectCount ?? 8,
+      effectSize: gift.effectSize || "medium",
+      effectSpeed: gift.effectSpeed || "medium",
+      effectColor: gift.effectColor || "",
+      effectCustomChar: gift.effectCustomChar || "✨",
+      glowColor: gift.glowColor || "#FFD700",
+      glowOpacity: gift.glowOpacity ?? 0.25,
+      danceStyle: gift.danceStyle || "wiggle",
+      entryEffect: gift.entryEffect || "pop",
     });
-    setPreviews({ animation: gift.thumbnailUrl || null, thumbnail: gift.thumbnailUrl || null, sound: null });
+    setPreviews({ animation: gift.thumbnailUrl || null, thumbnail: gift.thumbnailUrl || null, sound: null, png: gift.pngUrl || null });
+    setShowEffects(false);
     setError("");
     setShowModal(true);
   };
@@ -127,9 +187,10 @@ const GiftManagement = ({ onLogout }) => {
       if (type === "thumbnail") next.thumbnailFile = file;
       if (type === "sound") next.soundFile = file;
       if (type === "webm") next.webmFile = file;
+      if (type === "png") next.pngFile = file;
       return next;
     });
-    if (type === "thumbnail" || (type === "animation" && file.type.startsWith("video/"))) {
+    if (type === "thumbnail" || type === "png" || (type === "animation" && file.type.startsWith("image/"))) {
       const reader = new FileReader();
       reader.onloadend = () => setPreviews((p) => ({ ...p, [type]: reader.result }));
       reader.readAsDataURL(file);
@@ -140,20 +201,37 @@ const GiftManagement = ({ onLogout }) => {
 
   const handleSave = async () => {
     if (!form.nameAr) { setError("الاسم العربي مطلوب"); return; }
-        if (!editingGift && !form.animationFile && !form.webmFile) { setError("ملف الحركة أو ملف WebM مطلوب للهدايا الجديدة"); return; }
-    if (!editingGift && !form.thumbnailFile) { setError("الصورة المصغرة مطلوبة للهدايا الجديدة"); return; }
+    if (!editingGift && !form.animationFile && !form.webmFile && !form.pngFile) {
+      setError("ملف الحركة أو ملف PNG أو ملف WebM مطلوب للهدايا الجديدة"); return;
+    }
+    if (!editingGift && !form.thumbnailFile && !form.pngFile) {
+      setError("الصورة المصغرة مطلوبة (أو ارفع PNG سيُستخدم كصورة مصغرة)"); return;
+    }
 
     setSaving(true);
     setError("");
     try {
+      const effectPayload = {
+        effectType: form.effectType,
+        effectCount: form.effectCount,
+        effectSize: form.effectSize,
+        effectSpeed: form.effectSpeed,
+        effectColor: form.effectColor,
+        effectCustomChar: form.effectCustomChar,
+        glowColor: form.glowColor,
+        glowOpacity: form.glowOpacity,
+        danceStyle: form.danceStyle,
+        entryEffect: form.entryEffect,
+      };
+
       if (editingGift) {
-        // Metadata-only update via JSON (files optional)
         const payload = {
           name: form.name, nameAr: form.nameAr, price: Number(form.price),
           rarity: form.rarity, category: form.category, duration: Number(form.duration),
           comboEnabled: form.comboEnabled, fullScreen: form.fullScreen,
           isActive: form.isActive, sortOrder: Number(form.sortOrder),
           animationType: form.animationType,
+          ...effectPayload,
         };
         await api.put(`/gifts/admin/${editingGift._id}`, payload, authHeader);
       } else {
@@ -168,8 +246,10 @@ const GiftManagement = ({ onLogout }) => {
         data.append("fullScreen", form.fullScreen);
         data.append("sortOrder", form.sortOrder);
         data.append("animationType", form.animationType || "lottie");
+        Object.entries(effectPayload).forEach(([k, v]) => data.append(k, v));
         if (form.animationFile) data.append("animation", form.animationFile);
         if (form.webmFile) data.append("webm", form.webmFile);
+        if (form.pngFile) data.append("png", form.pngFile);
         if (form.thumbnailFile) data.append("thumbnail", form.thumbnailFile);
         if (form.soundFile) data.append("sound", form.soundFile);
         await api.post("/gifts/admin/create", data, {
@@ -197,7 +277,7 @@ const GiftManagement = ({ onLogout }) => {
   };
 
   const handleSeed = async () => {
-    if (!window.confirm("سيتم إضافة 6 هدايا تجريبية (وردة، قلب، نجمة، تاج، نار، ماس). هل تريد المتابعة؟")) return;
+    if (!window.confirm("سيتم إضافة 6 هدايا تجريبية. هل تريد المتابعة؟")) return;
     setSeeding(true);
     try {
       const res = await api.post("/gifts/admin/seed", {}, authHeader);
@@ -209,6 +289,8 @@ const GiftManagement = ({ onLogout }) => {
       setSeeding(false);
     }
   };
+
+  const selectedEffect = EFFECT_TYPES.find((e) => e.value === form.effectType) || EFFECT_TYPES[1];
 
   return (
     <AdminLayout onLogout={onLogout}>
@@ -257,13 +339,13 @@ const GiftManagement = ({ onLogout }) => {
             )}
             {gifts.map((gift) => {
               const rarity = RARITY_META[gift.rarity] || RARITY_META.common;
+              const effect = EFFECT_TYPES.find((e) => e.value === gift.effectType);
               return (
                 <div key={gift._id} style={{ ...styles.card, borderColor: rarity.color + "66" }}>
-                  {/* Rarity stripe */}
                   <div style={{ ...styles.rarityStripe, background: rarity.color }} />
                   <div style={styles.thumbWrap}>
                     <GiftPreview
-                      animationUrl={gift.animationUrl}
+                      animationUrl={gift.pngUrl || gift.animationUrl}
                       thumbnailUrl={gift.thumbnailUrl}
                       name={gift.nameAr || gift.name}
                       style={styles.thumb}
@@ -275,13 +357,12 @@ const GiftManagement = ({ onLogout }) => {
                       <div style={styles.cardNameEn}>{gift.name}</div>
                     )}
                     <div style={styles.metaRow}>
-                      <span style={{ ...styles.rarityBadge, color: rarity.color, background: rarity.bg }}>
-                        {rarity.label}
-                      </span>
-                      <span style={styles.categoryBadge}>
-                        {CATEGORY_LABELS[gift.category] || gift.category}
-                      </span>
+                      <span style={{ ...styles.rarityBadge, color: rarity.color, background: rarity.bg }}>{rarity.label}</span>
+                      <span style={styles.categoryBadge}>{CATEGORY_LABELS[gift.category] || gift.category}</span>
                     </div>
+                    {effect && effect.value !== "none" && (
+                      <div style={styles.effectChip}>{effect.emoji} {effect.label}</div>
+                    )}
                     <div style={styles.priceRow}>
                       <span style={styles.price}>💎 {gift.price}</span>
                       <span style={{ ...styles.activeBadge, color: gift.isActive ? "#22c55e" : "#ef4444", background: gift.isActive ? "#f0fdf4" : "#fef2f2" }}>
@@ -290,12 +371,8 @@ const GiftManagement = ({ onLogout }) => {
                     </div>
                   </div>
                   <div style={styles.cardActions}>
-                    <button style={styles.editBtn} title="تعديل" onClick={() => openEdit(gift)}>
-                      <FiEdit size={14} />
-                    </button>
-                    <button style={styles.deleteBtn} title="حذف" onClick={() => handleDelete(gift._id)}>
-                      <FiTrash2 size={14} />
-                    </button>
+                    <button style={styles.editBtn} title="تعديل" onClick={() => openEdit(gift)}><FiEdit size={14} /></button>
+                    <button style={styles.deleteBtn} title="حذف" onClick={() => handleDelete(gift._id)}><FiTrash2 size={14} /></button>
                   </div>
                 </div>
               );
@@ -303,7 +380,7 @@ const GiftManagement = ({ onLogout }) => {
           </div>
         )}
 
-        {/* Create / Edit Modal */}
+        {/* Modal */}
         {showModal && (
           <div style={styles.overlay} onClick={() => setShowModal(false)}>
             <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -315,89 +392,91 @@ const GiftManagement = ({ onLogout }) => {
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
 
+              {/* Basic info grid */}
               <div style={styles.formGrid}>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>الاسم العربي *</label>
-                  <input style={styles.input} value={form.nameAr}
-                    onChange={(e) => setForm({ ...form, nameAr: e.target.value })} placeholder="مثال: وردة" />
+                  <input style={styles.input} value={form.nameAr} onChange={(e) => setF("nameAr", e.target.value)} placeholder="مثال: وردة" />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>الاسم الإنجليزي</label>
-                  <input style={styles.input} value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Rose" />
+                  <input style={styles.input} value={form.name} onChange={(e) => setF("name", e.target.value)} placeholder="e.g. Rose" />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>السعر (💎)</label>
-                  <input style={styles.input} type="number" min="1" value={form.price}
-                    onChange={(e) => setForm({ ...form, price: +e.target.value })} />
+                  <input style={styles.input} type="number" min="1" value={form.price} onChange={(e) => setF("price", +e.target.value)} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>المدة (ثانية)</label>
-                  <input style={styles.input} type="number" min="1" max="15" value={form.duration}
-                    onChange={(e) => setForm({ ...form, duration: +e.target.value })} />
+                  <input style={styles.input} type="number" min="1" max="15" value={form.duration} onChange={(e) => setF("duration", +e.target.value)} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>الندرة</label>
-                  <select style={styles.input} value={form.rarity}
-                    onChange={(e) => setForm({ ...form, rarity: e.target.value })}>
-                    {Object.entries(RARITY_META).map(([k, v]) => (
-                      <option key={k} value={k}>{v.label} ({k})</option>
-                    ))}
+                  <select style={styles.input} value={form.rarity} onChange={(e) => setF("rarity", e.target.value)}>
+                    {Object.entries(RARITY_META).map(([k, v]) => <option key={k} value={k}>{v.label} ({k})</option>)}
                   </select>
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>الفئة</label>
-                  <select style={styles.input} value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                    {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
+                  <select style={styles.input} value={form.category} onChange={(e) => setF("category", e.target.value)}>
+                    {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>الترتيب</label>
-                  <input style={styles.input} type="number" value={form.sortOrder}
-                    onChange={(e) => setForm({ ...form, sortOrder: +e.target.value })} />
+                  <input style={styles.input} type="number" value={form.sortOrder} onChange={(e) => setF("sortOrder", +e.target.value)} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>نوع الحركة *</label>
-                  <select style={styles.input} value={form.animationType}
-                    onChange={(e) => setForm({ ...form, animationType: e.target.value })}>
-                    {ANIM_TYPES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
+                  <select style={styles.input} value={form.animationType} onChange={(e) => setF("animationType", e.target.value)}>
+                    {ANIM_TYPES.map((t) => <option key={t} value={t}>{t === "png" ? "PNG شفاف" : t}</option>)}
                   </select>
                 </div>
               </div>
 
+              {/* Checkboxes */}
               <div style={styles.checkRow}>
                 <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={form.comboEnabled}
-                    onChange={(e) => setForm({ ...form, comboEnabled: e.target.checked })} />
+                  <input type="checkbox" checked={form.comboEnabled} onChange={(e) => setF("comboEnabled", e.target.checked)} />
                   تفعيل الكومبو
                 </label>
                 <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={form.fullScreen}
-                    onChange={(e) => setForm({ ...form, fullScreen: e.target.checked })} />
+                  <input type="checkbox" checked={form.fullScreen} onChange={(e) => setF("fullScreen", e.target.checked)} />
                   شاشة كاملة
                 </label>
                 <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={form.isActive}
-                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                  <input type="checkbox" checked={form.isActive} onChange={(e) => setF("isActive", e.target.checked)} />
                   مفعّل
                 </label>
               </div>
 
+              {/* Files section */}
               {!editingGift && (
                 <div style={styles.filesSection}>
                   <div style={styles.filesTitle}><FiBox size={14} /> ملفات الهدية</div>
+
+                  {/* PNG transparent file */}
+                  <div style={{ ...styles.fileRow, border: "2px dashed #10b981", borderRadius: 10, padding: "10px 12px", background: "#f0fdf4", marginBottom: 10 }}>
+                    <button style={{ ...styles.fileBtn, background: "#d1fae5", color: "#059669", fontWeight: 700 }} onClick={() => pngRef.current?.click()}>
+                      🖼️ PNG شفاف (مُوصى به)
+                    </button>
+                    <div style={{ flex: 1 }}>
+                      {previews.png && typeof previews.png === "string" && previews.png.startsWith("data:") ? (
+                        <img src={previews.png} style={{ width: 52, height: 52, objectFit: "contain", borderRadius: 8 }} alt="png preview" />
+                      ) : (
+                        <span style={styles.fileName}>{form.pngFile?.name || "لم يُختر"}</span>
+                      )}
+                      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>صورة PNG بخلفية شفافة — ستُعرض مع رقصة TikTok وتأثيرات</div>
+                    </div>
+                    <input ref={pngRef} type="file" accept="image/png,image/webp" style={{ display: "none" }} onChange={(e) => handleFileChange(e, "png")} />
+                  </div>
+
                   <div style={styles.fileRow}>
                     <button style={styles.fileBtn} onClick={() => animRef.current?.click()}>
                       <FiBox size={14} /> ملف الحركة (Lottie/GIF)
                     </button>
                     <span style={styles.fileName}>{form.animationFile?.name || "لم يُختر"}</span>
-                    <input ref={animRef} type="file" accept=".json,.mp4,.gif,.glb" style={{ display: "none" }}
-                      onChange={(e) => handleFileChange(e, "animation")} />
+                    <input ref={animRef} type="file" accept=".json,.mp4,.gif,.glb" style={{ display: "none" }} onChange={(e) => handleFileChange(e, "animation")} />
                   </div>
                   <div style={{ ...styles.fileRow, border: "1px dashed #a855f7", borderRadius: 8, padding: "8px 10px", background: "#faf5ff" }}>
                     <button style={{ ...styles.fileBtn, background: "#ede9fe", color: "#7c3aed" }} onClick={() => webmRef.current?.click()}>
@@ -405,10 +484,9 @@ const GiftManagement = ({ onLogout }) => {
                     </button>
                     <div style={{ flex: 1 }}>
                       <span style={styles.fileName}>{form.webmFile?.name || "لم يُختر"}</span>
-                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>فيديو WebM بخلفية شفافة — يظهر فوق البث بدون خلفية</div>
+                      <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>فيديو WebM بخلفية شفافة</div>
                     </div>
-                    <input ref={webmRef} type="file" accept=".webm,video/webm" style={{ display: "none" }}
-                      onChange={(e) => handleFileChange(e, "webm")} />
+                    <input ref={webmRef} type="file" accept=".webm,video/webm" style={{ display: "none" }} onChange={(e) => handleFileChange(e, "webm")} />
                   </div>
                   <div style={styles.fileRow}>
                     <button style={styles.fileBtn} onClick={() => thumbRef.current?.click()}>
@@ -417,18 +495,16 @@ const GiftManagement = ({ onLogout }) => {
                     {previews.thumbnail && typeof previews.thumbnail === "string" && previews.thumbnail.startsWith("data:image") ? (
                       <img src={previews.thumbnail} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }} alt="thumb" />
                     ) : (
-                      <span style={styles.fileName}>{form.thumbnailFile?.name || "لم تُختر"}</span>
+                      <span style={styles.fileName}>{form.thumbnailFile?.name || "لم تُختر (سيُستخدم PNG إن رُفع)"}</span>
                     )}
-                    <input ref={thumbRef} type="file" accept="image/*" style={{ display: "none" }}
-                      onChange={(e) => handleFileChange(e, "thumbnail")} />
+                    <input ref={thumbRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFileChange(e, "thumbnail")} />
                   </div>
                   <div style={styles.fileRow}>
                     <button style={styles.fileBtn} onClick={() => soundRef.current?.click()}>
                       <FiMusic size={14} /> صوت (اختياري)
                     </button>
                     <span style={styles.fileName}>{form.soundFile?.name || "لم يُختر"}</span>
-                    <input ref={soundRef} type="file" accept="audio/*" style={{ display: "none" }}
-                      onChange={(e) => handleFileChange(e, "sound")} />
+                    <input ref={soundRef} type="file" accept="audio/*" style={{ display: "none" }} onChange={(e) => handleFileChange(e, "sound")} />
                   </div>
                 </div>
               )}
@@ -438,6 +514,97 @@ const GiftManagement = ({ onLogout }) => {
                   * لتغيير ملفات الهدية، احذفها وأنشئ هدية جديدة
                 </div>
               )}
+
+              {/* ─── Effects Control Panel ──────────────────────────────── */}
+              <div style={styles.effectsSection}>
+                <button style={styles.effectsToggle} onClick={() => setShowEffects(!showEffects)}>
+                  <FiSliders size={15} />
+                  🎨 إعدادات التأثيرات والحركة
+                  <span style={{ marginRight: "auto", fontSize: 12, color: "#94a3b8" }}>{selectedEffect.emoji} {selectedEffect.label} · {DANCE_STYLES.find(d=>d.value===form.danceStyle)?.label || form.danceStyle}</span>
+                  <span>{showEffects ? "▲" : "▼"}</span>
+                </button>
+
+                {showEffects && (
+                  <div style={styles.effectsBody}>
+                    {/* Effect type grid */}
+                    <div style={styles.sectionLabel}>نوع الجسيمات حول الهدية</div>
+                    <div style={styles.effectGrid}>
+                      {EFFECT_TYPES.map((et) => (
+                        <button
+                          key={et.value}
+                          style={{ ...styles.effectChipBtn, ...(form.effectType === et.value ? styles.effectChipBtnActive : {}) }}
+                          onClick={() => setF("effectType", et.value)}
+                        >
+                          <span style={{ fontSize: 20 }}>{et.emoji}</span>
+                          <span style={{ fontSize: 11 }}>{et.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {form.effectType === "custom" && (
+                      <div style={styles.formGroupRow}>
+                        <label style={styles.label}>رمز مخصص</label>
+                        <input style={{ ...styles.input, width: 80, textAlign: "center", fontSize: 20 }} value={form.effectCustomChar} onChange={(e) => setF("effectCustomChar", e.target.value)} maxLength={4} />
+                      </div>
+                    )}
+
+                    <div style={styles.effectRow}>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>عدد الجسيمات: <b>{form.effectCount}</b></label>
+                        <input type="range" min={0} max={30} value={form.effectCount} onChange={(e) => setF("effectCount", +e.target.value)} style={{ width: "100%" }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>الحجم</label>
+                        <select style={styles.input} value={form.effectSize} onChange={(e) => setF("effectSize", e.target.value)}>
+                          {["tiny","small","medium","large","huge"].map(s => <option key={s} value={s}>{s === "tiny" ? "صغير جداً" : s === "small" ? "صغير" : s === "medium" ? "متوسط" : s === "large" ? "كبير" : "ضخم"}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>السرعة</label>
+                        <select style={styles.input} value={form.effectSpeed} onChange={(e) => setF("effectSpeed", e.target.value)}>
+                          <option value="slow">بطيء</option>
+                          <option value="medium">متوسط</option>
+                          <option value="fast">سريع</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={styles.effectRow}>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>لون التوهج خلف الهدية</label>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="color" value={form.glowColor} onChange={(e) => setF("glowColor", e.target.value)} style={{ height: 36, width: 48, border: "none", borderRadius: 6, cursor: "pointer", padding: 2 }} />
+                          <input style={{ ...styles.input, fontFamily: "monospace", fontSize: 13 }} value={form.glowColor} onChange={(e) => setF("glowColor", e.target.value)} maxLength={7} />
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>شدة التوهج: <b>{Math.round(form.glowOpacity * 100)}%</b></label>
+                        <input type="range" min={0} max={100} value={Math.round(form.glowOpacity * 100)} onChange={(e) => setF("glowOpacity", +e.target.value / 100)} style={{ width: "100%" }} />
+                      </div>
+                    </div>
+
+                    {/* Glow preview */}
+                    <div style={{ display: "flex", justifyContent: "center", margin: "8px 0" }}>
+                      <div style={{ width: 80, height: 80, borderRadius: 40, background: form.glowColor, opacity: form.glowOpacity, boxShadow: `0 0 40px 20px ${form.glowColor}88` }} />
+                    </div>
+
+                    <div style={styles.effectRow}>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>أسلوب الرقصة</label>
+                        <select style={styles.input} value={form.danceStyle} onChange={(e) => setF("danceStyle", e.target.value)}>
+                          {DANCE_STYLES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={styles.label}>تأثير الدخول</label>
+                        <select style={styles.input} value={form.entryEffect} onChange={(e) => setF("entryEffect", e.target.value)}>
+                          {ENTRY_EFFECTS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div style={styles.modalFooter}>
                 <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>إلغاء</button>
@@ -474,6 +641,7 @@ const styles = {
   metaRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 },
   rarityBadge: { fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20 },
   categoryBadge: { fontSize: 11, color: "#64748b", background: "#f1f5f9", padding: "2px 8px", borderRadius: 20, fontWeight: 600 },
+  effectChip: { fontSize: 11, color: "#8b5cf6", background: "#f5f3ff", padding: "2px 8px", borderRadius: 20, fontWeight: 600, marginBottom: 4, display: "inline-block" },
   priceRow: { display: "flex", alignItems: "center", justifyContent: "space-between" },
   price: { fontSize: 14, fontWeight: 700, color: "#6366f1" },
   activeBadge: { fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20 },
@@ -481,11 +649,12 @@ const styles = {
   editBtn: { flex: 1, padding: "6px 0", background: "#e0e7ff", color: "#6366f1", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, fontWeight: 600 },
   deleteBtn: { flex: 1, padding: "6px 0", background: "#fee2e2", color: "#ef4444", border: "none", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, fontWeight: 600 },
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto", direction: "rtl" },
+  modal: { background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 580, maxHeight: "92vh", overflowY: "auto", direction: "rtl" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b" },
   formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" },
   formGroup: { display: "flex", flexDirection: "column" },
+  formGroupRow: { display: "flex", alignItems: "center", gap: 10, margin: "8px 0" },
   label: { fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 },
   input: { padding: "9px 11px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 14, outline: "none", background: "#f8fafc", boxSizing: "border-box", width: "100%" },
   checkRow: { display: "flex", gap: 16, margin: "14px 0", flexWrap: "wrap" },
@@ -495,6 +664,15 @@ const styles = {
   fileRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8 },
   fileBtn: { padding: "6px 12px", background: "#e0e7ff", color: "#4f46e5", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 },
   fileName: { fontSize: 12, color: "#64748b", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  // Effects panel
+  effectsSection: { border: "1px solid #e2e8f0", borderRadius: 10, marginTop: 14, overflow: "hidden" },
+  effectsToggle: { width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "#f8fafc", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#374151", textAlign: "right" },
+  effectsBody: { padding: 16, borderTop: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 14 },
+  sectionLabel: { fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 6 },
+  effectGrid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 },
+  effectChipBtn: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px", border: "2px solid #e2e8f0", borderRadius: 10, cursor: "pointer", background: "#fff", transition: "all 0.15s" },
+  effectChipBtnActive: { border: "2px solid #6366f1", background: "#eef2ff" },
+  effectRow: { display: "flex", gap: 12, flexWrap: "wrap" },
   modalFooter: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20, borderTop: "1px solid #f1f5f9", paddingTop: 16 },
   saveBtn: { padding: "10px 20px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
   cancelBtn: { padding: "10px 20px", background: "#f1f5f9", color: "#374151", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
@@ -502,4 +680,3 @@ const styles = {
 };
 
 export default GiftManagement;
-

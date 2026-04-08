@@ -223,6 +223,20 @@ exports.getGiftHistory = async (req, res) => {
 };
 
 // Admin: Create a gift
+// Helper: extract effect config from req.body
+const pickEffectConfig = (body) => ({
+  effectType: body.effectType || "sparkles",
+  effectCount: parseInt(body.effectCount) || 8,
+  effectSize: body.effectSize || "medium",
+  effectSpeed: body.effectSpeed || "medium",
+  effectColor: body.effectColor || "",
+  effectCustomChar: body.effectCustomChar || "\u2728",
+  glowColor: body.glowColor || "#FFD700",
+  glowOpacity: parseFloat(body.glowOpacity) || 0.25,
+  danceStyle: body.danceStyle || "wiggle",
+  entryEffect: body.entryEffect || "pop",
+});
+
 exports.createGift = async (req, res) => {
   try {
     const { name, price, animationType: rawAnimationType } = req.body;
@@ -237,6 +251,7 @@ exports.createGift = async (req, res) => {
     let animationUrl = "";
     let thumbnailUrl = "";
     let soundUrl = "";
+    let pngUrl = "";
 
     // Handle uploaded files (supports new multi-file upload)
     let webmUrl = "";
@@ -303,6 +318,16 @@ exports.createGift = async (req, res) => {
           fs.unlinkSync(req.files.sound[0].path);
         } catch (e) {}
       }
+      // Transparent PNG file
+      if (req.files.png && req.files.png[0]) {
+        const result = await uploadToCloudinary(
+          req.files.png[0].path,
+          "gifts/png",
+          "image",
+        );
+        pngUrl = result;
+        try { fs.unlinkSync(req.files.png[0].path); } catch (e) {}
+      }
     } else if (req.file) {
       // Fallback for single file upload (legacy)
       const result = await uploadToCloudinary(req.file.path, "gifts", "auto");
@@ -313,13 +338,20 @@ exports.createGift = async (req, res) => {
       } catch (e) {}
     }
 
-    if (!animationUrl) {
-      return res.status(400).json({ message: "Animation file is required" });
+    // For PNG-type gifts: animationUrl can be the pngUrl itself
+    if (pngUrl && !animationUrl) {
+      animationUrl = pngUrl;
+    }
+
+    if (!animationUrl && !pngUrl) {
+      return res.status(400).json({ message: "Animation file or PNG file is required" });
     }
 
     // Determine animationType: if WebM uploaded, mark as webm_alpha
     let resolvedAnimationType = rawAnimationType || "lottie";
-    if (webmUrl && !animationUrl) {
+    if (pngUrl && rawAnimationType === "png") {
+      resolvedAnimationType = "png";
+    } else if (webmUrl && !animationUrl && !pngUrl) {
       animationUrl = webmUrl;
       resolvedAnimationType = "webm_alpha";
     } else if (webmUrl) {
@@ -333,15 +365,18 @@ exports.createGift = async (req, res) => {
       animationType: resolvedAnimationType,
       animationUrl,
       webmUrl,
-      thumbnailUrl: thumbnailUrl || animationUrl,
+      pngUrl,
+      thumbnailUrl: thumbnailUrl || pngUrl || animationUrl,
       soundUrl,
       isActive: true,
+      rarity: req.body.rarity || "common",
       category: req.body.category || "basic",
       duration: parseInt(req.body.duration) || 3,
       fullScreen:
         req.body.fullScreen === "true" || req.body.fullScreen === true,
       comboEnabled: req.body.comboEnabled !== "false",
       sortOrder: parseInt(req.body.sortOrder) || 0,
+      ...pickEffectConfig(req.body),
     });
 
     res.status(201).json({
@@ -431,7 +466,14 @@ exports.updateGift = async (req, res) => {
         updateData.soundUrl = await uploadToCloudinary(req.files.sound[0].path, "gifts/sounds", "video");
         try { fs.unlinkSync(req.files.sound[0].path); } catch (e) {}
       }
+      if (req.files.png && req.files.png[0]) {
+        updateData.pngUrl = await uploadToCloudinary(req.files.png[0].path, "gifts/png", "image");
+        try { fs.unlinkSync(req.files.png[0].path); } catch (e) {}
+      }
     }
+
+    // Merge effect config fields if provided
+    Object.assign(updateData, pickEffectConfig({ ...updateData }));
 
     const gift = await Gift.findByIdAndUpdate(id, updateData, { new: true });
 
