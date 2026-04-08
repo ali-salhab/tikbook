@@ -106,6 +106,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [showManagementModal, setShowManagementModal] = useState(false);
   const [showHandRaiseList, setShowHandRaiseList] = useState(false);
 
+  // ── Gift seat selection ──────────────────────────────────────────────────────
+  // Set of userIds of occupied seats selected as gift targets
+  const [selectedGiftSeats, setSelectedGiftSeats] = useState(new Set());
+
+  // ── Viewers modal (eye icon) ─────────────────────────────────────────────────
+  const [showViewersModal, setShowViewersModal] = useState(false);
+  const [userCoinsInRoom, setUserCoinsInRoom] = useState({}); // userId -> total coins sent
+
   // ── Summary ───────────────────────────────────────────────────────────────────
   const [showSummary, setShowSummary] = useState(false);
   const [summaryStats, setSummaryStats] = useState(null);
@@ -144,6 +152,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
       cleanup();
     };
   }, []);
+
+  // Sync isHandRaised with server data so it survives reconnects / fetchRoomData
+  useEffect(() => {
+    if (!room || !userInfo?._id) return;
+    const inHandRaised = (room.handRaised || []).some(
+      (h) => (h.user?._id || h.user) === userInfo._id,
+    );
+    setIsHandRaised(inHandRaised);
+  }, [room]);
 
   // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -481,13 +498,33 @@ const LiveRoomScreen = ({ route, navigation }) => {
       "liveroom:hand_raised",
       ({ userId: raisedUserId, user: raisedUser }) => {
         fetchRoomData();
-        // Notify the host about the seat request
-        if (isHostRef.current && raisedUserId !== userInfo._id) {
+        // Notify host/mod — they can also tap the ✋ badge to see all requests
+        const isModNow = room?.moderators?.some(
+          (m) => (m.user?._id || m.user) === userInfo._id,
+        );
+        if ((isHostRef.current || isModNow) && raisedUserId !== userInfo._id) {
           Alert.alert(
             "✋ طلب جلوس",
             `${raisedUser?.username || "مستخدم"} يطلب الصعود على المقعد`,
             [
-              { text: "رفض", style: "cancel" },
+              {
+                text: "رفض",
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    await axios.post(
+                      `${BASE_URL}/live-rooms/${roomId}/reject-hand/${raisedUserId}`,
+                      {},
+                      { headers: { Authorization: `Bearer ${userToken}` } },
+                    );
+                    socketRef.current?.emit("liveroom:reject_hand", {
+                      roomId,
+                      userId: raisedUserId,
+                    });
+                    fetchRoomData();
+                  } catch (_) {}
+                },
+              },
               {
                 text: "قبول",
                 onPress: async () => {
@@ -504,10 +541,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
                     });
                     fetchRoomData();
                   } catch (e) {
-                    Alert.alert(
-                      "خطأ",
-                      e?.response?.data?.message || "فشل إضافة المتحدث",
-                    );
+                    Alert.alert("خطأ", e?.response?.data?.message || "فشل إضافة المتحدث");
                   }
                 },
               },
@@ -538,6 +572,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
         isSystem: true,
         giftUrl: gift.thumbnailUrl,
       });
+      // Track coins per sender for the viewers modal
+      if (sender?._id) {
+        setUserCoinsInRoom((prev) => ({
+          ...prev,
+          [sender._id]: (prev[sender._id] || 0) + (gift.price || 0) * (gift.quantity || 1),
+        }));
+      }
     });
     socket.on("liveroom:kicked", ({ userId }) => {
       if (userId === userInfo._id) {
@@ -547,6 +588,48 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
     });
     socket.on("liveroom:settings_updated", fetchRoomData);
+
+    // Host invited this user to a seat
+    socket.on("liveroom:seat_invite_received", ({ userId, invitedBy }) => {
+      if (userId === userInfo._id) {
+        Alert.alert(
+          "💺 دعوة للمقعد",
+          `${invitedBy?.username || "صاحب الغرفة"} دعاك للجلوس على المقعد!`,
+          [
+            { text: "رفض", style: "cancel" },
+            {
+              text: "قبول",
+              onPress: async () => {
+                try {
+                  await axios.post(
+                    `${BASE_URL}/live-rooms/${roomId}/make-speaker/${userId}`,
+                    {},
+                    { headers: { Authorization: `Bearer ${userToken}` } },
+                  );
+                  socketRef.current?.emit("liveroom:make_speaker", {
+                    roomId,
+                    userId,
+                    user: userInfo,
+                  });
+                  fetchRoomData();
+                } catch (e) {
+                  Alert.alert("خطأ", e?.response?.data?.message || "فشل قبول الدعوة");
+                }
+              },
+            },
+          ],
+        );
+      }
+    });
+
+    // Hand raise was rejected by host/mod
+    socket.on("liveroom:hand_rejected", ({ userId }) => {
+      if (userId === userInfo._id) {
+        setIsHandRaised(false);
+        Alert.alert("ℹ️", "تم رفض طلب الجلوس");
+      }
+      fetchRoomData();
+    });
   };
 
   // ─── BACKEND ─────────────────────────────────────────────────────────────────
@@ -759,26 +842,40 @@ const LiveRoomScreen = ({ route, navigation }) => {
   };
 
   const handleSendGiftRequest = async ({ gift, quantity }) => {
-    const receiver = room?.host;
-    if (!receiver) {
-      Alert.alert("خطأ", "لا يوجد مضيف");
+    // If seats are selected → send to each seat occupant; else fall back to host
+    const targetIds =
+      selectedGiftSeats.size > 0
+        ? Array.from(selectedGiftSeats)
+        : room?.host
+          ? [room.host._id]
+          : [];
+
+    if (targetIds.length === 0) {
+      Alert.alert("خطأ", "لا يوجد مستلم");
       return;
     }
+
     try {
-      const res = await axios.post(
-        `${BASE_URL}/gifts/send`,
-        {
-          giftId: gift._id,
-          receiverId: receiver._id,
-          context: "live_room",
-          contextId: roomId,
-          quantity,
-        },
-        { headers: { Authorization: `Bearer ${userToken}` } },
+      const results = await Promise.all(
+        targetIds.map((receiverId) =>
+          axios.post(
+            `${BASE_URL}/gifts/send`,
+            {
+              giftId: gift._id,
+              receiverId,
+              context: "live_room",
+              contextId: roomId,
+              quantity,
+            },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          ),
+        ),
       );
-      if (res.data.success) {
-        if (res.data.senderBalance !== undefined)
-          setUserBalance(res.data.senderBalance);
+
+      const lastSuccess = results.find((r) => r.data?.success);
+      if (lastSuccess) {
+        if (lastSuccess.data.senderBalance !== undefined)
+          setUserBalance(lastSuccess.data.senderBalance);
         SoundService.play("gift_send");
         Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success,
@@ -789,6 +886,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           sender: userInfo,
         });
         setShowGiftModal(false);
+        setSelectedGiftSeats(new Set());
       }
     } catch (err) {
       console.error("Gift send error:", err);
@@ -879,7 +977,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const Header = () => {
     const isHost = room?.host?._id === currentUser?._id;
-    const raisers = room?.speakers?.filter((s) => s.handRaised) || [];
+    const isMod = room?.moderators?.some(
+      (m) => (m.user?._id || m.user) === currentUser?._id,
+    );
+    // handRaised is a top-level array in the room model
+    const raisers = room?.handRaised || [];
     return (
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         {/* Left */}
@@ -904,13 +1006,23 @@ const LiveRoomScreen = ({ route, navigation }) => {
         </Text>
         {/* Right */}
         <View style={styles.headerRight}>
-          {isHost && raisers.length > 0 && (
+          {/* Hand-raise requests badge (host/mod only) */}
+          {(isHost || isMod) && raisers.length > 0 && (
             <TouchableOpacity
               style={styles.handBadgePill}
               onPress={() => setShowHandRaiseList(true)}
             >
               <Text style={{ fontSize: 12 }}>✋</Text>
               <Text style={styles.handBadgeCount}>{raisers.length}</Text>
+            </TouchableOpacity>
+          )}
+          {/* Eye icon – shows all viewers (host/mod only) */}
+          {(isHost || isMod) && (
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowViewersModal(true)}
+            >
+              <Ionicons name="eye" size={18} color="#00F2EA" />
             </TouchableOpacity>
           )}
           <View style={styles.userChip}>
@@ -986,14 +1098,37 @@ const LiveRoomScreen = ({ route, navigation }) => {
       : user?.activeBadge?.imageUrl || user?.activeBadge?.image || null;
     const isSpeaking = user && speakingUserIds.has(user._id);
 
-    const isListener = room?.listeners?.some((l) => l.user?._id === userInfo?._id);
     const isHostSeat = room?.host?._id === userInfo?._id;
     const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
-    const canRequestSeat = !user && !isHostSeat && !isSpeakerAlready;
+    const isGiftSelected = user && selectedGiftSeats.has(user._id);
 
-    const SeatWrapper = canRequestSeat ? TouchableOpacity : View;
-    const wrapperProps = canRequestSeat
-      ? { onPress: handleRaiseHand, activeOpacity: 0.7 }
+    // Empty seat: listener can tap to raise hand
+    const canRequestSeat = !user && !isHostSeat && !isSpeakerAlready;
+    // Occupied seat that isn't mine: tapping it toggles gift selection
+    const canSelectForGift = !!user && !isMe;
+
+    const handleSeatPress = () => {
+      if (canSelectForGift) {
+        playTap();
+        setSelectedGiftSeats((prev) => {
+          const next = new Set(prev);
+          if (next.has(user._id)) {
+            next.delete(user._id);
+          } else {
+            next.add(user._id);
+          }
+          return next;
+        });
+      } else if (canRequestSeat) {
+        playTap();
+        handleRaiseHand();
+      }
+    };
+
+    const isInteractive = canSelectForGift || canRequestSeat;
+    const SeatWrapper = isInteractive ? TouchableOpacity : View;
+    const wrapperProps = isInteractive
+      ? { onPress: handleSeatPress, activeOpacity: 0.7 }
       : {};
 
     return (
@@ -1004,6 +1139,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             !user && styles.seatEmpty,
             !speaker?.isMuted && user && styles.seatActive,
             isSpeaking && styles.seatSpeaking,
+            isGiftSelected && styles.seatGiftSelected,
           ]}
         >
           {user ? (
@@ -1025,9 +1161,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
               <Ionicons name="mic-off" size={7} color="#FFF" />
             </View>
           )}
-          {speaker?.handRaised && (
-            <View style={styles.handDot}>
-              <Text style={{ fontSize: 8 }}>✋</Text>
+          {/* Gift selection checkmark */}
+          {isGiftSelected && (
+            <View style={styles.giftCheckDot}>
+              <Ionicons name="checkmark" size={9} color="#FFF" />
             </View>
           )}
         </View>
@@ -1103,6 +1240,75 @@ const LiveRoomScreen = ({ route, navigation }) => {
               </Text>
             </View>
           ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Gift target selection bar — shown below seat grid when seats are selected
+  const GiftTargetBar = () => {
+    if (selectedGiftSeats.size === 0) return null;
+
+    // Build list of selected users from speakers + host
+    const allParticipants = [
+      ...(room?.speakers || []).map((s) => s.user),
+    ].filter(Boolean);
+
+    const selectedUsers = allParticipants.filter((u) =>
+      selectedGiftSeats.has(u._id),
+    );
+
+    return (
+      <View style={styles.giftTargetBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ alignItems: "center", gap: ms(6), paddingHorizontal: ms(4) }}
+        >
+          <Text style={styles.giftTargetLabel}>أرسل لـ:</Text>
+          {selectedUsers.map((u) => (
+            <TouchableOpacity
+              key={u._id}
+              onPress={() =>
+                setSelectedGiftSeats((prev) => {
+                  const next = new Set(prev);
+                  next.delete(u._id);
+                  return next;
+                })
+              }
+              style={styles.giftTargetChip}
+            >
+              {u.profileImage ? (
+                <Image source={{ uri: u.profileImage }} style={styles.giftTargetAvatar} />
+              ) : (
+                <View style={[styles.giftTargetAvatar, { backgroundColor: "rgba(160,32,240,0.4)", justifyContent: "center", alignItems: "center" }]}>
+                  <Text style={{ color: "#FFF", fontSize: fs(10), fontWeight: "bold" }}>
+                    {(u.username || "?").charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.giftTargetName} numberOfLines={1}>{u.username}</Text>
+              <Ionicons name="close-circle" size={12} color="rgba(255,255,255,0.55)" />
+            </TouchableOpacity>
+          ))}
+          {/* Select all */}
+          <TouchableOpacity
+            style={styles.giftTargetSelectAll}
+            onPress={() => {
+              const allIds = allParticipants
+                .filter((u) => u._id !== userInfo?._id)
+                .map((u) => u._id);
+              setSelectedGiftSeats(new Set(allIds));
+            }}
+          >
+            <Text style={styles.giftTargetSelectAllText}>الكل</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.giftTargetClear}
+            onPress={() => setSelectedGiftSeats(new Set())}
+          >
+            <Ionicons name="close" size={13} color="#FFF" />
+          </TouchableOpacity>
         </ScrollView>
       </View>
     );
@@ -1414,7 +1620,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ─── HAND RAISE LIST MODAL ───────────────────────────────────────────────────
 
-  const raisers = room?.speakers?.filter((s) => s.handRaised) || [];
+  // handRaised is a top-level array in the room model (not in speakers)
+  const raisers = room?.handRaised || [];
   const handRaiseModal = (
     <Modal
       visible={showHandRaiseList}
@@ -1430,7 +1637,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.sheetHandle} />
         <Text style={styles.sheetTitle}>
-          ✋ طلبات الكلام ({raisers.length})
+          ✋ طلبات الجلوس ({raisers.length})
         </Text>
         <ScrollView>
           {raisers.length === 0 && (
@@ -1438,41 +1645,182 @@ const LiveRoomScreen = ({ route, navigation }) => {
               لا توجد طلبات
             </Text>
           )}
-          {raisers.map((s) => (
-            <View key={s.user._id} style={styles.raiserRow}>
-              <Image
-                source={{
-                  uri: s.user.profileImage || s.user.avatar || null,
-                }}
-                style={styles.raiserAvatar}
-              />
-              <Text style={styles.raiserName}>{s.user.username}</Text>
-              <TouchableOpacity
-                style={styles.approveBtn}
-                onPress={async () => {
-                  try {
-                    await axios.post(
-                      `${BASE_URL}/live-rooms/${roomId}/add-speaker`,
-                      { userId: s.user._id },
-                      { headers: { Authorization: `Bearer ${userToken}` } },
-                    );
-                    fetchRoomData();
-                    socketRef.current?.emit("liveroom:add_speaker", {
-                      roomId,
-                      userId: s.user._id,
-                      user: s.user,
-                    });
-                  } catch (_) {}
-                }}
-              >
-                <Text style={styles.approveBtnText}>قبول</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+          {raisers.map((r) => {
+            const u = r.user || r;
+            const uid = u._id || u;
+            const username = u.username || "مستخدم";
+            const profileImg = u.profileImage || u.avatar || null;
+            return (
+              <View key={uid} style={styles.raiserRow}>
+                {profileImg ? (
+                  <Image source={{ uri: profileImg }} style={styles.raiserAvatar} />
+                ) : (
+                  <View style={[styles.raiserAvatar, { backgroundColor: "rgba(160,32,240,0.4)", justifyContent: "center", alignItems: "center" }]}>
+                    <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+                      {username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.raiserName}>{username}</Text>
+                {/* Accept */}
+                <TouchableOpacity
+                  style={styles.approveBtn}
+                  onPress={async () => {
+                    try {
+                      await axios.post(
+                        `${BASE_URL}/live-rooms/${roomId}/make-speaker/${uid}`,
+                        {},
+                        { headers: { Authorization: `Bearer ${userToken}` } },
+                      );
+                      fetchRoomData();
+                      socketRef.current?.emit("liveroom:make_speaker", {
+                        roomId,
+                        userId: uid,
+                        user: u,
+                      });
+                    } catch (e) {
+                      Alert.alert("خطأ", e?.response?.data?.message || "فشل قبول الطلب");
+                    }
+                  }}
+                >
+                  <Text style={styles.approveBtnText}>قبول</Text>
+                </TouchableOpacity>
+                {/* Reject */}
+                <TouchableOpacity
+                  style={styles.rejectBtn}
+                  onPress={async () => {
+                    try {
+                      await axios.post(
+                        `${BASE_URL}/live-rooms/${roomId}/reject-hand/${uid}`,
+                        {},
+                        { headers: { Authorization: `Bearer ${userToken}` } },
+                      );
+                      fetchRoomData();
+                      socketRef.current?.emit("liveroom:reject_hand", {
+                        roomId,
+                        userId: uid,
+                      });
+                    } catch (_) {}
+                  }}
+                >
+                  <Text style={styles.rejectBtnText}>رفض</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </ScrollView>
       </View>
     </Modal>
   );
+
+  // ─── VIEWERS MODAL (eye icon) ─────────────────────────────────────────────────
+
+  const viewersModal = (() => {
+    const isHost = room?.host?._id === userInfo?._id;
+    const isMod = room?.moderators?.some(
+      (m) => (m.user?._id || m.user) === userInfo?._id,
+    );
+    const canManage = isHost || isMod;
+
+    // Combine all participants: listeners + speakers (excluding host)
+    const allViewers = [
+      ...(room?.listeners || []).map((l) => l.user).filter(Boolean),
+      ...(room?.speakers || [])
+        .map((s) => s.user)
+        .filter((u) => u && u._id !== room?.host?._id),
+    ];
+    // Deduplicate
+    const seen = new Set();
+    const uniqueViewers = allViewers.filter((u) => {
+      if (seen.has(u._id)) return false;
+      seen.add(u._id);
+      return true;
+    });
+
+    return (
+      <Modal
+        visible={showViewersModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowViewersModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setShowViewersModal(false)}
+        />
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 20, maxHeight: height * 0.7 }]}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>
+            👁 المتفرجون ({uniqueViewers.length})
+          </Text>
+          <ScrollView>
+            {uniqueViewers.length === 0 && (
+              <Text style={{ color: "#999", textAlign: "center", padding: 20 }}>
+                لا يوجد متفرجون الآن
+              </Text>
+            )}
+            {uniqueViewers.map((u) => {
+              const coinsFromUser = userCoinsInRoom[u._id] || 0;
+              const isSpeaker = room?.speakers?.some((s) => s.user?._id === u._id);
+              return (
+                <View key={u._id} style={styles.viewerRow}>
+                  {u.profileImage ? (
+                    <Image source={{ uri: u.profileImage }} style={styles.viewerAvatar} />
+                  ) : (
+                    <View style={[styles.viewerAvatar, { backgroundColor: "rgba(160,32,240,0.35)", justifyContent: "center", alignItems: "center" }]}>
+                      <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: fs(14) }}>
+                        {(u.username || "?").charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.viewerName}>{u.username || "—"}</Text>
+                    {coinsFromUser > 0 && (
+                      <View style={styles.viewerCoinsRow}>
+                        <Ionicons name="logo-bitcoin" size={11} color="#FFD700" />
+                        <Text style={styles.viewerCoinsText}>{coinsFromUser}</Text>
+                      </View>
+                    )}
+                  </View>
+                  {/* Invite to seat (host/mod only, user not already a speaker) */}
+                  {canManage && !isSpeaker && (
+                    <TouchableOpacity
+                      style={styles.inviteBtn}
+                      onPress={async () => {
+                        try {
+                          await axios.post(
+                            `${BASE_URL}/live-rooms/${roomId}/make-speaker/${u._id}`,
+                            {},
+                            { headers: { Authorization: `Bearer ${userToken}` } },
+                          );
+                          socketRef.current?.emit("liveroom:invite_to_seat", {
+                            roomId,
+                            userId: u._id,
+                            invitedBy: { _id: userInfo._id, username: userInfo.username },
+                          });
+                          fetchRoomData();
+                        } catch (e) {
+                          Alert.alert("خطأ", e?.response?.data?.message || "فشل الدعوة");
+                        }
+                      }}
+                    >
+                      <Text style={styles.inviteBtnText}>دعوة 💺</Text>
+                    </TouchableOpacity>
+                  )}
+                  {isSpeaker && (
+                    <View style={styles.speakerBadge}>
+                      <Text style={styles.speakerBadgeText}>متحدث</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  })();
 
   // ─── MINI MUSIC BAR (draggable floating widget) ──────────────────────────────
 
@@ -1818,6 +2166,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
         {HostSection()}
         {SeatGrid()}
+        {GiftTargetBar()}
         {ListenersRow()}
       </View>
 
@@ -1865,6 +2214,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {musicPlayerModal}
       {audioPanelModal}
       {handRaiseModal}
+      {viewersModal}
 
       {summaryModal}
 
@@ -2512,6 +2862,139 @@ const styles = StyleSheet.create({
     borderRadius: ms(14),
   },
   approveBtnText: { color: "#FFF", fontSize: fs(12), fontWeight: "bold" },
+  rejectBtn: {
+    backgroundColor: "rgba(255,60,60,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,60,60,0.5)",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
+    borderRadius: ms(14),
+  },
+  rejectBtnText: { color: "#FF6666", fontSize: fs(12), fontWeight: "bold" },
+
+  // ── Header eye button ─────────────────────────────────────────────────────────
+  eyeBtn: {
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(15),
+    backgroundColor: "rgba(0,242,234,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0,242,234,0.3)",
+  },
+
+  // ── Seat gift selection ───────────────────────────────────────────────────────
+  seatGiftSelected: {
+    borderColor: "#FFD700",
+    borderWidth: 2.5,
+    shadowColor: "#FFD700",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  giftCheckDot: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#FFD700",
+    width: ms(14),
+    height: ms(14),
+    borderRadius: ms(7),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // ── Gift target bar ───────────────────────────────────────────────────────────
+  giftTargetBar: {
+    marginHorizontal: ms(6),
+    marginTop: ms(6),
+    backgroundColor: "rgba(255,215,0,0.1)",
+    borderRadius: ms(14),
+    paddingVertical: ms(8),
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.3)",
+  },
+  giftTargetLabel: {
+    color: "#FFD700",
+    fontSize: fs(11),
+    fontWeight: "700",
+    marginRight: ms(4),
+  },
+  giftTargetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(4),
+    backgroundColor: "rgba(255,215,0,0.15)",
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(4),
+    borderRadius: ms(12),
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.4)",
+  },
+  giftTargetAvatar: {
+    width: ms(22),
+    height: ms(22),
+    borderRadius: ms(11),
+  },
+  giftTargetName: {
+    color: "#FFF",
+    fontSize: fs(10),
+    maxWidth: ms(60),
+  },
+  giftTargetSelectAll: {
+    backgroundColor: "rgba(160,32,240,0.3)",
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(5),
+    borderRadius: ms(10),
+    borderWidth: 1,
+    borderColor: "rgba(160,32,240,0.5)",
+  },
+  giftTargetSelectAllText: { color: "#FFF", fontSize: fs(10), fontWeight: "700" },
+  giftTargetClear: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
+    backgroundColor: "rgba(255,60,60,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // ── Viewers modal ─────────────────────────────────────────────────────────────
+  viewerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(12),
+    paddingVertical: ms(10),
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.07)",
+  },
+  viewerAvatar: {
+    width: ms(42),
+    height: ms(42),
+    borderRadius: ms(21),
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  viewerName: { color: "#FFF", fontSize: fs(13), fontWeight: "600" },
+  viewerCoinsRow: { flexDirection: "row", alignItems: "center", gap: ms(3), marginTop: ms(2) },
+  viewerCoinsText: { color: "#FFD700", fontSize: fs(10) },
+  inviteBtn: {
+    backgroundColor: "#A020F0",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
+    borderRadius: ms(14),
+  },
+  inviteBtnText: { color: "#FFF", fontSize: fs(11), fontWeight: "700" },
+  speakerBadge: {
+    backgroundColor: "rgba(0,242,234,0.18)",
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(4),
+    borderRadius: ms(10),
+    borderWidth: 1,
+    borderColor: "rgba(0,242,234,0.4)",
+  },
+  speakerBadgeText: { color: "#00F2EA", fontSize: fs(10), fontWeight: "700" },
 });
 
 export default LiveRoomScreen;

@@ -461,6 +461,35 @@ exports.removeSpeaker = async (req, res) => {
   }
 };
 
+// Reject hand raise (host or moderator removes a user from handRaised)
+exports.rejectHandRaise = async (req, res) => {
+  try {
+    const { roomId, userId } = req.params;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Live room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId.toString();
+    const isMod = liveRoom.moderators?.some(
+      (m) => m.user.toString() === requesterId.toString(),
+    );
+    if (!isHost && !isMod) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    liveRoom.handRaised = liveRoom.handRaised.filter(
+      (h) => h.user.toString() !== userId.toString(),
+    );
+    await liveRoom.save();
+
+    res.json({ success: true, message: "Hand raise rejected" });
+  } catch (error) {
+    console.error("Error rejecting hand raise:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Toggle mute
 exports.toggleMute = async (req, res) => {
   try {

@@ -271,6 +271,23 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Host/mod rejects a hand raise — notify the requester
+  socket.on("liveroom:reject_hand", ({ roomId, userId }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:hand_rejected", {
+      userId,
+      timestamp: new Date(),
+    });
+  });
+
+  // Host/mod invites a viewer to a seat
+  socket.on("liveroom:invite_to_seat", ({ roomId, userId, invitedBy }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:seat_invite_received", {
+      userId,
+      invitedBy,
+      timestamp: new Date(),
+    });
+  });
+
   // Permissions / User Management Sync
   socket.on("liveroom:permission_update", ({ roomId, permissions }) => {
     io.to(`liveroom:${roomId}`).emit("liveroom:permissions_changed", {
