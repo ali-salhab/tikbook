@@ -594,6 +594,21 @@ const createStripeIntent = async (req, res) => {
   }
 };
 
+// Coin packages available for purchase (admin can update this list here)
+const COIN_PACKAGES = [
+  { id: 1, coins: 30,   price: 18.15 },
+  { id: 2, coins: 100,  price: 60.45 },
+  { id: 3, coins: 150,  price: 90.65 },
+  { id: 4, coins: 300,  price: 185.0 },
+  { id: 5, coins: 500,  price: 305.0 },
+  { id: 6, coins: 1000, price: 605.0 },
+  { id: 7, coins: 2000, price: 1209.0 },
+];
+
+const getPackages = (req, res) => {
+  res.json({ packages: COIN_PACKAGES });
+};
+
 module.exports = {
   getBalance,
   sendGift,
@@ -605,4 +620,5 @@ module.exports = {
   handleStripeWebhook,
   getTopUpStatus,
   requestWithdrawal,
+  getPackages,
 };

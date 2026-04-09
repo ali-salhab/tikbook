@@ -234,18 +234,27 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const isVideo     = type === "video";
   const isWebmAlpha = type === "webm_alpha";
   const isPng       = type === "png";
-  // Only treat as lottie if explicitly typed or animationUrl is a JSON (and not a PNG/video/webm)
-  const isLottie    = !isPng && !isVideo && !isWebmAlpha && (
-    type === "lottie" ||
-    !!(gift.lottieUrl || "").match(/\.json$/i) ||
-    (!!(gift.animationUrl || "").match(/\.json$/i) && !gift.pngUrl && !gift.thumbnailUrl)
-  );
-  // Use PNG display for any gift that has a pngUrl/thumbnailUrl and isn't a video/lottie
-  const showAsImage = isPng || (!isVideo && !isWebmAlpha && !isLottie && !!(gift.pngUrl || gift.thumbnailUrl || gift.animationUrl));
 
-  // Debug log — remove after fixing
+  // Detect if the URL is actually an image (not a Lottie JSON)
+  const animUrl = gift?.animationUrl || "";
+  const animIsImage = /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(animUrl);
+
+  // Only treat as lottie if typed as lottie AND the animationUrl is actually a JSON, not an image
+  const isLottie = !isPng && !isVideo && !isWebmAlpha && (
+    type === "lottie" || type === "" || !type
+  ) && !animIsImage && (
+    !!(gift.lottieUrl || "").match(/\.json($|\?)/i) ||
+    !!(animUrl).match(/\.json($|\?)/i) ||
+    type === "lottie"
+  );
+
+  // Show as image for: png type, any image URL regardless of type, or when lottie detection failed
+  const showAsImage = isPng || animIsImage ||
+    (!isVideo && !isWebmAlpha && !isLottie &&
+      !!(gift.pngUrl || gift.thumbnailUrl || gift.animationUrl));
+
   console.log("[AnimatedGift]", JSON.stringify({
-    name: gift?.name, type, isPng, isLottie, isVideo, isWebmAlpha, showAsImage,
+    name: gift?.name, type, isPng, isLottie, isVideo, isWebmAlpha, showAsImage, animIsImage,
     pngUrl: gift?.pngUrl, thumbnailUrl: gift?.thumbnailUrl, animationUrl: gift?.animationUrl
   }));
 
@@ -368,7 +377,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   }
 
   // ── PNG / image (TikTok dance + admin-configured effects) ────────────────────
-  const imgUri = gift.pngUrl || gift.thumbnailUrl || gift.animationUrl || null;
+  const imgUri = gift.pngUrl || gift.thumbnailUrl || (animIsImage ? animUrl : null) || null;
   const imgSize = gift.fullScreen ? width * 0.88 : 230;
 
   if (!showAsImage) return null;

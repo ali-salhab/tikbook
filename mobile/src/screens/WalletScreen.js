@@ -26,22 +26,9 @@ import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { ms, fs } from "../utils/responsive";
 
-// Custom Coin Icon Component
+// Coin Icon — matches live room balance chip style
 const CoinIcon = ({ size = 20 }) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: "#FFD700", // Gold
-      justifyContent: "center",
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: "#DAA520",
-    }}
-  >
-    <Ionicons name="star" size={size * 0.6} color="#FFF" />
-  </View>
+  <Ionicons name="logo-bitcoin" size={size} color="#FFD700" />
 );
 
 const WalletScreen = ({ navigation }) => {
@@ -63,20 +50,27 @@ const WalletScreen = ({ navigation }) => {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [myWithdrawals, setMyWithdrawals] = useState([]);
 
-  // Packages from screenshot
-  const coinPackages = [
-    { id: 1, coins: 30, price: 18.15 },
-    { id: 2, coins: 100, price: 60.45 },
-    { id: 3, coins: 150, price: 90.65 },
-    { id: 4, coins: 300, price: 185.0 },
-    { id: 5, coins: 500, price: 305.0 },
-    { id: 6, coins: 1000, price: 605.0 },
-    { id: 7, coins: 2000, price: 1209.0 },
-  ];
+  // Coin packages fetched from backend
+  const [coinPackages, setCoinPackages] = useState([]);
+  const [packagesLoading, setPackagesLoading] = useState(true);
 
   useEffect(() => {
     fetchWalletData();
+    fetchPackages();
   }, []);
+
+  const fetchPackages = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/wallet/packages`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setCoinPackages(res.data.packages || []);
+    } catch (e) {
+      console.error("Error fetching packages:", e);
+    } finally {
+      setPackagesLoading(false);
+    }
+  };
 
   const fetchWalletData = async () => {
     try {
@@ -351,7 +345,13 @@ const WalletScreen = ({ navigation }) => {
 
             {/* Packages Grid */}
             <View style={styles.gridContainer}>
-              {coinPackages.map((pkg) => (
+              {packagesLoading ? (
+                <ActivityIndicator
+                  color="#FE2C55"
+                  size="large"
+                  style={{ width: "100%", marginVertical: ms(20) }}
+                />
+              ) : coinPackages.map((pkg) => (
                 <TouchableOpacity
                   key={pkg.id}
                   style={[

@@ -10,6 +10,7 @@ const {
   handleStripeWebhook,
   getTopUpStatus,
   requestWithdrawal,
+  getPackages,
 } = require("../controllers/walletController");
 
 const router = express.Router();
@@ -17,6 +18,7 @@ const router = express.Router();
 // Stripe webhook must stay public; signature verification protects it.
 router.post("/stripe/webhook", handleStripeWebhook);
 
+router.get("/packages", protect, getPackages);
 router.get("/", protect, getBalance);
 router.get("/:userId", protect, async (req, res) => {
   try {
