@@ -117,16 +117,9 @@ exports.sendGift = async (req, res) => {
       sender.totalSpent = (sender.totalSpent || 0) + totalCoins;
       sender.level = calculateLevelFromSpent(sender.totalSpent);
       await sender.save();
-    // Add to receiver's earnings (since it's a gift)
+    // Gift earnings go to the receiver's withdrawable earnings only — NOT to spendable balance.
+    // Spendable balance only increases via top-ups (Stripe).
     receiverWallet.earnings = (receiverWallet.earnings || 0) + receiverEarnings;
-    // Also update balance if that's the desired behavior, but typically gifts go to earnings
-    // For now keeping balance update as well to match previous logic, or just earnings?
-    // Let's stick to balance to be safe with existing frontend expectations,
-    // but typically this should be earnings.
-    // The previous code did receiverWallet.balance += receiverEarnings.
-    // I will keep updating balance to avoid breaking changes,
-    // but ensure earnings is also tracked if the schema supports it.
-    receiverWallet.balance += receiverEarnings;
     await receiverWallet.save();
 
     // Create transactions for sender

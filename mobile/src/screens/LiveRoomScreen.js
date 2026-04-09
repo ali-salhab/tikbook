@@ -267,6 +267,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
 
       setVipLevelCommentStyles(commentStyles);
+
+      // Build full level map for join animations / sound / specialJoinText
+      const levelDataMap = {};
+      levels.forEach((level) => {
+        const n = Number(level?.level);
+        if (n > 0) levelDataMap[n] = level;
+      });
+      setVipLevelData(levelDataMap);
     } catch (_) {
       setVipLevelCommentStyles({});
     }
@@ -2304,15 +2312,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
       ))}
 
       {/* VIP join animation banner */}
-      {joinAnimationUser && (
-        <JoinAnimation
-          user={joinAnimationUser}
-          joinAnimationUrl={
-            vipJoinAnimationUrls[Number(joinAnimationUser.vipLevel)] || null
-          }
-          onDone={() => setJoinAnimationUser(null)}
-        />
-      )}
+      {joinAnimationUser && (() => {
+          const vipLvl = Number(joinAnimationUser?.vipLevel || 0);
+          const lvlData = vipLevelData[vipLvl] || null;
+          return (
+            <JoinAnimation
+              user={joinAnimationUser}
+              joinAnimationUrl={vipJoinAnimationUrls[vipLvl] || null}
+              joinSoundUrl={lvlData?.joinSoundUrl || null}
+              specialJoinText={lvlData?.specialJoinText || null}
+              vipTier={lvlData ? { color: lvlData.color } : null}
+              onDone={() => setJoinAnimationUser(null)}
+            />
+          );
+        })()}
 
       {/* Mini music bar */}
       {MiniMusicBar()}

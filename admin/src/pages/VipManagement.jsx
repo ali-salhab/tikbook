@@ -80,7 +80,7 @@ const VipManagement = ({ onLogout }) => {
   const [editingLevel, setEditingLevel] = useState(null);
   const [form, setForm] = useState({ ...defaultForm });
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assignData, setAssignData] = useState({ userId: "", username: "", vipLevel: 1 });
+  const [assignData, setAssignData] = useState({ userId: "", username: "", vipLevel: 1, userImage: "" });
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
@@ -350,7 +350,7 @@ const VipManagement = ({ onLogout }) => {
     try {
       await api.post("/vip/admin/assign", assignData, authHeader);
       setShowAssignModal(false);
-      setAssignData({ userId: "", username: "", vipLevel: 1 });
+      setAssignData({ userId: "", username: "", vipLevel: 1, userImage: "" });
       setUserSearchResults([]);
       setSearchQuery("");
       alert("تم تعيين المستوى بنجاح ✅");
@@ -388,7 +388,14 @@ const VipManagement = ({ onLogout }) => {
             <button style={styles.seedBtn} onClick={handleSeedVip} disabled={loading}>
               🌱 بيانات تجريبية
             </button>
-            <button style={styles.assignBtn} onClick={() => { setShowAssignModal(true); setError(""); }}>
+            <button style={styles.assignBtn} onClick={() => {
+              const firstLevel = levels.filter(l => l.isActive).sort((a,b) => a.level - b.level)[0];
+              setAssignData({ userId: "", username: "", vipLevel: firstLevel?.level || 1, userImage: "" });
+              setUserSearchResults([]);
+              setSearchQuery("");
+              setShowAssignModal(true);
+              setError("");
+            }}>
               <FiUser size={16} /> تعيين مستوى لمستخدم
             </button>
             <button style={styles.addBtn} onClick={openCreate}>
@@ -890,61 +897,239 @@ const VipManagement = ({ onLogout }) => {
         )}
 
         {/* Assign Modal */}
-        {showAssignModal && (
+        {showAssignModal && (() => {
+          const selLevel = levels.find((l) => l.level === assignData.vipLevel) || null;
+          const lvlColor = selLevel?.color || "#FFD700";
+          const bubbleShape = selLevel?.commentBubbleShape || "classic";
+          const borderWidth = normalizeBorderWidth(selLevel?.commentBorderWidth ?? 1.4);
+          return (
           <div style={styles.overlay} onClick={() => setShowAssignModal(false)}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={{ ...styles.modal, maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
               <div style={styles.modalHeader}>
-                <h3>تعيين VIP لمستخدم</h3>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>تعيين VIP لمستخدم</h3>
                 <button style={styles.closeBtn} onClick={() => setShowAssignModal(false)}><FiX /></button>
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
+
+              {/* ── User search ── */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>البحث عن مستخدم</label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input style={{ ...styles.input, flex: 1 }} value={searchQuery}
+                  <input
+                    style={{ ...styles.input, flex: 1 }}
+                    value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="اسم المستخدم أو الإيميل"
-                    onKeyDown={(e) => e.key === "Enter" && handleSearchUser()} />
-                  <button style={styles.saveBtn} onClick={handleSearchUser}>بحث</button>
+                    onKeyDown={(e) => e.key === "Enter" && handleSearchUser()}
+                  />
+                  <button style={styles.saveBtn} onClick={handleSearchUser}>
+                    <FiUser size={14} /> بحث
+                  </button>
                 </div>
               </div>
+
+              {/* ── Dropdown search results ── */}
               {userSearchResults.length > 0 && (
-                <div style={styles.userList}>
-                  {userSearchResults.map((u) => (
-                    <div key={u._id}
-                      style={{ ...styles.userItem, backgroundColor: assignData.userId === u._id ? "#6366f122" : "transparent" }}
-                      onClick={() => setAssignData({ ...assignData, userId: u._id, username: u.username })}>
-                      <img src={u.profileImage || "https://via.placeholder.com/32"} alt=""
-                        style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
-                      <span>{u.username}</span>
-                      {assignData.userId === u._id && <FiCheck color="#6366f1" />}
-                    </div>
-                  ))}
+                <div style={{ ...styles.userList, maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
+                  {userSearchResults.map((u) => {
+                    const isSelected = assignData.userId === u._id;
+                    return (
+                      <div
+                        key={u._id}
+                        style={{
+                          ...styles.userItem,
+                          backgroundColor: isSelected ? "#6366f115" : "transparent",
+                          borderRight: isSelected ? "3px solid #6366f1" : "3px solid transparent",
+                        }}
+                        onClick={() => setAssignData({ ...assignData, userId: u._id, username: u.username, userImage: u.profileImage || u.avatar || "" })}
+                      >
+                        <img
+                          src={u.profileImage || u.avatar || "https://via.placeholder.com/36"}
+                          alt=""
+                          style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b" }}>{u.username}</div>
+                          {u.email && <div style={{ fontSize: 12, color: "#64748b" }}>{u.email}</div>}
+                        </div>
+                        {u.vipLevel > 0 && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", backgroundColor: "#fef9c3", borderRadius: 6, padding: "2px 8px" }}>
+                            VIP {u.vipLevel}
+                          </span>
+                        )}
+                        {isSelected && <FiCheck color="#6366f1" size={16} />}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              {assignData.username && (
-                <div style={styles.selectedUser}>
-                  المستخدم المحدد: <strong>{assignData.username}</strong>
+
+              {/* ── Selected user chip ── */}
+              {assignData.userId && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+                  {assignData.userImage && (
+                    <img src={assignData.userImage} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }} />
+                  )}
+                  <div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>المستخدم المحدد</div>
+                    <div style={{ fontWeight: 700, color: "#16a34a", fontSize: 15 }}>{assignData.username}</div>
+                  </div>
+                  <button
+                    onClick={() => setAssignData({ userId: "", username: "", vipLevel: assignData.vipLevel, userImage: "" })}
+                    style={{ marginRight: "auto", background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 18 }}
+                  >×</button>
                 </div>
               )}
+
+              {/* ── Level select (only admin-created levels) ── */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>مستوى VIP</label>
-                <select style={styles.input} value={assignData.vipLevel}
-                  onChange={(e) => setAssignData({ ...assignData, vipLevel: +e.target.value })}>
-                  {Array.from({ length: 15 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>VIP {n}</option>
-                  ))}
-                </select>
+                {levels.length === 0 ? (
+                  <div style={{ color: "#ef4444", fontSize: 13 }}>لا توجد مستويات. أضف مستويات أولاً.</div>
+                ) : (
+                  <select
+                    style={styles.input}
+                    value={assignData.vipLevel}
+                    onChange={(e) => setAssignData({ ...assignData, vipLevel: +e.target.value })}
+                  >
+                    {levels
+                      .filter((l) => l.isActive)
+                      .sort((a, b) => a.level - b.level)
+                      .map((l) => (
+                        <option key={l.level} value={l.level}>
+                          VIP {l.level}{l.nameAr ? ` — ${l.nameAr}` : ""}{l.name ? ` (${l.name})` : ""}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
+
+              {/* ── Preview section ── */}
+              {selLevel && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ ...styles.label, marginBottom: 10 }}>🎨 معاينة المستوى</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+                    {/* Comment bubble preview */}
+                    <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>💬 شكل التعليق في البث</div>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", backgroundColor: lvlColor + "33", border: `2px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {assignData.userImage
+                            ? <img src={assignData.userImage} style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} alt="" />
+                            : <span style={{ fontSize: 13, color: lvlColor, fontWeight: 700 }}>{(assignData.username || "م")[0].toUpperCase()}</span>
+                          }
+                        </div>
+                        <div style={{
+                          ...getBubbleShapeStyle(bubbleShape),
+                          border: `${borderWidth}px solid ${lvlColor}`,
+                          backgroundColor: "rgba(8,8,20,0.86)",
+                          padding: "8px 12px",
+                          maxWidth: "75%",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: lvlColor }}>
+                              {assignData.username || "اسم المستخدم"}
+                            </span>
+                            <span style={{ backgroundColor: lvlColor, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 8, padding: "1px 6px" }}>
+                              VIP{selLevel.level}
+                            </span>
+                          </div>
+                          <span style={{ color: "#fff", fontSize: 12 }}>هذا شكل التعليق في البث 🎉</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Join animation preview */}
+                    <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>🚪 رسالة الانضمام</div>
+                      <div style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: lvlColor + "33", border: `2px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 11, color: lvlColor, fontWeight: 700 }}>{(assignData.username || "م")[0].toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <span style={{ color: lvlColor, fontWeight: 700, fontSize: 12 }}>{assignData.username || "المستخدم"}</span>
+                          <span style={{ color: "#94a3b8", fontSize: 12 }}>
+                            {" "}{selLevel.specialJoinText || "انضم إلى الغرفة"}
+                          </span>
+                        </div>
+                        <span style={{ backgroundColor: lvlColor, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 8, padding: "1px 6px", marginright: "auto" }}>
+                          VIP{selLevel.level}
+                        </span>
+                      </div>
+                      {selLevel.joinAnimationLottieUrl && (
+                        <div style={{ fontSize: 11, color: "#22c55e", marginTop: 6 }}>✅ يملك انيميشن دخول مخصص</div>
+                      )}
+                      {selLevel.joinSoundUrl && (
+                        <div style={{ fontSize: 11, color: "#22c55e", marginTop: 2 }}>✅ يملك صوت دخول مخصص</div>
+                      )}
+                    </div>
+
+                    {/* Badge & icon */}
+                    <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>🏅 الأيقونة والشارة</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {selLevel.imageUrl ? (
+                          <img src={selLevel.imageUrl} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 10, border: `2px solid ${lvlColor}` }} />
+                        ) : (
+                          <div style={{ width: 48, height: 48, borderRadius: 10, backgroundColor: lvlColor + "22", border: `2px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: 22 }}>⭐</span>
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ color: lvlColor, fontWeight: 700, fontSize: 14 }}>VIP {selLevel.level}</div>
+                          <div style={{ color: "#e2e8f0", fontSize: 12 }}>{selLevel.nameAr}</div>
+                          {selLevel.name && <div style={{ color: "#64748b", fontSize: 11 }}>{selLevel.name}</div>}
+                          <div style={{ color: "#f59e0b", fontSize: 11, marginTop: 2 }}>💎 {selLevel.price} عملة</div>
+                        </div>
+                      </div>
+                      {selLevel.badgeLottieUrl && (
+                        <div style={{ fontSize: 11, color: "#22c55e", marginTop: 6 }}>✅ شارة Lottie متحركة</div>
+                      )}
+                    </div>
+
+                    {/* Profile frame & benefits */}
+                    <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>🖼 الإطار والمزايا</div>
+                      {selLevel.profileFrameLottieUrl ? (
+                        <div style={{ fontSize: 12, color: "#22c55e", marginBottom: 4 }}>✅ إطار صورة شخصية متحرك</div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>— لا إطار صورة</div>
+                      )}
+                      {selLevel.commentFrameLottieUrl ? (
+                        <div style={{ fontSize: 12, color: "#22c55e", marginBottom: 4 }}>✅ إطار تعليق متحرك</div>
+                      ) : null}
+                      {Array.isArray(selLevel.benefits) && selLevel.benefits.length > 0 ? (
+                        <div style={{ marginTop: 6 }}>
+                          {selLevel.benefits.map((b, i) => (
+                            <div key={i} style={{ fontSize: 11, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                              <span style={{ color: lvlColor }}>•</span> {b.titleAr}
+                              <span style={{ color: "#64748b", fontSize: 10 }}>({b.type})</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#64748b" }}>— لا مزايا مضافة</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={styles.modalFooter}>
                 <button style={styles.cancelBtn} onClick={() => setShowAssignModal(false)}>إلغاء</button>
-                <button style={styles.saveBtn} onClick={handleAssign} disabled={saving || !assignData.userId}>
+                <button
+                  style={{ ...styles.saveBtn, opacity: (saving || !assignData.userId) ? 0.6 : 1 }}
+                  onClick={handleAssign}
+                  disabled={saving || !assignData.userId}
+                >
                   {saving ? "جاري التعيين..." : "تعيين VIP"}
                 </button>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </AdminLayout>
   );
