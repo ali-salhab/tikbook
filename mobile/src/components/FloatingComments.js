@@ -9,7 +9,6 @@ import {
   Dimensions,
 } from "react-native";
 import LottieView from "lottie-react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { ms, fs } from "../utils/responsive";
 
 const { width } = Dimensions.get("window");
@@ -76,6 +75,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
   const bubbleShape     = isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.bubbleShape : "classic";
   const commentFrameLottieUrl =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameLottieUrl || null : null;
+  const vipIconUrl =
+    isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.imageUrl || null : null;
 
   const levelColor = getLevelColor(userLevel);
 
@@ -126,8 +127,17 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
           ) : null}
 
           {isVip && (
-            <View style={[styles.vipChip, vipColor ? { backgroundColor: vipColor } : null]}>
-              <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: ms(4) }}>
+              {vipIconUrl ? (
+                <Image
+                  source={{ uri: vipIconUrl }}
+                  style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
+                  resizeMode="cover"
+                />
+              ) : null}
+              <View style={[styles.vipChip, vipColor ? { backgroundColor: vipColor } : null]}>
+                <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
+              </View>
             </View>
           )}
         </View>
@@ -246,13 +256,6 @@ const FloatingComments = ({
         )}
       />
 
-      {/* Top fade-out gradient so comments dissolve as they enter the seat area above */}
-      <LinearGradient
-        colors={["rgba(0,0,12,0.88)", "rgba(0,0,12,0.0)"]}
-        style={[styles.topFade, { height: topFadeHeight }]}
-        pointerEvents="none"
-      />
-
       {userScrolled && (
         <View style={styles.newMsgPill} pointerEvents="box-none">
           <Text style={styles.newMsgText} onPress={scrollToBottom}>
@@ -270,15 +273,8 @@ const styles = StyleSheet.create({
     left: ms(10),
     width: width * 0.75,
     zIndex: 50,
-    elevation: 3,
-  },
-  topFade: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    pointerEvents: "none",
-    zIndex: 2,
+    elevation: 0,
+    backgroundColor: "transparent",
   },
   listContent: {
     flexGrow: 1,
@@ -319,14 +315,14 @@ const styles = StyleSheet.create({
   },
   bubble: {
     backgroundColor: "transparent",
-    paddingHorizontal: ms(8),
-    paddingVertical: ms(4),
-    borderRadius: ms(18),
-    borderTopLeftRadius: ms(4),
+    paddingHorizontal: ms(4),
+    paddingVertical: ms(2),
     maxWidth: "88%",
   },
   vipBubble: {
     backgroundColor: "transparent",
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(6),
   },
   headerRow: {
     flexDirection: "row",
@@ -358,6 +354,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(6),
     paddingVertical: ms(2),
     borderRadius: ms(10),
+  },
+  vipIcon: {
+    width: ms(18),
+    height: ms(18),
+    borderRadius: ms(4),
+    borderWidth: 1,
   },
   vipChipText: {
     color: "#FFF",

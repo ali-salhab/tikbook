@@ -236,6 +236,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
           color,
           borderWidth,
           bubbleShape,
+          imageUrl: level?.imageUrl || null,
+          nameAr: level?.nameAr || null,
         };
 
         return acc;
@@ -2103,20 +2105,25 @@ const LiveRoomScreen = ({ route, navigation }) => {
                   ? 0
                   : keyboardOffset
                 : keyboardOffset,
-            paddingBottom: keyboardOffset > 0 ? 12 : insets.bottom + 12,
+            paddingBottom: keyboardOffset > 0 ? 8 : insets.bottom + 8,
           },
         ]}
       >
-        {/* Close button */}
-        <TouchableOpacity
-          onPress={handleCloseInput}
-          style={styles.chatCloseBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
-        </TouchableOpacity>
+        {/* User avatar */}
+        {userInfo?.profileImage ? (
+          <Image
+            source={{ uri: userInfo.profileImage }}
+            style={styles.chatAvatar}
+          />
+        ) : (
+          <View style={styles.chatAvatarFallback}>
+            <Text style={styles.chatAvatarInitial}>
+              {(userInfo?.username || "أ")[0]}
+            </Text>
+          </View>
+        )}
 
-        {/* Input field */}
+        {/* Input pill */}
         <View style={styles.chatFieldWrap}>
           <TextInput
             ref={inputRef}
@@ -2124,7 +2131,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             value={inputText}
             onChangeText={setInputText}
             placeholder="اكتب تعليقاً..."
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            placeholderTextColor="rgba(255,255,255,0.35)"
             style={styles.chatField}
             onSubmitEditing={handleSendMessage}
             returnKeyType="send"
@@ -2132,6 +2139,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             multiline={false}
             autoCorrect={false}
             spellCheck={false}
+            maxLength={200}
           />
         </View>
 
@@ -2142,7 +2150,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           disabled={!inputText.trim()}
         >
-          <Ionicons name="send" size={18} color="#FFF" />
+          <Ionicons name="send" size={17} color="#FFF" />
+        </TouchableOpacity>
+
+        {/* Close */}
+        <TouchableOpacity
+          onPress={handleCloseInput}
+          style={styles.chatCloseBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close" size={16} color="rgba(255,255,255,0.55)" />
         </TouchableOpacity>
       </View>
     </>
@@ -2788,49 +2805,82 @@ const styles = StyleSheet.create({
   chatBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(8,0,28,0.97)",
-    paddingHorizontal: ms(12),
+    backgroundColor: "rgba(6, 0, 22, 0.96)",
+    paddingHorizontal: ms(10),
     paddingTop: ms(10),
     paddingBottom: ms(6),
     borderTopWidth: 1,
-    borderTopColor: "rgba(160,32,240,0.35)",
-    gap: ms(8),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    borderTopColor: "rgba(160,32,240,0.45)",
+    gap: ms(7),
+    shadowColor: "#8B00FF",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 20,
     zIndex: 300,
   },
-  chatCloseBtn: {
-    width: ms(34),
-    height: ms(34),
-    borderRadius: ms(17),
-    backgroundColor: "rgba(255,255,255,0.1)",
+  chatAvatar: {
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    borderWidth: 1.5,
+    borderColor: "rgba(160,32,240,0.7)",
+    flexShrink: 0,
+  },
+  chatAvatarFallback: {
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    borderWidth: 1.5,
+    borderColor: "rgba(160,32,240,0.7)",
+    backgroundColor: "rgba(160,32,240,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    flexShrink: 0,
+  },
+  chatAvatarInitial: {
+    color: "#C084FC",
+    fontSize: fs(14),
+    fontWeight: "700",
+  },
+  chatCloseBtn: {
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(15),
+    backgroundColor: "rgba(255,255,255,0.07)",
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
   },
   chatFieldWrap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: ms(24),
-    borderWidth: 1,
-    borderColor: "rgba(160,32,240,0.5)",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: ms(22),
+    borderWidth: 1.5,
+    borderColor: "rgba(160,32,240,0.6)",
     paddingHorizontal: ms(14),
-    height: ms(44),
+    height: ms(42),
   },
   chatSendBtn: {
-    width: ms(40),
-    height: ms(40),
-    borderRadius: ms(20),
-    backgroundColor: "#A020F0",
+    width: ms(42),
+    height: ms(42),
+    borderRadius: ms(21),
+    backgroundColor: "#7C3AED",
     justifyContent: "center",
     alignItems: "center",
+    flexShrink: 0,
+    shadowColor: "#8B00FF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    elevation: 4,
   },
   chatSendBtnDisabled: {
-    backgroundColor: "rgba(160,32,240,0.35)",
+    backgroundColor: "rgba(124,58,237,0.28)",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   summaryOverlay: {
     flex: 1,
