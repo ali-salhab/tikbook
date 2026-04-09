@@ -20,6 +20,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { useStripe } from "@stripe/stripe-react-native";
+import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";

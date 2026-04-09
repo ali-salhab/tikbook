@@ -251,20 +251,23 @@ const GiftPanel = ({
           </View>
 
           {/* Gifts Grid */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#FE2C55" />
-            </View>
-          ) : (
-            <FlatList
-              data={filteredGifts}
-              keyExtractor={(item) => item._id}
-              numColumns={4}
-              renderItem={renderGiftItem}
-              contentContainerStyle={styles.giftsGrid}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
+          <View style={{ flex: 1 }}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FE2C55" />
+              </View>
+            ) : (
+              <FlatList
+                data={filteredGifts}
+                keyExtractor={(item) => item._id}
+                numColumns={4}
+                renderItem={renderGiftItem}
+                contentContainerStyle={styles.giftsGrid}
+                showsVerticalScrollIndicator={false}
+                style={{ flex: 1 }}
+              />
+            )}
+          </View>
 
           {/* Selected Gift Actions */}
           {selectedGift && (
@@ -325,7 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: "80%",
+    height: "75%",
     paddingBottom: 20,
   },
   header: {
@@ -387,17 +390,18 @@ const styles = StyleSheet.create({
     paddingVertical: 50,
   },
   giftsGrid: {
-    padding: 16,
+    padding: 10,
   },
   giftItem: {
-    width: (width - 64) / 4,
-    aspectRatio: 1,
-    margin: 4,
+    width: (width - 44) / 4,
+    margin: 3,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 12,
-    padding: 6,
+    paddingTop: 8,
+    paddingBottom: 6,
+    paddingHorizontal: 4,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     borderWidth: 2,
     borderColor: "transparent",
     position: "relative",
@@ -410,13 +414,13 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   giftImage: {
-    width: 44,
-    height: 44,
+    width: (width - 44) / 4 - 12,
+    height: (width - 44) / 4 - 12,
     backgroundColor: "transparent",
   },
   giftPlaceholder: {
-    width: 44,
-    height: 44,
+    width: (width - 44) / 4 - 12,
+    height: (width - 44) / 4 - 12,
     justifyContent: "center",
     alignItems: "center",
   },

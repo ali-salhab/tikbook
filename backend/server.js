@@ -288,6 +288,32 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Viewer requests a seat (taps empty seat)
+  socket.on("liveroom:seat_request", ({ roomId, user }) => {
+    // Broadcast to everyone in the room — host/mods pick it up
+    io.to(`liveroom:${roomId}`).emit("liveroom:seat_request_received", {
+      user,
+      timestamp: new Date(),
+    });
+  });
+
+  // Host approves a seat request
+  socket.on("liveroom:seat_request_approved", ({ roomId, userId, approvedBy }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:seat_request_approved", {
+      userId,
+      approvedBy,
+      timestamp: new Date(),
+    });
+  });
+
+  // Host rejects a seat request
+  socket.on("liveroom:seat_request_rejected", ({ roomId, userId }) => {
+    io.to(`liveroom:${roomId}`).emit("liveroom:seat_request_rejected", {
+      userId,
+      timestamp: new Date(),
+    });
+  });
+
   // Permissions / User Management Sync
   socket.on("liveroom:permission_update", ({ roomId, permissions }) => {
     io.to(`liveroom:${roomId}`).emit("liveroom:permissions_changed", {

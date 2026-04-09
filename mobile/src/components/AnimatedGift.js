@@ -335,13 +335,18 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   // ── Lottie ───────────────────────────────────────────────────────────────────
   if (isLottie) {
     const sz = gift.fullScreen ? width * 0.85 : 230;
+    const lottieSource = lottieJson
+      ? lottieJson
+      : (gift.lottieUrl || gift.animationUrl)
+        ? { uri: gift.lottieUrl || gift.animationUrl }
+        : null;
     return (
       <View style={styles.standardContainer} pointerEvents="none">
         <Animated.View style={[styles.card, danceStyleAnim]}>
           <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
-          {lottieJson
-            ? <LottieView source={lottieJson} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
-            : <Image source={{ uri: gift.thumbnailUrl || gift.animationUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
+          {lottieSource
+            ? <LottieView source={lottieSource} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
+            : <Image source={{ uri: gift.thumbnailUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
           }
           <SenderPill sender={sender} gift={gift} />
           {isCombo && <ComboBadge />}
@@ -352,14 +357,23 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   }
 
   // ── PNG / image (TikTok dance + admin-configured effects) ────────────────────
-  const imgUri  = gift.pngUrl || gift.thumbnailUrl || gift.animationUrl || gift.imageUrl || gift.url;
+  // For png-typed gifts the backend stores the PNG in pngUrl AND animationUrl.
+  // pngUrl defaults to "" (falsy), so fall back to animationUrl which is always set.
+  const imgUri = isPng
+    ? (gift.pngUrl || gift.animationUrl || gift.thumbnailUrl || gift.imageUrl || gift.url)
+    : (gift.pngUrl || gift.thumbnailUrl || gift.animationUrl || gift.imageUrl || gift.url);
   const imgSize = gift.fullScreen ? width * 0.88 : 230;
 
   return (
     <View style={styles.standardContainer} pointerEvents="none">
       <Animated.View style={[styles.card, danceStyleAnim]}>
         <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
-        <Image source={{ uri: imgUri }} style={{ width: imgSize, height: imgSize }} resizeMode="contain" />
+        <Image
+          source={{ uri: imgUri }}
+          style={{ width: imgSize, height: imgSize }}
+          resizeMode="contain"
+          onError={() => {}}
+        />
         <SenderPill sender={sender} gift={gift} />
         {isCombo && <ComboBadge />}
       </Animated.View>

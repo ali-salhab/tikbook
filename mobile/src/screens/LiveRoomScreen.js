@@ -600,6 +600,74 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
     socket.on("liveroom:settings_updated", fetchRoomData);
 
+    // --- SEAT REQUEST FLOW ---
+    // Incoming seat request (shown to host/mods)
+    socket.on("liveroom:seat_request_received", ({ user }) => {
+      const isHost = room?.host?._id === userInfo?._id || isHostRef.current;
+      const isMod  = (room?.moderators || []).some((m) => (m.user?._id || m.user) === userInfo?._id);
+      if (!isHost && !isMod) return;
+      // Show alert immediately; also store in seatRequests list
+      setSeatRequests((prev) => {
+        if (prev.some((r) => r.user?._id === user?._id)) return prev;
+        return [...prev, { user, timestamp: new Date().toISOString() }];
+      });
+      Alert.alert(
+        "\uD83D\uDCCC طلب جلوس",
+        `${user?.username || "مستخدم"} يطلب الجلوس على مقعد. هل توافق؟`,
+        [
+          {
+            text: "رفض",
+            style: "cancel",
+            onPress: () => {
+              setSeatRequests((prev) => prev.filter((r) => r.user?._id !== user?._id));
+              socketRef.current?.emit("liveroom:seat_request_rejected", {
+                roomId,
+                userId: user?._id,
+              });
+            },
+          },
+          {
+            text: "قبول ✅",
+            onPress: async () => {
+              setSeatRequests((prev) => prev.filter((r) => r.user?._id !== user?._id));
+              try {
+                await axios.post(
+                  `${BASE_URL}/live-rooms/${roomId}/make-speaker/${user._id}`,
+                  {},
+                  { headers: { Authorization: `Bearer ${userToken}` } },
+                );
+                socketRef.current?.emit("liveroom:seat_request_approved", {
+                  roomId,
+                  userId: user._id,
+                  approvedBy: { _id: userInfo._id, username: userInfo.username },
+                });
+                fetchRoomData();
+              } catch (e) {
+                Alert.alert("خطأ", e?.response?.data?.message || "فشل قبول الطلب");
+              }
+            },
+          },
+        ],
+      );
+    });
+
+    // Host approved MY seat request
+    socket.on("liveroom:seat_request_approved", ({ userId, approvedBy }) => {
+      if (userId !== userInfo._id) return;
+      Alert.alert(
+        "\u2705 تمت الموافقة",
+        `وافق ${approvedBy?.username || "المضيف"} على طلبك. أنت الآن على المقعد!`,
+        [{ text: "حسناً" }],
+      );
+      fetchRoomData();
+    });
+
+    // Host rejected MY seat request
+    socket.on("liveroom:seat_request_rejected", ({ userId }) => {
+      if (userId !== userInfo._id) return;
+      Alert.alert("\u274C رُفض الطلب", "رفض المضيف طلب الجلوس.", [{ text: "حسناً" }]);
+    });
+
     // Host invited this user to a seat
     socket.on("liveroom:seat_invite_received", ({ userId, invitedBy }) => {
       if (userId === userInfo._id) {
@@ -1135,8 +1203,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
     const isGiftSelected = user && selectedGiftSeats.has(user._id);
 
-    // Empty seat: listener can tap to raise hand
+    // Empty seat: listener can tap to send a seat JOIN REQUEST to the host
     const canRequestSeat = !user && !isHostSeat && !isSpeakerAlready;
+    // Show a pending indicator on empty seats when this user has a pending request
+    const hasPendingRequest = canRequestSeat && seatRequests.some(
+      (r) => r.user?._id === userInfo?._id
+    );
     // Occupied seat that isn't mine: tapping it toggles gift selection
     const canSelectForGift = !!user && !isMe;
 
@@ -1154,7 +1226,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
       } else if (canRequestSeat) {
         playTap();
-        handleRaiseHand();
+        // Send a seat request to the host — don't add to seat directly
+        const requester = freshUser || userInfo;
+        socketRef.current?.emit("liveroom:seat_request", {
+          roomId,
+          user: {
+            _id: requester._id,
+            username: requester.username,
+            profileImage: requester.profileImage || null,
+          },
+        });
+        Alert.alert("💺 طلب جلوس", "تم إرسال طلبك إلى المضيف. انتظر الموافقة.");
       }
     };
 
@@ -1183,6 +1265,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 size={SEAT_SIZE - 4}
               />
             </View>
+          ) : hasPendingRequest ? (
+            <Ionicons name="time-outline" size={18} color="rgba(255,200,0,0.8)" />
           ) : (
             <Feather name="plus" size={18} color="rgba(255,255,255,0.35)" />
           )}
@@ -1216,10 +1300,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       (s) => s.user._id !== hostId,
     );
     const maxSeats = Math.max(1, Math.min(12, room?.maxSpeakers ?? 8));
-    const listenerSlots = (room?.listeners || [])
-      .filter((l) => l.user && l.user._id !== hostId)
-      .map((l) => ({ user: l.user, isListener: true, isMuted: true }));
-    const combined = [...speakers, ...listenerSlots].slice(0, maxSeats);
+    const combined = speakers;
     const slots = Array(maxSeats).fill(null).map((_, i) => combined[i] || null);
     const rows = [];
     for (let r = 0; r < Math.ceil(maxSeats / 4); r++) {
@@ -1701,16 +1782,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
                   onPress={async () => {
                     try {
                       await axios.post(
-                        `${BASE_URL}/live-rooms/${roomId}/make-speaker/${uid}`,
+                        BASE_URL + "/api/live-rooms/" + roomId + "/make-speaker/" + uid,
                         {},
-                        { headers: { Authorization: `Bearer ${userToken}` } },
+                        { headers: { Authorization: "Bearer " + userToken } }
                       );
                       fetchRoomData();
-                      socketRef.current?.emit("liveroom:make_speaker", {
-                        roomId,
-                        userId: uid,
-                        user: u,
-                      });
+                      if (socketRef.current) {
+                        socketRef.current.emit("liveroom:make_speaker", {
+                          roomId,
+                          userId: uid,
+                          user: u
+                        });
+                      }
                     } catch (e) {
                       Alert.alert("خطأ", e?.response?.data?.message || "فشل قبول الطلب");
                     }
@@ -1724,15 +1807,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
                   onPress={async () => {
                     try {
                       await axios.post(
-                        `${BASE_URL}/live-rooms/${roomId}/reject-hand/${uid}`,
+                        BASE_URL + "/api/live-rooms/" + roomId + "/reject-hand/" + uid,
                         {},
-                        { headers: { Authorization: `Bearer ${userToken}` } },
+                        { headers: { Authorization: "Bearer " + userToken } }
                       );
                       fetchRoomData();
-                      socketRef.current?.emit("liveroom:reject_hand", {
-                        roomId,
-                        userId: uid,
-                      });
+                      if (socketRef.current) {
+                        socketRef.current.emit("liveroom:reject_hand", {
+                          roomId,
+                          userId: uid
+                        });
+                      }
                     } catch (_) {}
                   }}
                 >
@@ -1823,15 +1908,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
                       onPress={async () => {
                         try {
                           await axios.post(
-                            `${BASE_URL}/live-rooms/${roomId}/make-speaker/${u._id}`,
+                            BASE_URL + "/live-rooms/" + roomId + "/make-speaker/" + u._id,
                             {},
-                            { headers: { Authorization: `Bearer ${userToken}` } },
+                            { headers: { Authorization: "Bearer " + userToken } }
                           );
-                          socketRef.current?.emit("liveroom:invite_to_seat", {
-                            roomId,
-                            userId: u._id,
-                            invitedBy: { _id: userInfo._id, username: userInfo.username },
-                          });
+                          if (socketRef.current) {
+                            socketRef.current.emit("liveroom:seat_request_approved", {
+                              roomId,
+                              userId: u._id,
+                              approvedBy: { _id: userInfo._id, username: userInfo.username }
+                            });
+                          }
                           fetchRoomData();
                         } catch (e) {
                           Alert.alert("خطأ", e?.response?.data?.message || "فشل الدعوة");
@@ -2164,7 +2251,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       />
 
       {/* Main content */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, zIndex: 100 }}>
         {Header()}
 
         {/* Cover banner removed — background image fills full screen */}
@@ -2597,6 +2684,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     paddingHorizontal: ms(12),
     paddingTop: ms(10),
+    zIndex: 200,
+    elevation: 10,
   },
   balanceChip: {
     flexDirection: "row",

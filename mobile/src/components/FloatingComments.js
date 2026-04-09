@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import LottieView from "lottie-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { ms, fs } from "../utils/responsive";
 
 const { width } = Dimensions.get("window");
@@ -37,20 +38,24 @@ const getLevelColor = (level) => {
 };
 
 // ─── Single animated comment row ─────────────────────────────────────────
-const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
+const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 0 }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
-  const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+  // Wheel effect target opacity — further rows are dimmer
+  const targetOpacity = Math.max(0.18, 1 - distanceFromEnd * 0.18);
+  const opacity = useRef(new Animated.Value(isNew ? 0 : targetOpacity)).current;
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (isNew) {
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: targetOpacity, duration: 220, useNativeDriver: true }),
         Animated.timing(slideY,   { toValue: 0, duration: 220, useNativeDriver: true }),
       ]).start();
     }
   }, []);
 
+  // Wheel effect: rows further from the newest are smaller
+  const wheelScale = Math.max(0.72, 1 - distanceFromEnd * 0.055);
   const isSystem   = item.isSystem;
   const imageUri   = item.user?.profileImage || item.user?.avatar;
   const initials   = item.user?.username ? item.user.username.charAt(0).toUpperCase() : "?";
@@ -75,7 +80,16 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   const levelColor = getLevelColor(userLevel);
 
   return (
-    <Animated.View style={[styles.row, { opacity, transform: [{ translateY: slideY }] }]}>
+    <Animated.View style={[
+      styles.row,
+      {
+        opacity,
+        transform: [
+          { translateY: slideY },
+          { scale: wheelScale },
+        ],
+      },
+    ]}>
       {imageUri && !imgError ? (
         <Image
           source={{ uri: imageUri }}
@@ -142,11 +156,13 @@ const FloatingComments = ({
   comments,
   bottomOffset = 90,
   topOffset = 0,
+  topFadeHeight = ms(120),
   vipLevelStyles = {},
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
   const userScrolledRef = useRef(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Show last MAX_COMMENTS only
   const visible = comments.slice(-MAX_COMMENTS);
@@ -158,14 +174,15 @@ const FloatingComments = ({
       : null;
 
   const renderItem = useCallback(
-    ({ item }) => (
+    ({ item, index }) => (
       <CommentRow
         item={item}
         isNew={(item.clientMessageId || item.id || item._id) === latestId}
         vipLevelStyles={vipLevelStyles}
+        distanceFromEnd={visible.length - 1 - index}
       />
     ),
-    [latestId, vipLevelStyles],
+    [latestId, vipLevelStyles, visible.length],
   );
 
   const keyExtractor = useCallback(
@@ -222,6 +239,18 @@ const FloatingComments = ({
         scrollEventThrottle={16}
         scrollEnabled={true}
         nestedScrollEnabled={true}
+        decelerationRate={0.92}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false },
+        )}
+      />
+
+      {/* Top fade-out gradient so comments dissolve as they enter the seat area above */}
+      <LinearGradient
+        colors={["rgba(0,0,12,0.88)", "rgba(0,0,12,0.0)"]}
+        style={[styles.topFade, { height: topFadeHeight }]}
+        pointerEvents="none"
       />
 
       {userScrolled && (
@@ -240,8 +269,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: ms(10),
     width: width * 0.75,
-    zIndex: 220,
-    elevation: 10,
+    zIndex: 50,
+    elevation: 3,
+  },
+  topFade: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    pointerEvents: "none",
+    zIndex: 2,
   },
   listContent: {
     flexGrow: 1,

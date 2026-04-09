@@ -43,6 +43,7 @@ router.post("/:roomId/raise-hand", protect, raiseHand);
 router.post("/:roomId/lower-hand", protect, lowerHand);
 router.post("/:roomId/reject-hand/:userId", protect, rejectHandRaise);
 router.post("/:roomId/make-speaker", protect, makeSpeaker);
+router.post("/:roomId/make-speaker/:userId", protect, makeSpeaker);
 router.post("/:roomId/remove-speaker", protect, removeSpeaker);
 router.post("/:roomId/toggle-mute", protect, toggleMute);
 router.post("/:roomId/end", protect, endLiveRoom);

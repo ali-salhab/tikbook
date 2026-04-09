@@ -385,8 +385,13 @@ exports.lowerHand = async (req, res) => {
 exports.makeSpeaker = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const { userId } = req.body;
+    // Accept userId from URL param (/:userId) OR body
+    const userId = req.params.userId || req.body.userId;
     const hostId = req.user.id;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
 
     const liveRoom = await LiveRoom.findOne({ roomId });
 
@@ -394,9 +399,11 @@ exports.makeSpeaker = async (req, res) => {
       return res.status(404).json({ message: "Live room not found" });
     }
 
-    // Verify host
-    if (liveRoom.host.toString() !== hostId.toString()) {
-      return res.status(403).json({ message: "Only host can make speakers" });
+    // Allow host OR the invited user themselves (accepting invite)
+    const isHost = liveRoom.host.toString() === hostId.toString();
+    const isSelf = hostId.toString() === userId.toString();
+    if (!isHost && !isSelf) {
+      return res.status(403).json({ message: "غير مسموح" });
     }
 
     // Check max speakers
