@@ -234,9 +234,20 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   const isVideo     = type === "video";
   const isWebmAlpha = type === "webm_alpha";
   const isPng       = type === "png";
-  const isLottie    = type === "lottie" || (!isVideo && !isWebmAlpha && !isPng && !!(gift.lottieUrl || "").match(/\.json$/i));
-  // PNG path also fires for untyped gifts with a pngUrl
-  const showPng     = isPng || (!isVideo && !isWebmAlpha && !isLottie && !!gift.pngUrl);
+  // Only treat as lottie if explicitly typed or animationUrl is a JSON (and not a PNG/video/webm)
+  const isLottie    = !isPng && !isVideo && !isWebmAlpha && (
+    type === "lottie" ||
+    !!(gift.lottieUrl || "").match(/\.json$/i) ||
+    (!!(gift.animationUrl || "").match(/\.json$/i) && !gift.pngUrl && !gift.thumbnailUrl)
+  );
+  // Use PNG display for any gift that has a pngUrl/thumbnailUrl and isn't a video/lottie
+  const showAsImage = isPng || (!isVideo && !isWebmAlpha && !isLottie && !!(gift.pngUrl || gift.thumbnailUrl || gift.animationUrl));
+
+  // Debug log — remove after fixing
+  console.log("[AnimatedGift]", JSON.stringify({
+    name: gift?.name, type, isPng, isLottie, isVideo, isWebmAlpha, showAsImage,
+    pngUrl: gift?.pngUrl, thumbnailUrl: gift?.thumbnailUrl, animationUrl: gift?.animationUrl
+  }));
 
   const danceStyle  = gift.danceStyle  || "wiggle";
   const entryEffect = gift.entryEffect || "pop";
@@ -346,7 +357,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
           <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
           {lottieSource
             ? <LottieView source={lottieSource} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
-            : <Image source={{ uri: gift.thumbnailUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
+            : <Image source={{ uri: gift.thumbnailUrl || gift.pngUrl || gift.animationUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
           }
           <SenderPill sender={sender} gift={gift} />
           {isCombo && <ComboBadge />}
@@ -357,12 +368,10 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   }
 
   // ── PNG / image (TikTok dance + admin-configured effects) ────────────────────
-  // For png-typed gifts the backend stores the PNG in pngUrl AND animationUrl.
-  // pngUrl defaults to "" (falsy), so fall back to animationUrl which is always set.
-  const imgUri = isPng
-    ? (gift.pngUrl || gift.animationUrl || gift.thumbnailUrl || gift.imageUrl || gift.url)
-    : (gift.pngUrl || gift.thumbnailUrl || gift.animationUrl || gift.imageUrl || gift.url);
+  const imgUri = gift.pngUrl || gift.thumbnailUrl || gift.animationUrl || null;
   const imgSize = gift.fullScreen ? width * 0.88 : 230;
+
+  if (!showAsImage) return null;
 
   return (
     <View style={styles.standardContainer} pointerEvents="none">

@@ -115,7 +115,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ── Comment area top offset (measured below seat grid) ────────────────────────
   const [commentAreaTop, setCommentAreaTop] = useState(0);
-  const commentAreaRef = useRef(null);
 
   // ── Summary ───────────────────────────────────────────────────────────────────
   const [showSummary, setShowSummary] = useState(false);
@@ -2096,41 +2095,46 @@ const LiveRoomScreen = ({ route, navigation }) => {
                   ? 0
                   : keyboardOffset
                 : keyboardOffset,
-            paddingBottom: keyboardOffset > 0 ? 10 : insets.bottom + 10,
+            paddingBottom: keyboardOffset > 0 ? 12 : insets.bottom + 12,
           },
         ]}
       >
-        <TextInput
-          ref={inputRef}
-          autoFocus
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="اكتب تعليقاً..."
-          placeholderTextColor="rgba(255,255,255,0.5)"
-          style={styles.chatField}
-          onSubmitEditing={handleSendMessage}
-          returnKeyType="send"
-          blurOnSubmit={false}
-          multiline={false}
-          autoCorrect={false}
-          spellCheck={false}
-        />
-        <TouchableOpacity
-          onPress={() => {
-            playTap();
-            handleSendMessage();
-          }}
-          style={styles.sendBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="send" size={20} color="#00BFFF" />
-        </TouchableOpacity>
+        {/* Close button */}
         <TouchableOpacity
           onPress={handleCloseInput}
-          style={styles.closeChatBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.chatCloseBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="close-circle" size={20} color="#AAA" />
+          <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
+
+        {/* Input field */}
+        <View style={styles.chatFieldWrap}>
+          <TextInput
+            ref={inputRef}
+            autoFocus
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="اكتب تعليقاً..."
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            style={styles.chatField}
+            onSubmitEditing={handleSendMessage}
+            returnKeyType="send"
+            blurOnSubmit={false}
+            multiline={false}
+            autoCorrect={false}
+            spellCheck={false}
+          />
+        </View>
+
+        {/* Send button */}
+        <TouchableOpacity
+          onPress={() => { playTap(); handleSendMessage(); }}
+          style={[styles.chatSendBtn, !inputText.trim() && styles.chatSendBtnDisabled]}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          disabled={!inputText.trim()}
+        >
+          <Ionicons name="send" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
     </>
@@ -2276,13 +2280,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {SeatGrid()}
         {GiftTargetBar()}
         {ListenersRow()}
-        {/* Marker: measures where the comment area begins (below all seat content) */}
+        {/* Marker: tracks where comments should start (below all seat content) */}
         <View
-          ref={commentAreaRef}
-          onLayout={() => {
-            commentAreaRef.current?.measure((_x, _y, _w, _h, _px, pageY) => {
-              if (pageY > 0) setCommentAreaTop(pageY);
-            });
+          onLayout={(e) => {
+            const y = e.nativeEvent.layout.y;
+            // layout.y is relative to the flex container which starts at insets.top
+            const absY = insets.top + y;
+            if (absY > 0) setCommentAreaTop(absY);
           }}
         />
       </View>
@@ -2314,12 +2318,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {MiniMusicBar()}
 
       {/* Floating comments — absolute, fills space between seat grid and bottom bar */}
-      <FloatingComments
-        comments={messages}
-        bottomOffset={showInput ? keyboardOffset + ms(60) : insets.bottom + ms(70)}
-        topOffset={showInput ? 0 : commentAreaTop}
-        vipLevelStyles={vipLevelCommentStyles}
-      />
+      {!showInput && (
+        <FloatingComments
+          comments={messages}
+          bottomOffset={insets.bottom + ms(70)}
+          topOffset={commentAreaTop}
+          vipLevelStyles={vipLevelCommentStyles}
+        />
+      )}
 
       {/* Bottom action bar */}
       {!showInput && BottomBar()}
@@ -2769,17 +2775,49 @@ const styles = StyleSheet.create({
   chatBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(8,0,28,0.98)",
-    paddingHorizontal: ms(14),
-    paddingTop: ms(12),
-    paddingBottom: ms(4),
-    borderTopWidth: 1.5,
-    borderTopColor: "rgba(160,32,240,0.5)",
-    shadowColor: "#A020F0",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    backgroundColor: "rgba(8,0,28,0.97)",
+    paddingHorizontal: ms(12),
+    paddingTop: ms(10),
+    paddingBottom: ms(6),
+    borderTopWidth: 1,
+    borderTopColor: "rgba(160,32,240,0.35)",
+    gap: ms(8),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
     elevation: 20,
+    zIndex: 300,
+  },
+  chatCloseBtn: {
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(17),
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chatFieldWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: ms(24),
+    borderWidth: 1,
+    borderColor: "rgba(160,32,240,0.5)",
+    paddingHorizontal: ms(14),
+    height: ms(44),
+  },
+  chatSendBtn: {
+    width: ms(40),
+    height: ms(40),
+    borderRadius: ms(20),
+    backgroundColor: "#A020F0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chatSendBtnDisabled: {
+    backgroundColor: "rgba(160,32,240,0.35)",
   },
   summaryOverlay: {
     flex: 1,
@@ -2856,16 +2894,10 @@ const styles = StyleSheet.create({
   chatField: {
     flex: 1,
     color: "#FFF",
-    backgroundColor: "rgba(30,0,60,0.7)",
-    borderRadius: ms(22),
-    height: ms(44),
-    paddingHorizontal: ms(16),
-    paddingVertical: 0,
     fontSize: fs(15),
-    marginRight: ms(10),
-    borderWidth: 1.5,
-    borderColor: "rgba(160,32,240,0.6)",
+    paddingVertical: 0,
     textAlign: "right",
+    height: ms(44),
   },
   inlineCommentContainer: {
     flex: 1,
@@ -2886,8 +2918,6 @@ const styles = StyleSheet.create({
   inlineSendBtn: {
     paddingLeft: 8,
   },
-  sendBtn: { padding: 4 },
-  closeChatBtn: { padding: 4, marginLeft: 2 },
 
   // ── Modals / Bottom sheet ─────────────────────────────────────────────────────
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
