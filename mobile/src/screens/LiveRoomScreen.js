@@ -113,6 +113,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [userCoinsInRoom, setUserCoinsInRoom] = useState({}); // userId -> total coins sent
 
+  // ── Comment area top offset (measured below seat grid) ────────────────────────
+  const [commentAreaTop, setCommentAreaTop] = useState(0);
+  const commentAreaRef = useRef(null);
+
   // ── Summary ───────────────────────────────────────────────────────────────────
   const [showSummary, setShowSummary] = useState(false);
   const [summaryStats, setSummaryStats] = useState(null);
@@ -2272,6 +2276,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {SeatGrid()}
         {GiftTargetBar()}
         {ListenersRow()}
+        {/* Marker: measures where the comment area begins (below all seat content) */}
+        <View
+          ref={commentAreaRef}
+          onLayout={() => {
+            commentAreaRef.current?.measure((_x, _y, _w, _h, _px, pageY) => {
+              if (pageY > 0) setCommentAreaTop(pageY);
+            });
+          }}
+        />
       </View>
 
       {/* Animated gifts */}
@@ -2303,8 +2316,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Floating comments — absolute, fills space between seat grid and bottom bar */}
       <FloatingComments
         comments={messages}
-        bottomOffset={insets.bottom + ms(70)}
-        topOffset={showInput ? keyboardOffset + ms(56) : ms(0)}
+        bottomOffset={showInput ? keyboardOffset + ms(60) : insets.bottom + ms(70)}
+        topOffset={showInput ? 0 : commentAreaTop}
         vipLevelStyles={vipLevelCommentStyles}
       />
 

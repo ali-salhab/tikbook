@@ -120,10 +120,11 @@ const GiftPanel = ({
   const renderGiftItem = ({ item }) => {
     const isSelected = selectedGift?._id === item._id;
     const canAfford = userBalance >= item.price;
-    const isLottie = item.animationType === "lottie";
     const isVideo = item.animationType === "video" || item.animationType === "webm_alpha";
-    const hasThumb = item.thumbnailUrl && item.thumbnailUrl.startsWith("http");
-    const hasAnim = item.animationUrl && item.animationUrl.startsWith("http");
+    const imgUri =
+      (item.thumbnailUrl && item.thumbnailUrl.startsWith("http") ? item.thumbnailUrl : null) ||
+      (item.pngUrl && item.pngUrl.startsWith("http") ? item.pngUrl : null) ||
+      (item.animationUrl && item.animationUrl.startsWith("http") && item.animationType !== "lottie" ? item.animationUrl : null);
 
     return (
       <TouchableOpacity
@@ -135,16 +136,10 @@ const GiftPanel = ({
         onPress={() => setSelectedGift(isSelected ? null : item)}
         activeOpacity={0.75}
       >
-        {/* Thumbnail — always prefer static thumbnailUrl for performance in grid */}
-        {hasThumb ? (
+        {/* Thumbnail */}
+        {imgUri ? (
           <Image
-            source={{ uri: item.thumbnailUrl }}
-            style={styles.giftImage}
-            resizeMode="contain"
-          />
-        ) : hasAnim ? (
-          <Image
-            source={{ uri: item.animationUrl }}
+            source={{ uri: imgUri }}
             style={styles.giftImage}
             resizeMode="contain"
           />
