@@ -447,9 +447,12 @@ exports.removeSpeaker = async (req, res) => {
       return res.status(404).json({ message: "Live room not found" });
     }
 
-    // Verify host
-    if (liveRoom.host.toString() !== hostId.toString()) {
-      return res.status(403).json({ message: "Only host can remove speakers" });
+    // Verify host OR user removing themselves
+    if (
+      liveRoom.host.toString() !== hostId.toString() &&
+      userId.toString() !== hostId.toString()
+    ) {
+      return res.status(403).json({ message: "Only host or the speaker themselves can remove from seat" });
     }
 
     // Remove from speakers and add back to listeners

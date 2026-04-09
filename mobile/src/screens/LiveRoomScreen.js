@@ -99,6 +99,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ── Join animation (VIP entrance) ────────────────────────────────────────────
   const [joinAnimationUser, setJoinAnimationUser] = useState(null);
   const [vipJoinAnimationUrls, setVipJoinAnimationUrls] = useState({});
+  // Full VIP level metadata keyed by level number
+  const [vipLevelData, setVipLevelData] = useState({});
 
   // ── Management ───────────────────────────────────────────────────────────────
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -1216,17 +1218,91 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
     const isGiftSelected = user && selectedGiftSeats.has(user._id);
 
+    const isHostOrMod =
+      room?.host?._id === userInfo?._id ||
+      isHostRef.current ||
+      (room?.moderators || []).some((m) => (m.user?._id || m.user) === userInfo?._id);
+
     // Empty seat: listener can tap to send a seat JOIN REQUEST to the host
     const canRequestSeat = !user && !isHostSeat && !isSpeakerAlready;
     // Show a pending indicator on empty seats when this user has a pending request
     const hasPendingRequest = canRequestSeat && seatRequests.some(
       (r) => r.user?._id === userInfo?._id
     );
-    // Occupied seat that isn't mine: tapping it toggles gift selection
-    const canSelectForGift = !!user && !isMe;
 
     const handleSeatPress = () => {
-      if (canSelectForGift) {
+      if (isMe) {
+        // Own seat — offer to leave
+        playTap();
+        Alert.alert(
+          "💺 مقعدك",
+          "هل تريد مغادرة المقعد؟",
+          [
+            { text: "إلغاء", style: "cancel" },
+            {
+              text: "مغادرة المقعد",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await axios.post(
+                    `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
+                    { userId: userInfo._id },
+                    { headers: { Authorization: `Bearer ${userToken}` } },
+                  );
+                  socketRef.current?.emit("liveroom:speaker_removed", {
+                    roomId,
+                    userId: userInfo._id,
+                  });
+                  updateAgoraRole(false);
+                  setIsMuted(true);
+                  agoraEngineRef.current?.muteLocalAudioStream(true);
+                  fetchRoomData();
+                } catch (e) {
+                  Alert.alert("خطأ", e?.response?.data?.message || "فشل مغادرة المقعد");
+                }
+              },
+            },
+          ],
+        );
+      } else if (user && isHostOrMod) {
+        // Occupied seat — host/mod can kick or send gift
+        playTap();
+        const buttons = [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "🎁 إرسال هدية",
+            onPress: () => {
+              setSelectedGiftSeats((prev) => {
+                const next = new Set(prev);
+                next.add(user._id);
+                return next;
+              });
+            },
+          },
+          {
+            text: "❌ إزالة من المقعد",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await axios.post(
+                  `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
+                  { userId: user._id },
+                  { headers: { Authorization: `Bearer ${userToken}` } },
+                );
+                socketRef.current?.emit("liveroom:remove_speaker", {
+                  roomId,
+                  userId: user._id,
+                });
+                fetchRoomData();
+              } catch (e) {
+                Alert.alert("خطأ", e?.response?.data?.message || "فشل الإزالة");
+              }
+            },
+          },
+        ];
+        Alert.alert(user.username, "اختر الإجراء", buttons);
+      } else if (user && !isMe) {
+        // Non-host viewer taps an occupied seat — just gift selection
         playTap();
         setSelectedGiftSeats((prev) => {
           const next = new Set(prev);
@@ -1239,7 +1315,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
       } else if (canRequestSeat) {
         playTap();
-        // Send a seat request to the host — don't add to seat directly
         const requester = freshUser || userInfo;
         socketRef.current?.emit("liveroom:seat_request", {
           roomId,
@@ -1253,7 +1328,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
     };
 
-    const isInteractive = canSelectForGift || canRequestSeat;
+    const isInteractive = isMe || !!user || canRequestSeat;
     const SeatWrapper = isInteractive ? TouchableOpacity : View;
     const wrapperProps = isInteractive
       ? { onPress: handleSeatPress, activeOpacity: 0.7 }
@@ -1328,46 +1403,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
             ))}
           </View>
         ))}
-      </View>
-    );
-  };
-
-  const ListenersRow = () => {
-    const listeners = (room?.listeners || [])
-      .map((l) => l.user)
-      .filter(Boolean)
-      .slice(0, 20);
-    if (listeners.length === 0) return null;
-    return (
-      <View style={styles.listenersSection}>
-        <Text style={styles.listenersSectionTitle}>
-          👥 المستمعون ({room?.listeners?.length ?? 0})
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listenersScroll}
-        >
-          {listeners.map((u) => (
-            <View key={u._id} style={styles.listenerItem}>
-              {u.profileImage ? (
-                <Image
-                  source={{ uri: u.profileImage }}
-                  style={styles.listenerAvatar}
-                />
-              ) : (
-                <View style={[styles.listenerAvatar, styles.listenerAvatarPlaceholder]}>
-                  <Text style={styles.listenerInitial}>
-                    {(u.username || "?").charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <Text style={styles.listenerName} numberOfLines={1}>
-                {u.username || "—"}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
       </View>
     );
   };
@@ -2304,7 +2339,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
         {HostSection()}
         {SeatGrid()}
         {GiftTargetBar()}
-        {ListenersRow()}
         {/* Marker: tracks where comments should start (below all seat content) */}
         <View
           onLayout={(e) => {
@@ -2678,48 +2712,6 @@ const styles = StyleSheet.create({
     fontSize: fs(9.5),
     marginTop: ms(5),
     fontWeight: "500",
-  },
-
-  // ── Listeners row ─────────────────────────────────────────────────────────────
-  listenersSection: {
-    marginTop: ms(10),
-    paddingHorizontal: ms(12),
-  },
-  listenersSectionTitle: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: fs(10),
-    marginBottom: ms(6),
-  },
-  listenersScroll: {
-    flexDirection: "row",
-    gap: ms(10),
-    paddingRight: ms(8),
-  },
-  listenerItem: {
-    alignItems: "center",
-    width: ms(44),
-  },
-  listenerAvatar: {
-    width: ms(38),
-    height: ms(38),
-    borderRadius: ms(19),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.18)",
-  },
-  listenerAvatarPlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listenerInitial: {
-    color: "#FFF",
-    fontSize: fs(14),
-    fontWeight: "bold",
-  },
-  listenerName: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: fs(8),
-    marginTop: ms(3),
   },
 
   // ── Bottom bar ────────────────────────────────────────────────────────────────
