@@ -5,7 +5,6 @@ import {
   getFCMToken,
   saveTokenToBackend,
 } from "../services/notificationService";
-import versionService from "../services/versionService";
 import { BASE_URL } from "../config/api";
 
 export const AuthContext = createContext();
@@ -17,42 +16,18 @@ export const AuthProvider = ({ children }) => {
   const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
-    const checkVersionAndInit = async () => {
+    const initAuth = async () => {
       console.log("🚀 Starting app initialization...");
       console.log("📡 API URL:", BASE_URL);
 
-      // Global safety timeout to ensure isLoading is always set to false
+      // Safety timeout — only token loading should happen here, it's fast
       const safetyTimeout = setTimeout(() => {
-        console.log(
-          "⚠️ Auth initialization taking too long, clearing loading state...",
-        );
+        console.log("⚠️ Auth init safety timeout, clearing loading state...");
         setIsLoading(false);
-      }, 5000); // Reduced to 5 seconds
+      }, 8000);
 
       try {
-        // Check version with timeout (skip if network error)
-        const versionCheckPromise = versionService.checkVersion(BASE_URL);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Version check timeout")), 5000),
-        );
-
-        try {
-          const versionCheck = await Promise.race([
-            versionCheckPromise,
-            timeoutPromise,
-          ]);
-          if (versionCheck.needsUpdate) {
-            versionService.showUpdateDialog(
-              versionCheck.message,
-              versionCheck.isForced,
-              versionCheck.updateUrl,
-            );
-          }
-        } catch (versionError) {
-          console.log("⚠️ Version check skipped:", versionError.message);
-        }
-
-        // Load stored user data
+        // Load stored user data (fast — AsyncStorage only)
         console.log("📂 Loading stored user data...");
         const token = await AsyncStorage.getItem("userToken");
         const info = await AsyncStorage.getItem("userInfo");
@@ -88,7 +63,7 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    checkVersionAndInit();
+    initAuth();
   }, []);
 
   const login = async (email, password) => {

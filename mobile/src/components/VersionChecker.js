@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  AppState,
 } from "react-native";
 import axios from "axios";
 import * as FileSystem from "expo-file-system/legacy";
@@ -43,6 +44,16 @@ export default function VersionChecker({ children }) {
 
   useEffect(() => {
     checkForUpdates();
+
+    // Re-check whenever the app comes back to the foreground
+    const appStateRef = { current: AppState.currentState };
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (appStateRef.current !== "active" && nextState === "active") {
+        checkForUpdates();
+      }
+      appStateRef.current = nextState;
+    });
+    return () => sub.remove();
   }, []);
 
   const isNewerVersion = (newVersion, currentVersion) => {

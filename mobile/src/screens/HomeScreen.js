@@ -213,19 +213,14 @@ const HomeScreen = ({ navigation, route }) => {
     }, [fetchVideos, netInfo.isConnected]),
   );
 
-  const formatNumber = (num) => {
-    // Handle if it's an array (likes array)
+  const formatNumber = useCallback((num) => {
     const count = Array.isArray(num) ? num.length : num;
-
-    if (count >= 1000000) {
-      return (count / 1000000).toFixed(1) + "م";
-    } else if (count >= 1000) {
-      return (count / 1000).toFixed(1) + "ألف";
-    }
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + "م";
+    if (count >= 1000) return (count / 1000).toFixed(1) + "ألف";
     return count.toString();
-  };
+  }, []);
 
-  const handleLike = async (videoId) => {
+  const handleLike = useCallback(async (videoId) => {
     const currentUserId = userInfo?._id;
 
     if (!userToken || !currentUserId) {
@@ -301,9 +296,9 @@ const HomeScreen = ({ navigation, route }) => {
         }),
       );
     }
-  };
+  }, [userInfo, userToken]);
 
-  const handleShare = async (video) => {
+  const handleShare = useCallback(async (video) => {
     try {
       const deepLink = `tikbook://video/${video._id}`;
       // Play Store link (shown as fallback — update once app is live)
@@ -329,9 +324,9 @@ const HomeScreen = ({ navigation, route }) => {
     } catch (error) {
       console.log(error);
     }
-  };
+  }, []);
 
-  const handleSave = async (videoId) => {
+  const handleSave = useCallback(async (videoId) => {
     // Optimistic update
     setVideos((prevVideos) =>
       prevVideos.map((video) => {
@@ -363,19 +358,19 @@ const HomeScreen = ({ navigation, route }) => {
         }),
       );
     }
-  };
+  }, []);
 
-  const handleComment = (video) => {
+  const handleComment = useCallback((video) => {
     setSelectedVideo(video);
     setCommentsVisible(true);
-  };
+  }, []);
 
-  const closeComments = () => {
+  const closeComments = useCallback(() => {
     setCommentsVisible(false);
     setSelectedVideo(null);
-  };
+  }, []);
 
-  const renderItem = React.useCallback(
+  const renderItem = useCallback(
     ({ item, index }) => (
       <VideoItem
         item={item}
@@ -391,8 +386,7 @@ const HomeScreen = ({ navigation, route }) => {
         formatNumber={formatNumber}
       />
     ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeVideoIndex, isScreenFocused, pageHeight, tabBarHeight, userInfo],
+    [activeVideoIndex, isScreenFocused, pageHeight, tabBarHeight, userInfo, handleLike, handleSave, handleComment, handleShare, formatNumber],
   );
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
