@@ -21,7 +21,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import { ms, fs } from "../utils/responsive";
-import LoadingIndicator from "../components/LoadingIndicator";
+
+const PAGE_SIZE = 15;
 
 const ActivityScreen = ({ navigation }) => {
   const { userToken, userInfo, setNotificationCount, fetchNotificationCount } =
@@ -29,6 +30,9 @@ const ActivityScreen = ({ navigation }) => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [followingMap, setFollowingMap] = useState({});
   const netInfo = useNetInfo();
 
@@ -120,23 +124,44 @@ const ActivityScreen = ({ navigation }) => {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (pageToLoad = 1, { reset = false } = {}) => {
     if (netInfo.isConnected === false) return;
+
+    const shouldShowFullLoader = reset && activities.length === 0;
+    if (shouldShowFullLoader) {
+      setLoading(true);
+    } else if (!reset) {
+      if (loadingMore || !hasMore) return;
+      setLoadingMore(true);
+    }
+
     try {
       const res = await axios.get(`${BASE_URL}/notifications`, {
+        params: { page: pageToLoad, limit: PAGE_SIZE },
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      const notifs = res.data || [];
-      setActivities(notifs);
+
+      const payload = res.data;
+      const notifs = Array.isArray(payload)
+        ? payload
+        : payload?.notifications || [];
+      const moreAvailable = Array.isArray(payload)
+        ? notifs.length === PAGE_SIZE
+        : Boolean(payload?.pagination?.hasMore);
+
+      setActivities((prev) => {
+        if (reset) return notifs;
+        const seen = new Set(prev.map((n) => n._id));
+        return [...prev, ...notifs.filter((n) => !seen.has(n._id))];
+      });
+      setPage(pageToLoad);
+      setHasMore(moreAvailable);
 
       // Build a followingMap from follow notifications
       if (userInfo?._id) {
-        const profileRes = await axios.get(
-          `${BASE_URL}/users/${userInfo._id}`,
-          {
-            headers: { Authorization: `Bearer ${userToken}` },
-          },
-        );
+        const profileRes = await axios.get(`${BASE_URL}/users/${userInfo._id}`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
         const following = profileRes.data?.following || [];
         const map = {};
         following.forEach((id) => {
@@ -146,17 +171,20 @@ const ActivityScreen = ({ navigation }) => {
       }
     } catch (e) {
       console.error("Error fetching notifications:", e);
-      setActivities([]);
+      if (reset) {
+        setActivities([]);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
       if (netInfo.isConnected !== false) {
-        fetchNotifications();
+        fetchNotifications(1, { reset: true });
         markNotificationsAsRead();
       } else {
         setLoading(false);
@@ -167,7 +195,13 @@ const ActivityScreen = ({ navigation }) => {
   const onRefresh = () => {
     if (netInfo.isConnected !== false) {
       setRefreshing(true);
-      fetchNotifications();
+      fetchNotifications(1, { reset: true });
+    }
+  };
+
+  const loadMore = () => {
+    if (!loading && !refreshing && !loadingMore && hasMore) {
+      fetchNotifications(page + 1);
     }
   };
 
@@ -175,9 +209,6 @@ const ActivityScreen = ({ navigation }) => {
     return <OfflineNotice onRetry={onRefresh} />;
   }
 
-  if (loading && activities.length === 0) {
-    return <LoadingIndicator />;
-  }
 
   const handleFollowBack = async (targetUserId) => {
     if (!targetUserId) return;
@@ -321,8 +352,19 @@ const ActivityScreen = ({ navigation }) => {
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContent}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.35}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color="#FFF" />
+              </View>
+            ) : (
+              <View style={{ height: ms(10) }} />
+            )
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -365,6 +407,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: ms(12),
+  },
+  footerLoader: {
+    paddingVertical: ms(16),
+    alignItems: "center",
+    justifyContent: "center",
   },
   center: {
     flex: 1,

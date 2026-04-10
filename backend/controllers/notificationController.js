@@ -5,14 +5,42 @@ const Notification = require("../models/Notification");
 // @access  Private
 const getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user._id })
+    const hasPagination = req.query.page || req.query.limit;
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit || "15", 10), 1),
+      50,
+    );
+
+    const query = Notification.find({ user: req.user._id })
       .populate("fromUser", "username profileImage")
       .populate("video", "videoUrl")
       .sort({ createdAt: -1 });
 
+    if (hasPagination) {
+      query.skip((page - 1) * limit).limit(limit);
+    }
+
+    const notifications = await query;
+
     console.log(
-      `📧 Fetched ${notifications.length} notifications for user ${req.user._id}`,
+      `📧 Fetched ${notifications.length} notifications for user ${req.user._id}${hasPagination ? ` (page ${page}, limit ${limit})` : ""}`,
     );
+
+    if (hasPagination) {
+      const total = await Notification.countDocuments({ user: req.user._id });
+      return res.json({
+        notifications,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+          hasMore: page * limit < total,
+        },
+      });
+    }
+
     res.json(notifications);
   } catch (error) {
     console.error("Error fetching notifications:", error);
