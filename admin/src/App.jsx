@@ -82,7 +82,10 @@ function App() {
           element={<PageWrapper Component={GiftManagement} />}
         />
         <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/app-versions" element={<AppVersionManagementPage />} />
+        <Route
+          path="/app-versions"
+          element={<PageWrapper Component={AppVersionManagementPage} />}
+        />
         <Route
           path="/vip"
           element={<PageWrapper Component={VipManagement} />}

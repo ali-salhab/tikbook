@@ -32,6 +32,10 @@ services:
     runtime: static
     buildCommand: cd admin && npm install && npm run build
     staticPublishPath: admin/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_URL
         fromService:

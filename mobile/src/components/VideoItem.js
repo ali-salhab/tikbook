@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, memo } from "react";
+import React, { useRef, useState, useEffect, memo, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
-  PanResponder,
   ActivityIndicator,
   Dimensions,
   StyleSheet,
@@ -21,30 +20,31 @@ import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  runOnJS,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.095, 32), 40));
-const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.15, 52), 60));
+const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.072, 24), 30));
+const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.115, 40), 48));
 const FOLLOW_BUTTON_SIZE = Math.round(
-  Math.min(Math.max(PROFILE_SIZE * 0.38, 22), 24),
+  Math.min(Math.max(PROFILE_SIZE * 0.38, 16), 20),
 );
 const ACTION_RAIL_RIGHT = Math.round(
-  Math.min(Math.max(SCREEN_WIDTH * 0.03, 10), 14),
+  Math.min(Math.max(SCREEN_WIDTH * 0.03, 8), 12),
 );
-const ACTION_GAP = Math.round(Math.min(Math.max(SCREEN_HEIGHT * 0.012, 8), 12));
+const ACTION_GAP = Math.round(Math.min(Math.max(SCREEN_HEIGHT * 0.008, 5), 8));
 const MUSIC_DISC_OUTER_SIZE = Math.round(
-  Math.min(Math.max(SCREEN_WIDTH * 0.19, 70), 82),
+  Math.min(Math.max(SCREEN_WIDTH * 0.14, 50), 58),
 );
-const MUSIC_DISC_INNER_SIZE = MUSIC_DISC_OUTER_SIZE - 14;
+const MUSIC_DISC_INNER_SIZE = MUSIC_DISC_OUTER_SIZE - 10;
 const MUSIC_DISC_CENTER_SIZE = Math.round(
-  Math.min(Math.max(MUSIC_DISC_OUTER_SIZE * 0.2, 14), 16),
+  Math.min(Math.max(MUSIC_DISC_OUTER_SIZE * 0.2, 10), 13),
 );
 const MUSIC_DISC_ICON_SIZE = Math.round(
-  Math.min(Math.max(MUSIC_DISC_INNER_SIZE * 0.22, 14), 18),
+  Math.min(Math.max(MUSIC_DISC_INNER_SIZE * 0.22, 10), 14),
 );
 const ACTION_RAIL_WIDTH =
-  Math.max(PROFILE_SIZE, MUSIC_DISC_OUTER_SIZE, ICON_SIZE) + 18;
+  Math.max(PROFILE_SIZE, MUSIC_DISC_OUTER_SIZE, ICON_SIZE) + 14;
 const PROGRESS_TRACK_HEIGHT = 3;
 const PROGRESS_THUMB_SIZE = Math.round(
   Math.min(Math.max(SCREEN_WIDTH * 0.025, 8), 11),
@@ -73,6 +73,8 @@ const VideoItem = memo(
     const [isBuffering, setIsBuffering] = useState(false);
     const [progress, setProgress] = useState(0); // 0-1
     const [duration, setDuration] = useState(0);
+    const durationRef = useRef(0);   // always up-to-date, readable inside PanResponder
+    const progressRef = useRef(0);   // always up-to-date, readable inside PanResponder
     const progressBarWidth = useRef(0);
     const isSeeking = useRef(false);
     const [isScrubbing, setIsScrubbing] = useState(false);
@@ -212,12 +214,44 @@ const VideoItem = memo(
       ]).start();
     };
 
-    // PanResponder for draggable progress thumb
-    const progressPanResponder = useRef(
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (evt) => {
+    // --- Scrub gesture (RNGH Gesture.Pan — works alongside pinch GestureDetector) ---
+    const applySeek = (x) => {
+      const barW = progressBarWidth.current;
+      if (!barW) return;
+      const newP = Math.max(0, Math.min(x / barW, 1));
+      progressRef.current = newP;
+      setProgress(newP);
+    };
+
+    const commitSeek = (x) => {
+      const barW = progressBarWidth.current;
+      const newP = barW
+        ? Math.max(0, Math.min(x / barW, 1))
+        : progressRef.current;
+      progressRef.current = newP;
+      setProgress(newP);
+      isSeeking.current = false;
+      setIsScrubbing(false);
+      Animated.spring(scrubThumbScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 80,
+      }).start();
+      const dur = durationRef.current;
+      if (videoRef.current && dur > 0) {
+        videoRef.current
+          .setPositionAsync(Math.floor(newP * dur))
+          .catch(() => {});
+      }
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const scrubGesture = useMemo(() =>
+      Gesture.Pan()
+        .runOnJS(true)
+        .minDistance(0)
+        .onBegin((evt) => {
           isSeeking.current = true;
           setIsScrubbing(true);
           Animated.spring(scrubThumbScale, {
@@ -226,53 +260,16 @@ const VideoItem = memo(
             friction: 6,
             tension: 80,
           }).start();
-          const barW = progressBarWidth.current;
-          if (!barW) return;
-          const relX = evt.nativeEvent.locationX;
-          const newP = Math.max(0, Math.min(relX / barW, 1));
-          setProgress(newP);
-        },
-        onPanResponderMove: (evt) => {
-          const barW = progressBarWidth.current;
-          if (!barW) return;
-          const relX = evt.nativeEvent.locationX;
-          const newP = Math.max(0, Math.min(relX / barW, 1));
-          setProgress(newP);
-        },
-        onPanResponderRelease: (evt) => {
-          const barW = progressBarWidth.current;
-          const relX = evt.nativeEvent.locationX;
-          const newP = barW ? Math.max(0, Math.min(relX / barW, 1)) : progress;
-          setProgress(newP);
-          if (videoRef.current && duration > 0) {
-            // Ensure video operations run on main thread
-            InteractionManager.runAfterInteractions(() => {
-              if (videoRef.current && duration > 0) {
-                videoRef.current
-                  .setPositionAsync(Math.floor(newP * duration))
-                  .catch(() => {});
-              }
-            });
-          }
-          isSeeking.current = false;
-          setIsScrubbing(false);
-          Animated.spring(scrubThumbScale, {
-            toValue: 1,
-            useNativeDriver: true,
-            friction: 6,
-            tension: 80,
-          }).start();
-        },
-        onPanResponderTerminate: () => {
-          isSeeking.current = false;
-          setIsScrubbing(false);
-          Animated.spring(scrubThumbScale, {
-            toValue: 1,
-            useNativeDriver: true,
-          }).start();
-        },
-      }),
-    ).current;
+          applySeek(evt.x);
+        })
+        .onUpdate((evt) => {
+          applySeek(evt.x);
+        })
+        .onFinalize((evt) => {
+          commitSeek(evt.x);
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []);
 
     const handleDoubleTap = () => {
       const now = Date.now();
@@ -382,11 +379,12 @@ const VideoItem = memo(
                       setIsPlaying(status.isPlaying);
                       setIsBuffering(status.isBuffering || false);
                       if (status.durationMillis && status.durationMillis > 0) {
+                        durationRef.current = status.durationMillis;
                         setDuration(status.durationMillis);
                         if (!isSeeking.current) {
-                          setProgress(
-                            status.positionMillis / status.durationMillis,
-                          );
+                          const newP = status.positionMillis / status.durationMillis;
+                          progressRef.current = newP;
+                          setProgress(newP);
                         }
                       }
                     }
@@ -452,67 +450,69 @@ const VideoItem = memo(
           </View>
         )}
 
-        {/* Progress bar with draggable thumb */}
+        {/* Timeline: time labels + scrub bar — flush to tab bar top edge */}
         {!isImage(item.videoUrl) && (
-          <View style={[styles.progressMetaRow, { bottom: 22 }]}> 
-            <Text style={styles.progressMetaText}>
-              {formatTime(progress * duration)}
-            </Text>
-            <Text style={styles.progressMetaText}>{formatTime(duration)}</Text>
-          </View>
-        )}
+          <View style={styles.timelineSection} pointerEvents="box-none">
+            {/* Time labels */}
+            <View style={styles.progressMetaRow} pointerEvents="none">
+              <Text style={styles.progressMetaText}>
+                {formatTime(progress * duration)}
+              </Text>
+              <Text style={styles.progressMetaText}>{formatTime(duration)}</Text>
+            </View>
 
-        {!isImage(item.videoUrl) && (
-          <View
-            style={[styles.progressBarWrapper, { bottom: progressBottomOffset }]}
-            onLayout={(e) => {
-              progressBarWidth.current = e.nativeEvent.layout.width;
-            }}
-            {...progressPanResponder.panHandlers}
-          >
-            {/* Time bubble — only visible while scrubbing */}
-            {isScrubbing && (
+            {/* Scrub track */}
+            <GestureDetector gesture={scrubGesture}>
               <View
+                style={styles.progressBarWrapper}
+                onLayout={(e) => {
+                  progressBarWidth.current = e.nativeEvent.layout.width;
+                }}
+              >
+              {/* Time bubble — only visible while scrubbing */}
+              {isScrubbing && (
+                <View
+                  style={[
+                    styles.timeBubble,
+                    {
+                      left: `${progress * 100}%`,
+                      bottom: PROGRESS_THUMB_SIZE + 6,
+                      marginLeft: -26,
+                    },
+                  ]}
+                  pointerEvents="none"
+                >
+                  <Text style={styles.timeBubbleText}>
+                    {formatTime(progress * duration)}
+                  </Text>
+                  <View style={styles.timeBubbleTail} />
+                </View>
+              )}
+
+              {/* Track bar */}
+              <View style={styles.progressBarBg}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${progress * 100}%` },
+                  ]}
+                />
+              </View>
+
+              {/* Animated thumb */}
+              <Animated.View
                 style={[
-                  styles.timeBubble,
+                  styles.progressThumb,
                   {
                     left: `${progress * 100}%`,
-                    bottom: PROGRESS_THUMB_SIZE + 6,
-                    marginLeft: -26,
+                    marginLeft: -(PROGRESS_THUMB_SIZE / 2),
+                    transform: [{ scale: scrubThumbScale }],
                   },
                 ]}
                 pointerEvents="none"
-              >
-                <Text style={styles.timeBubbleText}>
-                  {formatTime(progress * duration)}
-                </Text>
-                {/* Little triangle */}
-                <View style={styles.timeBubbleTail} />
-              </View>
-            )}
-
-            {/* Track bar */}
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${progress * 100}%` },
-                ]}
               />
             </View>
-
-            {/* Animated thumb */}
-            <Animated.View
-              style={[
-                styles.progressThumb,
-                {
-                  left: `${progress * 100}%`,
-                  marginLeft: -(PROGRESS_THUMB_SIZE / 2),
-                  transform: [{ scale: scrubThumbScale }],
-                },
-              ]}
-              pointerEvents="none"
-            />
+            </GestureDetector>
           </View>
         )}
 
@@ -684,11 +684,7 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
   },
   progressBarWrapper: {
-    position: "absolute",
-    left: 0,
-    right: 0,
     paddingVertical: PROGRESS_WRAPPER_VERTICAL,
-    zIndex: 200,
   },
   progressBarBg: {
     height: PROGRESS_TRACK_HEIGHT,
@@ -749,14 +745,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 998,
   },
-  progressMetaRow: {
+  timelineSection: {
     position: "absolute",
-    left: 14,
-    right: 14,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 14,
+    paddingBottom: 6,
+    zIndex: 200,
+  },
+  progressMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    zIndex: 210,
+    marginBottom: 2,
   },
   progressMetaText: {
     color: "rgba(255,255,255,0.92)",
