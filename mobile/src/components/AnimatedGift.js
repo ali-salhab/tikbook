@@ -401,14 +401,14 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
 };
 
 const styles = StyleSheet.create({
-  webmAlphaContainer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2000, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
+  webmAlphaContainer: { position: "absolute", top: height * 0.38, left: 0, right: 0, bottom: 0, zIndex: 2000, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
   webmAlphaVideo:     { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "transparent" },
   tiktokContainer:    { position: "absolute", top: height * 0.42, left: 0, right: 0, bottom: 0, zIndex: 2000, backgroundColor: "transparent", overflow: "hidden" },
   tiktokVideo:        { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   tiktokGradient:     { position: "absolute", bottom: 0, left: 0, right: 0, height: height * 0.35, backgroundColor: "rgba(0,0,0,0.38)" },
   tiktokTitleWrap:    { position: "absolute", top: 16, left: 0, right: 0, alignItems: "center" },
   tiktokTitle:        { color: "#FFF", fontSize: 28, fontWeight: "900", textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 8, letterSpacing: 1 },
-  standardContainer:  { position: "absolute", top: height * 0.1, left: 0, right: 0, alignItems: "center", zIndex: 1500 },
+  standardContainer:  { position: "absolute", top: height * 0.32, left: 0, right: 0, alignItems: "center", zIndex: 1500 },
   card:               { alignItems: "center" },
   glow:               { position: "absolute", width: 290, height: 290, borderRadius: 145, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 65, elevation: 24 },
   senderRow:          { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14, backgroundColor: "rgba(0,0,0,0.76)", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 28, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },

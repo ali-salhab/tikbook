@@ -324,9 +324,18 @@ const WalletScreen = ({ navigation }) => {
             {/* User Info */}
             <View style={styles.userInfoContainer}>
               <View style={styles.userInfo}>
-                <View style={styles.avatarContainer}>
-                  <Ionicons name="person-circle" size={40} color="#ccc" />
-                </View>
+                {userInfo?.profileImage ? (
+                  <Image
+                    source={{ uri: userInfo.profileImage }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarInitial}>
+                      {(userInfo?.username || "?").charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
                 <View>
                   <Text style={styles.username}>
                     {userInfo?.username || "User"}
@@ -547,7 +556,7 @@ const WalletScreen = ({ navigation }) => {
             <Ionicons
               name="information-circle-outline"
               size={18}
-              color="#666"
+              color="rgba(160,140,255,0.7)"
             />
             <Text style={styles.withdrawInfoText}>
               سيتم مراجعة طلبك من قبل الإدارة وسيتم التواصل معك على رقم هاتفك
@@ -602,18 +611,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: ms(12),
   },
-  avatarContainer: {
+  avatarImage: {
     width: ms(40),
     height: ms(40),
     borderRadius: ms(20),
-    overflow: "hidden",
-    backgroundColor: "#2A2550",
+  },
+  avatarFallback: {
+    width: ms(40),
+    height: ms(40),
+    borderRadius: ms(20),
+    backgroundColor: "#3B2F6B",
     justifyContent: "center",
     alignItems: "center",
+  },
+  avatarInitial: {
+    color: "#F0EEFF",
+    fontSize: fs(16),
+    fontWeight: "bold",
   },
   username: {
     fontSize: fs(14),
     fontWeight: "bold",
+    color: "#F0EEFF",
     textAlign: "right",
   },
   currentBalanceRow: {
@@ -623,7 +642,7 @@ const styles = StyleSheet.create({
   },
   currentBalanceText: {
     fontSize: fs(12),
-    color: "#666",
+    color: "rgba(220,210,255,0.75)",
   },
   promoText: {
     fontSize: fs(12),
@@ -664,7 +683,7 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: fs(14),
-    color: "#666",
+    color: "rgba(220,210,255,0.75)",
   },
   customAmountCard: {},
   customInput: {
@@ -687,7 +706,7 @@ const styles = StyleSheet.create({
   giftText: {
     flex: 1,
     fontSize: fs(12),
-    color: "#333",
+    color: "rgba(220,210,255,0.85)",
     textAlign: "right",
   },
   paymentMethodsCard: {
@@ -734,7 +753,7 @@ const styles = StyleSheet.create({
   },
   paymentMethodHint: {
     fontSize: fs(11),
-    color: "#666",
+    color: "rgba(220,210,255,0.7)",
     textAlign: "right",
     lineHeight: ms(18),
   },
@@ -761,12 +780,12 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: fs(14),
-    color: "#333",
+    color: "rgba(220,210,255,0.8)",
     marginLeft: ms(8),
   },
   paymentLabelValue: {
     fontSize: fs(13),
-    color: "#111",
+    color: "#F0EEFF",
     fontWeight: "700",
   },
   cardIcons: {
@@ -829,7 +848,7 @@ const styles = StyleSheet.create({
   },
   tabBtnText: {
     fontSize: fs(14),
-    color: "#999",
+    color: "rgba(220,210,255,0.55)",
     fontWeight: "600",
   },
   tabBtnTextActive: {
@@ -854,7 +873,7 @@ const styles = StyleSheet.create({
   },
   earningsLabel: {
     fontSize: fs(13),
-    color: "#666",
+    color: "rgba(220,210,255,0.75)",
     textAlign: "right",
     marginBottom: ms(4),
   },
@@ -865,7 +884,7 @@ const styles = StyleSheet.create({
   },
   withdrawNote: {
     fontSize: fs(13),
-    color: "#888",
+    color: "rgba(220,210,255,0.75)",
     textAlign: "center",
     marginHorizontal: ms(16),
     marginBottom: ms(16),
@@ -884,7 +903,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: fs(13),
-    color: "#444",
+    color: "rgba(220,210,255,0.85)",
     textAlign: "right",
     marginTop: ms(12),
     marginBottom: ms(4),
@@ -913,7 +932,7 @@ const styles = StyleSheet.create({
   withdrawInfoText: {
     flex: 1,
     fontSize: fs(12),
-    color: "#666",
+    color: "rgba(220,210,255,0.7)",
     textAlign: "right",
     lineHeight: ms(20),
   },

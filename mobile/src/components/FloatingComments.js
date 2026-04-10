@@ -128,41 +128,9 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
         )}
       </View>
 
-      {/* ── Right column: header above, message frame below ── */}
+      {/* ── Right column: single inline bubble with username + message ── */}
       <View style={styles.rightCol}>
-        {/* Header row — name + VIP + level — shown for all user messages incl. gifts */}
-        {!isSystem && (
-          <View style={styles.headerRow}>
-            {userLevel > 0 && (
-              <View style={[styles.levelChip, { backgroundColor: levelColor + "30", borderColor: levelColor }]}>
-                <Text style={[styles.levelChipText, { color: levelColor }]}>Lv{userLevel}</Text>
-              </View>
-            )}
-
-            {item.user?.username ? (
-              <Text style={[styles.username, isVip && vipColor ? { color: vipColor } : null]}>
-                {item.user.username}
-              </Text>
-            ) : null}
-
-            {isVip && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: ms(4) }}>
-                {vipIconUrl ? (
-                  <Image
-                    source={{ uri: vipIconUrl }}
-                    style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
-                    resizeMode="cover"
-                  />
-                ) : null}
-                <View style={[styles.vipChip, vipColor ? { backgroundColor: vipColor } : null]}>
-                  <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Message bubble / frame */}
+        {/* Message bubble */}
         <View
           style={[
             styles.bubble,
@@ -175,29 +143,36 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
           {isGift && item.giftUrl ? (
             <View style={styles.giftMsgRow}>
               <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
-              <Text
-                style={[
-                  styles.message,
-                  commentTextColor ? { color: commentTextColor } : null,
-                ]}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-              >
+              {!isSystem && item.user?.username ? (
+                <Text style={styles.inlineBubbleText} numberOfLines={2} ellipsizeMode="tail">
+                  <Text style={[styles.inlineUsername, isVip && vipColor ? { color: vipColor } : null]}>
+                    {item.user.username}{" "}
+                  </Text>
+                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                    {messageText}
+                  </Text>
+                </Text>
+              ) : (
+                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
+                  {messageText}
+                </Text>
+              )}
+            </View>
+          ) : isSystem ? (
+            <Text style={[styles.message, styles.systemMessage]} numberOfLines={3} ellipsizeMode="tail">
+              {messageText}
+            </Text>
+          ) : (
+            <Text style={styles.inlineBubbleText} numberOfLines={3} ellipsizeMode="tail">
+              {item.user?.username ? (
+                <Text style={[styles.inlineUsername, isVip && vipColor ? { color: vipColor } : null]}>
+                  {item.user.username}{" "}
+                </Text>
+              ) : null}
+              <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
                 {messageText}
               </Text>
-            </View>
-          ) : (
-          <Text
-            style={[
-              styles.message,
-              isSystem && styles.systemMessage,
-              !isSystem && commentTextColor ? { color: commentTextColor } : null,
-            ]}
-            numberOfLines={5}
-            ellipsizeMode="tail"
-          >
-            {messageText}
-          </Text>
+            </Text>
           )}
 
           {commentFrameLottieUrl ? (
@@ -425,6 +400,20 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: fs(9),
     fontWeight: "800",
+  },
+  inlineBubbleText: {
+    color: "rgba(255,255,255,0.96)",
+    fontSize: fs(13),
+    lineHeight: fs(18),
+    flexShrink: 1,
+    flexWrap: "wrap",
+  },
+  inlineUsername: {
+    color: "rgba(200,190,255,0.95)",
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   message: {
     color: "rgba(255,255,255,0.96)",

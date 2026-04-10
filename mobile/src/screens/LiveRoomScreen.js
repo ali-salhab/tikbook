@@ -110,6 +110,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [showManagementModal, setShowManagementModal] = useState(false);
   const [showHandRaiseList, setShowHandRaiseList] = useState(false);
+  const [seatRequests, setSeatRequests] = useState([]);
 
   // ── Gift seat selection ──────────────────────────────────────────────────────
   // Set of userIds of occupied seats selected as gift targets
@@ -460,8 +461,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
         );
       }
       engine.joinChannel(agoraToken, channelName, 0, {});
-      // Only mute audience; hosts/speakers join with mic live
+      // Hosts/speakers join with mic live; audience is muted
       engine.muteLocalAudioStream(!isHostOrSpeaker);
+      // Sync React state to match actual Agora mute state
+      setIsMuted(!isHostOrSpeaker);
     } catch (e) {
       console.error("Agora init error:", e);
     }
@@ -516,6 +519,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
       fetchRoomData();
       if (user._id === userInfo._id) {
         Alert.alert("✅", "أصبحت متحدثاً الآن!");
+        // Unmute mic when promoted to speaker
+        setIsMuted(false);
+        agoraEngineRef.current?.muteLocalAudioStream(false);
         updateAgoraRole(true);
       }
     });
@@ -1200,15 +1206,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
             showSparks={true}
           />
           {joinedAgora && <View style={styles.onlineDot} />}
+          {/* Sound wave absolutely inside avatar wrap — zero layout impact */}
+          <View style={styles.hostSoundWave} pointerEvents="none">
+            <SoundWave active={isHostSpeaking} color="#A020F0" size="large" />
+          </View>
         </View>
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
         {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
-        {/* Speaking waves below host name */}
-        {isHostSpeaking && (
-          <View style={styles.hostSoundWave}>
-            <SoundWave active={true} color="#A020F0" size="large" />
-          </View>
-        )}
         <View style={styles.hostRoleRow}>
           <MaterialIcons name="verified" size={13} color="#00F2EA" />
           <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
@@ -2715,12 +2719,17 @@ const styles = StyleSheet.create({
   },
   seatSoundWave: {
     position: "absolute",
-    bottom: ms(-14),
-    alignSelf: "center",
+    top: -ms(13),
+    left: 0,
+    right: 0,
+    alignItems: "center",
   },
   hostSoundWave: {
-    marginTop: ms(4),
-    marginBottom: ms(2),
+    position: "absolute",
+    bottom: -ms(12),
+    left: 0,
+    right: 0,
+    alignItems: "center",
   },
   seatFrameWrap: {
     position: "absolute",
