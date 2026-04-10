@@ -18,7 +18,7 @@ import Constants from "expo-constants";
 import { wp, ms, fs } from "../utils/responsive";
 
 const OTPScreen = ({ route, navigation }) => {
-  const { username, email, password } = route.params;
+  const { username, email, password, devOtp } = route.params;
   const { BASE_URL } = useContext(AuthContext);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -32,6 +32,14 @@ const OTPScreen = ({ route, navigation }) => {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-fill OTP when backend returns it in dev/test mode (no email sent)
+  useEffect(() => {
+    if (devOtp) {
+      const digits = String(devOtp).padStart(6, "0").slice(0, 6).split("");
+      setOtp(digits);
+    }
+  }, [devOtp]);
 
   const handleChange = (text, index) => {
     const newOtp = [...otp];

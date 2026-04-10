@@ -133,7 +133,7 @@ const resolveNavTarget = (data = {}) => {
     return { screen, params: rest };
   }
 
-  return { screen: "Activity", params: {} };
+  return null;
 };
 
 // ─── Notification listeners (foreground & background tap) ────────────────────

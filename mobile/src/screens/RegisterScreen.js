@@ -122,6 +122,7 @@ const RegisterScreen = ({ navigation }) => {
         username,
         email,
         password,
+        devOtp: response.data.dev_otp || null,
       });
     } catch (error) {
       console.log("❌ OTP Send Failed:", error.message);
