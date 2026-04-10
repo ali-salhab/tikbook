@@ -30,6 +30,7 @@ const defaultBenefitForm = {
 const defaultForm = {
   level: 1, name: "", nameAr: "", price: 99, color: "#FFD700",
   usernameColor: "#FFD700",
+  commentTextColor: "",
   commentBorderWidth: 1.4,
   commentBubbleShape: "classic",
   imageUrl: "", imageFile: null,
@@ -234,6 +235,7 @@ const VipManagement = ({ onLogout }) => {
       level: lvl.level, name: lvl.name || "", nameAr: lvl.nameAr || "",
       price: lvl.price, color: lvl.color || "#FFD700",
       usernameColor: lvl.usernameColor || lvl.color || "#FFD700",
+      commentTextColor: lvl.commentTextColor || "",
       commentBorderWidth:
         typeof lvl.commentBorderWidth === "number" ? lvl.commentBorderWidth : 1.4,
       commentBubbleShape: lvl.commentBubbleShape || "classic",
@@ -283,6 +285,7 @@ const VipManagement = ({ onLogout }) => {
         level: Number(form.level),
         price: Number(form.price),
         sortOrder: Number(form.sortOrder) || 0,
+        commentTextColor: form.commentTextColor || "",
         commentBorderWidth: normalizeBorderWidth(form.commentBorderWidth),
         commentBubbleShape: normalizeBubbleShape(form.commentBubbleShape),
         imageUrl: finalImageUrl,
@@ -566,6 +569,31 @@ const VipManagement = ({ onLogout }) => {
                 </div>
               </div>
 
+              {/* ── Row 4b: Comment text color ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>🎨 لون نص التعليق</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="color"
+                      value={form.commentTextColor || "#FFFFFF"}
+                      onChange={(e) => setForm({ ...form, commentTextColor: e.target.value })}
+                      style={{ width: 40, height: 36, border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0 }} />
+                    <input style={{ ...styles.input, flex: 1 }}
+                      value={form.commentTextColor}
+                      placeholder="#FFFFFF (افتراضي أبيض)"
+                      onChange={(e) => setForm({ ...form, commentTextColor: e.target.value })} />
+                    {form.commentTextColor && (
+                      <button
+                        style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #475569", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 11 }}
+                        onClick={() => setForm({ ...form, commentTextColor: "" })}
+                        title="إعادة تعيين للأبيض"
+                      >✕ إعادة</button>
+                    )}
+                  </div>
+                </div>
+                <div style={styles.formGroup} />
+              </div>
+
               {/* ── Comment preview (full width) ── */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>معاينة التعليق</label>
@@ -575,7 +603,7 @@ const VipManagement = ({ onLogout }) => {
                       <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>مستخدم VIP{Number(form.level) || 1}</span>
                       <span style={{ ...styles.previewChip, backgroundColor: form.color || "#FFD700" }}>VIP{Number(form.level) || 1}</span>
                     </div>
-                    <div style={styles.previewMessage}>هذا شكل التعليق داخل صفحة البث المباشر.</div>
+                    <div style={{ ...styles.previewMessage, color: form.commentTextColor || "#FFFFFF" }}>هذا شكل التعليق داخل صفحة البث المباشر.</div>
                   </div>
                 </div>
               </div>

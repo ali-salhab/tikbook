@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import LottieView from "lottie-react-native";
 import { ms, fs } from "../utils/responsive";
+import ProfileBadgeFrame from "./ProfileBadgeFrame";
 
 const { width } = Dimensions.get("window");
 const MAX_COMMENTS = 40;
@@ -77,8 +78,20 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameLottieUrl || null : null;
   const vipIconUrl =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.imageUrl || null : null;
+  const commentTextColor =
+    isVip && typeof vipStyleEntry === "object" && vipStyleEntry?.commentTextColor
+      ? vipStyleEntry.commentTextColor
+      : null;
 
   const levelColor = getLevelColor(userLevel);
+
+  const activeBadgeUrl =
+    item.user?.activeBadge?.imageUrl ||
+    item.user?.activeBadge?.image ||
+    item.user?.activeBadge ||
+    null;
+  const hasActiveBadge =
+    typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http");
 
   return (
     <Animated.View style={[
@@ -91,71 +104,94 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
         ],
       },
     ]}>
-      {imageUri && !imgError ? (
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.avatar}
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <View style={styles.avatarFallback}>
-          <Text style={styles.avatarInitial}>{initials}</Text>
-        </View>
-      )}
-
-      <View
-        style={[
-          styles.bubble,
-          isVip && styles.vipBubble,
-          isVip && getVipBubbleShapeStyle(bubbleShape),
-          isVip && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
-        ]}
-      >
-        {/* Header row: level badge + username + VIP chip */}
-        <View style={styles.headerRow}>
-          {/* Spending-level badge */}
-          {userLevel > 0 && (
-            <View style={[styles.levelChip, { backgroundColor: levelColor + "30", borderColor: levelColor }]}>
-              <Text style={[styles.levelChipText, { color: levelColor }]}>Lv{userLevel}</Text>
-            </View>
-          )}
-
-          {item.user?.username ? (
-            <Text style={[styles.username, isVip && vipColor ? { color: vipColor } : null]}>
-              {item.user.username}
-            </Text>
-          ) : null}
-
-          {isVip && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: ms(4) }}>
-              {vipIconUrl ? (
-                <Image
-                  source={{ uri: vipIconUrl }}
-                  style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
-                  resizeMode="cover"
-                />
-              ) : null}
-              <View style={[styles.vipChip, vipColor ? { backgroundColor: vipColor } : null]}>
-                <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        <Text style={[styles.message, isSystem && styles.systemMessage]}>
-          {messageText}
-        </Text>
-
-        {commentFrameLottieUrl ? (
-          <LottieView
-            source={{ uri: commentFrameLottieUrl }}
-            autoPlay
-            loop
-            style={styles.commentFrame}
-            pointerEvents="none"
-            resizeMode="cover"
+      {/* ── Avatar with optional badge frame ── */}
+      <View style={styles.avatarWrap}>
+        {hasActiveBadge ? (
+          <ProfileBadgeFrame
+            profileImage={!imgError ? imageUri : null}
+            badgeImage={activeBadgeUrl}
+            size={ms(36)}
           />
-        ) : null}
+        ) : imageUri && !imgError ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.avatar}
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <View style={styles.avatarFallback}>
+            <Text style={styles.avatarInitial}>{initials}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* ── Right column: header above, message frame below ── */}
+      <View style={styles.rightCol}>
+        {/* Header row — name + VIP + level — sits ABOVE the bubble */}
+        {!isSystem && (
+          <View style={styles.headerRow}>
+            {userLevel > 0 && (
+              <View style={[styles.levelChip, { backgroundColor: levelColor + "30", borderColor: levelColor }]}>
+                <Text style={[styles.levelChipText, { color: levelColor }]}>Lv{userLevel}</Text>
+              </View>
+            )}
+
+            {item.user?.username ? (
+              <Text style={[styles.username, isVip && vipColor ? { color: vipColor } : null]}>
+                {item.user.username}
+              </Text>
+            ) : null}
+
+            {isVip && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: ms(4) }}>
+                {vipIconUrl ? (
+                  <Image
+                    source={{ uri: vipIconUrl }}
+                    style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
+                    resizeMode="cover"
+                  />
+                ) : null}
+                <View style={[styles.vipChip, vipColor ? { backgroundColor: vipColor } : null]}>
+                  <Text style={styles.vipChipText}>VIP{vipLevel}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Message bubble / frame */}
+        <View
+          style={[
+            styles.bubble,
+            isVip && styles.vipBubble,
+            isVip && getVipBubbleShapeStyle(bubbleShape),
+            isVip && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
+            isVip ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
+          ]}
+        >
+          <Text
+            style={[
+              styles.message,
+              isSystem && styles.systemMessage,
+              !isSystem && commentTextColor ? { color: commentTextColor } : null,
+            ]}
+            numberOfLines={5}
+            ellipsizeMode="tail"
+          >
+            {messageText}
+          </Text>
+
+          {commentFrameLottieUrl ? (
+            <LottieView
+              source={{ uri: commentFrameLottieUrl }}
+              autoPlay
+              loop
+              style={styles.commentFrame}
+              pointerEvents="none"
+              resizeMode="cover"
+            />
+          ) : null}
+        </View>
       </View>
     </Animated.View>
   );
@@ -166,13 +202,11 @@ const FloatingComments = ({
   comments,
   bottomOffset = 90,
   topOffset = 0,
-  topFadeHeight = ms(120),
   vipLevelStyles = {},
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
   const userScrolledRef = useRef(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Show last MAX_COMMENTS only
   const visible = comments.slice(-MAX_COMMENTS);
@@ -250,10 +284,6 @@ const FloatingComments = ({
         scrollEnabled={true}
         nestedScrollEnabled={true}
         decelerationRate={0.92}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false },
-        )}
       />
 
       {userScrolled && (
@@ -272,8 +302,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: ms(10),
     width: width * 0.75,
-    zIndex: 50,
-    elevation: 0,
+    zIndex: 100,
+    elevation: 100,
     backgroundColor: "transparent",
   },
   listContent: {
@@ -284,103 +314,115 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: ms(8),
+    alignItems: "flex-start",
+    marginBottom: ms(5),
     alignSelf: "flex-start",
     maxWidth: "100%",
   },
+  avatarWrap: {
+    marginRight: ms(7),
+    marginTop: ms(2),
+    flexShrink: 0,
+  },
+  rightCol: {
+    flexShrink: 1,
+    flexDirection: "column",
+  },
   avatar: {
-    width: ms(34),
-    height: ms(34),
-    borderRadius: ms(17),
-    marginRight: ms(6),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    backgroundColor: "#ddd",
+    borderWidth: 1.5,
+    borderColor: "rgba(140,100,255,0.7)",
     flexShrink: 0,
   },
   avatarFallback: {
-    width: ms(34),
-    height: ms(34),
-    borderRadius: ms(17),
-    marginRight: ms(6),
-    backgroundColor: "rgba(120,80,200,0.65)",
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    backgroundColor: "rgba(100,60,200,0.85)",
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
     color: "#FFF",
-    fontSize: fs(13),
+    fontSize: fs(12),
     fontWeight: "700",
   },
   bubble: {
-    backgroundColor: "transparent",
-    paddingHorizontal: ms(4),
-    paddingVertical: ms(2),
-    maxWidth: "88%",
+    backgroundColor: "rgba(0,0,0,0.50)",
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(5),
+    borderRadius: ms(18),
+    maxWidth: width * 0.66,
+    flexShrink: 1,
+    overflow: "hidden",
   },
   vipBubble: {
-    backgroundColor: "transparent",
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(6),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(7),
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: ms(5),
-    marginBottom: ms(2),
+    gap: ms(4),
+    marginBottom: ms(3),
     flexWrap: "wrap",
   },
   levelChip: {
-    paddingHorizontal: ms(5),
+    paddingHorizontal: ms(4),
     paddingVertical: ms(1),
-    borderRadius: ms(8),
+    borderRadius: ms(6),
     borderWidth: 1,
   },
   levelChipText: {
-    fontSize: fs(9),
+    fontSize: fs(8),
     fontWeight: "900",
   },
   username: {
-    color: "rgba(190,185,255,0.95)",
-    fontSize: fs(13),
+    color: "rgba(200,190,255,0.95)",
+    fontSize: fs(12),
     fontWeight: "700",
-    textShadowColor: "rgba(0,0,0,0.9)",
+    flexShrink: 1,
+    textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   vipChip: {
-    paddingHorizontal: ms(6),
-    paddingVertical: ms(2),
-    borderRadius: ms(10),
+    paddingHorizontal: ms(5),
+    paddingVertical: ms(1.5),
+    borderRadius: ms(8),
   },
   vipIcon: {
-    width: ms(18),
-    height: ms(18),
-    borderRadius: ms(4),
+    width: ms(15),
+    height: ms(15),
+    borderRadius: ms(3),
     borderWidth: 1,
   },
   vipChipText: {
     color: "#FFF",
-    fontSize: fs(10),
+    fontSize: fs(9),
     fontWeight: "800",
   },
   message: {
-    color: "#FFF",
-    fontSize: fs(14),
-    lineHeight: fs(19),
-    textShadowColor: "rgba(0,0,0,0.9)",
+    color: "rgba(255,255,255,0.96)",
+    fontSize: fs(13),
+    lineHeight: fs(18),
+    flexShrink: 1,
+    textShadowColor: "rgba(0,0,0,0.75)",
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   systemMessage: {
     color: "#FFD700",
-    fontSize: fs(14),
+    fontSize: fs(12),
     fontStyle: "italic",
-    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   newMsgPill: {
     alignSelf: "flex-start",

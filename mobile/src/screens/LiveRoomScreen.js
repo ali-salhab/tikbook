@@ -240,6 +240,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
           bubbleShape,
           imageUrl: level?.imageUrl || null,
           nameAr: level?.nameAr || null,
+          commentTextColor: typeof level?.commentTextColor === "string" && level.commentTextColor.trim()
+            ? level.commentTextColor.trim()
+            : "",
         };
 
         return acc;
@@ -260,6 +263,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
               commentStyles[lvl].commentFrameLottieUrl =
                 leLevel.commentFrameLottieUrl;
             }
+          }
+          if (leLevel?.commentTextColor && commentStyles[lvl]) {
+            commentStyles[lvl].commentTextColor = leLevel.commentTextColor;
           }
           if (leLevel?.joinAnimationLottieUrl) {
             joinUrls[lvl] = leLevel.joinAnimationLottieUrl;
@@ -896,10 +902,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
           ...userInfo,
           vipLevel: freshUser.vipLevel ?? userInfo?.vipLevel ?? 0,
           profileImage: freshUser.profileImage || userInfo?.profileImage,
+          activeBadge: freshUser.activeBadge || userInfo?.activeBadge || null,
         }
       : {
           ...userInfo,
           vipLevel: userInfo?.vipLevel ?? 0,
+          activeBadge: userInfo?.activeBadge || null,
         };
     const clientMessageId = `msg-${Date.now()}-${Math.random()
       .toString(36)
@@ -1230,40 +1238,56 @@ const LiveRoomScreen = ({ route, navigation }) => {
       (r) => r.user?._id === userInfo?._id
     );
 
+    const leaveSeat = async () => {
+      try {
+        await axios.post(
+          `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
+          { userId: userInfo._id },
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        socketRef.current?.emit("liveroom:speaker_removed", {
+          roomId,
+          userId: userInfo._id,
+        });
+        updateAgoraRole(false);
+        setIsMuted(true);
+        agoraEngineRef.current?.muteLocalAudioStream(true);
+        fetchRoomData();
+      } catch (e) {
+        Alert.alert("خطأ", e?.response?.data?.message || "فشل مغادرة المقعد");
+      }
+    };
+
+    const handleSeatLongPress = () => {
+      if (!isMe) return;
+      playTap();
+      Alert.alert(
+        "💺 مقعدك",
+        "اختر ما تريد فعله",
+        [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "الانسحاب من المقعد والمشاهدة",
+            onPress: async () => {
+              await leaveSeat();
+            },
+          },
+          {
+            text: "الانسحاب والخروج من الغرفة",
+            style: "destructive",
+            onPress: async () => {
+              await leaveSeat();
+              await leaveRoomBackend();
+              navigation.goBack();
+            },
+          },
+        ],
+      );
+    };
+
     const handleSeatPress = () => {
       if (isMe) {
-        // Own seat — offer to leave
-        playTap();
-        Alert.alert(
-          "💺 مقعدك",
-          "هل تريد مغادرة المقعد؟",
-          [
-            { text: "إلغاء", style: "cancel" },
-            {
-              text: "مغادرة المقعد",
-              style: "destructive",
-              onPress: async () => {
-                try {
-                  await axios.post(
-                    `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
-                    { userId: userInfo._id },
-                    { headers: { Authorization: `Bearer ${userToken}` } },
-                  );
-                  socketRef.current?.emit("liveroom:speaker_removed", {
-                    roomId,
-                    userId: userInfo._id,
-                  });
-                  updateAgoraRole(false);
-                  setIsMuted(true);
-                  agoraEngineRef.current?.muteLocalAudioStream(true);
-                  fetchRoomData();
-                } catch (e) {
-                  Alert.alert("خطأ", e?.response?.data?.message || "فشل مغادرة المقعد");
-                }
-              },
-            },
-          ],
-        );
+        // Regular tap on own seat does nothing — use long press
       } else if (user && isHostOrMod) {
         // Occupied seat — host/mod can kick or send gift
         playTap();
@@ -1331,7 +1355,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const isInteractive = isMe || !!user || canRequestSeat;
     const SeatWrapper = isInteractive ? TouchableOpacity : View;
     const wrapperProps = isInteractive
-      ? { onPress: handleSeatPress, activeOpacity: 0.7 }
+      ? {
+          onPress: handleSeatPress,
+          onLongPress: isMe ? handleSeatLongPress : undefined,
+          delayLongPress: 400,
+          activeOpacity: 0.7,
+        }
       : {};
 
     return (
@@ -2381,21 +2410,25 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Mini music bar */}
       {MiniMusicBar()}
 
-      {/* Floating comments — absolute, fills space between seat grid and bottom bar */}
-      {!showInput && (
-        <FloatingComments
-          comments={messages}
-          bottomOffset={insets.bottom + ms(70)}
-          topOffset={commentAreaTop}
-          vipLevelStyles={vipLevelCommentStyles}
-        />
-      )}
+      {/* Floating comments — always visible, shifts up when keyboard is open */}
 
       {/* Bottom action bar */}
       {!showInput && BottomBar()}
 
       {/* Chat input — always mounted, shown/hidden via display prop */}
       {chatInputBar}
+
+      {/* FloatingComments rendered last so it's above the keyboard backdrop */}
+      <FloatingComments
+        comments={messages}
+        bottomOffset={
+          showInput
+            ? (keyboardOffset > 0 ? keyboardOffset : insets.bottom) + ms(62)
+            : insets.bottom + ms(70)
+        }
+        topOffset={commentAreaTop}
+        vipLevelStyles={vipLevelCommentStyles}
+      />
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
       {musicPlayerModal}
