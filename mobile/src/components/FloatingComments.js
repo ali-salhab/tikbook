@@ -56,7 +56,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
 
   // Wheel effect: rows further from the newest are smaller
   const wheelScale = Math.max(0.72, 1 - distanceFromEnd * 0.055);
-  const isSystem   = item.isSystem;
+  const isSystem   = item.isSystem && !item.user;  // purely system (no sender)
+  const isGift     = item.isSystem && !!item.user;  // gift msg — has a sender
   const imageUri   = item.user?.profileImage || item.user?.avatar;
   const initials   = item.user?.username ? item.user.username.charAt(0).toUpperCase() : "?";
   const messageText = item.message || item.text || item.body || "";
@@ -81,7 +82,9 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
   const commentTextColor =
     isVip && typeof vipStyleEntry === "object" && vipStyleEntry?.commentTextColor
       ? vipStyleEntry.commentTextColor
-      : null;
+      : isVip && vipColor
+        ? vipColor
+        : null;
 
   const levelColor = getLevelColor(userLevel);
 
@@ -127,7 +130,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
 
       {/* ── Right column: header above, message frame below ── */}
       <View style={styles.rightCol}>
-        {/* Header row — name + VIP + level — sits ABOVE the bubble */}
+        {/* Header row — name + VIP + level — shown for all user messages incl. gifts */}
         {!isSystem && (
           <View style={styles.headerRow}>
             {userLevel > 0 && (
@@ -163,12 +166,27 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
         <View
           style={[
             styles.bubble,
-            isVip && styles.vipBubble,
-            isVip && getVipBubbleShapeStyle(bubbleShape),
-            isVip && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
-            isVip ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
+            (isVip || isGift) && styles.vipBubble,
+            (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
+            (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
+            (isVip || isGift) ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
           ]}
         >
+          {isGift && item.giftUrl ? (
+            <View style={styles.giftMsgRow}>
+              <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
+              <Text
+                style={[
+                  styles.message,
+                  commentTextColor ? { color: commentTextColor } : null,
+                ]}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {messageText}
+              </Text>
+            </View>
+          ) : (
           <Text
             style={[
               styles.message,
@@ -180,6 +198,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
           >
             {messageText}
           </Text>
+          )}
 
           {commentFrameLottieUrl ? (
             <LottieView
@@ -415,6 +434,17 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.75)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  giftMsgRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(6),
+    flexShrink: 1,
+  },
+  giftThumb: {
+    width: ms(28),
+    height: ms(28),
+    flexShrink: 0,
   },
   systemMessage: {
     color: "#FFD700",

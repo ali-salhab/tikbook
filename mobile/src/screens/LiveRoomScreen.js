@@ -29,6 +29,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import axios from "axios";
 import io from "socket.io-client";
 import {
@@ -42,9 +43,11 @@ import { BASE_URL, AGORA_APP_ID } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
 import RoomManagementModal from "../components/RoomManagementModal";
 import AnimatedGift from "../components/AnimatedGift";
+import CommentParticles from "../components/CommentParticles";
 import FloatingComments from "../components/FloatingComments";
 import GiftPanel from "../components/GiftPanel";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import SoundWave from "../components/SoundWave";
 import VipBadge from "../components/VipBadge";
 import SoundService from "../services/soundService";
 import { ms, fs } from "../utils/responsive";
@@ -92,6 +95,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ── Gifts ────────────────────────────────────────────────────────────────────
   const [activeGifts, setActiveGifts] = useState([]);
+  const [activeCommentParticles, setActiveCommentParticles] = useState([]);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
   const [vipLevelCommentStyles, setVipLevelCommentStyles] = useState({});
@@ -358,6 +362,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
   };
 
+  const triggerCommentParticles = (gift) => {
+    const count = gift?.commentParticleCount ?? 8;
+    const type  = gift?.commentParticleType || "hearts";
+    if (!count || type === "none") return;
+    const burstId = `burst-${Date.now()}-${Math.random()}`;
+    setActiveCommentParticles((prev) => [...prev, { id: burstId, gift }]);
+  };
+
   // ─── PERMISSIONS & SETUP ────────────────────────────────────────────────────
 
   const setupRoom = async () => {
@@ -604,6 +616,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         isSystem: true,
         giftUrl: gift.thumbnailUrl,
       });
+      triggerCommentParticles(gift);
       // Track coins per sender for the viewers modal
       if (sender?._id) {
         setUserCoinsInRoom((prev) => ({
@@ -1002,6 +1015,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           isSystem: true,
           giftUrl: gift.thumbnailUrl,
         });
+        triggerCommentParticles(gift);
 
         // Emit socket event so OTHER viewers also see the gift
         socketRef.current?.emit("liveroom:send_gift", {
@@ -1169,25 +1183,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const HostSection = () => {
     const host = room?.host;
+    const isHostSpeaking = host && speakingUserIds.has(host._id);
     return (
       <View style={styles.hostSection}>
-        {/* Outer pulse ring */}
-        <Animated.View
-          style={[
-            styles.glowRingOuter,
-            {
-              transform: [{ scale: glowAnim }],
-              opacity: glowAnim.interpolate({
-                inputRange: [1, 1.08],
-                outputRange: [0.5, 0],
-              }),
-            },
-          ]}
-        />
-        {/* Inner glow ring */}
-        <Animated.View
-          style={[styles.glowRing, { transform: [{ scale: glowAnim }] }]}
-        />
+        {/* Blur glow halo behind avatar */}
+        <View style={styles.hostGlowHalo} pointerEvents="none">
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+        </View>
         <View style={styles.hostAvatarWrap}>
           <ProfileBadgeFrame
             profileImage={host?.profileImage || host?.avatar || null}
@@ -1195,11 +1197,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
               host?.activeBadge?.imageUrl || host?.activeBadge?.image || null
             }
             size={HOST_SIZE}
+            showSparks={true}
           />
           {joinedAgora && <View style={styles.onlineDot} />}
         </View>
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
         {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
+        {/* Speaking waves below host name */}
+        {isHostSpeaking && (
+          <View style={styles.hostSoundWave}>
+            <SoundWave active={true} color="#A020F0" size="large" />
+          </View>
+        )}
         <View style={styles.hostRoleRow}>
           <MaterialIcons name="verified" size={13} color="#00F2EA" />
           <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
@@ -1393,6 +1402,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
           {speaker?.isMuted && (
             <View style={styles.mutedDot}>
               <Ionicons name="mic-off" size={7} color="#FFF" />
+            </View>
+          )}
+          {/* Speaking sound-wave indicator */}
+          {isSpeaking && !speaker?.isMuted && (
+            <View style={styles.seatSoundWave} pointerEvents="none">
+              <SoundWave active={true} color="#00F2EA" size="small" />
             </View>
           )}
           {/* Gift selection checkmark */}
@@ -2430,6 +2445,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
         vipLevelStyles={vipLevelCommentStyles}
       />
 
+      {/* Comment particle bursts on gift send */}
+      {activeCommentParticles.map((burst) => (
+        <CommentParticles
+          key={burst.id}
+          gift={burst.gift}
+          anchorY={insets.bottom + ms(80)}
+          onDone={() => setActiveCommentParticles((p) => p.filter((b) => b.id !== burst.id))}
+        />
+      ))}
+
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
       {musicPlayerModal}
       {audioPanelModal}
@@ -2612,31 +2637,18 @@ const styles = StyleSheet.create({
 
   // ── Host ─────────────────────────────────────────────────────────────────────
   hostSection: { alignItems: "center", marginTop: ms(14), marginBottom: ms(8) },
-  glowRing: {
+  hostGlowHalo: {
     position: "absolute",
-    width: HOST_SIZE + 34,
-    height: HOST_SIZE + 34,
-    borderRadius: (HOST_SIZE + 34) / 2,
-    borderWidth: 3,
-    borderColor: "#A020F0",
+    width: HOST_SIZE * 1.35 + ms(28),
+    height: HOST_SIZE * 1.35 + ms(28),
+    borderRadius: (HOST_SIZE * 1.35 + ms(28)) / 2,
+    backgroundColor: "rgba(160,32,240,0.28)",
+    overflow: "hidden",
     shadowColor: "#A020F0",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 18,
-    elevation: 24,
-  },
-  glowRingOuter: {
-    position: "absolute",
-    width: HOST_SIZE + 62,
-    height: HOST_SIZE + 62,
-    borderRadius: (HOST_SIZE + 62) / 2,
-    borderWidth: 1.5,
-    borderColor: "rgba(160,32,240,0.35)",
-    shadowColor: "#A020F0",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 28,
-    elevation: 16,
+    shadowOpacity: 0.9,
+    shadowRadius: ms(22),
+    elevation: 18,
   },
   hostAvatarWrap: { position: "relative" },
   onlineDot: {
@@ -2700,6 +2712,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.9,
     shadowRadius: 10,
     elevation: 10,
+  },
+  seatSoundWave: {
+    position: "absolute",
+    bottom: ms(-14),
+    alignSelf: "center",
+  },
+  hostSoundWave: {
+    marginTop: ms(4),
+    marginBottom: ms(2),
   },
   seatFrameWrap: {
     position: "absolute",

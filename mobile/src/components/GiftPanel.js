@@ -199,7 +199,7 @@ const GiftPanel = ({
       onRequestClose={() => {}}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, !selectedGift && { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
@@ -266,7 +266,7 @@ const GiftPanel = ({
 
           {/* Selected Gift Actions */}
           {selectedGift && (
-            <View style={styles.actionsContainer}>
+            <View style={[styles.actionsContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
               {/* Quantity Selector */}
               <View style={styles.quantityContainer}>
                 <TouchableOpacity
@@ -324,7 +324,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: "75%",
-    paddingBottom: 20,
   },
   header: {
     flexDirection: "row",
@@ -473,7 +472,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 16, // Added padding bottom to prevent overlap with system keys
+    paddingBottom: 16,
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: "#eee",

@@ -207,6 +207,9 @@ const defaultEffects = {
   glowOpacity: 0.25,
   danceStyle: "wiggle",
   entryEffect: "pop",
+  commentParticleType: "hearts",
+  commentParticleChar: "❤️",
+  commentParticleCount: 8,
 };
 
 const defaultForm = {
@@ -286,6 +289,9 @@ const GiftManagement = ({ onLogout }) => {
       glowOpacity: gift.glowOpacity ?? 0.25,
       danceStyle: gift.danceStyle || "wiggle",
       entryEffect: gift.entryEffect || "pop",
+      commentParticleType: gift.commentParticleType || "hearts",
+      commentParticleChar: gift.commentParticleChar || "❤️",
+      commentParticleCount: gift.commentParticleCount ?? 8,
     });
     setPreviews({ animation: gift.thumbnailUrl || null, thumbnail: gift.thumbnailUrl || null, sound: null, png: gift.pngUrl || null });
     setShowEffects(false);
@@ -337,6 +343,9 @@ const GiftManagement = ({ onLogout }) => {
         glowOpacity: form.glowOpacity,
         danceStyle: form.danceStyle,
         entryEffect: form.entryEffect,
+        commentParticleType: form.commentParticleType || "hearts",
+        commentParticleChar: form.commentParticleChar || "❤️",
+        commentParticleCount: form.commentParticleCount ?? 8,
       };
 
       if (editingGift) {
@@ -736,7 +745,36 @@ const GiftManagement = ({ onLogout }) => {
                 )}
               </div>
 
-              {/* Live preview */}
+              {/* ── Comment Particle Config ── */}
+              <div style={{ marginTop: 16, padding: 14, background: "#0f172a", borderRadius: 10, border: "1px solid #334155" }}>
+                <div style={{ fontWeight: 700, color: "#e2e8f0", marginBottom: 10, fontSize: 14 }}>
+                  💬 جسيمات التعليق عند الإرسال
+                </div>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <label style={styles.label}>نوع الجسيمات</label>
+                    <select style={styles.input} value={form.commentParticleType} onChange={(e) => setF("commentParticleType", e.target.value)}>
+                      <option value="none">بدون (None)</option>
+                      <option value="hearts">قلوب ❤️</option>
+                      <option value="roses">ورد 🌹</option>
+                      <option value="stars">نجوم ⭐</option>
+                      <option value="sparkles">بريق ✨</option>
+                      <option value="confetti">كونفيتي 🎊</option>
+                      <option value="custom">مخصص</option>
+                    </select>
+                  </div>
+                  {form.commentParticleType === "custom" && (
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <label style={styles.label}>إيموجي مخصص</label>
+                      <input style={styles.input} value={form.commentParticleChar} onChange={(e) => setF("commentParticleChar", e.target.value)} maxLength={4} placeholder="❤️" />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 100 }}>
+                    <label style={styles.label}>عدد الجسيمات (0-30)</label>
+                    <input style={styles.input} type="number" min={0} max={30} value={form.commentParticleCount} onChange={(e) => setF("commentParticleCount", Math.min(30, Math.max(0, +e.target.value)))} />
+                  </div>
+                </div>
+              </div>
               <GiftLivePreview form={form} previews={previews} editingGift={editingGift} />
 
               <div style={styles.modalFooter}>

@@ -138,6 +138,24 @@ const giftSchema = new mongoose.Schema(
       type: String,
       default: "✨",
     },
+    // Particles that fly around the comment area when this gift is sent (admin-configurable)
+    commentParticleType: {
+      type: String,
+      enum: ["none", "hearts", "roses", "stars", "sparkles", "confetti", "custom"],
+      default: "hearts",
+    },
+    // Custom emoji for comment particles when commentParticleType === 'custom'
+    commentParticleChar: {
+      type: String,
+      default: "❤️",
+    },
+    // Number of comment particles per gift send (0 to disable)
+    commentParticleCount: {
+      type: Number,
+      default: 8,
+      min: 0,
+      max: 30,
+    },
     // Glow color behind the gift image
     glowColor: {
       type: String,
