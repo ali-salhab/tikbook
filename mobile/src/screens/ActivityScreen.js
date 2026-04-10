@@ -1,4 +1,5 @@
 import React, { useState, useContext, useCallback } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -249,14 +250,14 @@ const ActivityScreen = ({ navigation }) => {
                   style={styles.avatarImage}
                 />
               ) : (
-                <Ionicons name="person" size={24} color="#CCC" />
+                <Ionicons name="person" size={18} color="#CCC" />
               )}
             </View>
             {/* Notification type icon badge */}
             <View
               style={[styles.iconBadge, { backgroundColor: notifIcon.color }]}
             >
-              <Ionicons name={notifIcon.name} size={14} color="#FFF" />
+              <Ionicons name={notifIcon.name} size={10} color="#FFF" />
             </View>
           </View>
 
@@ -298,13 +299,14 @@ const ActivityScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <GradientBackground />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-forward" size={24} color="#000" />
+          <Ionicons name="arrow-forward" size={24} color="#FFF" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>النشاط</Text>
-          <Ionicons name="chevron-down" size={16} color="#000" />
+          <Ionicons name="chevron-down" size={16} color="#FFF" />
         </View>
         <View style={{ width: 24 }} />
       </View>
@@ -341,15 +343,15 @@ const ActivityScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: ms(16),
+    padding: ms(12),
     borderBottomWidth: 0.5,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: "rgba(255,255,255,0.12)",
   },
   headerTitleContainer: {
     flexDirection: "row",
@@ -359,9 +361,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fs(17),
     fontWeight: "bold",
+    color: "#FFF",
   },
   listContent: {
-    padding: ms(16),
+    padding: ms(12),
   },
   center: {
     flex: 1,
@@ -375,49 +378,49 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: ms(12),
-    color: "#999",
+    color: "rgba(255,255,255,0.5)",
   },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: ms(20),
+    marginBottom: ms(12),
   },
   leftContent: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: ms(10),
+    marginRight: ms(8),
   },
   avatarContainer: {
     position: "relative",
-    marginRight: ms(12),
-    width: ms(56),
-    height: ms(56),
+    marginRight: ms(10),
+    width: ms(42),
+    height: ms(42),
   },
   avatarPlaceholder: {
-    width: ms(56),
-    height: ms(56),
-    borderRadius: ms(28),
-    backgroundColor: "#F0F0F0",
+    width: ms(42),
+    height: ms(42),
+    borderRadius: ms(21),
+    backgroundColor: "rgba(255,255,255,0.12)",
     justifyContent: "center",
     alignItems: "center",
   },
   avatarImage: {
     width: "100%",
     height: "100%",
-    borderRadius: ms(28),
+    borderRadius: ms(21),
   },
   iconBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: ms(24),
-    height: ms(24),
-    borderRadius: ms(12),
+    width: ms(18),
+    height: ms(18),
+    borderRadius: ms(9),
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: "#FFF",
   },
   textContainer: {
@@ -425,18 +428,19 @@ const styles = StyleSheet.create({
   },
   username: {
     fontWeight: "bold",
-    fontSize: fs(15),
-    marginBottom: ms(4),
+    fontSize: fs(13),
+    marginBottom: ms(2),
     textAlign: "left",
+    color: "#FFF",
   },
   actionText: {
-    color: "#666",
-    fontSize: fs(13),
+    color: "rgba(255,255,255,0.75)",
+    fontSize: fs(12),
     textAlign: "left",
-    lineHeight: ms(18),
+    lineHeight: ms(16),
   },
   time: {
-    color: "#999",
+    color: "rgba(255,255,255,0.45)",
   },
   thumbnailPlaceholder: {
     width: ms(48),

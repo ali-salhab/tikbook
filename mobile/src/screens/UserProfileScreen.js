@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState, useCallback } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -193,7 +194,8 @@ const UserProfileScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      <GradientBackground />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -201,11 +203,11 @@ const UserProfileScreen = ({ route, navigation }) => {
           style={styles.iconButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={28} color="#000" />
+          <Ionicons name="chevron-back" size={28} color="#F0EEFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>@{profile.username}</Text>
         <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
-          <Ionicons name="share-social-outline" size={24} color="#000" />
+          <Ionicons name="share-social-outline" size={24} color="#F0EEFF" />
         </TouchableOpacity>
       </View>
 
@@ -275,7 +277,7 @@ const UserProfileScreen = ({ route, navigation }) => {
                 })
               }
             >
-              <Ionicons name="chatbubble-outline" size={18} color="#000" />
+              <Ionicons name="chatbubble-outline" size={18} color="#B8B0D8" />
               <Text style={styles.messageButtonText}>رسالة</Text>
             </TouchableOpacity>
           </View>
@@ -290,7 +292,7 @@ const UserProfileScreen = ({ route, navigation }) => {
             <Ionicons
               name="grid-outline"
               size={24}
-              color={activeTab === "videos" ? "#000" : "#ccc"}
+              color={activeTab === "videos" ? "#F0EEFF" : "#7A728A"}
             />
             {activeTab === "videos" && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
@@ -301,7 +303,7 @@ const UserProfileScreen = ({ route, navigation }) => {
             <Ionicons
               name="heart-outline"
               size={24}
-              color={activeTab === "liked" ? "#000" : "#ccc"}
+              color={activeTab === "liked" ? "#F0EEFF" : "#7A728A"}
             />
             {activeTab === "liked" && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
@@ -318,13 +320,13 @@ const UserProfileScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
   },
   header: {
     flexDirection: "row",
@@ -332,7 +334,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: ms(16),
     paddingVertical: ms(10),
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
   },
   iconButton: {
     padding: ms(4),
@@ -340,7 +342,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fs(17),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
   },
   profileInfo: {
     alignItems: "center",
@@ -354,12 +356,12 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: fs(18),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
     marginBottom: ms(4),
   },
   username: {
     fontSize: fs(14),
-    color: "#666",
+    color: "#B8B0D8",
     marginBottom: ms(16),
   },
   statsContainer: {
@@ -374,7 +376,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: fs(17),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
   },
   statLabel: {
     fontSize: fs(13),
@@ -384,11 +386,11 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: ms(15),
-    backgroundColor: "#eee",
+    backgroundColor: "#2A2550",
   },
   bio: {
     fontSize: fs(14),
-    color: "#000",
+    color: "#B8B0D8",
     marginBottom: ms(20),
     textAlign: "center",
     lineHeight: ms(20),
@@ -409,9 +411,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   followingButton: {
-    backgroundColor: "#f1f1f1",
+    backgroundColor: "#151228",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#2A2550",
   },
   followButtonText: {
     color: "#FFF",
@@ -419,7 +421,7 @@ const styles = StyleSheet.create({
     fontSize: fs(15),
   },
   followingButtonText: {
-    color: "#000",
+    color: "#B8B0D8",
   },
   messageButton: {
     flexDirection: "row",
@@ -427,19 +429,19 @@ const styles = StyleSheet.create({
     gap: ms(6),
     paddingHorizontal: ms(20),
     paddingVertical: ms(10),
-    backgroundColor: "#f1f1f1",
+    backgroundColor: "#151228",
     borderRadius: ms(8),
     justifyContent: "center",
   },
   messageButtonText: {
-    color: "#000",
+    color: "#F0EEFF",
     fontWeight: "600",
     fontSize: fs(14),
   },
   tabsContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#2A2550",
     marginTop: ms(10),
   },
   tab: {
@@ -453,7 +455,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: ms(40),
     height: ms(2),
-    backgroundColor: "#000",
+    backgroundColor: "#7C5DFA",
   },
   gridContainer: {
     flexDirection: "row",
@@ -462,10 +464,10 @@ const styles = StyleSheet.create({
   gridItem: {
     width: width / 3,
     height: (width / 3) * 1.3,
-    backgroundColor: "#333",
+    backgroundColor: "#151228",
     position: "relative",
     borderWidth: 0.5,
-    borderColor: "#fff",
+    borderColor: "#2A2550",
   },
   gridImage: {
     width: "100%",
@@ -474,7 +476,7 @@ const styles = StyleSheet.create({
   gridPlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#eee",
+    backgroundColor: "#151228",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -500,13 +502,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: fs(18),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
     marginTop: ms(20),
     marginBottom: ms(10),
   },
   emptyStateSubtitle: {
     fontSize: fs(14),
-    color: "#666",
+    color: "#B8B0D8",
     textAlign: "center",
     lineHeight: ms(20),
   },

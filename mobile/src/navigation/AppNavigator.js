@@ -54,6 +54,7 @@ import { LiveProvider } from "../context/LiveContext";
 import FloatingLivePlayer from "../components/FloatingLivePlayer";
 import { ActivityIndicator, View, Image, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Linking } from "react-native";
@@ -136,15 +137,22 @@ const HomeTabs = () => {
         headerShown: false,
         tabBarShowLabel: true,
         tabBarStyle: {
-          backgroundColor: theme.tabBar,
-          borderTopWidth: 0.5,
-          borderTopColor: theme.border,
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom + 5,
           paddingTop: 5,
           elevation: 0,
           shadowOpacity: 0,
         },
+        tabBarBackground: () => (
+          <LinearGradient
+            colors={theme.id === "dark" ? ["#080614", "#0E0B1E", "#130F24"] : ["#EEE8F8", "#E8E0F5", "#EBF0F8"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flex: 1, borderTopWidth: 0.5, borderTopColor: theme.id === "dark" ? "rgba(160,140,255,0.12)" : "rgba(100,80,180,0.12)" }}
+          />
+        ),
         tabBarActiveTintColor: theme.text,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarLabelStyle: {

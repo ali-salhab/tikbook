@@ -346,18 +346,18 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
       animationType="none"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.modalOverlay}
-        keyboardVerticalOffset={0}
-      >
-        {/* Backdrop */}
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+      {/* Backdrop */}
+      <TouchableOpacity
+        style={styles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+      />
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        style={styles.kavContainer}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
         {/* Comments Sheet */}
         <Animated.View
           style={[
@@ -512,12 +512,12 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
   },
+  kavContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
   modalContent: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    maxHeight: "75%",
+    maxHeight: "88%",
     backgroundColor: "#FFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

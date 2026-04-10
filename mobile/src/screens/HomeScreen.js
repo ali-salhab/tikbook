@@ -19,6 +19,7 @@ import {
   Share,
   ActivityIndicator,
   PanResponder,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import axios from "axios";
@@ -496,10 +497,11 @@ const HomeScreen = ({ navigation, route }) => {
         keyExtractor={(item) => item._id}
         extraData={`${activeVideoIndex}-${isScreenFocused ? 1 : 0}-${pageHeight}`}
         onLayout={handleFeedLayout}
-        pagingEnabled
+        snapToInterval={pageHeight}
+        snapToAlignment="start"
         disableIntervalMomentum
         showsVerticalScrollIndicator={false}
-        decelerationRate="fast"
+        decelerationRate={Platform.OS === "android" ? 0.985 : "fast"}
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleMomentumScrollEnd}
         getItemLayout={(_, index) => ({

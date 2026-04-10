@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback, useEffect } from "react";
+import React, { useContext, useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Animated,
   Alert,
   Clipboard,
 } from "react-native";
@@ -451,9 +452,11 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Static gradient background */}
+      <StaticBg theme={theme} />
       <StatusBar
         barStyle={theme.id === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={theme.header}
+        backgroundColor="transparent"
       />
 
       {/* Header */}
@@ -650,41 +653,73 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
+            {/* Edit */}
             <TouchableOpacity
-              style={styles.editProfileButton}
+              style={styles.actionBtn}
               onPress={() => navigation.navigate("EditProfile", { profile })}
+              activeOpacity={0.82}
             >
-              <Feather name="edit-2" size={18} color={theme.icon} />
-              <Text style={styles.buttonLabel}>تعديل</Text>
+              <LinearGradient
+                colors={theme.id === "dark" ? ["#232323", "#2E2E2E"] : ["#F5F5F5", "#E8E8E8"]}
+                style={styles.actionBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={[styles.actionBtnIcon, { backgroundColor: theme.id === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}>
+                  <Feather name="edit-2" size={16} color={theme.text} />
+                </View>
+                <Text style={[styles.actionBtnLabel, { color: theme.text }]}>تعديل</Text>
+              </LinearGradient>
             </TouchableOpacity>
 
+            {/* Levels */}
             <TouchableOpacity
-              style={styles.levelsButton}
+              style={styles.actionBtn}
               onPress={() => navigation.navigate("Levels")}
+              activeOpacity={0.82}
             >
-              {(() => {
-                const vipLvl = profile?.vipLevel || 0;
-                const vl = vipLevels.find((l) => l.level === vipLvl);
-                return (
-                  <LevelBadgeIcon
-                    level={vipLvl || 1}
-                    size="small"
-                    imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
-                    lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
-                    color={vl?.color || "#60A5FA"}
-                  />
-                );
-              })()
-              }
-              <Text style={styles.levelsButtonLabel}>المستويات</Text>
+              <LinearGradient
+                colors={["#0D1B3E", "#1A3A7A", "#0D1B3E"]}
+                style={styles.actionBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={[styles.actionBtnIcon, { backgroundColor: "rgba(100,160,255,0.18)" }]}>
+                  {(() => {
+                    const vipLvl = profile?.vipLevel || 0;
+                    const vl = vipLevels.find((l) => l.level === vipLvl);
+                    return (
+                      <LevelBadgeIcon
+                        level={vipLvl || 1}
+                        size="small"
+                        imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
+                        lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
+                        color={vl?.color || "#60A5FA"}
+                      />
+                    );
+                  })()}
+                </View>
+                <Text style={[styles.actionBtnLabel, { color: "#89C4FF" }]}>المستويات</Text>
+              </LinearGradient>
             </TouchableOpacity>
 
+            {/* Badges/Frames */}
             <TouchableOpacity
-              style={styles.badgeButton}
+              style={styles.actionBtn}
               onPress={() => navigation.navigate("MyBadges")}
+              activeOpacity={0.82}
             >
-              <Ionicons name="medal-outline" size={18} color="#FFD700" />
-              <Text style={styles.badgeButtonLabel}>الإطارات</Text>
+              <LinearGradient
+                colors={["#1C1400", "#3A2A00", "#1C1400"]}
+                style={styles.actionBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={[styles.actionBtnIcon, { backgroundColor: "rgba(255,215,0,0.18)" }]}>
+                  <Ionicons name="medal-outline" size={16} color="#FFD700" />
+                </View>
+                <Text style={[styles.actionBtnLabel, { color: "#FFD700" }]}>الإطارات</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -715,11 +750,23 @@ const ProfileScreen = ({ navigation }) => {
   );
 };
 
+// ── Static gradient background ────────────────────────────────────────────────
+const StaticBg = ({ theme }) => (
+  <LinearGradient
+    colors={theme.id === "dark" ? ["#080614", "#0E0B1E", "#130F24"] : ["#EEE8F8", "#E8E0F5", "#EBF0F8"]}
+    locations={[0, 0.55, 1]}
+    start={{ x: 0.15, y: 0 }}
+    end={{ x: 0.85, y: 1 }}
+    style={{ ...StyleSheet.absoluteFillObject, zIndex: 0 }}
+    pointerEvents="none"
+  />
+);
+
 const makeStyles = (theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.bg2,
+      backgroundColor: "transparent",
     },
     header: {
       flexDirection: "row",
@@ -727,7 +774,7 @@ const makeStyles = (theme) =>
       alignItems: "center",
       paddingHorizontal: ms(16),
       paddingVertical: ms(10),
-      backgroundColor: theme.bg2,
+      backgroundColor: "transparent",
     },
     headerLeft: {
       flexDirection: "row",
@@ -750,12 +797,12 @@ const makeStyles = (theme) =>
     },
     profileInfo: {
       alignItems: "center",
-      paddingTop: ms(20),
-      paddingBottom: ms(10),
+      paddingTop: ms(10),
+      paddingBottom: ms(6),
     },
     avatarContainer: {
       position: "relative",
-      marginBottom: ms(12),
+      marginBottom: ms(8),
       alignSelf: "center",
     },
     avatarWrapper: {
@@ -850,17 +897,17 @@ const makeStyles = (theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: ms(6),
-      marginBottom: ms(4),
+      marginBottom: ms(2),
     },
     displayName: {
-      fontSize: fs(18),
+      fontSize: fs(17),
       fontWeight: "bold",
       color: theme.text,
     },
     username: {
-      fontSize: fs(14),
+      fontSize: fs(13),
       color: theme.textMuted,
-      marginBottom: ms(16),
+      marginBottom: ms(8),
     },
     userIdContainer: {
       flexDirection: "row",
@@ -868,7 +915,7 @@ const makeStyles = (theme) =>
       backgroundColor: "transparent",
       paddingVertical: ms(2),
       paddingHorizontal: 0,
-      marginBottom: ms(16),
+      marginBottom: ms(10),
       alignSelf: "center",
     },
     userIdLabel: {
@@ -889,21 +936,21 @@ const makeStyles = (theme) =>
     statsContainer: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: ms(16),
-      gap: ms(20),
+      marginBottom: ms(10),
+      gap: ms(16),
     },
     statItem: {
       alignItems: "center",
     },
     statNumber: {
-      fontSize: fs(17),
+      fontSize: fs(16),
       fontWeight: "bold",
       color: theme.text,
     },
     statLabel: {
-      fontSize: fs(13),
+      fontSize: fs(12),
       color: theme.textMuted,
-      marginTop: ms(2),
+      marginTop: ms(1),
     },
     statDivider: {
       width: 1,
@@ -911,30 +958,49 @@ const makeStyles = (theme) =>
       backgroundColor: theme.border,
     },
     bio: {
-      fontSize: fs(14),
+      fontSize: fs(13),
       color: theme.text,
-      marginBottom: ms(20),
+      marginBottom: ms(12),
       textAlign: "center",
+      paddingHorizontal: ms(20),
     },
     actionButtons: {
       flexDirection: "row",
       gap: ms(8),
       marginBottom: ms(10),
       justifyContent: "center",
-      paddingHorizontal: ms(20),
-    },
-    editProfileButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: ms(6),
       paddingHorizontal: ms(16),
-      paddingVertical: ms(11),
-      backgroundColor: theme.buttonBg || theme.bg3,
-      borderRadius: ms(10),
-      borderWidth: 1,
-      borderColor: theme.buttonBorder || theme.border,
+    },
+    actionBtn: {
       flex: 1,
+      borderRadius: ms(14),
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.22,
+      shadowRadius: 6,
+      elevation: 5,
+    },
+    actionBtnGradient: {
+      flexDirection: "column",
+      alignItems: "center",
       justifyContent: "center",
+      paddingVertical: ms(12),
+      paddingHorizontal: ms(8),
+      borderRadius: ms(14),
+      overflow: "hidden",
+    },
+    actionBtnIcon: {
+      width: ms(36),
+      height: ms(36),
+      borderRadius: ms(18),
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: ms(6),
+    },
+    actionBtnLabel: {
+      fontSize: fs(11),
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
     verificationButton: {
       flexDirection: "row",
@@ -950,45 +1016,19 @@ const makeStyles = (theme) =>
       justifyContent: "center",
     },
     badgeButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: ms(6),
-      paddingHorizontal: ms(16),
-      paddingVertical: ms(11),
-      backgroundColor: theme.id === "dark" ? "#2A2200" : "#FFF8E1",
-      borderRadius: ms(10),
-      borderWidth: 1,
-      borderColor: theme.id === "dark" ? "#5A4800" : "#F0C040",
-      flex: 1,
-      justifyContent: "center",
+      display: "none",
     },
     levelsButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: ms(5),
-      paddingHorizontal: ms(12),
-      paddingVertical: ms(11),
-      backgroundColor: theme.id === "dark" ? "#0A1A3A" : "#1A3A7A",
-      borderRadius: ms(10),
-      borderWidth: 1,
-      borderColor: "rgba(100,160,255,0.6)",
-      flex: 1,
-      justifyContent: "center",
+      display: "none",
     },
     levelsButtonLabel: {
-      fontSize: fs(12),
-      fontWeight: "bold",
-      color: "#89C4FF",
+      display: "none",
     },
     buttonLabel: {
-      fontSize: fs(13),
-      fontWeight: "600",
-      color: theme.text,
+      display: "none",
     },
     badgeButtonLabel: {
-      fontSize: fs(13),
-      fontWeight: "600",
-      color: theme.id === "dark" ? "#FFD700" : "#8B6914",
+      display: "none",
     },
     tabsContainer: {
       flexDirection: "row",

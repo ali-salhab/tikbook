@@ -5,6 +5,7 @@ import React, {
   useContext,
   useCallback,
 } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -283,6 +284,7 @@ const FriendsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <GradientBackground />
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
@@ -379,7 +381,7 @@ const FriendsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
   // ── Top Bar (same design as HomeScreen) ──────────────────────────────────
   topBar: {
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
     left: ms(4),
     right: ms(4),
     height: ms(3),
-    backgroundColor: "#FFF",
+    backgroundColor: "#B8B0D8",
     borderRadius: ms(2),
   },
   // ── old header (kept for compat) ──────────────────────────────────────────
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     width: width,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
     position: "relative",
   },
   video: {

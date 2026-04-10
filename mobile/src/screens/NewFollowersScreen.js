@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -292,9 +293,10 @@ const NewFollowersScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+      <GradientBackground />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-forward" size={24} color="#000" />
+          <Ionicons name="arrow-forward" size={24} color="#B8B0D8" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>متابعون جدد</Text>
         <View style={{ width: 24 }} />
@@ -407,7 +409,7 @@ const NewFollowersScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     paddingTop: 0,
   },
   loadingContainer: {
@@ -511,7 +513,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   followingButton: {
-    backgroundColor: "#E5E5E5",
+    backgroundColor: "#151228",
+    borderWidth: 1,
+    borderColor: "#2A2550",
   },
   followButtonText: {
     color: "#FFF",
@@ -519,7 +523,7 @@ const styles = StyleSheet.create({
     fontSize: fs(14),
   },
   followingButtonText: {
-    color: "#000",
+    color: "#B8B0D8",
   },
   suggestedSection: {
     paddingHorizontal: ms(16),
@@ -558,7 +562,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     borderRadius: ms(8),
   },
   suggestedName: {

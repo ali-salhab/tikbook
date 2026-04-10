@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -204,20 +205,21 @@ const MyBadgesScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <GradientBackground />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color="#F0EEFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Badges</Text>
         <TouchableOpacity
           style={styles.shopButton}
           onPress={() => navigation.navigate("BadgeShop")}
         >
-          <Ionicons name="cart" size={24} color="#000" />
+          <Ionicons name="cart" size={24} color="#F0EEFF" />
         </TouchableOpacity>
       </View>
 
@@ -310,7 +312,7 @@ const MyBadgesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
   },
   header: {
     flexDirection: "row",
@@ -319,7 +321,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
     paddingVertical: ms(12),
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#2A2550",
   },
   backButton: {
     padding: ms(8),
@@ -327,7 +329,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fs(18),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
   },
   shopButton: {
     padding: ms(8),
@@ -335,14 +337,14 @@ const styles = StyleSheet.create({
   previewSection: {
     alignItems: "center",
     paddingVertical: ms(20),
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#151228",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#2A2550",
   },
   previewTitle: {
     fontSize: fs(16),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
     marginBottom: ms(12),
   },
   tabs: {
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
     paddingVertical: ms(12),
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#2A2550",
   },
   tab: {
     flex: 1,
@@ -363,7 +365,7 @@ const styles = StyleSheet.create({
     marginHorizontal: ms(4),
   },
   activeTab: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#1A1630",
   },
   tabText: {
     fontSize: fs(12),
@@ -371,7 +373,7 @@ const styles = StyleSheet.create({
     marginLeft: ms(8),
   },
   activeTabText: {
-    color: "#000",
+    color: "#F0EEFF",
     fontWeight: "bold",
   },
   listContent: {
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
     margin: ms(8),
     borderRadius: ms(12),
     borderWidth: 2,
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
     overflow: "hidden",
     elevation: 3,
     shadowColor: "#000",
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
   badgeImageContainer: {
     width: "100%",
     height: ms(150),
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#151228",
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -424,7 +426,7 @@ const styles = StyleSheet.create({
   badgeName: {
     fontSize: fs(14),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
     marginBottom: ms(6),
   },
   rarityBadge: {
@@ -447,7 +449,7 @@ const styles = StyleSheet.create({
   giftBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FCE4EC",
+    backgroundColor: "rgba(233,30,99,0.15)",
     paddingHorizontal: ms(6),
     paddingVertical: ms(2),
     borderRadius: ms(4),
@@ -483,7 +485,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: fs(18),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
     marginTop: ms(16),
   },
   emptySubtitle: {
@@ -496,7 +498,7 @@ const styles = StyleSheet.create({
     marginTop: ms(20),
     paddingHorizontal: ms(32),
     paddingVertical: ms(12),
-    backgroundColor: "#000",
+    backgroundColor: "#7C5DFA",
     borderRadius: ms(24),
   },
   shopNowText: {

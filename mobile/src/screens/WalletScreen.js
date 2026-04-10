@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -271,10 +272,11 @@ const WalletScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <GradientBackground />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color="#000" />
+          <Ionicons name="chevron-back" size={28} color="#F0EEFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>الرصيد</Text>
         <View style={{ width: 28 }} />
@@ -561,7 +563,7 @@ const WalletScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "transparent",
   },
   center: {
     flex: 1,
@@ -574,14 +576,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: ms(16),
     paddingVertical: ms(12),
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
+    borderBottomColor: "#2A2550",
   },
   headerTitle: {
     fontSize: fs(16),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
   },
   historyText: {
     fontSize: fs(12),
@@ -591,7 +593,7 @@ const styles = StyleSheet.create({
     paddingBottom: ms(180),
   },
   userInfoContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     padding: ms(16),
     marginBottom: ms(8),
   },
@@ -605,7 +607,7 @@ const styles = StyleSheet.create({
     height: ms(40),
     borderRadius: ms(20),
     overflow: "hidden",
-    backgroundColor: "#EEE",
+    backgroundColor: "#2A2550",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -637,17 +639,17 @@ const styles = StyleSheet.create({
   },
   packageCard: {
     width: "48%",
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     borderRadius: ms(8),
     padding: ms(16),
     alignItems: "center",
     marginBottom: ms(12),
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "#2A2550",
   },
   selectedPackageCard: {
     borderColor: "#FE2C55",
-    backgroundColor: "#FFF0F5",
+    backgroundColor: "rgba(254,44,85,0.1)",
   },
   coinRow: {
     flexDirection: "row-reverse",
@@ -658,7 +660,7 @@ const styles = StyleSheet.create({
   coinAmount: {
     fontSize: fs(18),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
   },
   priceText: {
     fontSize: fs(14),
@@ -674,13 +676,13 @@ const styles = StyleSheet.create({
   giftPromo: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     margin: ms(16),
     padding: ms(12),
     borderRadius: ms(8),
     gap: ms(12),
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "#2A2550",
   },
   giftText: {
     flex: 1,
@@ -689,19 +691,19 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   paymentMethodsCard: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     marginHorizontal: ms(16),
     marginBottom: ms(16),
     borderRadius: ms(12),
     padding: ms(16),
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "#2A2550",
     gap: ms(10),
   },
   paymentMethodsTitle: {
     fontSize: fs(14),
     fontWeight: "bold",
-    color: "#111",
+    color: "#F0EEFF",
     textAlign: "right",
   },
   paymentMethodsRow: {
@@ -711,23 +713,23 @@ const styles = StyleSheet.create({
   paymentMethodOption: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#2A2550",
     borderRadius: ms(12),
     paddingVertical: ms(12),
     paddingHorizontal: ms(10),
     alignItems: "center",
     justifyContent: "center",
     gap: ms(6),
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#1A1630",
   },
   paymentMethodOptionActive: {
     borderColor: "#FE2C55",
-    backgroundColor: "#FFF1F4",
+    backgroundColor: "rgba(254,44,85,0.12)",
   },
   paymentMethodName: {
     fontSize: fs(11),
     fontWeight: "700",
-    color: "#111",
+    color: "#F0EEFF",
     textAlign: "center",
   },
   paymentMethodHint: {
@@ -741,10 +743,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#FFF",
+    backgroundColor: "#0E0B1E",
     padding: ms(16),
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: "#2A2550",
     elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
@@ -779,11 +781,11 @@ const styles = StyleSheet.create({
   },
   paymentBadge: {
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "#2A2550",
     borderRadius: ms(4),
     paddingHorizontal: ms(6),
     paddingVertical: ms(2),
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#151228",
   },
   paymentTextSmall: {
     fontSize: fs(10),
@@ -812,9 +814,9 @@ const styles = StyleSheet.create({
   // ── Tabs ──
   tabsRow: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
+    borderBottomColor: "#2A2550",
   },
   tabBtn: {
     flex: 1,
@@ -837,12 +839,12 @@ const styles = StyleSheet.create({
   earningsCard: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     margin: ms(16),
     padding: ms(20),
     borderRadius: ms(12),
     borderWidth: 1,
-    borderColor: "#FFE0E6",
+    borderColor: "rgba(254,44,85,0.3)",
     gap: ms(12),
     elevation: 2,
     shadowColor: "#000",
@@ -859,7 +861,7 @@ const styles = StyleSheet.create({
   earningsAmount: {
     fontSize: fs(28),
     fontWeight: "bold",
-    color: "#000",
+    color: "#F0EEFF",
   },
   withdrawNote: {
     fontSize: fs(13),
@@ -869,7 +871,7 @@ const styles = StyleSheet.create({
     marginBottom: ms(16),
   },
   withdrawForm: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     marginHorizontal: ms(16),
     borderRadius: ms(12),
     padding: ms(16),
@@ -890,18 +892,18 @@ const styles = StyleSheet.create({
   },
   withdrawInput: {
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: "#2A2550",
     borderRadius: ms(8),
     paddingHorizontal: ms(12),
     paddingVertical: ms(10),
     fontSize: fs(15),
-    backgroundColor: "#FAFAFA",
-    color: "#000",
+    backgroundColor: "#1A1630",
+    color: "#F0EEFF",
   },
   withdrawInfoBox: {
     flexDirection: "row-reverse",
     alignItems: "flex-start",
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#151228",
     margin: ms(16),
     marginTop: ms(20),
     padding: ms(14),

@@ -5,6 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -41,6 +42,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 import { ms, fs } from "../utils/responsive";
+import { useApp } from "../context/AppContext";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -52,6 +54,7 @@ const ChatScreen = ({ route, navigation }) => {
     profileImage: null,
   };
   const { userToken, userInfo } = useContext(AuthContext);
+  const { theme } = useApp();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -494,6 +497,7 @@ const ChatScreen = ({ route, navigation }) => {
   // Chat view
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <GradientBackground />
       <View style={{ flex: 1 }}>
         <View style={styles.chatHeader}>
           <TouchableOpacity
@@ -510,7 +514,7 @@ const ChatScreen = ({ route, navigation }) => {
             {profileImage ? (
               <Image
                 source={{ uri: profileImage }}
-                style={styles.chatHeaderAvatar}
+                style={[styles.chatHeaderAvatar, { borderColor: theme.avatarRing }]}
               />
             ) : (
               <View style={styles.chatHeaderAvatarPlaceholder}>
@@ -830,7 +834,7 @@ const ChatScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
   header: {
     flexDirection: "row",
@@ -877,7 +881,7 @@ const styles = StyleSheet.create({
     width: ms(56),
     height: ms(56),
     borderRadius: ms(28),
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#151228",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -887,7 +891,7 @@ const styles = StyleSheet.create({
   conversationInfo: {
     flex: 1,
     borderBottomWidth: 1,
-    borderBottomColor: "#1F1F1F",
+    borderBottomColor: "#2A2550",
     paddingBottom: ms(12),
   },
   conversationHeader: {
@@ -935,8 +939,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     paddingVertical: ms(10),
     borderBottomWidth: 1,
-    borderBottomColor: "#1F1F1F",
-    backgroundColor: "#0A0A0A",
+    borderBottomColor: "#2A2550",
+    backgroundColor: "#0E0B1E",
   },
   headerBtn: {
     padding: ms(6),
@@ -968,9 +972,9 @@ const styles = StyleSheet.create({
     borderRadius: ms(14),
   },
   followingChip: {
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#151228",
     borderWidth: 1,
-    borderColor: "#444",
+    borderColor: "#2A2550",
   },
   followChipText: {
     color: "#FFF",
@@ -978,21 +982,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   chatHeaderAvatar: {
-    width: ms(40),
-    height: ms(40),
-    borderRadius: ms(20),
-    borderWidth: 2,
-    borderColor: "#FE2C55",
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    borderWidth: 1.5,
   },
   chatHeaderAvatarPlaceholder: {
     width: ms(40),
     height: ms(40),
     borderRadius: ms(20),
-    backgroundColor: "#333",
+    backgroundColor: "#1A1630",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#444",
+    borderColor: "#2A2550",
   },
   chatHeaderTitle: {
     color: "#FFF",
@@ -1024,7 +1027,7 @@ const styles = StyleSheet.create({
     borderRadius: ms(14),
   },
   messageAvatarPlaceholder: {
-    backgroundColor: "#333",
+    backgroundColor: "#1A1630",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1053,7 +1056,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: ms(4),
   },
   theirBubble: {
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#151228",
     borderBottomLeftRadius: ms(4),
   },
   messageText: {
@@ -1084,8 +1087,8 @@ const styles = StyleSheet.create({
     paddingVertical: ms(12),
     paddingBottom: Platform.OS === "android" ? ms(16) : ms(12),
     borderTopWidth: 1,
-    borderTopColor: "#1F1F1F",
-    backgroundColor: "#000",
+    borderTopColor: "#2A2550",
+    backgroundColor: "transparent",
   },
 
   // anchor input to bottom so 'bottom' style works
@@ -1101,7 +1104,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#1A1630",
     borderRadius: ms(20),
     paddingHorizontal: ms(16),
     paddingVertical: ms(8),
@@ -1119,7 +1122,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   emojiPickerContainer: {
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#151228",
     borderTopLeftRadius: ms(20),
     borderTopRightRadius: ms(20),
     maxHeight: "50%",
@@ -1164,7 +1167,7 @@ const styles = StyleSheet.create({
   // --- Image Viewer ---
   imageViewerOverlay: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
   },

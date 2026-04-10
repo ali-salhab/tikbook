@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useContext } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -187,6 +188,7 @@ const UsersScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <GradientBackground />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>اكتشف</Text>
@@ -303,7 +305,7 @@ const UsersScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
   header: {
     paddingHorizontal: ms(16),
@@ -317,7 +319,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#1A1630",
     marginHorizontal: ms(16),
     marginBottom: ms(20),
     borderRadius: ms(8),
@@ -352,7 +354,7 @@ const styles = StyleSheet.create({
   streamPreview: {
     width: ms(120),
     height: ms(160),
-    backgroundColor: "#333",
+    backgroundColor: "#151228",
     borderRadius: ms(8),
     justifyContent: "center",
     alignItems: "center",

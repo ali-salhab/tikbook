@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -22,11 +23,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { ms, fs } from "../utils/responsive";
+import { useApp } from "../context/AppContext";
 
 const { width } = Dimensions.get("window");
 
 const LiveRoomsListScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);
+  const { theme } = useApp();
   const insets = useSafeAreaInsets();
   const [liveRooms, setLiveRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -245,7 +248,8 @@ const LiveRoomsListScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      <GradientBackground />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" />
       {renderHeader()}
 
       <FlatList
@@ -273,7 +277,7 @@ const LiveRoomsListScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "transparent",
   },
   headerContainer: {
     flexDirection: "row",
@@ -281,7 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: ms(16),
     paddingBottom: ms(10),
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
   },
   iconButton: {
     padding: ms(8),
@@ -301,11 +305,11 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: fs(16),
-    color: "#666",
+    color: "#B8B0D8",
     fontWeight: "500",
   },
   tabTextActive: {
-    color: "#000",
+    color: "#F0EEFF",
     fontWeight: "bold",
     fontSize: fs(17),
   },
@@ -319,7 +323,7 @@ const styles = StyleSheet.create({
 
   // Stories
   storiesSection: {
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     paddingVertical: ms(12),
     marginBottom: ms(8),
   },
@@ -356,11 +360,11 @@ const styles = StyleSheet.create({
     marginBottom: ms(4),
   },
   storyAvatar: {
-    width: ms(56),
-    height: ms(56),
-    borderRadius: ms(28),
-    borderWidth: 2,
-    borderColor: "#FF4081",
+    width: ms(52),
+    height: ms(52),
+    borderRadius: ms(26),
+    borderWidth: 1.5,
+    borderColor: "#7C5DFA",
   },
   liveBadgeSmall: {
     position: "absolute",
@@ -377,7 +381,7 @@ const styles = StyleSheet.create({
   },
   storyName: {
     fontSize: fs(11),
-    color: "#333",
+    color: "#B8B0D8",
     textAlign: "center",
   },
 
@@ -392,17 +396,17 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     borderRadius: ms(20),
     paddingHorizontal: ms(12),
     paddingVertical: ms(6),
     marginHorizontal: ms(4),
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "#2A2550",
   },
   filterText: {
     fontSize: fs(13),
-    color: "#333",
+    color: "#B8B0D8",
     marginRight: ms(6),
   },
   filterIconContainer: {
@@ -502,7 +506,7 @@ const styles = StyleSheet.create({
   roomCaption: {
     marginTop: ms(6),
     fontSize: fs(13),
-    color: "#333",
+    color: "#B8B0D8",
     textAlign: "right",
     fontWeight: "500",
   },

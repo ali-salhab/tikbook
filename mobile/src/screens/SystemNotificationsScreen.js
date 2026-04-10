@@ -1,4 +1,5 @@
 import React, { useState, useContext, useCallback } from "react";
+import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
@@ -210,9 +211,10 @@ const SystemNotificationsScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <GradientBackground />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-forward" size={24} color="#000" />
+          <Ionicons name="arrow-forward" size={24} color="#B8B0D8" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>إشعارات النظام</Text>
         <View style={{ width: 24 }} />
@@ -275,23 +277,23 @@ const SystemNotificationsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "transparent",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: ms(16),
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     borderBottomWidth: 0.5,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: "#2A2550",
   },
   headerTitle: {
     fontSize: fs(17),
     fontWeight: "bold",
   },
   tabsContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     paddingVertical: ms(12),
   },
   tabsContent: {
@@ -302,13 +304,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
     paddingVertical: ms(8),
     borderRadius: ms(20),
-    backgroundColor: "#F1F1F1",
+    backgroundColor: "#151228",
   },
   activeTab: {
-    backgroundColor: "#E8F3FF",
+    backgroundColor: "#1A1630",
   },
   tabText: {
-    color: "#666",
+    color: "#B8B0D8",
     fontWeight: "600",
   },
   activeTabText: {
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#151228",
     borderRadius: ms(8),
     padding: ms(16),
     shadowColor: "#000",
@@ -343,9 +345,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   unreadCard: {
-    backgroundColor: "#F0F8FF",
+    backgroundColor: "#1A1630",
     borderLeftWidth: 3,
-    borderLeftColor: "#007bff",
+    borderLeftColor: "#7C6FCD",
   },
   cardHeader: {
     flexDirection: "row",
