@@ -10,6 +10,7 @@ import {
   Dimensions,
   StyleSheet,
   InteractionManager,
+  DeviceEventEmitter,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -70,6 +71,14 @@ const VideoItem = memo(
   }) => {
     const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isMutedByModal, setIsMutedByModal] = useState(false);
+
+    useEffect(() => {
+      const sub = DeviceEventEmitter.addListener("UPDATE_MODAL_VISIBLE", ({ visible }) => {
+        setIsMutedByModal(visible);
+      });
+      return () => sub.remove();
+    }, []);
     const [isBuffering, setIsBuffering] = useState(false);
     const [progress, setProgress] = useState(0); // 0-1
     const [duration, setDuration] = useState(0);
@@ -372,7 +381,7 @@ const VideoItem = memo(
                   resizeMode="cover"
                   shouldPlay={isActive}
                   isLooping
-                  isMuted={false}
+                  isMuted={isMutedByModal}
                   useNativeControls={false}
                   onPlaybackStatusUpdate={(status) => {
                     if (status.isLoaded) {

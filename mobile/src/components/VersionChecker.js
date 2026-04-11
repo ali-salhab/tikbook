@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   AppState,
+  DeviceEventEmitter,
 } from "react-native";
 import axios from "axios";
 import * as FileSystem from "expo-file-system/legacy";
@@ -27,6 +28,12 @@ import { Ionicons } from "@expo/vector-icons";
 export default function VersionChecker({ children }) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateData, setUpdateData] = useState(null);
+
+  // Mute background video when update modal is visible
+  const modalVisible = Boolean(updateAvailable && updateData);
+  useEffect(() => {
+    DeviceEventEmitter.emit("UPDATE_MODAL_VISIBLE", { visible: modalVisible });
+  }, [modalVisible]);
   const [isCheckingVersion, setIsCheckingVersion] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
