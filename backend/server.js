@@ -386,6 +386,17 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Host force-mute / force-unmute a speaker
+  socket.on("liveroom:host_force_mute", ({ roomId, targetUserId, mute, byUserId }) => {
+    console.log(`Host ${byUserId} ${mute ? "muted" : "unmuted"} user ${targetUserId} in room ${roomId}`);
+    io.to(`liveroom:${roomId}`).emit("liveroom:force_mute", {
+      targetUserId,
+      mute,
+      byUserId,
+      timestamp: new Date(),
+    });
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });

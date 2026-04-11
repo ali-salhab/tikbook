@@ -609,10 +609,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
       fetchRoomData();
       if (user._id === userInfo._id) {
         Alert.alert("✅", "أصبحت متحدثاً الآن!");
-        // Unmute mic when promoted to speaker
-        setIsMuted(false);
+        // Promote to broadcaster and unmute — do NOT use updateAgoraRole here
+        // because it reads the stale isMuted closure value and would re-mute us.
+        agoraEngineRef.current?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
         agoraEngineRef.current?.muteLocalAudioStream(false);
-        updateAgoraRole(true);
+        setIsMuted(false);
       }
     });
     socket.on("liveroom:speaker_removed", ({ userId }) => {
@@ -622,6 +623,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
         updateAgoraRole(false);
         setIsMuted(true);
         agoraEngineRef.current?.muteLocalAudioStream(true);
+      }
+    });
+
+    // Host force-mutes or force-unmutes this user
+    socket.on("liveroom:force_mute", ({ targetUserId, mute }) => {
+      if (targetUserId !== userInfo._id) return;
+      agoraEngineRef.current?.muteLocalAudioStream(mute);
+      setIsMuted(mute);
+      // Brief feedback so the speaker knows
+      if (mute) {
+        SoundService.play("mic_off");
+      } else {
+        SoundService.play("mic_on");
       }
     });
     socket.on("liveroom:mute_toggled", fetchRoomData);
@@ -2554,6 +2568,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         userToken={userToken}
         currentUserId={userInfo?._id}
         fetchRoomData={fetchRoomData}
+        socketRef={socketRef}
       />
 
       <GiftPanel

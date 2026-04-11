@@ -154,8 +154,25 @@ const SettingsTab = ({ room, roomId, userToken, onSaved, fetchRoomData }) => {
 
 // ─── USERS TAB ────────────────────────────────────────────────────────────────
 
-const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged }) => {
+const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged, socketRef }) => {
   const [loading, setLoading] = useState(false);
+  const [mutedSpeakers, setMutedSpeakers] = useState(new Set());
+
+  const handleForceMute = (userId, username) => {
+    const isMuted = mutedSpeakers.has(userId);
+    const next = !isMuted;
+    setMutedSpeakers((prev) => {
+      const s = new Set(prev);
+      next ? s.add(userId) : s.delete(userId);
+      return s;
+    });
+    socketRef?.current?.emit("liveroom:host_force_mute", {
+      roomId,
+      targetUserId: userId,
+      mute: next,
+      byUserId: currentUserId,
+    });
+  };
 
   const moderatorIds = new Set((room?.moderators || []).map((m) => m.user?._id || m.user?.toString()));
 
@@ -273,7 +290,19 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged })
         </View>
         {isHost && !isCurrentUser && !isRoomHost && (
           <View style={styles.userActions}>
-            {/* Promote / Demote moderator */}
+            {/* Force mute / unmute (speakers only) */}
+            {item.role === "متحدث" && (
+              <TouchableOpacity
+                style={[styles.actionBtn, mutedSpeakers.has(user._id) && styles.actionBtnActive]}
+                onPress={() => handleForceMute(user._id, user.username)}
+              >
+                <Ionicons
+                  name={mutedSpeakers.has(user._id) ? "mic-off" : "mic"}
+                  size={19}
+                  color={mutedSpeakers.has(user._id) ? "#FE2C55" : "#aaa"}
+                />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[styles.actionBtn, isModerator && styles.actionBtnActive]}
               onPress={() => handleToggleModerator(user._id, user.username, isModerator)}
@@ -404,6 +433,7 @@ const RoomManagementModal = ({
   userToken,
   currentUserId,
   fetchRoomData,
+  socketRef,
 }) => {
   const [activeTab, setActiveTab] = useState("settings");
 
@@ -470,6 +500,7 @@ const RoomManagementModal = ({
               currentUserId={currentUserId}
               isHost={isHost}
               onChanged={onChanged}
+              socketRef={socketRef}
             />
           )}
           {activeTab === "banned" && (

@@ -14,6 +14,7 @@ import {
   FiTrendingUp,
   FiDollarSign,
   FiPlusCircle,
+  FiTrash2,
 } from "react-icons/fi";
 
 const UsersManagement = () => {
@@ -25,6 +26,7 @@ const UsersManagement = () => {
   const [levelEditValue, setLevelEditValue] = useState(0);
   const [levelUpdating, setLevelUpdating] = useState(false);
   const [vipLevelUpdating, setVipLevelUpdating] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
@@ -106,6 +108,23 @@ const UsersManagement = () => {
       console.error("Update level error:", error);
     } finally {
       setLevelUpdating(false);
+    }
+  };
+
+  const deleteUser = async (userId, username) => {
+    if (!window.confirm(`هل أنت متأكد من حذف حساب @${username}؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    setDeletingUserId(userId);
+    try {
+      await api.delete(`/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers((prev) => prev.filter((u) => u._id !== userId));
+      if (selectedUser?._id === userId) setSelectedUser(null);
+    } catch (error) {
+      alert("حدث خطأ أثناء حذف المستخدم");
+      console.error("Delete user error:", error);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -374,12 +393,25 @@ const UsersManagement = () => {
                         {new Date(user.createdAt).toLocaleDateString("ar-EG")}
                       </td>
                       <td>
-                        <button
-                          className="btn-view"
-                          onClick={() => setSelectedUser(user)}
-                        >
-                          عرض التفاصيل
-                        </button>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button
+                            className="btn-view"
+                            onClick={() => setSelectedUser(user)}
+                          >
+                            عرض التفاصيل
+                          </button>
+                          <button
+                            className="btn-delete"
+                            disabled={deletingUserId === user._id}
+                            onClick={() => deleteUser(user._id, user.username)}
+                          >
+                            {deletingUserId === user._id ? (
+                              "..."
+                            ) : (
+                              <FiTrash2 size={15} />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -545,6 +577,15 @@ const UsersManagement = () => {
                   }}
                 >
                   📬 إرسال إشعار
+                </button>
+                <button
+                  className="btn-danger"
+                  style={{ marginRight: "10px" }}
+                  disabled={deletingUserId === selectedUser._id}
+                  onClick={() => deleteUser(selectedUser._id, selectedUser.username)}
+                >
+                  <FiTrash2 size={15} style={{ marginLeft: "4px" }} />
+                  {deletingUserId === selectedUser._id ? "جارٍ الحذف..." : "حذف الحساب"}
                 </button>
                 <button
                   className="btn-primary"
