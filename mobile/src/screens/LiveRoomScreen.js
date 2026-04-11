@@ -2520,6 +2520,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           key={d.id}
           gift={d.gift}
           sender={d.sender}
+          containerTop={commentAreaTop > 0 ? commentAreaTop : undefined}
           onComplete={() =>
             setActiveGifts((p) => p.filter((g) => g.id !== d.id))
           }

@@ -140,16 +140,34 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
         },
       );
 
-      // Refresh comments to show new comment with proper organization
-      await fetchComments();
+      // Add the new comment directly to state — no refetch, no spinner flash
+      const newComment = res.data?.comment || res.data;
+      if (newComment && newComment._id) {
+        if (replyingTo) {
+          // Attach reply under its parent
+          setComments((prev) =>
+            prev.map((c) =>
+              c._id === replyingTo._id
+                ? { ...c, replies: [...(c.replies || []), newComment] }
+                : c
+            )
+          );
+        } else {
+          // New top-level comment — append to end
+          setComments((prev) => [...prev, { ...newComment, replies: [] }]);
+        }
+      } else {
+        // Fallback: silent background refetch without spinner
+        fetchComments();
+      }
 
       // Reset input state
       setCommentText("");
       setSelectedImage(null);
       setReplyingTo(null);
 
-      // Scroll to top to show new comment
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      // Scroll to bottom so user sees the new comment
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (error) {
       console.log("Error posting comment:", error);
       Alert.alert("خطأ", "فشل إرسال التعليق. حاول مرة أخرى.");

@@ -218,7 +218,7 @@ const buildDanceAnimation = (rotate, translateX, scaleLoop, danceStyle) => {
 };
 
 // ─── Main AnimatedGift ────────────────────────────────────────────────────────
-const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
+const AnimatedGift = ({ gift, sender, onComplete, isCombo = false, containerTop }) => {
   const soundRef  = useRef(null);
   const hasExited = useRef(false);
   const [lottieJson, setLottieJson] = useState(null);
@@ -361,7 +361,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
         ? { uri: gift.lottieUrl || gift.animationUrl }
         : null;
     return (
-      <View style={styles.standardContainer} pointerEvents="none">
+      <View style={[styles.standardContainer, containerTop != null && { top: containerTop }]} pointerEvents="none">
         <Animated.View style={[styles.card, danceStyleAnim]}>
           <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
           {lottieSource
@@ -383,7 +383,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
   if (!showAsImage) return null;
 
   return (
-    <View style={styles.standardContainer} pointerEvents="none">
+    <View style={[styles.standardContainer, containerTop != null && { top: containerTop }]} pointerEvents="none">
       <Animated.View style={[styles.card, danceStyleAnim]}>
         <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
         <Image
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   tiktokGradient:     { position: "absolute", bottom: 0, left: 0, right: 0, height: height * 0.35, backgroundColor: "rgba(0,0,0,0.38)" },
   tiktokTitleWrap:    { position: "absolute", top: 16, left: 0, right: 0, alignItems: "center" },
   tiktokTitle:        { color: "#FFF", fontSize: 28, fontWeight: "900", textShadowColor: "rgba(0,0,0,0.9)", textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 8, letterSpacing: 1 },
-  standardContainer:  { position: "absolute", top: height * 0.32, left: 0, right: 0, alignItems: "center", zIndex: 1500 },
+  standardContainer:  { position: "absolute", top: height * 0.55, left: 0, right: 0, alignItems: "center", zIndex: 1500 },
   card:               { alignItems: "center" },
   glow:               { position: "absolute", width: 290, height: 290, borderRadius: 145, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 65, elevation: 24 },
   senderRow:          { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14, backgroundColor: "rgba(0,0,0,0.76)", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 28, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },

@@ -97,7 +97,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
       styles.row,
       { opacity, transform: [{ translateY: slideY }] },
     ]}>
-      {/* ── Avatar with optional badge frame ── */}
+      {/* ── Avatar first in JSX → renders on the visual RIGHT in RTL ── */}
       <View style={styles.avatarWrap}>
         {hasActiveBadge ? (
           <ProfileBadgeFrame
@@ -118,9 +118,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
         )}
       </View>
 
-      {/* ── Right column: single inline bubble with username + message ── */}
+      {/* ── Bubble second in JSX → renders to the LEFT of the avatar in RTL ── */}
       <View style={styles.rightCol}>
-        {/* Message bubble */}
         <View
           style={[
             styles.bubble,
