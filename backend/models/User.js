@@ -109,8 +109,8 @@ const userSchema = mongoose.Schema(
         ref: "Video",
       },
     ],
-    // VIP membership
-    vipLevel: { type: Number, default: 0, min: 0, max: 15 },
+    // VIP membership (no upper limit — admin can create levels beyond 15)
+    vipLevel: { type: Number, default: 0, min: 0 },
     vipPurchasedAt: { type: Date, default: null },
     // User Level System based on spending
     level: { type: Number, default: 0, min: 0 },

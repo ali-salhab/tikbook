@@ -33,6 +33,7 @@ const defaultForm = {
   commentTextColor: "",
   commentBorderWidth: 1.4,
   commentBubbleShape: "classic",
+  giftThreshold: 0,
   imageUrl: "", imageFile: null,
   badgeLottieUrl: "", badgeLottieFile: null,
   commentFrameLottieUrl: "", commentFrameLottieFile: null,
@@ -239,6 +240,7 @@ const VipManagement = ({ onLogout }) => {
       commentBorderWidth:
         typeof lvl.commentBorderWidth === "number" ? lvl.commentBorderWidth : 1.4,
       commentBubbleShape: lvl.commentBubbleShape || "classic",
+      giftThreshold: lvl.giftThreshold || 0,
       imageUrl: lvl.imageUrl || "", imageFile: null,
       badgeLottieUrl: lvl.badgeLottieUrl || "", badgeLottieFile: null,
       commentFrameLottieUrl: lvl.commentFrameLottieUrl || "", commentFrameLottieFile: null,
@@ -284,6 +286,7 @@ const VipManagement = ({ onLogout }) => {
         ...form,
         level: Number(form.level),
         price: Number(form.price),
+        giftThreshold: Number(form.giftThreshold) || 0,
         sortOrder: Number(form.sortOrder) || 0,
         commentTextColor: form.commentTextColor || "",
         commentBorderWidth: normalizeBorderWidth(form.commentBorderWidth),
@@ -440,6 +443,9 @@ const VipManagement = ({ onLogout }) => {
                   {lvl.profileFrameLottieUrl && (
                     <div style={{ fontSize: 10, color: "#06b6d4", textAlign: "center" }}>👤 إطار صورة ✓</div>
                   )}
+                  {lvl.giftThreshold > 0 && (
+                    <div style={{ fontSize: 10, color: "#f59e0b", textAlign: "center" }}>🎁 ترقية عند {lvl.giftThreshold.toLocaleString()} عملة</div>
+                  )}
                   {lvl.joinAnimationLottieUrl && (
                     <div style={{ fontSize: 10, color: "#f59e0b", textAlign: "center" }}>✨ دخول ✓</div>
                   )}
@@ -523,6 +529,20 @@ const VipManagement = ({ onLogout }) => {
                   <input style={styles.input} type="number" min="0" value={form.price}
                     onChange={(e) => setForm({ ...form, price: +e.target.value })} />
                 </div>
+              </div>
+
+              {/* ── Row 2b: Gift threshold (auto-upgrade) ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>🎁 حد الهدايا للترقية التلقائية (عدد العملات)</label>
+                  <input style={styles.input} type="number" min="0" value={form.giftThreshold}
+                    onChange={(e) => setForm({ ...form, giftThreshold: +e.target.value })}
+                    placeholder="0 = معطّل" />
+                  <span style={{ fontSize: 11, color: "#64748b", marginTop: 3, display: "block" }}>
+                    عندما يصل مجموع ما أنفقه المستخدم على الهدايا لهذا الرقم يتم ترقيته تلقائياً. اترك 0 لتعطيل الترقية التلقائية لهذا المستوى.
+                  </span>
+                </div>
+                <div style={styles.formGroup} />
               </div>
 
               {/* ── Row 3: Level color + Username color ── */}

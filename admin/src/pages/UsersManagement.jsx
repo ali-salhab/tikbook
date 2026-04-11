@@ -28,6 +28,7 @@ const UsersManagement = () => {
   const [vipLevelUpdating, setVipLevelUpdating] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [availableVipLevels, setAvailableVipLevels] = useState([]);
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
 
@@ -44,8 +45,22 @@ const UsersManagement = () => {
 
   useEffect(() => {
     if (!token) navigate("/");
-    else fetchUsers();
+    else {
+      fetchUsers();
+      fetchVipLevels();
+    }
   }, []);
+
+  const fetchVipLevels = async () => {
+    try {
+      const res = await api.get("/vip/admin/levels", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAvailableVipLevels(res.data.levels || res.data || []);
+    } catch {
+      // fallback: will use numeric input
+    }
+  };
 
   useEffect(() => {
     applyFilters();
@@ -352,6 +367,7 @@ const UsersManagement = () => {
                   <th>الفيديوهات</th>
                   <th>النشاط</th>
                   <th>المستوى</th>
+                  <th>VIP</th>
                   <th>إجمالي الإنفاق</th>
                   <th>إجمالي الشحن</th>
                   <th>التاريخ</th>
@@ -387,6 +403,11 @@ const UsersManagement = () => {
                         </span>
                       </td>
                       <td className="metric">{user.level || 0}</td>
+                      <td className="metric">
+                        {user.vipLevel > 0
+                          ? <span style={{ color: "#c026d3", fontWeight: 700 }}>VIP{user.vipLevel}</span>
+                          : <span style={{ color: "#94a3b8" }}>—</span>}
+                      </td>
                       <td className="metric">{(user.totalSpent || 0).toFixed(2)}</td>
                       <td className="metric">{(user.totalRecharged || 0).toFixed(2)}</td>
                       <td className="date-cell">
@@ -534,16 +555,19 @@ const UsersManagement = () => {
 
               {/* VIP Level update section */}
               <div style={{ padding: "12px 0", borderTop: "1px solid #eee", marginBottom: "8px" }}>
-                <p style={{ fontWeight: "600", marginBottom: "8px" }}>تحديث مستوى VIP يدوياً (0–15)</p>
+                <p style={{ fontWeight: "600", marginBottom: "8px" }}>تحديث مستوى VIP يدوياً</p>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   <select
                     defaultValue={selectedUser.vipLevel || 0}
                     key={"vip-" + selectedUser._id}
                     id="admin-vip-level-input"
-                    style={{ width: "90px", padding: "6px 10px", border: "1px solid #ccc", borderRadius: "6px", fontSize: "14px" }}
+                    style={{ width: "130px", padding: "6px 10px", border: "1px solid #ccc", borderRadius: "6px", fontSize: "14px" }}
                   >
-                    {Array.from({ length: 16 }, (_, i) => (
-                      <option key={i} value={i}>{i === 0 ? "0 (بدون)" : `VIP ${i}`}</option>
+                    <option value={0}>0 (بدون VIP)</option>
+                    {availableVipLevels.map((lvl) => (
+                      <option key={lvl.level} value={lvl.level}>
+                        VIP {lvl.level} — {lvl.nameAr || lvl.name || ""}
+                      </option>
                     ))}
                   </select>
                   <button

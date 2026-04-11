@@ -703,24 +703,7 @@ const ProfileScreen = ({ navigation }) => {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Badges/Frames */}
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => navigation.navigate("MyBadges")}
-              activeOpacity={0.82}
-            >
-              <LinearGradient
-                colors={["#1C1400", "#3A2A00", "#1C1400"]}
-                style={styles.actionBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={[styles.actionBtnIcon, { backgroundColor: "rgba(255,215,0,0.18)" }]}>
-                  <Ionicons name="medal-outline" size={16} color="#FFD700" />
-                </View>
-                <Text style={[styles.actionBtnLabel, { color: "#FFD700" }]}>الإطارات</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            {/* END Badges/Frames removed */}
           </View>
         </View>
 

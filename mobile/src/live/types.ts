@@ -61,6 +61,9 @@ export interface VipTierConfig {
   badgeImageUrl?: string;
   badgeLottieUrl?: string;
   commentFrameLottieUrl?: string;
+  commentTextColor?: string;
+  commentBorderWidth?: number;
+  commentBubbleShape?: "classic" | "rounded" | "square" | "pill";
   profileFrameLottieUrl?: string;
   joinAnimationLottieUrl?: string;
   joinSoundUrl?: string;

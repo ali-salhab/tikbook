@@ -544,18 +544,30 @@ const updateUserVipLevel = async (req, res) => {
       return res.status(400).json({ success: false, message: "vipLevel is required" });
     }
     const v = Number(vipLevel);
-    if (!Number.isFinite(v) || v < 0 || v > 15) {
-      return res.status(400).json({ success: false, message: "vipLevel must be 0–15" });
+    if (!Number.isFinite(v) || v < 0) {
+      return res.status(400).json({ success: false, message: "vipLevel must be >= 0" });
     }
+
+    const VipLevel = require("../models/VipLevel");
+    const vipDoc = v > 0 ? await VipLevel.findOne({ level: v }).select("nameAr name").lean() : null;
 
     const user = await User.findByIdAndUpdate(
       id,
-      { vipLevel: v },
+      { vipLevel: v, vipPurchasedAt: v > 0 ? new Date() : null },
       { new: true, runValidators: true }
     );
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Send push notification
+    const { sendNotificationToUser: pushNotify } = require("./pushNotificationController");
+    if (v > 0 && vipDoc) {
+      const levelName = vipDoc.nameAr || vipDoc.name || `VIP${v}`;
+      pushNotify(id, "🎉 تمت ترقيتك!", `تهانينا! تمت ترقيتك إلى مستوى ${levelName} من قبل الإدارة`, { type: "vip_assigned", vipLevel: v }).catch(() => {});
+    } else if (v === 0) {
+      pushNotify(id, "تم تعديل مستواك", "تم إعادة تعيين مستوى VIP الخاص بك من قبل الإدارة.", { type: "vip_removed" }).catch(() => {});
     }
 
     res.json({

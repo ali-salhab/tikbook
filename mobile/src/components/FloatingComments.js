@@ -87,10 +87,17 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   const activeBadgeUrl =
     item.user?.activeBadge?.imageUrl ||
     item.user?.activeBadge?.image ||
-    item.user?.activeBadge ||
+    (typeof item.user?.activeBadge === "string" ? item.user.activeBadge : null) ||
     null;
-  const hasActiveBadge =
-    typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http");
+  // VIP profile frame from admin panel — used when user has no personal badge
+  const vipProfileFrameUrl =
+    isVip && typeof vipStyleEntry === "object"
+      ? vipStyleEntry?.profileFrameLottieUrl || vipStyleEntry?.badgeImageUrl || null
+      : null;
+  const resolvedBadgeUrl =
+    (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
+    (typeof vipProfileFrameUrl === "string" && vipProfileFrameUrl.startsWith("http") ? vipProfileFrameUrl : null);
+  const hasActiveBadge = !!resolvedBadgeUrl;
 
   return (
     <Animated.View style={[
@@ -102,7 +109,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
         {hasActiveBadge ? (
           <ProfileBadgeFrame
             profileImage={!imgError ? imageUri : null}
-            badgeImage={activeBadgeUrl}
+            badgeImage={resolvedBadgeUrl}
             size={ms(36)}
           />
         ) : imageUri && !imgError ? (
@@ -132,36 +139,74 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
           {isGift && item.giftUrl ? (
             <View style={styles.giftMsgRow}>
               <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
-              {!isSystem && item.user?.username ? (
-                <Text style={styles.inlineBubbleText} numberOfLines={2} ellipsizeMode="tail">
-                  <Text style={[styles.inlineUsername, isVip && vipColor ? { color: vipColor } : null]}>
-                    {item.user.username}{" "}
+              <View style={{ flexShrink: 1 }}>
+                {isVip && (
+                  <View style={styles.headerRow}>
+                    {vipIconUrl ? (
+                      <Image
+                        source={{ uri: vipIconUrl }}
+                        style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
+                        resizeMode="contain"
+                      />
+                    ) : null}
+                    <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
+                      <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
+                    </View>
+                  </View>
+                )}
+                {!isSystem && item.user?.username ? (
+                  <Text style={styles.inlineBubbleText} numberOfLines={2} ellipsizeMode="tail">
+                    <Text style={[styles.inlineUsername, isVip && vipColor ? { color: vipColor } : null]}>
+                      {item.user.username}{" "}
+                    </Text>
+                    <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                      {messageText}
+                    </Text>
                   </Text>
-                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                ) : (
+                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
                     {messageText}
                   </Text>
-                </Text>
-              ) : (
-                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
-                  {messageText}
-                </Text>
-              )}
+                )}
+              </View>
             </View>
           ) : isSystem ? (
             <Text style={[styles.message, styles.systemMessage]} numberOfLines={3} ellipsizeMode="tail">
               {messageText}
             </Text>
           ) : (
-            <Text style={styles.inlineBubbleText} numberOfLines={3} ellipsizeMode="tail">
-              {item.user?.username ? (
-                <Text style={[styles.inlineUsername, isVip && vipColor ? { color: vipColor } : null]}>
-                  {item.user.username}{" "}
-                </Text>
+            <View>
+              {isVip ? (
+                <View style={styles.headerRow}>
+                  {vipIconUrl ? (
+                    <Image
+                      source={{ uri: vipIconUrl }}
+                      style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
+                    <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
+                  </View>
+                  <Text
+                    style={[styles.inlineUsername, { color: vipColor || "#FFD700" }]}
+                    numberOfLines={1}
+                  >
+                    {item.user?.username || ""}
+                  </Text>
+                </View>
               ) : null}
-              <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
-                {messageText}
+              <Text style={styles.inlineBubbleText} numberOfLines={isVip ? 2 : 3} ellipsizeMode="tail">
+                {!isVip && item.user?.username ? (
+                  <Text style={styles.inlineUsername}>
+                    {item.user.username}{" "}
+                  </Text>
+                ) : null}
+                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                  {messageText}
+                </Text>
               </Text>
-            </Text>
+            </View>
           )}
 
           {commentFrameLottieUrl ? (

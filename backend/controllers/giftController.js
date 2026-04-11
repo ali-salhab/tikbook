@@ -6,7 +6,9 @@ const Transaction = require("../models/Transaction");
 const { LiveRoom } = require("../models/LiveRoom");
 const { uploadToCloudinary } = require("../services/cloudinaryService");
 const fs = require("fs");
-const { calculateLevelFromSpent } = require("../services/userLevelingService");
+const { calculateLevelFromSpent, loadThresholdsFromDB } = require("../services/userLevelingService");
+const { sendNotificationToUser } = require("./pushNotificationController");
+const VipLevel = require("../models/VipLevel");
 
 // Get all active gifts
 exports.getGifts = async (req, res) => {
@@ -112,10 +114,27 @@ exports.sendGift = async (req, res) => {
     // Deduct from sender
     senderWallet.balance -= totalCoins;
     await senderWallet.save();
-      // Update sender level based on spending
+      // Update sender level based on spending — auto-upgrade vipLevel via DB thresholds
       const sender = await User.findById(senderId);
       sender.totalSpent = (sender.totalSpent || 0) + totalCoins;
-      sender.level = calculateLevelFromSpent(sender.totalSpent);
+      // Load DB thresholds and recalculate both level and vipLevel
+      const thresholds = await loadThresholdsFromDB();
+      sender.level = calculateLevelFromSpent(sender.totalSpent, thresholds.length > 0 ? thresholds : null);
+      const newVipLevel = calculateLevelFromSpent(sender.totalSpent, thresholds.length > 0 ? thresholds : null);
+      const prevVipLevel = sender.vipLevel || 0;
+      if (newVipLevel > prevVipLevel) {
+        sender.vipLevel = newVipLevel;
+        sender.vipPurchasedAt = new Date();
+        // Notify user of auto-upgrade
+        const vipDoc = await VipLevel.findOne({ level: newVipLevel }).select("nameAr name").lean();
+        const levelName = vipDoc?.nameAr || vipDoc?.name || `VIP${newVipLevel}`;
+        sendNotificationToUser(
+          senderId,
+          "🎉 تمت ترقيتك تلقائياً!",
+          `تهانينا! تمت ترقيتك إلى مستوى ${levelName} بفضل هداياك`,
+          { type: "vip_auto_upgrade", vipLevel: newVipLevel }
+        ).catch(() => {});
+      }
       await sender.save();
     // Gift earnings go to the receiver's withdrawable earnings only — NOT to spendable balance.
     // Spendable balance only increases via top-ups (Stripe).

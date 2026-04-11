@@ -247,6 +247,8 @@ exports.getVipLevels = async (_req, res) => {
         commentFrameLottieUrl:
           levelDoc.commentFrameLottieUrl || frame?.lottieUrl || "",
         commentTextColor: levelDoc.commentTextColor || "",
+        commentBorderWidth: typeof levelDoc.commentBorderWidth === "number" ? levelDoc.commentBorderWidth : 1.4,
+        commentBubbleShape: levelDoc.commentBubbleShape || "classic",
         profileFrameLottieUrl: levelDoc.profileFrameLottieUrl || "",
         joinAnimationLottieUrl: levelDoc.joinAnimationLottieUrl || "",
         joinSoundUrl: levelDoc.joinSoundUrl || "",

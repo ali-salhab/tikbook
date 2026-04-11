@@ -97,8 +97,8 @@ const CommentParticles = ({ gift, anchorY, onDone }) => {
 
   return (
     <>
-      {particles.map((p) => (
-        <FlyingParticle key={p.key} {...p} />
+      {particles.map(({ key, ...p }) => (
+        <FlyingParticle key={key} {...p} />
       ))}
     </>
   );

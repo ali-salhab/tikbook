@@ -56,6 +56,8 @@ const vipLevelSchema = new mongoose.Schema(
       specialBadge: { type: Boolean, default: true },
       specialJoinAnimation: { type: Boolean, default: true },
     },
+    // Coins threshold for auto-upgrade (admin configurable). 0 = disabled.
+    giftThreshold: { type: Number, default: 0, min: 0 },
     commentTextColor: { type: String, default: "" },  // empty = white (#FFFFFF)
     commentBorderWidth: { type: Number, default: 1.4, min: 0, max: 8 },
     commentBubbleShape: {

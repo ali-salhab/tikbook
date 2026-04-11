@@ -54,7 +54,7 @@ import { ms, fs } from "../utils/responsive";
 import JoinAnimation from "../live/components/JoinAnimation";
 
 const { width, height } = Dimensions.get("window");
-const SEAT_SIZE = ms(58);
+const BASE_SEAT_SIZE = ms(58);
 const HOST_SIZE = ms(110);
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
@@ -155,6 +155,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const { roomId } = route.params;
   const insets = useSafeAreaInsets();
 
+  // ── Seat size (fixed small) ────────────────────────────────────────────────
+  const SEAT_SIZE = BASE_SEAT_SIZE * 0.65;
+
   // ── Core ─────────────────────────────────────────────────────────────────────
   const [room, setRoom] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -252,6 +255,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
     };
   }, []);
 
+  // Fixed comment area top — always below header + typical 2-row seat grid, never shifts with seat count
+  useEffect(() => {
+    setCommentAreaTop(insets.top + ms(190));
+  }, [insets.top]);
+
   // Sync isHandRaised with server data so it survives reconnects / fetchRoomData
   useEffect(() => {
     if (!room || !userInfo?._id) return;
@@ -338,6 +346,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
           commentTextColor: typeof level?.commentTextColor === "string" && level.commentTextColor.trim()
             ? level.commentTextColor.trim()
             : "",
+          profileFrameLottieUrl: level?.profileFrameLottieUrl || null,
+          badgeImageUrl: level?.badgeImageUrl || null,
         };
 
         return acc;
@@ -361,6 +371,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
           }
           if (leLevel?.commentTextColor && commentStyles[lvl]) {
             commentStyles[lvl].commentTextColor = leLevel.commentTextColor;
+          }
+          if (leLevel?.profileFrameLottieUrl && commentStyles[lvl]) {
+            commentStyles[lvl].profileFrameLottieUrl = leLevel.profileFrameLottieUrl;
+          }
+          if (leLevel?.badgeImageUrl && commentStyles[lvl]) {
+            commentStyles[lvl].badgeImageUrl = leLevel.badgeImageUrl;
           }
           if (leLevel?.joinAnimationLottieUrl) {
             joinUrls[lvl] = leLevel.joinAnimationLottieUrl;
@@ -1231,7 +1247,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
     // handRaised is a top-level array in the room model
     const raisers = room?.handRaised || [];
     return (
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + ms(14) }]}>
         {/* Left */}
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.exitBtn} onPress={handleExitPress}>
@@ -1248,10 +1264,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
             </Text>
           </View>
         </View>
-        {/* Center */}
-        <Text style={styles.roomTitle} numberOfLines={1}>
-          {room?.title || "غرفة البث"}
-        </Text>
+        {/* Center spacer — host avatar is rendered absolutely behind this row */}
+        <View style={{ flex: 1 }} />
         {/* Right */}
         <View style={styles.headerRight}>
           {/* Hand-raise requests badge (host/mod only) */}
@@ -1468,10 +1482,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
       : {};
 
     return (
-      <SeatWrapper style={styles.seatWrap} {...wrapperProps}>
+      <SeatWrapper style={[styles.seatWrap, { width: SEAT_SIZE + ms(14) }]} {...wrapperProps}>
         <View
           style={[
             styles.seatCircle,
+            { width: SEAT_SIZE, height: SEAT_SIZE, borderRadius: SEAT_SIZE / 2 },
             !user && styles.seatEmpty,
             !speaker?.isMuted && user && styles.seatActive,
             isSpeaking && styles.seatSpeaking,
@@ -2457,36 +2472,52 @@ const LiveRoomScreen = ({ route, navigation }) => {
         style={StyleSheet.absoluteFill}
       />
 
+      {/* Large centered host avatar — clipped to header height so it never bleeds into seats */}
+      {room?.host && (room.host.profileImage || room.host.avatar) && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top + ms(108),
+            overflow: "hidden",
+            zIndex: 50,
+            alignItems: "center",
+            justifyContent: "flex-end",
+            paddingBottom: ms(6),
+          }}
+        >
+          <Image
+            source={{ uri: room.host.profileImage || room.host.avatar }}
+            style={{
+              width: ms(88),
+              height: ms(88),
+              borderRadius: ms(44),
+              borderWidth: 3,
+              borderColor: "rgba(168, 85, 247, 0.9)",
+            }}
+            resizeMode="cover"
+          />
+          <Text
+            style={[styles.hostTopName, { position: "absolute", bottom: ms(4) }]}
+            numberOfLines={1}
+          >
+            {room.host.username}
+          </Text>
+        </View>
+      )}
+
       {/* Main content */}
       <View style={{ flex: 1, zIndex: 100 }}>
         {Header()}
 
         {/* Cover banner removed — background image fills full screen */}
 
-        {/* Currency bar */}
-        <View style={styles.currencyBar}>
-          <View style={styles.currencyItem}>
-            <Ionicons name="radio" size={11} color="#FF4444" />
-            <Text style={styles.currencyText}>REC</Text>
-          </View>
-          <View style={styles.currencyItem}>
-            <Ionicons name="gift" size={11} color="#D8BFD8" />
-            <Text style={styles.currencyText}>Gift</Text>
-          </View>
-        </View>
-
         {HostSection()}
         {SeatGrid()}
         {GiftTargetBar()}
-        {/* Marker: tracks where comments should start (below all seat content) */}
-        <View
-          onLayout={(e) => {
-            const y = e.nativeEvent.layout.y;
-            // layout.y is relative to the flex container which starts at insets.top
-            const absY = insets.top + y;
-            if (absY > 0) setCommentAreaTop(absY);
-          }}
-        />
       </View>
 
       {/* VIP join animation banner */}
@@ -2714,26 +2745,29 @@ const styles = StyleSheet.create({
   },
 
   // ── Currency bar ─────────────────────────────────────────────────────────────
-  currencyBar: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: ms(14),
-    gap: ms(6),
-    marginBottom: ms(2),
-  },
-  currencyItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(3),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: ms(7),
-    paddingVertical: ms(3),
-    borderRadius: ms(8),
-  },
-  currencyText: { color: "#FFF", fontSize: fs(10) },
+  currencyBar: { display: "none" },
+  currencyItem: {},
+  currencyText: {},
 
   // ── Host ─────────────────────────────────────────────────────────────────────
-  hostSection: { alignItems: "center", marginTop: ms(14), marginBottom: ms(8) },
+  hostSection: { display: "none" },
+  hostTopCenter: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 50,
+  },
+  hostTopName: {
+    color: "#FFF",
+    fontSize: fs(11),
+    fontWeight: "700",
+    marginTop: ms(-6),
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: ms(4),
+  },
   hostGlowHalo: {
     position: "absolute",
     width: HOST_SIZE * 1.35 + ms(28),
@@ -2774,21 +2808,25 @@ const styles = StyleSheet.create({
   hostRoleText: { color: "#00F2EA", fontSize: fs(11) },
 
   // ── Seat grid ─────────────────────────────────────────────────────────────────
+  seatSizeControl: { display: "none" },
+  seatSizeBtn: {},
+  seatSizeBtnActive: {},
+  seatSizeBtnText: {},
   seatGrid: {
     paddingHorizontal: ms(4),
-    gap: ms(8),
-    marginTop: ms(10),
+    gap: ms(3),
+    marginTop: ms(118),
     backgroundColor: "rgba(0,0,0,0.32)",
-    borderRadius: ms(18),
-    paddingVertical: ms(14),
+    borderRadius: ms(14),
+    paddingVertical: ms(6),
     marginHorizontal: ms(6),
   },
   seatRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center" },
-  seatWrap: { alignItems: "center", width: SEAT_SIZE + ms(14) },
+  seatWrap: { alignItems: "center", width: BASE_SEAT_SIZE + ms(14) },
   seatCircle: {
-    width: SEAT_SIZE,
-    height: SEAT_SIZE,
-    borderRadius: SEAT_SIZE / 2,
+    width: BASE_SEAT_SIZE,
+    height: BASE_SEAT_SIZE,
+    borderRadius: BASE_SEAT_SIZE / 2,
     backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.2)",
@@ -2865,8 +2903,8 @@ const styles = StyleSheet.create({
   },
   seatLabel: {
     color: "rgba(255,255,255,0.88)",
-    fontSize: fs(9.5),
-    marginTop: ms(5),
+    fontSize: fs(7.5),
+    marginTop: ms(2),
     fontWeight: "500",
   },
 

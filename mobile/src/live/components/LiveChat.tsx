@@ -67,6 +67,10 @@ const LiveChat = ({
           vipLevel={Number(item.vipLevel || 0)}
           frameAnimationUrl={item.frameAnimationUrl || tierConfig?.commentFrameLottieUrl}
           usernameColor={tierConfig?.usernameColor}
+          commentTextColor={tierConfig?.commentTextColor}
+          commentBorderWidth={tierConfig?.commentBorderWidth}
+          commentBubbleShape={tierConfig?.commentBubbleShape}
+          tierColor={tierConfig?.color}
           shouldAnimateFrame={shouldAnimateFrame}
         />
       );
