@@ -212,7 +212,14 @@ exports.joinLiveRoom = async (req, res) => {
     }
 
     if (liveRoom.status !== "active") {
-      return res.status(400).json({ message: "Live room is not active" });
+      // Allow the original host to reactivate their own room
+      if (liveRoom.host.toString() === userId.toString()) {
+        liveRoom.status = "active";
+        liveRoom.endedAt = undefined;
+        await liveRoom.save();
+      } else {
+        return res.status(400).json({ message: "Live room is not active" });
+      }
     }
 
     // Check if already in room
@@ -290,19 +297,8 @@ exports.leaveLiveRoom = async (req, res) => {
       return res.status(404).json({ message: "Live room not found" });
     }
 
-    // If host leaves, end the room
-    if (liveRoom.host.toString() === userId.toString()) {
-      liveRoom.status = "ended";
-      liveRoom.endedAt = new Date();
-      await liveRoom.save();
-
-      return res.json({
-        success: true,
-        message: "Room ended",
-      });
-    }
-
-    // Remove from participants
+    // Remove from participants (speakers / listeners / handRaised)
+    // The host leaving does NOT end the room — only the explicit /end endpoint does that.
     liveRoom.removeParticipant(userId);
     await liveRoom.save();
 
