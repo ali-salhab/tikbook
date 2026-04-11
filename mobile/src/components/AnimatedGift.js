@@ -155,30 +155,30 @@ const buildEntryAnimation = (scale, translateY, rotate, entryEffect, isCombo) =>
   const settle = isCombo ? 1.7 : 1.05;
   switch (entryEffect) {
     case "zoom":
-      scale.value = withSequence(withTiming(big * 1.1, { duration: 350, easing: Easing.out(Easing.back(3)) }), withSpring(settle, { damping: 8 }));
-      translateY.value = withSpring(0, { damping: 8, stiffness: 120 });
+      scale.value = withSequence(withTiming(big * 1.1, { duration: 500, easing: Easing.out(Easing.back(3)) }), withSpring(settle, { damping: 8 }));
+      translateY.value = withSpring(0, { damping: 8, stiffness: 90 });
       break;
     case "slide":
       scale.value = withSpring(settle, { damping: 10 });
-      translateY.value = withSequence(withTiming(-30, { duration: 40 }), withSpring(0, { damping: 8, stiffness: 100 }));
+      translateY.value = withSequence(withTiming(-30, { duration: 55 }), withSpring(0, { damping: 8, stiffness: 80 }));
       break;
     case "flip":
-      rotate.value = withSequence(withTiming(180, { duration: 250 }), withTiming(0, { duration: 250 }));
+      rotate.value = withSequence(withTiming(180, { duration: 350 }), withTiming(0, { duration: 350 }));
       scale.value = withSpring(settle, { damping: 8 });
       translateY.value = withSpring(0, { damping: 10 });
       break;
     case "rubber":
       scale.value = withSequence(
-        withTiming(big * 1.3, { duration: 200 }),
-        withTiming(settle * 0.85, { duration: 120 }),
-        withTiming(big * 1.1, { duration: 100 }),
+        withTiming(big * 1.3, { duration: 280 }),
+        withTiming(settle * 0.85, { duration: 170 }),
+        withTiming(big * 1.1, { duration: 140 }),
         withSpring(settle, { damping: 10 })
       );
       translateY.value = withSpring(0, { damping: 10 });
       break;
     default: // pop
-      scale.value = withSequence(withSpring(big, { damping: 5, stiffness: 180 }), withSpring(settle, { damping: 9, stiffness: 120 }));
-      translateY.value = withSpring(0, { damping: 10, stiffness: 100 });
+      scale.value = withSequence(withSpring(big, { damping: 5, stiffness: 130 }), withSpring(settle, { damping: 9, stiffness: 90 }));
+      translateY.value = withSpring(0, { damping: 10, stiffness: 80 });
   }
 };
 
@@ -285,14 +285,14 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false }) => {
     cancelAnimation(scaleLoop);
     cancelAnimation(rotate);
     cancelAnimation(translateX);
-    opacity.value    = withTiming(0, { duration: 420 }, (done) => { if (done && onComplete) runOnJS(onComplete)(); });
-    scale.value      = withTiming(0.15, { duration: 420 });
-    translateY.value = withTiming(-180, { duration: 420, easing: Easing.in(Easing.cubic) });
+    opacity.value    = withTiming(0, { duration: 620 }, (done) => { if (done && onComplete) runOnJS(onComplete)(); });
+    scale.value      = withTiming(0.15, { duration: 620 });
+    translateY.value = withTiming(-220, { duration: 620, easing: Easing.in(Easing.cubic) });
   };
 
   useEffect(() => {
     playSound();
-    const duration = (gift.duration || 3) * 1000;
+    const duration = (gift.duration || 4) * 1000;
 
     if (isVideo || isWebmAlpha) {
       opacity.value = withTiming(1, { duration: 350 });

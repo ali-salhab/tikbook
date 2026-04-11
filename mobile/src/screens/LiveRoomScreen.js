@@ -58,6 +58,96 @@ const SEAT_SIZE = ms(58);
 const HOST_SIZE = ms(110);
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
+// ─── Host avatar: clean circle + animated pulse rings when speaking ───────────
+// ── Speaking ripple ring colors ───────────────────────────────────────────────
+const RIPPLE_COLORS = ["#7C3AED", "#2563EB", "#06B6D4"];   // violet, blue, cyan — cycle
+
+const HostAvatarFrame = React.memo(({ imageUrl, size, isSpeaking, showOnline }) => {
+  // 3 ripple rings — each is a scale+opacity value starting at 0
+  const r1 = useRef(new Animated.Value(0)).current;
+  const r2 = useRef(new Animated.Value(0)).current;
+  const r3 = useRef(new Animated.Value(0)).current;
+
+  const makeRipple = (anim, delay) =>
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(anim, { toValue: 1, duration: 2200, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
+      ])
+    );
+
+  useEffect(() => {
+    if (isSpeaking) {
+      const a1 = makeRipple(r1, 0);
+      const a2 = makeRipple(r2, 730);
+      const a3 = makeRipple(r3, 1460);
+      a1.start(); a2.start(); a3.start();
+      return () => {
+        a1.stop(); a2.stop(); a3.stop();
+        r1.setValue(0); r2.setValue(0); r3.setValue(0);
+      };
+    } else {
+      r1.setValue(0); r2.setValue(0); r3.setValue(0);
+    }
+  }, [isSpeaking]);
+
+  // Each ring: starts at image size, expands to 1.7× while fading out
+  const ringStyle = (anim, color) => ({
+    position: "absolute",
+    width:  size,
+    height: size,
+    borderRadius: size / 2,
+    borderWidth: 2.5,
+    borderColor: color,
+    opacity: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.85, 0] }),
+    transform: [{
+      scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.75] }),
+    }],
+  });
+
+  return (
+    // transparent — no background, no box
+    <View style={{ width: size + ms(70), height: size + ms(70), alignItems: "center", justifyContent: "center" }}>
+
+      {/* ripple rings — only visible while speaking */}
+      <Animated.View pointerEvents="none" style={ringStyle(r1, RIPPLE_COLORS[0])} />
+      <Animated.View pointerEvents="none" style={ringStyle(r2, RIPPLE_COLORS[1])} />
+      <Animated.View pointerEvents="none" style={ringStyle(r3, RIPPLE_COLORS[2])} />
+
+      {/* profile image */}
+      <View style={{
+        width: size, height: size,
+        borderRadius: size / 2,
+        overflow: "hidden",
+        backgroundColor: "#2A1550",
+        borderWidth: 2.5,
+        borderColor: isSpeaking ? "#A855F7" : "rgba(120,40,200,0.35)",
+      }}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <Ionicons name="person" size={size * 0.38} color="rgba(255,255,255,0.4)" />
+          </View>
+        )}
+      </View>
+
+      {/* online dot */}
+      {showOnline && (
+        <View style={{
+          position: "absolute",
+          bottom: ms(18), right: ms(16),
+          width: ms(14), height: ms(14),
+          borderRadius: ms(7),
+          backgroundColor: "#00BB55",
+          borderWidth: 2, borderColor: "#FFF",
+        }} />
+      )}
+    </View>
+  );
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LiveRoomScreen = ({ route, navigation }) => {
@@ -1192,25 +1282,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const isHostSpeaking = host && speakingUserIds.has(host._id);
     return (
       <View style={styles.hostSection}>
-        {/* Blur glow halo behind avatar */}
-        <View style={styles.hostGlowHalo} pointerEvents="none">
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-        </View>
-        <View style={styles.hostAvatarWrap}>
-          <ProfileBadgeFrame
-            profileImage={host?.profileImage || host?.avatar || null}
-            badgeImage={
-              host?.activeBadge?.imageUrl || host?.activeBadge?.image || null
-            }
-            size={HOST_SIZE}
-            showSparks={true}
-          />
-          {joinedAgora && <View style={styles.onlineDot} />}
-          {/* Sound wave absolutely inside avatar wrap — zero layout impact */}
-          <View style={styles.hostSoundWave} pointerEvents="none">
-            <SoundWave active={isHostSpeaking} color="#A020F0" size="large" />
-          </View>
-        </View>
+        <HostAvatarFrame
+          imageUrl={host?.profileImage || host?.avatar || null}
+          size={HOST_SIZE}
+          isSpeaking={isHostSpeaking}
+          showOnline={joinedAgora}
+        />
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
         {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
         <View style={styles.hostRoleRow}>
@@ -2398,18 +2475,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
         />
       </View>
 
-      {/* Animated gifts */}
-      {activeGifts.map((d) => (
-        <AnimatedGift
-          key={d.id}
-          gift={d.gift}
-          sender={d.sender}
-          onComplete={() =>
-            setActiveGifts((p) => p.filter((g) => g.id !== d.id))
-          }
-        />
-      ))}
-
       {/* VIP join animation banner */}
       {joinAnimationUser && (() => {
           const vipLvl = Number(joinAnimationUser?.vipLevel || 0);
@@ -2437,7 +2502,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Chat input — always mounted, shown/hidden via display prop */}
       {chatInputBar}
 
-      {/* FloatingComments rendered last so it's above the keyboard backdrop */}
+      {/* FloatingComments rendered before gifts so gifts paint above comments */}
       <FloatingComments
         comments={messages}
         bottomOffset={
@@ -2448,6 +2513,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
         topOffset={commentAreaTop}
         vipLevelStyles={vipLevelCommentStyles}
       />
+
+      {/* Animated gifts — rendered after FloatingComments so they appear above */}
+      {activeGifts.map((d) => (
+        <AnimatedGift
+          key={d.id}
+          gift={d.gift}
+          sender={d.sender}
+          onComplete={() =>
+            setActiveGifts((p) => p.filter((g) => g.id !== d.id))
+          }
+        />
+      ))}
 
       {/* Comment particle bursts on gift send */}
       {activeCommentParticles.map((burst) => (

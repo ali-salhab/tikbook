@@ -11,6 +11,8 @@ import {
   Image,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import {
   SafeAreaView,
@@ -20,7 +22,7 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { useStripe } from "@stripe/stripe-react-native";
+import { CardField, useConfirmPayment } from "@stripe/stripe-react-native";
 import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
@@ -35,7 +37,8 @@ const CoinIcon = ({ size = 20 }) => (
 const WalletScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { userToken, userInfo } = useContext(AuthContext);
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { confirmPayment } = useConfirmPayment();
+  const [cardComplete, setCardComplete] = useState(false);
   const [activeTab, setActiveTab] = useState("recharge"); // 'recharge' | 'withdraw'
   const [balance, setBalance] = useState(0);
   const [earnings, setEarnings] = useState(0);
@@ -102,32 +105,18 @@ const WalletScreen = ({ navigation }) => {
   };
 
   const handleRecharge = () => {
-    let amount = 0;
-    let price = 0;
-
-    if (selectedPackage) {
-      amount = selectedPackage.coins;
-      price = selectedPackage.price;
-    } else if (customAmount) {
-      amount = parseInt(customAmount);
-      // Calculate price based on a rate, e.g., approx 0.6 EGP per coin based on packages
-      price = amount * 0.605;
-    } else {
+    if (!selectedPackage && !customAmount) {
       Alert.alert("تنبيه", "الرجاء اختيار باقة أو إدخال مبلغ");
       return;
     }
-
-    Alert.alert(
-      "تأكيد الطلب",
-      `إنشاء طلب شحن ${amount} عملة عبر Stripe مقابل ج.م. ${price.toFixed(2)}؟`,
-      [
-        { text: "إلغاء", style: "cancel" },
-        {
-          text: "إنشاء الطلب",
-          onPress: () => processPayment(amount),
-        },
-      ],
-    );
+    if (!cardComplete) {
+      Alert.alert("تنبيه", "الرجاء إدخال بيانات البطاقة كاملة");
+      return;
+    }
+    const amount = selectedPackage
+      ? selectedPackage.coins
+      : parseInt(customAmount || "0");
+    processPayment(amount);
   };
 
   const processPayment = async (amount) => {
@@ -135,74 +124,39 @@ const WalletScreen = ({ navigation }) => {
     try {
       const res = await axios.post(
         `${BASE_URL}/wallet/topup/request`,
-        {
-          amount,
-          paymentMethod: "visa",
-        },
+        { amount, paymentMethod: "visa" },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
       if (!res.data.clientSecret || !res.data.paymentIntentId) {
         setPaymentLoading(false);
-        Alert.alert("خطأ", "لم يتم تجهيز شاشة الدفع من Stripe");
+        Alert.alert("خطأ", "لم يتم تجهيز الدفع من Stripe");
         return;
       }
 
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: "TikBook",
-        paymentIntentClientSecret: res.data.clientSecret,
-        allowsDelayedPaymentMethods: false,
-        defaultBillingDetails: {
-          name: userInfo?.username || "TikBook User",
+      const { error, paymentIntent } = await confirmPayment(res.data.clientSecret, {
+        paymentMethodType: "Card",
+        paymentMethodData: {
+          billingDetails: { name: userInfo?.username || "TikBook User" },
         },
-        returnURL: "tikbook://stripe-redirect",
       });
 
-      if (initError) {
+      if (error) {
         await axios
           .post(
             `${BASE_URL}/wallet/topup/fail`,
-            {
-              reference: res.data.reference,
-              reason: initError.message || "init_failed",
-            },
+            { reference: res.data.reference, reason: error.code || error.message || "payment_failed" },
             { headers: { Authorization: `Bearer ${userToken}` } },
           )
           .catch(() => {});
         setPaymentLoading(false);
-        Alert.alert("خطأ", initError.message || "تعذر فتح شاشة الدفع");
-        return;
-      }
-
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        await axios
-          .post(
-            `${BASE_URL}/wallet/topup/fail`,
-            {
-              reference: res.data.reference,
-              reason:
-                presentError.code || presentError.message || "payment_failed",
-            },
-            { headers: { Authorization: `Bearer ${userToken}` } },
-          )
-          .catch(() => {});
-        setPaymentLoading(false);
-        if (presentError.code === "Canceled") {
-          Alert.alert("تم الإلغاء", "تم إلغاء عملية الدفع");
-          return;
-        }
-        Alert.alert("خطأ", presentError.message || "فشلت عملية الدفع");
+        Alert.alert("خطأ", error.message || "فشلت عملية الدفع");
         return;
       }
 
       const confirmRes = await axios.post(
         `${BASE_URL}/wallet/topup/confirm`,
-        {
-          reference: res.data.reference,
-          paymentIntentId: res.data.paymentIntentId,
-        },
+        { reference: res.data.reference, paymentIntentId: res.data.paymentIntentId },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
 
@@ -210,10 +164,11 @@ const WalletScreen = ({ navigation }) => {
       setPaymentLoading(false);
       setSelectedPackage(null);
       setCustomAmount("");
-      Alert.alert("نجاح", "تم شحن الرصيد عبر Stripe بنجاح");
+      setCardComplete(false);
+      Alert.alert("نجاح ✅", "تم شحن رصيدك بنجاح");
     } catch (e) {
       setPaymentLoading(false);
-      const msg = e?.response?.data?.message || "فشلت عملية إنشاء الطلب";
+      const msg = e?.response?.data?.message || "فشلت عملية الدفع";
       Alert.alert("خطأ", msg);
     }
   };
@@ -319,8 +274,15 @@ const WalletScreen = ({ navigation }) => {
       </View>
 
       {activeTab === "recharge" ? (
-        <>
-          <ScrollView contentContainerStyle={styles.scrollContent}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* User Info */}
             <View style={styles.userInfoContainer}>
               <View style={styles.userInfo}>
@@ -418,18 +380,35 @@ const WalletScreen = ({ navigation }) => {
               </Text>
             </View>
 
-            <View style={styles.paymentMethodsCard}>
-              <Text style={styles.paymentMethodsTitle}>اختر طريقة الدفع</Text>
-
-              <View style={[styles.paymentMethodOption, styles.paymentMethodOptionActive]}>
-                <Ionicons name="card-outline" size={24} color="#1A1F71" />
-                <Text style={styles.paymentMethodName}>Visa / MasterCard (Stripe)</Text>
+              <View style={styles.paymentMethodsCard}>
+              <View style={styles.paymentCardHeader}>
+                <Ionicons name="card-outline" size={18} color="#A78BFA" />
+                <Text style={styles.paymentMethodsTitle}>بيانات البطاقة</Text>
               </View>
-
-              <Text style={styles.paymentMethodHint}>
-                سيتم فتح Stripe PaymentSheet لإتمام الدفع ببطاقتك، ثم يضاف
-                الرصيد مباشرة بعد نجاح العملية.
-              </Text>
+              {/* Force LTR so card fields show: number | expiry | CVC */}
+              <View style={{ direction: "ltr", alignSelf: "stretch" }}>
+                <CardField
+                  postalCodeEnabled={false}
+                  placeholders={{ number: "4242 4242 4242 4242" }}
+                  cardStyle={{
+                    backgroundColor: "#1A1630",
+                    textColor: "#F0EEFF",
+                    placeholderColor: "#7A7099",
+                    borderColor: "#3D3570",
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    fontSize: 16,
+                  }}
+                  style={{ width: "100%", height: ms(54), marginVertical: ms(4) }}
+                  onCardChange={(details) => setCardComplete(details.complete)}
+                />
+              </View>
+              {cardComplete && (
+                <View style={styles.cardReadyRow}>
+                  <Ionicons name="checkmark-circle" size={15} color="#00BB55" />
+                  <Text style={styles.cardReadyText}>البطاقة جاهزة</Text>
+                </View>
+              )}
             </View>
           </ScrollView>
 
@@ -440,10 +419,6 @@ const WalletScreen = ({ navigation }) => {
               { paddingBottom: Math.max(insets.bottom, 16) },
             ]}
           >
-            <View style={styles.paymentMethodRow}>
-              <Text style={styles.paymentLabel}>طريقة الدفع</Text>
-              <Text style={styles.paymentLabelValue}>Visa / MasterCard (Stripe)</Text>
-            </View>
             <Text style={styles.totalText}>
               الإجمالي: ج.م.{" "}
               {selectedPackage
@@ -467,7 +442,7 @@ const WalletScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
           </View>
-        </>
+        </KeyboardAvoidingView>
       ) : (
         /* ── Withdraw Tab ── */
         <ScrollView
@@ -599,7 +574,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   scrollContent: {
-    paddingBottom: ms(180),
+    paddingBottom: ms(24),
   },
   userInfoContainer: {
     backgroundColor: "#151228",
@@ -719,6 +694,22 @@ const styles = StyleSheet.create({
     borderColor: "#2A2550",
     gap: ms(10),
   },
+  paymentCardHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: ms(6),
+  },
+  cardReadyRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: ms(5),
+    marginTop: ms(2),
+  },
+  cardReadyText: {
+    color: "#00BB55",
+    fontSize: fs(12),
+    fontWeight: "600",
+  },
   paymentMethodsTitle: {
     fontSize: fs(14),
     fontWeight: "bold",
@@ -758,10 +749,6 @@ const styles = StyleSheet.create({
     lineHeight: ms(18),
   },
   footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: "#0E0B1E",
     padding: ms(16),
     borderTopWidth: 1,
@@ -813,6 +800,7 @@ const styles = StyleSheet.create({
   totalText: {
     fontSize: fs(16),
     fontWeight: "bold",
+    color: "#F0EEFF",
     textAlign: "right",
     marginBottom: ms(12),
   },

@@ -38,24 +38,20 @@ const getLevelColor = (level) => {
 };
 
 // ─── Single animated comment row ─────────────────────────────────────────
-const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 0 }) => {
+const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
-  // Wheel effect target opacity — further rows are dimmer
-  const targetOpacity = Math.max(0.18, 1 - distanceFromEnd * 0.18);
-  const opacity = useRef(new Animated.Value(isNew ? 0 : targetOpacity)).current;
+  const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (isNew) {
       Animated.parallel([
-        Animated.timing(opacity, { toValue: targetOpacity, duration: 220, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
         Animated.timing(slideY,   { toValue: 0, duration: 220, useNativeDriver: true }),
       ]).start();
     }
   }, []);
 
-  // Wheel effect: rows further from the newest are smaller
-  const wheelScale = Math.max(0.72, 1 - distanceFromEnd * 0.055);
   const isSystem   = item.isSystem && !item.user;  // purely system (no sender)
   const isGift     = item.isSystem && !!item.user;  // gift msg — has a sender
   const imageUri   = item.user?.profileImage || item.user?.avatar;
@@ -99,13 +95,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, distanceFromEnd = 
   return (
     <Animated.View style={[
       styles.row,
-      {
-        opacity,
-        transform: [
-          { translateY: slideY },
-          { scale: wheelScale },
-        ],
-      },
+      { opacity, transform: [{ translateY: slideY }] },
     ]}>
       {/* ── Avatar with optional badge frame ── */}
       <View style={styles.avatarWrap}>
@@ -217,7 +207,6 @@ const FloatingComments = ({
         item={item}
         isNew={(item.clientMessageId || item.id || item._id) === latestId}
         vipLevelStyles={vipLevelStyles}
-        distanceFromEnd={visible.length - 1 - index}
       />
     ),
     [latestId, vipLevelStyles, visible.length],
