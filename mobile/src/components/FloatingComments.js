@@ -231,6 +231,8 @@ const FloatingComments = ({
   bottomOffset = 90,
   topOffset = 0,
   vipLevelStyles = {},
+  inline = false,
+  bottomPadding = 0,
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -294,7 +296,10 @@ const FloatingComments = ({
 
   return (
     <View
-      style={[styles.container, { bottom: bottomOffset, top: topOffset }]}
+      style={inline
+        ? [styles.inlineContainer, bottomPadding > 0 && { paddingBottom: bottomPadding }]
+        : [styles.container, { bottom: bottomOffset, top: topOffset }]
+      }
       pointerEvents="box-none"
     >
       <FlatList
@@ -303,7 +308,7 @@ const FloatingComments = ({
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={inline ? styles.listContentInline : styles.listContent}
         onScrollBeginDrag={handleScrollBegin}
         onMomentumScrollEnd={handleScrollEnd}
         onScrollEndDrag={handleScrollEnd}
@@ -333,11 +338,22 @@ const styles = StyleSheet.create({
     elevation: 100,
     backgroundColor: "transparent",
   },
+  inlineContainer: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: "transparent",
+    paddingHorizontal: ms(8),
+  },
   listContent: {
     flexGrow: 1,
     justifyContent: "flex-end",
     paddingVertical: 4,
     paddingBottom: ms(6),
+  },
+  listContentInline: {
+    paddingVertical: 4,
+    paddingHorizontal: ms(4),
+    paddingBottom: ms(8),
   },
   row: {
     flexDirection: "row",

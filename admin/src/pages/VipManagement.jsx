@@ -76,6 +76,12 @@ const VipManagement = ({ onLogout }) => {
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
 
+  // Helper: detect if a stored URL is an image (PNG/JPG) vs Lottie JSON
+  const isImageUrl = (url) => {
+    if (!url || typeof url !== "string") return false;
+    return /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url) && !url.includes("/raw/upload/");
+  };
+
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -90,7 +96,9 @@ const VipManagement = ({ onLogout }) => {
   const [imagePreview, setImagePreview] = useState(null);
   const [badgeLottieName, setBadgeLottieName] = useState("");
   const [commentFrameLottieName, setCommentFrameLottieName] = useState("");
+  const [commentFramePreview, setCommentFramePreview] = useState(null);
   const [profileFrameLottieName, setProfileFrameLottieName] = useState("");
+  const [profileFramePreview, setProfileFramePreview] = useState(null);
   const [joinAnimationLottieName, setJoinAnimationLottieName] = useState("");
   const [joinSoundName, setJoinSoundName] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -222,7 +230,9 @@ const VipManagement = ({ onLogout }) => {
     setImagePreview(null);
     setBadgeLottieName("");
     setCommentFrameLottieName("");
+    setCommentFramePreview(null);
     setProfileFrameLottieName("");
+    setProfileFramePreview(null);
     setJoinAnimationLottieName("");
     setJoinSoundName("");
     setShowBenefitForm(false);
@@ -255,7 +265,9 @@ const VipManagement = ({ onLogout }) => {
     setImagePreview(lvl.imageUrl || null);
     setBadgeLottieName(lvl.badgeLottieUrl ? "(ملف محفوظ)" : "");
     setCommentFrameLottieName(lvl.commentFrameLottieUrl ? "(ملف محفوظ)" : "");
+    setCommentFramePreview(isImageUrl(lvl.commentFrameLottieUrl) ? lvl.commentFrameLottieUrl : null);
     setProfileFrameLottieName(lvl.profileFrameLottieUrl ? "(ملف محفوظ)" : "");
+    setProfileFramePreview(isImageUrl(lvl.profileFrameLottieUrl) ? lvl.profileFrameLottieUrl : null);
     setJoinAnimationLottieName(lvl.joinAnimationLottieUrl ? "(ملف محفوظ)" : "");
     setJoinSoundName(lvl.joinSoundUrl ? "(ملف محفوظ)" : "");
     setShowBenefitForm(false);
@@ -274,9 +286,21 @@ const VipManagement = ({ onLogout }) => {
       let finalBadgeLottieUrl = form.badgeLottieUrl;
       if (form.badgeLottieFile) finalBadgeLottieUrl = await uploadLottieToCloudinary(form.badgeLottieFile);
       let finalCommentFrameLottieUrl = form.commentFrameLottieUrl;
-      if (form.commentFrameLottieFile) finalCommentFrameLottieUrl = await uploadLottieToCloudinary(form.commentFrameLottieFile);
+      if (form.commentFrameLottieFile) {
+        const isImg = form.commentFrameLottieFile.type?.startsWith("image/") ||
+          /\.(png|jpe?g|webp|gif)$/i.test(form.commentFrameLottieFile.name);
+        finalCommentFrameLottieUrl = isImg
+          ? await uploadToCloudinary(form.commentFrameLottieFile)
+          : await uploadLottieToCloudinary(form.commentFrameLottieFile);
+      }
       let finalProfileFrameLottieUrl = form.profileFrameLottieUrl;
-      if (form.profileFrameLottieFile) finalProfileFrameLottieUrl = await uploadLottieToCloudinary(form.profileFrameLottieFile);
+      if (form.profileFrameLottieFile) {
+        const isImage = form.profileFrameLottieFile.type?.startsWith("image/") ||
+          /\.(png|jpe?g|webp|gif)$/i.test(form.profileFrameLottieFile.name);
+        finalProfileFrameLottieUrl = isImage
+          ? await uploadToCloudinary(form.profileFrameLottieFile)
+          : await uploadLottieToCloudinary(form.profileFrameLottieFile);
+      }
       let finalJoinAnimationLottieUrl = form.joinAnimationLottieUrl;
       if (form.joinAnimationLottieFile) finalJoinAnimationLottieUrl = await uploadLottieToCloudinary(form.joinAnimationLottieFile);
       let finalJoinSoundUrl = form.joinSoundUrl;
@@ -316,7 +340,9 @@ const VipManagement = ({ onLogout }) => {
       setImagePreview(null);
       setBadgeLottieName("");
       setCommentFrameLottieName("");
+      setCommentFramePreview(null);
       setProfileFrameLottieName("");
+      setProfileFramePreview(null);
       setJoinAnimationLottieName("");
       setJoinSoundName("");
       alert(editingLevel ? "تم تحديث المستوى بنجاح ✅" : "تم إضافة المستوى بنجاح ✅");
@@ -689,28 +715,40 @@ const VipManagement = ({ onLogout }) => {
               {/* ── Row 6: Comment frame + Profile frame ── */}
               <div style={styles.twoCol}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>💬 إطار التعليق (Lottie)</label>
-                  <input ref={commentFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                  <label style={styles.label}>💬 إطار التعليق (PNG / Lottie)</label>
+                  <input ref={commentFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
                     onChange={(e) => {
                       const file = e.target.files?.[0]; if (!file) return;
+                      const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+                      if (commentFramePreview && commentFramePreview.startsWith("blob:")) URL.revokeObjectURL(commentFramePreview);
+                      setCommentFramePreview(isImg ? URL.createObjectURL(file) : null);
                       setForm({ ...form, commentFrameLottieFile: file, commentFrameLottieUrl: "" });
                       setCommentFrameLottieName(file.name);
                     }} />
-                  <div style={styles.uploadZone} onClick={() => commentFrameLottieRef.current?.click()}>
-                    {commentFrameLottieName ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                  <div style={{ ...styles.uploadZone, padding: 0, overflow: "hidden", minHeight: 80 }} onClick={() => commentFrameLottieRef.current?.click()}>
+                    {commentFramePreview ? (
+                      <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
+                        <img src={commentFramePreview} alt="comment frame preview" style={{ maxWidth: "100%", maxHeight: 120, objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }} />
+                        <div style={{ fontSize: 10, color: "#64748b", padding: "4px 0" }}>{commentFrameLottieName}</div>
+                        <button style={{ ...styles.removeImgBtn, position: "absolute", top: 4, right: 4 }}
+                          onClick={(e) => { e.stopPropagation(); if (commentFramePreview?.startsWith("blob:")) URL.revokeObjectURL(commentFramePreview); setCommentFramePreview(null); setCommentFrameLottieName(""); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : commentFrameLottieName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 10 }}>
                         <span style={{ fontSize: 22 }}>💬</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{commentFrameLottieName}</div>
                           {form.commentFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
                         </div>
                         <button style={{ ...styles.removeImgBtn, position: "static" }}
-                          onClick={(e) => { e.stopPropagation(); setCommentFrameLottieName(""); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
+                          onClick={(e) => { e.stopPropagation(); setCommentFrameLottieName(""); setCommentFramePreview(null); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
                           <FiX size={12} />
                         </button>
                       </div>
                     ) : (
-                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>
                         <div style={{ fontSize: 24, marginBottom: 4 }}>💬</div>
                         <div style={{ fontSize: 12 }}>إطار فقاعة التعليق</div>
                       </div>
@@ -718,28 +756,43 @@ const VipManagement = ({ onLogout }) => {
                   </div>
                 </div>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>👤 إطار الصورة الشخصية (Lottie)</label>
-                  <input ref={profileFrameLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                  <label style={styles.label}>👤 إطار الصورة الشخصية (PNG / Lottie)</label>
+                  <input ref={profileFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
                     onChange={(e) => {
                       const file = e.target.files?.[0]; if (!file) return;
+                      const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+                      if (profileFramePreview && profileFramePreview.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview);
+                      setProfileFramePreview(isImg ? URL.createObjectURL(file) : null);
                       setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
                       setProfileFrameLottieName(file.name);
                     }} />
-                  <div style={styles.uploadZone} onClick={() => profileFrameLottieRef.current?.click()}>
-                    {profileFrameLottieName ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                  <div style={{ ...styles.uploadZone, padding: 0, overflow: "hidden", minHeight: 80 }} onClick={() => profileFrameLottieRef.current?.click()}>
+                    {profileFramePreview ? (
+                      <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
+                        <div style={{ position: "relative", display: "inline-block", margin: "8px auto" }}>
+                          <div style={{ width: 80, height: 80, borderRadius: "50%", backgroundColor: "#334155", position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
+                          <img src={profileFramePreview} alt="profile frame preview" style={{ width: 108, height: 108, objectFit: "contain", display: "block", position: "relative", zIndex: 1 }} />
+                        </div>
+                        <div style={{ fontSize: 10, color: "#64748b", padding: "4px 0" }}>{profileFrameLottieName}</div>
+                        <button style={{ ...styles.removeImgBtn, position: "absolute", top: 4, right: 4 }}
+                          onClick={(e) => { e.stopPropagation(); if (profileFramePreview?.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview); setProfileFramePreview(null); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : profileFrameLottieName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 10 }}>
                         <span style={{ fontSize: 22 }}>👤</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profileFrameLottieName}</div>
                           {form.profileFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
                         </div>
                         <button style={{ ...styles.removeImgBtn, position: "static" }}
-                          onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
+                          onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setProfileFramePreview(null); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
                           <FiX size={12} />
                         </button>
                       </div>
                     ) : (
-                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>
                         <div style={{ fontSize: 24, marginBottom: 4 }}>👤</div>
                         <div style={{ fontSize: 12 }}>إطار الأفاتار في الغرفة</div>
                       </div>

@@ -54,7 +54,7 @@ import { ms, fs } from "../utils/responsive";
 import JoinAnimation from "../live/components/JoinAnimation";
 
 const { width, height } = Dimensions.get("window");
-const BASE_SEAT_SIZE = ms(58);
+const BASE_SEAT_SIZE = ms(72);
 const HOST_SIZE = ms(110);
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
@@ -155,8 +155,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const { roomId } = route.params;
   const insets = useSafeAreaInsets();
 
-  // ── Seat size (fixed small) ────────────────────────────────────────────────
-  const SEAT_SIZE = BASE_SEAT_SIZE * 0.65;
+  // ── Seat size ────────────────────────────────────────────────────────────
+  const SEAT_SIZE = BASE_SEAT_SIZE;
 
   // ── Core ─────────────────────────────────────────────────────────────────────
   const [room, setRoom] = useState(null);
@@ -1308,19 +1308,65 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const HostSection = () => {
     const host = room?.host;
     const isHostSpeaking = host && speakingUserIds.has(host._id);
+    if (!host) return null;
+    // Resolve host's VIP profile frame from vipLevelCommentStyles
+    const hostVipLevel = Number(host.vipLevel || 0);
+    const hostVipStyle = hostVipLevel > 0 ? vipLevelCommentStyles?.[hostVipLevel] : null;
+    const hostFrameUrl =
+      host.activeBadge?.imageUrl ||
+      host.activeBadge?.image ||
+      (typeof host.activeBadge === "string" ? host.activeBadge : null) ||
+      (hostVipStyle?.profileFrameLottieUrl || hostVipStyle?.badgeImageUrl || null) ||
+      null;
     return (
       <View style={styles.hostSection}>
-        <HostAvatarFrame
-          imageUrl={host?.profileImage || host?.avatar || null}
-          size={HOST_SIZE}
-          isSpeaking={isHostSpeaking}
-          showOnline={joinedAgora}
-        />
+        {/* Room title */}
+        {room?.title ? (
+          <View style={styles.roomTitleRow}>
+            <MaterialCommunityIcons name="broadcast" size={12} color="#A855F7" />
+            <Text style={styles.roomTitleText} numberOfLines={1}>{room.title}</Text>
+          </View>
+        ) : null}
+        {/* Host avatar with frame + ripple rings */}
+        <View style={styles.hostAvatarWrap}>
+          <HostAvatarFrame
+            imageUrl={host?.profileImage || host?.avatar || null}
+            size={HOST_SIZE}
+            isSpeaking={isHostSpeaking}
+            showOnline={joinedAgora}
+          />
+          {/* PNG / Lottie profile frame overlay */}
+          {hostFrameUrl ? (
+            /\.json($|\?)/i.test(hostFrameUrl) || hostFrameUrl.includes("/raw/upload/") ? null : (
+              <Image
+                source={{ uri: hostFrameUrl }}
+                style={{
+                  position: "absolute",
+                  width: HOST_SIZE * 1.35 + ms(70),
+                  height: HOST_SIZE * 1.35 + ms(70),
+                  zIndex: 2,
+                }}
+                resizeMode="contain"
+                pointerEvents="none"
+              />
+            )
+          ) : null}
+        </View>
+        {/* Speaking sound-wave indicator */}
+        {isHostSpeaking && (
+          <View style={styles.hostSoundWaveRow}>
+            <SoundWave active={true} color="#A855F7" size="large" />
+          </View>
+        )}
+        {/* Host name */}
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
-        {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
-        <View style={styles.hostRoleRow}>
-          <MaterialIcons name="verified" size={13} color="#00F2EA" />
-          <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
+        {/* Role + VIP badge row */}
+        <View style={styles.hostBadgeRow}>
+          <View style={styles.hostRoleRow}>
+            <MaterialIcons name="verified" size={13} color="#00F2EA" />
+            <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
+          </View>
+          {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
         </View>
       </View>
     );
@@ -2472,52 +2518,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Large centered host avatar — clipped to header height so it never bleeds into seats */}
-      {room?.host && (room.host.profileImage || room.host.avatar) && (
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: insets.top + ms(108),
-            overflow: "hidden",
-            zIndex: 50,
-            alignItems: "center",
-            justifyContent: "flex-end",
-            paddingBottom: ms(6),
-          }}
-        >
-          <Image
-            source={{ uri: room.host.profileImage || room.host.avatar }}
-            style={{
-              width: ms(88),
-              height: ms(88),
-              borderRadius: ms(44),
-              borderWidth: 3,
-              borderColor: "rgba(168, 85, 247, 0.9)",
-            }}
-            resizeMode="cover"
-          />
-          <Text
-            style={[styles.hostTopName, { position: "absolute", bottom: ms(4) }]}
-            numberOfLines={1}
-          >
-            {room.host.username}
-          </Text>
-        </View>
-      )}
-
       {/* Main content */}
       <View style={{ flex: 1, zIndex: 100 }}>
         {Header()}
 
-        {/* Cover banner removed — background image fills full screen */}
-
         {HostSection()}
         {SeatGrid()}
         {GiftTargetBar()}
+
+        {/* ── Dedicated chat section ── */}
+        <FloatingComments
+          comments={messages}
+          inline={true}
+          bottomPadding={insets.bottom + ms(72)}
+          vipLevelStyles={vipLevelCommentStyles}
+        />
       </View>
 
       {/* VIP join animation banner */}
@@ -2547,17 +2562,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {/* Chat input — always mounted, shown/hidden via display prop */}
       {chatInputBar}
 
-      {/* FloatingComments rendered before gifts so gifts paint above comments */}
-      <FloatingComments
-        comments={messages}
-        bottomOffset={
-          showInput
-            ? (keyboardOffset > 0 ? keyboardOffset : insets.bottom) + ms(62)
-            : insets.bottom + ms(70)
-        }
-        topOffset={commentAreaTop}
-        vipLevelStyles={vipLevelCommentStyles}
-      />
+      {/* FloatingComments removed from absolute overlay — now inline in main content */}
 
       {/* Animated gifts — rendered after FloatingComments so they appear above */}
       {activeGifts.map((d) => (
@@ -2750,60 +2755,56 @@ const styles = StyleSheet.create({
   currencyText: {},
 
   // ── Host ─────────────────────────────────────────────────────────────────────
-  hostSection: { display: "none" },
-  hostTopCenter: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
+  hostSection: {
     alignItems: "center",
-    zIndex: 50,
+    paddingTop: ms(8),
+    paddingBottom: ms(4),
   },
-  hostTopName: {
+  roomTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(5),
+    marginBottom: ms(8),
+    backgroundColor: "rgba(0,0,0,0.38)",
+    paddingHorizontal: ms(14),
+    paddingVertical: ms(5),
+    borderRadius: ms(20),
+    borderWidth: 1,
+    borderColor: "rgba(168,85,247,0.35)",
+  },
+  roomTitleText: {
     color: "#FFF",
-    fontSize: fs(11),
+    fontSize: fs(12),
     fontWeight: "700",
-    marginTop: ms(-6),
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: ms(4),
+    maxWidth: width * 0.55,
+    letterSpacing: 0.3,
   },
-  hostGlowHalo: {
-    position: "absolute",
-    width: HOST_SIZE * 1.35 + ms(28),
-    height: HOST_SIZE * 1.35 + ms(28),
-    borderRadius: (HOST_SIZE * 1.35 + ms(28)) / 2,
-    backgroundColor: "rgba(160,32,240,0.28)",
-    overflow: "hidden",
-    shadowColor: "#A020F0",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: ms(22),
-    elevation: 18,
+  hostAvatarWrap: { position: "relative", alignItems: "center", justifyContent: "center" },
+  hostSoundWaveRow: {
+    marginTop: ms(4),
+    height: ms(20),
+    alignItems: "center",
+    justifyContent: "center",
   },
-  hostAvatarWrap: { position: "relative" },
-  onlineDot: {
-    position: "absolute",
-    bottom: ms(4),
-    right: ms(4),
-    width: ms(14),
-    height: ms(14),
-    borderRadius: ms(7),
-    backgroundColor: "#00BB55",
-    borderWidth: 2,
-    borderColor: "#FFF",
+  hostBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(6),
+    marginTop: ms(4),
   },
   hostName: {
     color: "#FFF",
     fontWeight: "700",
     fontSize: fs(14),
-    marginTop: ms(8),
+    marginTop: ms(6),
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: ms(3),
   },
   hostRoleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: ms(4),
-    marginTop: ms(2),
   },
   hostRoleText: { color: "#00F2EA", fontSize: fs(11) },
 
@@ -2814,15 +2815,15 @@ const styles = StyleSheet.create({
   seatSizeBtnText: {},
   seatGrid: {
     paddingHorizontal: ms(4),
-    gap: ms(3),
-    marginTop: ms(118),
-    backgroundColor: "rgba(0,0,0,0.32)",
-    borderRadius: ms(14),
-    paddingVertical: ms(6),
+    gap: ms(6),
+    marginTop: ms(8),
+    backgroundColor: "rgba(0,0,0,0.28)",
+    borderRadius: ms(16),
+    paddingVertical: ms(10),
     marginHorizontal: ms(6),
   },
   seatRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center" },
-  seatWrap: { alignItems: "center", width: BASE_SEAT_SIZE + ms(14) },
+  seatWrap: { alignItems: "center", width: BASE_SEAT_SIZE + ms(18) },
   seatCircle: {
     width: BASE_SEAT_SIZE,
     height: BASE_SEAT_SIZE,

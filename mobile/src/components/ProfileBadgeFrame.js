@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Image, Text, Animated } from "react-native";
+import LottieView from "lottie-react-native";
 
 const NUM_SPARKS = 8;
 
@@ -126,13 +127,23 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100, showSparks = 
         />
       )}
 
-      {/* Badge frame — sits above avatar */}
+      {/* Badge frame — sits above avatar: PNG/image renders as <Image>, Lottie JSON renders animated */}
       {badgeImage && (
-        <Image
-          source={{ uri: badgeImage }}
-          style={{ position: "absolute", width: badgeSize, height: badgeSize, zIndex: 1 }}
-          resizeMode="contain"
-        />
+        /\.(json)($|\?)/i.test(badgeImage) || badgeImage.includes("/raw/upload/") ? (
+          <LottieView
+            source={{ uri: badgeImage }}
+            autoPlay
+            loop
+            style={{ position: "absolute", width: badgeSize, height: badgeSize, zIndex: 1 }}
+            resizeMode="contain"
+          />
+        ) : (
+          <Image
+            source={{ uri: badgeImage }}
+            style={{ position: "absolute", width: badgeSize, height: badgeSize, zIndex: 1 }}
+            resizeMode="contain"
+          />
+        )
       )}
 
       {/* Golden sparkle glints — appear on the frame surface */}
