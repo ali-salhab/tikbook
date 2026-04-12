@@ -574,15 +574,38 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* Badge frame overlay (sits outside/on top of circle) */}
-              {profile?.activeBadge?.imageUrl && (
-                <Image
-                  source={{ uri: profile.activeBadge.imageUrl }}
-                  style={styles.badgeFrameOverlay}
-                  resizeMode="contain"
-                  pointerEvents="none"
-                />
-              )}
+              {/* Badge frame overlay — activeBadge first, then VIP profile frame */}
+              {(() => {
+                const activeBadgeUrl =
+                  profile?.activeBadge?.imageUrl ||
+                  profile?.activeBadge?.image ||
+                  (typeof profile?.activeBadge === "string" ? profile.activeBadge : null);
+                const vl = vipLevels.find((l) => l.level === profile?.vipLevel);
+                const vipFrameUrl =
+                  vl?.profileFrameLottieUrl || vl?.badgeImageUrl || null;
+                const frameUrl =
+                  (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
+                  (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
+                if (!frameUrl) return null;
+                const isLottie = /\.json($|\?)/i.test(frameUrl) || frameUrl.includes("/raw/upload/");
+                return isLottie ? (
+                  <LottieView
+                    source={{ uri: frameUrl }}
+                    autoPlay
+                    loop
+                    style={styles.badgeFrameOverlay}
+                    resizeMode="contain"
+                    pointerEvents="none"
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: frameUrl }}
+                    style={styles.badgeFrameOverlay}
+                    resizeMode="contain"
+                    pointerEvents="none"
+                  />
+                );
+              })()}
             </TouchableOpacity>
           </View>
 
