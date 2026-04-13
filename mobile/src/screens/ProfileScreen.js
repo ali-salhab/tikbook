@@ -580,9 +580,14 @@ const ProfileScreen = ({ navigation }) => {
                   profile?.activeBadge?.imageUrl ||
                   profile?.activeBadge?.image ||
                   (typeof profile?.activeBadge === "string" ? profile.activeBadge : null);
-                const vl = vipLevels.find((l) => l.level === profile?.vipLevel);
+                const vl = vipLevels.find((l) => Number(l.level) === Number(profile?.vipLevel));
+                const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
                 const vipFrameUrl =
-                  vl?.profileFrameLottieUrl || vl?.badgeImageUrl || null;
+                  vl?.profileFrameLottieUrl ||
+                  frameBenefit?.imageUrl ||
+                  frameBenefit?.lottieUrl ||
+                  vl?.badgeImageUrl ||
+                  null;
                 const frameUrl =
                   (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
                   (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
@@ -808,8 +813,12 @@ const makeStyles = (theme) =>
     },
     avatarContainer: {
       position: "relative",
+      width: ms(130),
+      height: ms(130),
       marginBottom: ms(8),
       alignSelf: "center",
+      alignItems: "center",
+      justifyContent: "center",
     },
     avatarWrapper: {
       width: ms(100),
@@ -880,10 +889,10 @@ const makeStyles = (theme) =>
     },
     badgeFrameOverlay: {
       position: "absolute",
-      width: ms(135),
-      height: ms(135),
-      top: -ms(17),
-      left: -ms(17),
+      width: ms(130),
+      height: ms(130),
+      top: 0,
+      left: 0,
       pointerEvents: "none",
     },
     badgeShopButton: {

@@ -210,14 +210,23 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
           )}
 
           {commentFrameLottieUrl ? (
-            <LottieView
-              source={{ uri: commentFrameLottieUrl }}
-              autoPlay
-              loop
-              style={styles.commentFrame}
-              pointerEvents="none"
-              resizeMode="cover"
-            />
+            /\.json($|\?)/i.test(commentFrameLottieUrl) || commentFrameLottieUrl.includes("/raw/upload/") ? (
+              <LottieView
+                source={{ uri: commentFrameLottieUrl }}
+                autoPlay
+                loop
+                style={styles.commentFrame}
+                pointerEvents="none"
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={{ uri: commentFrameLottieUrl }}
+                style={styles.commentFrame}
+                resizeMode="stretch"
+                pointerEvents="none"
+              />
+            )
           ) : null}
         </View>
       </View>

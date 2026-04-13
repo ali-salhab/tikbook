@@ -24,6 +24,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { ms, fs } from "../utils/responsive";
 import { useApp } from "../context/AppContext";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 const { width } = Dimensions.get("window");
 
@@ -38,6 +39,7 @@ const LiveRoomsListScreen = ({ navigation }) => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [vipLevelMap, setVipLevelMap] = useState({}); // level number → { profileFrameLottieUrl, badgeImageUrl }
 
   const filteredRooms = searchText.trim()
     ? liveRooms.filter(
@@ -49,7 +51,24 @@ const LiveRoomsListScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchLiveRooms();
+    fetchVipLevels();
   }, [activeTab]);
+
+  const fetchVipLevels = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/vip/levels`);
+      const levels = Array.isArray(res.data?.levels) ? res.data.levels : [];
+      const map = {};
+      levels.forEach((l) => {
+        const n = Number(l?.level);
+        if (n > 0) map[n] = {
+          profileFrameLottieUrl: l.profileFrameLottieUrl || null,
+          badgeImageUrl: l.badgeImageUrl || null,
+        };
+      });
+      setVipLevelMap(map);
+    } catch (_) {}
+  };
 
   // Refresh rooms list every time the screen gains focus (avoids stale ended rooms)
   useFocusEffect(
@@ -185,10 +204,21 @@ const LiveRoomsListScreen = ({ navigation }) => {
   );
 
   const renderRoomItem = ({ item }) => {
-    // Generate random stats for demo purposes if not present
-    const viewers =
-      item.participantCount || Math.floor(Math.random() * 200) + 50;
-    const category = item.category || "عشوائي";
+    const viewers = item.participantCount || item.listeners?.length || 0;
+    const hostVipLevel = Number(item.host?.vipLevel || 0);
+    const hostVipEntry = hostVipLevel > 0 ? vipLevelMap[hostVipLevel] : null;
+    const hostFrameUrl =
+      item.host?.activeBadge?.imageUrl ||
+      item.host?.activeBadge?.image ||
+      (typeof item.host?.activeBadge === "string" ? item.host.activeBadge : null) ||
+      hostVipEntry?.profileFrameLottieUrl ||
+      hostVipEntry?.badgeImageUrl ||
+      null;
+    // Only use PNG frames (skip Lottie raw URLs) for Image component
+    const isLottieFrame = hostFrameUrl && (
+      /\.json($|\?)/i.test(hostFrameUrl) || hostFrameUrl.includes("/raw/upload/")
+    );
+    const pngFrameUrl = hostFrameUrl && !isLottieFrame ? hostFrameUrl : null;
 
     return (
       <TouchableOpacity
@@ -196,6 +226,7 @@ const LiveRoomsListScreen = ({ navigation }) => {
         onPress={() => handleJoinRoom(item)}
         activeOpacity={0.9}
       >
+        <View style={styles.roomImageWrap}>
         <ImageBackground
           source={{
             uri:
@@ -210,7 +241,7 @@ const LiveRoomsListScreen = ({ navigation }) => {
         >
           {/* Overlay Gradient */}
           <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.6)"]}
+            colors={["transparent", "rgba(0,0,0,0.75)"]}
             style={styles.cardGradient}
           />
 
@@ -220,28 +251,37 @@ const LiveRoomsListScreen = ({ navigation }) => {
             <Text style={styles.viewerCount}>{viewers}</Text>
           </View>
 
-          {/* Special Banner (Optional) */}
-          {Math.random() > 0.7 && (
-            <View style={styles.specialBanner}>
-              <Text style={styles.specialBannerText}>LUDO</Text>
-            </View>
-          )}
-
-          {/* Bottom Info */}
+          {/* Bottom Info — host avatar + name + title */}
           <View style={styles.cardBottom}>
-            <Text style={styles.hostName} numberOfLines={1}>
-              {item.host?.username || "Unknown"}
-            </Text>
-            <View style={styles.categoryPill}>
-              <Text style={styles.categoryText}>{category}</Text>
+            {/* Host avatar with VIP frame */}
+            <View style={styles.hostAvatarWrap}>
+              <ProfileBadgeFrame
+                profileImage={item.host?.profileImage || item.host?.avatar || null}
+                badgeImage={pngFrameUrl}
+                size={ms(34)}
+              />
+            </View>
+            <View style={styles.hostInfoCol}>
+              <Text style={styles.hostName} numberOfLines={1}>
+                {item.host?.username || "Unknown"}
+              </Text>
+              {item.title ? (
+                <Text style={styles.roomTitleInCard} numberOfLines={1}>
+                  {item.title}
+                </Text>
+              ) : null}
             </View>
           </View>
-        </ImageBackground>
 
-        {/* Caption below card */}
-        <Text style={styles.roomCaption} numberOfLines={1}>
-          {item.title || "انضم للمشاهدة الآن!"}
-        </Text>
+          {/* Live frame PNG overlay */}
+          <Image
+            source={require("../../assets/live_frame/live.png")}
+            style={styles.liveFrameOverlay}
+            resizeMode="stretch"
+            pointerEvents="none"
+          />
+        </ImageBackground>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -430,6 +470,21 @@ const styles = StyleSheet.create({
     width: (width - 32) / 2,
     marginBottom: ms(16),
   },
+  roomImageWrap: {
+    width: "100%",
+    height: ms(200),
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: ms(12),
+  },
+  liveFrameOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 10,
+  },
   roomImage: {
     width: "100%",
     height: ms(200),
@@ -476,39 +531,35 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   cardBottom: {
-    flexDirection: "row-reverse",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
     padding: ms(8),
+    gap: ms(6),
+  },
+  hostAvatarWrap: {
+    flexShrink: 0,
+  },
+  hostInfoCol: {
+    flex: 1,
+    minWidth: 0,
   },
   hostName: {
     color: "#FFF",
     fontSize: fs(12),
     fontWeight: "bold",
-    flex: 1,
-    textAlign: "right",
-    marginRight: ms(4),
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    textAlign: "left",
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  categoryPill: {
-    backgroundColor: "#2ECC71",
-    paddingHorizontal: ms(6),
-    paddingVertical: ms(2),
-    borderRadius: ms(4),
-  },
-  categoryText: {
-    color: "#FFF",
+  roomTitleInCard: {
+    color: "rgba(255,255,255,0.82)",
     fontSize: fs(10),
-    fontWeight: "bold",
-  },
-  roomCaption: {
-    marginTop: ms(6),
-    fontSize: fs(13),
-    color: "#B8B0D8",
-    textAlign: "right",
-    fontWeight: "500",
+    marginTop: ms(2),
+    textAlign: "left",
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   emptyContainer: {
     padding: ms(40),

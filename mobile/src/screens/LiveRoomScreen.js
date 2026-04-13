@@ -346,7 +346,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
           commentTextColor: typeof level?.commentTextColor === "string" && level.commentTextColor.trim()
             ? level.commentTextColor.trim()
             : "",
-          profileFrameLottieUrl: level?.profileFrameLottieUrl || null,
+          profileFrameLottieUrl: level?.profileFrameLottieUrl ||
+            level?.benefits?.find((b) => b.type === "frame")?.imageUrl ||
+            level?.benefits?.find((b) => b.type === "frame")?.lottieUrl ||
+            null,
           badgeImageUrl: level?.badgeImageUrl || null,
         };
 
@@ -1328,22 +1331,24 @@ const LiveRoomScreen = ({ route, navigation }) => {
           </View>
         ) : null}
         {/* Host avatar with frame + ripple rings */}
-        <View style={styles.hostAvatarWrap}>
+        <View style={[styles.hostAvatarWrap, { width: HOST_SIZE + ms(70), height: HOST_SIZE + ms(70) }]}>
           <HostAvatarFrame
             imageUrl={host?.profileImage || host?.avatar || null}
             size={HOST_SIZE}
             isSpeaking={isHostSpeaking}
             showOnline={joinedAgora}
           />
-          {/* PNG / Lottie profile frame overlay */}
+          {/* PNG / Lottie profile frame overlay — centered over the avatar */}
           {hostFrameUrl ? (
             /\.json($|\?)/i.test(hostFrameUrl) || hostFrameUrl.includes("/raw/upload/") ? null : (
               <Image
                 source={{ uri: hostFrameUrl }}
                 style={{
                   position: "absolute",
-                  width: HOST_SIZE * 1.35 + ms(70),
-                  height: HOST_SIZE * 1.35 + ms(70),
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
                   zIndex: 2,
                 }}
                 resizeMode="contain"
@@ -1352,12 +1357,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
             )
           ) : null}
         </View>
-        {/* Speaking sound-wave indicator */}
-        {isHostSpeaking && (
-          <View style={styles.hostSoundWaveRow}>
-            <SoundWave active={true} color="#A855F7" size="large" />
-          </View>
-        )}
+        {/* Speaking sound-wave indicator — always reserves space to prevent layout shift */}
+        <View style={styles.hostSoundWaveRow}>
+          {isHostSpeaking && <SoundWave active={true} color="#A855F7" size="large" />}
+        </View>
         {/* Host name */}
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
         {/* Role + VIP badge row */}
@@ -1366,7 +1369,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             <MaterialIcons name="verified" size={13} color="#00F2EA" />
             <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
           </View>
-          {host?.vipLevel > 0 && <VipBadge level={host.vipLevel} size="small" />}
+          {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="small" />}
         </View>
       </View>
     );
@@ -2759,6 +2762,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: ms(8),
     paddingBottom: ms(4),
+    minHeight: ms(200),
   },
   roomTitleRow: {
     flexDirection: "row",

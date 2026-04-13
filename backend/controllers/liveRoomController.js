@@ -69,12 +69,12 @@ exports.createLiveRoom = async (req, res) => {
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
       .populate({
         path: "host",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate({
         path: "speakers.user",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified");
@@ -140,12 +140,12 @@ exports.getActiveLiveRooms = async (req, res) => {
     const liveRooms = await LiveRoom.find(query)
       .populate({
         path: "host",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate({
         path: "speakers.user",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .sort({ createdAt: -1 })
@@ -175,12 +175,12 @@ exports.getLiveRoom = async (req, res) => {
     const liveRoom = await LiveRoom.findOne({ roomId })
       .populate({
         path: "host",
-        select: "username profileImage activeBadge isVerified bio",
+        select: "username profileImage activeBadge isVerified bio vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate({
         path: "speakers.user",
-        select: "username profileImage activeBadge isVerified bio",
+        select: "username profileImage activeBadge isVerified bio vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified")
@@ -234,12 +234,12 @@ exports.joinLiveRoom = async (req, res) => {
       const populatedRoom = await LiveRoom.findById(liveRoom._id)
         .populate({
           path: "host",
-          select: "username profileImage activeBadge isVerified",
+          select: "username profileImage activeBadge isVerified vipLevel",
           populate: { path: "activeBadge" },
         })
         .populate({
           path: "speakers.user",
-          select: "username profileImage activeBadge isVerified",
+          select: "username profileImage activeBadge isVerified vipLevel",
           populate: { path: "activeBadge" },
         })
         .populate("listeners.user", "username profileImage vipLevel isVerified")
@@ -261,12 +261,12 @@ exports.joinLiveRoom = async (req, res) => {
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
       .populate({
         path: "host",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate({
         path: "speakers.user",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified")
@@ -413,7 +413,7 @@ exports.makeSpeaker = async (req, res) => {
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
       .populate({
         path: "speakers.user",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified")
@@ -462,7 +462,7 @@ exports.removeSpeaker = async (req, res) => {
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
       .populate({
         path: "speakers.user",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified");
@@ -546,7 +546,7 @@ exports.getMyLiveRooms = async (req, res) => {
     const liveRooms = await LiveRoom.find({ host: userId })
       .populate({
         path: "host",
-        select: "username profileImage activeBadge isVerified",
+        select: "username profileImage activeBadge isVerified vipLevel",
         populate: { path: "activeBadge" },
       })
       .sort({ createdAt: -1 })
