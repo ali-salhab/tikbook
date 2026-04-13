@@ -177,6 +177,15 @@ const VipManagement = ({ onLogout }) => {
 
   const saveBenefit = async () => {
     if (!benefitForm.titleAr) { setError("عنوان الميزة مطلوب"); return; }
+    // Enforce max 1 per singleton type
+    const singletonTypes = ["frame", "chat"];
+    if (singletonTypes.includes(benefitForm.type)) {
+      const dupIdx = form.benefits.findIndex((b, i) => b.type === benefitForm.type && i !== editingBenefitIdx);
+      if (dupIdx !== -1) {
+        setError(`يمكن إضافة "${BENEFIT_TYPES.find(t => t.value === benefitForm.type)?.label}" مرة واحدة فقط لكل مستوى`);
+        return;
+      }
+    }
     setUploadingBenefit(true);
     try {
       let imgUrl = benefitForm.imageUrl;
@@ -712,9 +721,8 @@ const VipManagement = ({ onLogout }) => {
                 </div>
               </div>
 
-              {/* ── Row 6: Comment frame + Profile frame ── */}
-              <div style={styles.twoCol}>
-                <div style={styles.formGroup}>
+              {/* ── Row 6: Comment frame ── */}
+              <div style={styles.formGroup}>
                   <label style={styles.label}>💬 إطار التعليق (PNG / Lottie)</label>
                   <input ref={commentFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
                     onChange={(e) => {
@@ -754,51 +762,6 @@ const VipManagement = ({ onLogout }) => {
                       </div>
                     )}
                   </div>
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>👤 إطار الصورة الشخصية (PNG / Lottie)</label>
-                  <input ref={profileFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]; if (!file) return;
-                      const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
-                      if (profileFramePreview && profileFramePreview.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview);
-                      setProfileFramePreview(isImg ? URL.createObjectURL(file) : null);
-                      setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
-                      setProfileFrameLottieName(file.name);
-                    }} />
-                  <div style={{ ...styles.uploadZone, padding: 0, overflow: "hidden", minHeight: 80 }} onClick={() => profileFrameLottieRef.current?.click()}>
-                    {profileFramePreview ? (
-                      <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
-                        <div style={{ position: "relative", display: "inline-block", margin: "8px auto" }}>
-                          <div style={{ width: 80, height: 80, borderRadius: "50%", backgroundColor: "#334155", position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
-                          <img src={profileFramePreview} alt="profile frame preview" style={{ width: 108, height: 108, objectFit: "contain", display: "block", position: "relative", zIndex: 1 }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: "#64748b", padding: "4px 0" }}>{profileFrameLottieName}</div>
-                        <button style={{ ...styles.removeImgBtn, position: "absolute", top: 4, right: 4 }}
-                          onClick={(e) => { e.stopPropagation(); if (profileFramePreview?.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview); setProfileFramePreview(null); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
-                          <FiX size={12} />
-                        </button>
-                      </div>
-                    ) : profileFrameLottieName ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 10 }}>
-                        <span style={{ fontSize: 22 }}>👤</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profileFrameLottieName}</div>
-                          {form.profileFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
-                        </div>
-                        <button style={{ ...styles.removeImgBtn, position: "static" }}
-                          onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setProfileFramePreview(null); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
-                          <FiX size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>
-                        <div style={{ fontSize: 24, marginBottom: 4 }}>👤</div>
-                        <div style={{ fontSize: 12 }}>إطار الأفاتار في الغرفة</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
 
               {/* ── Row 7: Join animation + Join sound ── */}
@@ -913,7 +876,11 @@ const VipManagement = ({ onLogout }) => {
                         <label style={styles.label}>النوع</label>
                         <select style={styles.input} value={benefitForm.type}
                           onChange={(e) => setBenefitForm({ ...benefitForm, type: e.target.value })}>
-                          {BENEFIT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          {BENEFIT_TYPES.map(t => {
+                            const isSingleton = ["frame", "chat"].includes(t.value);
+                            const alreadyUsed = isSingleton && form.benefits.some((b, i) => b.type === t.value && i !== editingBenefitIdx);
+                            return <option key={t.value} value={t.value} disabled={alreadyUsed}>{t.label}{alreadyUsed ? " (مضاف مسبقاً)" : ""}</option>;
+                          })}
                         </select>
                       </div>
                       <div style={{ gridColumn: "1/-1" }}>
