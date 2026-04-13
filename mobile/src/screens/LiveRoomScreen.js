@@ -346,9 +346,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
           commentTextColor: typeof level?.commentTextColor === "string" && level.commentTextColor.trim()
             ? level.commentTextColor.trim()
             : "",
-          profileFrameLottieUrl: level?.profileFrameLottieUrl ||
-            level?.benefits?.find((b) => b.type === "frame")?.imageUrl ||
+          profileFrameLottieUrl: level?.benefits?.find((b) => b.type === "frame")?.imageUrl ||
             level?.benefits?.find((b) => b.type === "frame")?.lottieUrl ||
+            level?.profileFrameLottieUrl ||
             null,
           badgeImageUrl: level?.badgeImageUrl || null,
         };
@@ -1340,7 +1340,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           />
           {/* PNG / Lottie profile frame overlay — centered over the avatar */}
           {hostFrameUrl ? (
-            /\.json($|\?)/i.test(hostFrameUrl) || hostFrameUrl.includes("/raw/upload/") ? null : (
+            (/\.json($|\?)/i.test(hostFrameUrl) || (hostFrameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(hostFrameUrl))) ? null : (
               <Image
                 source={{ uri: hostFrameUrl }}
                 style={{

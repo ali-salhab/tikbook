@@ -129,7 +129,7 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100, showSparks = 
 
       {/* Badge frame — sits above avatar: PNG/image renders as <Image>, Lottie JSON renders animated */}
       {badgeImage && (
-        /\.(json)($|\?)/i.test(badgeImage) || badgeImage.includes("/raw/upload/") ? (
+        (/\.(json)($|\?)/i.test(badgeImage) || (badgeImage.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(badgeImage))) ? (
           <LottieView
             source={{ uri: badgeImage }}
             autoPlay

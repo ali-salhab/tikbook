@@ -583,16 +583,17 @@ const ProfileScreen = ({ navigation }) => {
                 const vl = vipLevels.find((l) => Number(l.level) === Number(profile?.vipLevel));
                 const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
                 const vipFrameUrl =
-                  vl?.profileFrameLottieUrl ||
                   frameBenefit?.imageUrl ||
                   frameBenefit?.lottieUrl ||
+                  vl?.profileFrameLottieUrl ||
                   vl?.badgeImageUrl ||
                   null;
                 const frameUrl =
                   (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
                   (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
                 if (!frameUrl) return null;
-                const isLottie = /\.json($|\?)/i.test(frameUrl) || frameUrl.includes("/raw/upload/");
+                const isLottie = /\.json($|\?)/i.test(frameUrl) ||
+                  (frameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
                 return isLottie ? (
                   <LottieView
                     source={{ uri: frameUrl }}
@@ -889,11 +890,12 @@ const makeStyles = (theme) =>
     },
     badgeFrameOverlay: {
       position: "absolute",
-      width: ms(130),
-      height: ms(130),
-      top: 0,
-      left: 0,
+      width: ms(150),
+      height: ms(150),
+      top: (ms(130) - ms(150)) / 2,
+      left: (ms(130) - ms(150)) / 2,
       pointerEvents: "none",
+      zIndex: 10,
     },
     badgeShopButton: {
       position: "absolute",
