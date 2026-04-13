@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
       const safetyTimeout = setTimeout(() => {
         console.log("⚠️ Auth init safety timeout, clearing loading state...");
         setIsLoading(false);
-      }, 8000);
+      }, 4000);
 
       try {
         // Load stored user data (fast — AsyncStorage only)
@@ -37,17 +37,20 @@ export const AuthProvider = ({ children }) => {
           setUserToken(token);
           setUserInfo(JSON.parse(info));
 
-          // Register for push notifications with a timeout
+          // Register for push notifications — fire and forget, never block startup
           try {
             const tokenPromise = getFCMToken();
             const tokenTimeout = new Promise((_, reject) =>
               setTimeout(() => reject(new Error("FCM token timeout")), 3000),
             );
 
-            const fcmToken = await Promise.race([tokenPromise, tokenTimeout]);
-            if (fcmToken) {
-              await saveTokenToBackend(token, fcmToken, BASE_URL);
-            }
+            Promise.race([tokenPromise, tokenTimeout])
+              .then((fcmToken) => {
+                if (fcmToken) saveTokenToBackend(token, fcmToken, BASE_URL);
+              })
+              .catch((fcmError) => {
+                console.log("⚠️ FCM registration skipped:", fcmError.message);
+              });
           } catch (fcmError) {
             console.log("⚠️ FCM registration skipped:", fcmError.message);
           }

@@ -119,43 +119,26 @@ const VipManagement = ({ onLogout }) => {
   const benefitImgRef = useRef(null);
   const benefitLottieRef = useRef(null);
 
-  const CLOUD_NAME = "dah8ui33p";
-  const UPLOAD_PRESET = "badges_preset";
+  const UPLOAD_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/upload`;
 
-  const uploadToCloudinary = async (file) => {
+  // Upload any file through the backend (backend handles Cloudinary signing)
+  const uploadFileViaBackend = async (file, folder) => {
     const fd = new FormData();
     fd.append("file", file);
-    fd.append("upload_preset", UPLOAD_PRESET);
-    fd.append("folder", "tikbook/vip");
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
+    fd.append("folder", folder);
+    const res = await fetch(UPLOAD_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.secure_url;
+    if (!data.success) throw new Error(data.message || "Upload failed");
+    return data.url;
   };
 
-  // Upload Lottie JSON as raw file to Cloudinary
-  const uploadLottieToCloudinary = async (file) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", UPLOAD_PRESET);
-    fd.append("folder", "tikbook/vip/lottie");
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method: "POST", body: fd });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.secure_url;
-  };
-
-  // Upload audio file to Cloudinary
-  const uploadSoundToCloudinary = async (file) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", UPLOAD_PRESET);
-    fd.append("folder", "tikbook/vip/sounds");
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: "POST", body: fd });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    return data.secure_url;
-  };
+  const uploadToCloudinary = (file) => uploadFileViaBackend(file, "tikbook/vip");
+  const uploadLottieToCloudinary = (file) => uploadFileViaBackend(file, "tikbook/vip/lottie");
+  const uploadSoundToCloudinary = (file) => uploadFileViaBackend(file, "tikbook/vip/sounds");
 
   // ── Benefit sub-form helpers ────────────────────────────────────────────────
   const openAddBenefit = () => {

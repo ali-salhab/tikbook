@@ -137,38 +137,25 @@ const BadgeManagement = ({ onLogout }) => {
   };
 
   const uploadImageToCloudinary = async (file) => {
-    // Using your Cloudinary account: dah8ui33p
-    const cloudName = "dah8ui33p";
-    const uploadPreset = "badges_preset"; // ✅ Preset created and ready!
-
-    const cloudinaryData = new FormData();
-    cloudinaryData.append("file", file);
-    cloudinaryData.append("upload_preset", uploadPreset);
-    cloudinaryData.append("folder", "tikbook/badges");
+    const UPLOAD_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/upload`;
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", "tikbook/badges");
 
     try {
       setUploadProgress(10);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: cloudinaryData,
-        },
-      );
-
+      const response = await fetch(UPLOAD_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
       setUploadProgress(80);
       const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error.message || "Upload failed");
-      }
-
+      if (!data.success) throw new Error(data.message || "Upload failed");
       setUploadProgress(100);
-
-      return data.secure_url;
+      return data.url;
     } catch (error) {
-      console.error("Cloudinary upload error:", error);
+      console.error("Upload error:", error);
       throw error;
     }
   };

@@ -383,7 +383,7 @@ const AppNavigator = () => {
         console.log("⚠️ Onboarding check timed out, defaulting to false");
         setShowOnboarding(false);
       }
-    }, 3000); // Increased timeout slightly to allow for splash animation
+    }, 2000); // Increased timeout slightly to allow for splash animation
     return () => clearTimeout(timer);
   }, [showOnboarding]);
 

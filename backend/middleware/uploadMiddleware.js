@@ -110,9 +110,28 @@ const statusUpload = multer({
   },
 });
 
+// General admin upload — accepts images, lottie JSON, audio, video
+const adminUpload = multer({
+  storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB
+  },
+  fileFilter: function (req, file, cb) {
+    const isImage = file.mimetype.startsWith("image/");
+    const isAudio = file.mimetype.startsWith("audio/");
+    const isVideo = file.mimetype.startsWith("video/");
+    const isJson =
+      file.mimetype === "application/json" ||
+      file.originalname.toLowerCase().endsWith(".json");
+    if (isImage || isAudio || isVideo || isJson) return cb(null, true);
+    return cb(new Error("نوع الملف غير مدعوم"));
+  },
+});
+
 module.exports = {
   imageUpload,
   videoUpload,
   giftUpload,
   statusUpload,
+  adminUpload,
 };

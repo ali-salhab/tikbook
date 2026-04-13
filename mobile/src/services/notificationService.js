@@ -93,7 +93,7 @@ export const saveTokenToBackend = async (userToken, pushToken, baseUrl) => {
     await axios.put(
       `${baseUrl}/users/fcm-token`,
       { token: pushToken },
-      { headers: { Authorization: `Bearer ${userToken}` } },
+      { headers: { Authorization: `Bearer ${userToken}` }, timeout: 5000 },
     );
     console.log("✅ Push token saved to backend");
   } catch (error) {

@@ -1,8 +1,11 @@
+const fs = require("fs");
+const path = require("path");
 const User = require("../models/User");
 const Video = require("../models/Video");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
+const { uploadToCloudinary } = require("../services/cloudinaryService");
 
 // Helper: build a list of the last N months with formatted labels
 const buildMonthsRange = (count = 6) => {
@@ -580,6 +583,43 @@ const updateUserVipLevel = async (req, res) => {
   }
 };
 
+// @desc   Upload an asset file to Cloudinary (admin)
+// @route  POST /api/admin/upload
+// @access Private/Admin
+const uploadAsset = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "لم يتم إرفاق ملف" });
+    }
+
+    const folder = (req.body.folder || "tikbook/admin").replace(/[^a-zA-Z0-9/_-]/g, "");
+    const filePath = req.file.path;
+    const fileName = req.file.originalname.toLowerCase();
+    const mime = req.file.mimetype || "";
+
+    // Determine Cloudinary resource_type
+    let resourceType = "raw"; // default for JSON / lottie
+    if (mime.startsWith("image/")) resourceType = "image";
+    else if (mime.startsWith("video/") || mime.startsWith("audio/")) resourceType = "video";
+    else if (fileName.endsWith(".json")) resourceType = "raw";
+    // images with unknown mime but image extension
+    if (
+      resourceType === "raw" &&
+      /\.(png|jpe?g|webp|gif)$/.test(fileName)
+    ) resourceType = "image";
+
+    const url = await uploadToCloudinary(filePath, folder, resourceType);
+
+    // clean up temp file
+    try { fs.unlinkSync(filePath); } catch (_) {}
+
+    return res.json({ success: true, url });
+  } catch (err) {
+    console.error("uploadAsset error:", err);
+    return res.status(500).json({ success: false, message: err.message || "فشل الرفع" });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getAllUsers,
@@ -591,6 +631,7 @@ module.exports = {
   grantCoinsToUser,
   updateUserLevel,
   updateUserVipLevel,
+  uploadAsset,
 };
 
 // @desc    Grant coins to a user (admin)

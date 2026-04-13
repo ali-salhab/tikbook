@@ -349,15 +349,41 @@ const GiftManagement = ({ onLogout }) => {
       };
 
       if (editingGift) {
-        const payload = {
-          name: form.name, nameAr: form.nameAr, price: Number(form.price),
-          rarity: form.rarity, category: form.category, duration: Number(form.duration),
-          comboEnabled: form.comboEnabled, fullScreen: form.fullScreen,
-          isActive: form.isActive, sortOrder: Number(form.sortOrder),
-          animationType: form.animationType,
-          ...effectPayload,
-        };
-        await api.put(`/gifts/admin/${editingGift._id}`, payload, authHeader);
+        const hasNewFiles = form.animationFile || form.webmFile || form.pngFile || form.thumbnailFile || form.soundFile;
+        if (hasNewFiles) {
+          // Send as multipart so the backend can upload new files to Cloudinary
+          const data = new FormData();
+          data.append("name", form.name || form.nameAr);
+          data.append("nameAr", form.nameAr);
+          data.append("price", form.price);
+          data.append("rarity", form.rarity);
+          data.append("category", form.category);
+          data.append("duration", form.duration);
+          data.append("comboEnabled", form.comboEnabled);
+          data.append("fullScreen", form.fullScreen);
+          data.append("isActive", form.isActive);
+          data.append("sortOrder", form.sortOrder);
+          data.append("animationType", form.animationType || "lottie");
+          Object.entries(effectPayload).forEach(([k, v]) => data.append(k, v));
+          if (form.animationFile) data.append("animation", form.animationFile);
+          if (form.webmFile) data.append("webm", form.webmFile);
+          if (form.pngFile) data.append("png", form.pngFile);
+          if (form.thumbnailFile) data.append("thumbnail", form.thumbnailFile);
+          if (form.soundFile) data.append("sound", form.soundFile);
+          await api.put(`/gifts/admin/${editingGift._id}`, data, {
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+          });
+        } else {
+          const payload = {
+            name: form.name, nameAr: form.nameAr, price: Number(form.price),
+            rarity: form.rarity, category: form.category, duration: Number(form.duration),
+            comboEnabled: form.comboEnabled, fullScreen: form.fullScreen,
+            isActive: form.isActive, sortOrder: Number(form.sortOrder),
+            animationType: form.animationType,
+            ...effectPayload,
+          };
+          await api.put(`/gifts/admin/${editingGift._id}`, payload, authHeader);
+        }
       } else {
         const data = new FormData();
         data.append("name", form.name || form.nameAr);

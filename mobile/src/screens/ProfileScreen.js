@@ -568,10 +568,6 @@ const ProfileScreen = ({ navigation }) => {
                   )}
                 </View>
 
-                {/* Circular camera button — bottom-left, outside the circle */}
-                <View style={styles.cameraBtn}>
-                  <Ionicons name="camera" size={18} color="#FFF" />
-                </View>
               </View>
 
               {/* Badge frame overlay — activeBadge first, then VIP profile frame */}
@@ -612,6 +608,11 @@ const ProfileScreen = ({ navigation }) => {
                   />
                 );
               })()}
+
+              {/* Camera icon — always above frame */}
+              <View style={styles.cameraBtn}>
+                <Ionicons name="camera" size={18} color="#FFF" />
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -882,20 +883,21 @@ const makeStyles = (theme) =>
       borderColor: "#FFF",
       justifyContent: "center",
       alignItems: "center",
+      zIndex: 20,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.4,
       shadowRadius: 4,
-      elevation: 6,
+      elevation: 20,
     },
     badgeFrameOverlay: {
       position: "absolute",
       width: ms(150),
       height: ms(150),
-      top: (ms(130) - ms(150)) / 2,
-      left: (ms(130) - ms(150)) / 2,
+      top: -ms(25),
+      left: -ms(25),
       pointerEvents: "none",
-      zIndex: 10,
+      zIndex: 5,
     },
     badgeShopButton: {
       position: "absolute",

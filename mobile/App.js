@@ -32,7 +32,7 @@ export default function App() {
       const timeoutId = setTimeout(() => {
         console.log("⚠️ App preparation timed out, forcing ready state...");
         setAppIsReady(true);
-      }, 8000);
+      }, 4000);
 
       try {
         // Request Notification Permission (Don't await it if it hangs)
