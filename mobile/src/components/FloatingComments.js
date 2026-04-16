@@ -165,6 +165,26 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                 ],
           ]}
         >
+          {/* Frame rendered FIRST so it sits behind text by natural draw order */}
+          {commentFrameLottieUrl ? (
+            (/\.json($|\?)/i.test(commentFrameLottieUrl) || (commentFrameLottieUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
+              <LottieView
+                source={{ uri: commentFrameLottieUrl }}
+                autoPlay
+                loop
+                style={styles.commentFrame}
+                pointerEvents="none"
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={{ uri: commentFrameLottieUrl }}
+                style={styles.commentFrame}
+                resizeMode="stretch"
+                pointerEvents="none"
+              />
+            )
+          ) : null}
           {isGift && item.giftUrl ? (
             <View style={styles.giftMsgRow}>
               <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
@@ -191,25 +211,6 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             </Text>
           )}
 
-          {commentFrameLottieUrl ? (
-            (/\.json($|\?)/i.test(commentFrameLottieUrl) || (commentFrameLottieUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
-              <LottieView
-                source={{ uri: commentFrameLottieUrl }}
-                autoPlay
-                loop
-                style={styles.commentFrame}
-                pointerEvents="none"
-                resizeMode="cover"
-              />
-            ) : (
-              <Image
-                source={{ uri: commentFrameLottieUrl }}
-                style={styles.commentFrame}
-                resizeMode="stretch"
-                pointerEvents="none"
-              />
-            )
-          ) : null}
         </View>
       </View>
     </Animated.View>
@@ -505,7 +506,6 @@ const styles = StyleSheet.create({
     right: -12,
     bottom: -12,
     pointerEvents: "none",
-    zIndex: -1,
   },
 });
 

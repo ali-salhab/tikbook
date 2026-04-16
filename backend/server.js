@@ -18,30 +18,9 @@ const io = new Server(server, {
   },
 });
 app.set("io", io);
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://tikbook-admin.onrender.com",
-  "https://tikbook-1.onrender.com", // Your actual admin URL
-  "https://tikbook-1cdb.onrender.com", // Your backend URL (for self-requests)
-];
-
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or Postman)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log("CORS blocked origin:", origin);
-        callback(new Error(`Not allowed by CORS: ${origin}`));
-      }
-    },
+    origin: true, // Allow all origins — security enforced by JWT tokens
     credentials: true,
   }),
 );

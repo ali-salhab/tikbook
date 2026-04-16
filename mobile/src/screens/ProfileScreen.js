@@ -537,6 +537,44 @@ const ProfileScreen = ({ navigation }) => {
             >
               {/* Avatar circle + floating camera button */}
               <View style={styles.avatarWrapper}>
+                {/* Badge frame — rendered FIRST so photo sits on top, covering inner gap */}
+                {(() => {
+                  const activeBadgeUrl =
+                    profile?.activeBadge?.imageUrl ||
+                    profile?.activeBadge?.image ||
+                    (typeof profile?.activeBadge === "string" ? profile.activeBadge : null);
+                  const vl = vipLevels.find((l) => Number(l.level) === Number(profile?.vipLevel));
+                  const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
+                  const vipFrameUrl =
+                    frameBenefit?.imageUrl ||
+                    frameBenefit?.lottieUrl ||
+                    vl?.profileFrameLottieUrl ||
+                    vl?.badgeImageUrl ||
+                    null;
+                  const frameUrl =
+                    (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
+                    (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
+                  if (!frameUrl) return null;
+                  const isLottie = /\.json($|\?)/i.test(frameUrl) ||
+                    (frameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
+                  return isLottie ? (
+                    <LottieView
+                      source={{ uri: frameUrl }}
+                      autoPlay
+                      loop
+                      style={styles.badgeFrameOverlay}
+                      resizeMode="contain"
+                      pointerEvents="none"
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: frameUrl }}
+                      style={styles.badgeFrameOverlay}
+                      resizeMode="contain"
+                      pointerEvents="none"
+                    />
+                  );
+                })()}
                 {/* Dual status ring */}
                 {userStatuses.length > 0 && (
                   <View style={styles.statusRingOuter} pointerEvents="none">
@@ -574,45 +612,6 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
 
               </View>
-
-              {/* Badge frame overlay — activeBadge first, then VIP profile frame */}
-              {(() => {
-                const activeBadgeUrl =
-                  profile?.activeBadge?.imageUrl ||
-                  profile?.activeBadge?.image ||
-                  (typeof profile?.activeBadge === "string" ? profile.activeBadge : null);
-                const vl = vipLevels.find((l) => Number(l.level) === Number(profile?.vipLevel));
-                const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
-                const vipFrameUrl =
-                  frameBenefit?.imageUrl ||
-                  frameBenefit?.lottieUrl ||
-                  vl?.profileFrameLottieUrl ||
-                  vl?.badgeImageUrl ||
-                  null;
-                const frameUrl =
-                  (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
-                  (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
-                if (!frameUrl) return null;
-                const isLottie = /\.json($|\?)/i.test(frameUrl) ||
-                  (frameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
-                return isLottie ? (
-                  <LottieView
-                    source={{ uri: frameUrl }}
-                    autoPlay
-                    loop
-                    style={styles.badgeFrameOverlay}
-                    resizeMode="contain"
-                    pointerEvents="none"
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: frameUrl }}
-                    style={styles.badgeFrameOverlay}
-                    resizeMode="contain"
-                    pointerEvents="none"
-                  />
-                );
-              })()}
 
               {/* Camera icon — always above frame */}
               <View style={styles.cameraBtn}>
@@ -830,6 +829,7 @@ const makeStyles = (theme) =>
     avatarWrapper: {
       width: ms(100),
       height: ms(100),
+      overflow: "visible",
     },
     statusRingOuter: {
       position: "absolute",

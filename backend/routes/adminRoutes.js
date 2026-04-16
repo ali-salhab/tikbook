@@ -28,7 +28,16 @@ router.put("/users/:id/level", protect, admin, updateUserLevel);
 router.put("/users/:id/vip-level", protect, admin, updateUserVipLevel);
 
 // Generic asset upload — returns Cloudinary URL
-router.post("/upload", protect, admin, adminMemoryUpload.single("file"), uploadAsset);
+// Wrap multer in a custom handler so file-type rejections return 400 (not 500)
+router.post("/upload", protect, admin, (req, res, next) => {
+  adminMemoryUpload.single("file")(req, res, (err) => {
+    if (err) {
+      // Multer size/filter error → 400
+      return res.status(400).json({ success: false, message: err.message || "الملف مرفوض" });
+    }
+    next();
+  });
+}, uploadAsset);
 
 // Withdrawal requests management
 router.get("/withdrawals", protect, admin, async (req, res) => {

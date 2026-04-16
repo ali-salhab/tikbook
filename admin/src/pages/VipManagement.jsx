@@ -302,7 +302,21 @@ const VipManagement = ({ onLogout }) => {
       joinAnimationLottieUrl: lvl.joinAnimationLottieUrl || "", joinAnimationLottieFile: null,
       joinSoundUrl: lvl.joinSoundUrl || "", joinSoundFile: null,
       specialJoinText: lvl.specialJoinText || "",
-      benefits: Array.isArray(lvl.benefits) ? lvl.benefits : [],
+    benefits: Array.isArray(lvl.benefits) ? (() => {
+        // Deduplicate: for singleton types (frame, chat) keep only the last occurrence
+        const singletonTypes = ["frame", "chat"];
+        const seen = {};
+        const deduped = [];
+        for (let i = lvl.benefits.length - 1; i >= 0; i--) {
+          const b = lvl.benefits[i];
+          if (singletonTypes.includes(b.type)) {
+            if (!seen[b.type]) { seen[b.type] = true; deduped.unshift(b); }
+          } else {
+            deduped.unshift(b);
+          }
+        }
+        return deduped;
+      })() : [],
       isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
     });
@@ -865,25 +879,16 @@ const VipManagement = ({ onLogout }) => {
                     <div style={{ background: "#0d1117", borderRadius: 12, padding: 14, border: "1px solid #1e293b" }}>
                       <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>💬 معاينة إطار التعليق</div>
                       <div style={{ display: "flex", justifyContent: "center" }}>
-                        <div style={{ position: "relative", display: "inline-block" }}>
-                          <div style={{
-                            padding: "10px 18px",
-                            background: "transparent",
-                            color: "#fff",
-                            fontSize: 13,
-                            borderRadius: 18,
-                            borderTopLeftRadius: 4,
-                            whiteSpace: "nowrap",
-                          }}>
+                        <div style={{ position: "relative", display: "inline-block", padding: "14px 22px" }}>
+                          {/* frame sits behind via absolute, text on top */}
+                          <img
+                            src={commentFramePreview || form.commentFrameLottieUrl}
+                            alt=""
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
+                          />
+                          <span style={{ position: "relative", color: "#fff", fontSize: 13, whiteSpace: "nowrap" }}>
                             هذا شكل التعليق ✨
-                          </div>
-                          {(commentFramePreview || form.commentFrameLottieUrl) && (
-                            <img
-                              src={commentFramePreview || form.commentFrameLottieUrl}
-                              alt=""
-                              style={{ position: "absolute", top: -10, left: -10, right: -10, bottom: -10, width: "calc(100% + 20px)", height: "calc(100% + 20px)", objectFit: "fill", pointerEvents: "none", zIndex: -1 }}
-                            />
-                          )}
+                          </span>
                         </div>
                       </div>
                     </div>
