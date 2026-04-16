@@ -136,15 +136,16 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
               {item.user?.username || ""}
             </Text>
             <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
-              <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
+              {vipIconUrl ? (
+                <Image
+                  source={{ uri: vipIconUrl }}
+                  style={{ width: 16, height: 16, borderRadius: 8 }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
+              )}
             </View>
-            {vipIconUrl ? (
-              <Image
-                source={{ uri: vipIconUrl }}
-                style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
-                resizeMode="contain"
-              />
-            ) : null}
           </View>
         ) : null}
 

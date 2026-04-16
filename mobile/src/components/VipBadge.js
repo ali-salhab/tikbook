@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 
 const VIP_COLORS = {
   1:  "#8B4513",
@@ -19,10 +19,22 @@ const VIP_COLORS = {
   15: "#FFD700",
 };
 
-const VipBadge = ({ level, size = "small" }) => {
+const VipBadge = ({ level, size = "small", imageUrl }) => {
   if (!level || level <= 0) return null;
   const color = VIP_COLORS[level] || "#FFD700";
   const isSmall = size === "small";
+  const iconSize = isSmall ? 18 : 24;
+
+  if (imageUrl) {
+    return (
+      <Image
+        source={{ uri: imageUrl }}
+        style={{ width: iconSize, height: iconSize, borderRadius: iconSize / 2 }}
+        resizeMode="contain"
+      />
+    );
+  }
+
   const fontSize = isSmall ? 9 : 11;
   const paddingH = isSmall ? 4 : 7;
   const paddingV = isSmall ? 1 : 3;

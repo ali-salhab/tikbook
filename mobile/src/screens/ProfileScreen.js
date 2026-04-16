@@ -112,6 +112,11 @@ const ProfileScreen = ({ navigation }) => {
         if (netInfo.isConnected !== false) {
           fetchProfile();
           fetchNotificationCount();
+          // Re-fetch VIP levels on every focus so admin updates are reflected immediately
+          fetch(`${BASE_URL}/vip/levels`)
+            .then((r) => r.json())
+            .then((d) => { if (d?.levels) setVipLevels(d.levels); })
+            .catch(() => {});
         }
       } else {
         // Default profile when not logged in
@@ -125,7 +130,7 @@ const ProfileScreen = ({ navigation }) => {
           likesCount: 0,
         });
       }
-    }, [userInfo, fetchProfile, fetchNotificationCount, netInfo.isConnected]),
+    }, [userInfo, fetchProfile, fetchNotificationCount, netInfo.isConnected, BASE_URL]),
   );
 
   const fetchSavedVideos = useCallback(async () => {
@@ -622,7 +627,7 @@ const ProfileScreen = ({ navigation }) => {
               {profile?.username || "User"}
             </Text>
             {(profile?.vipLevel > 0) && (() => {
-              const vl = vipLevels.find((l) => l.level === profile.vipLevel);
+              const vl = vipLevels.find((l) => Number(l.level) === Number(profile.vipLevel));
               return (
                 <LevelBadgeIcon
                   level={profile.vipLevel}

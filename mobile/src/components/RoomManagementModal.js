@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#222",
+    backgroundColor: "#9b0000",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -711,8 +711,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#2a1010",
   },
   avatarImg: {
-    width: 42,
-    height: 42,
+    width: 22,
+    height: 22,
     borderRadius: 21,
   },
   userInfo: {

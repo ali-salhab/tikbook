@@ -54,7 +54,7 @@ import { ms, fs } from "../utils/responsive";
 import JoinAnimation from "../live/components/JoinAnimation";
 
 const { width, height } = Dimensions.get("window");
-const BASE_SEAT_SIZE = ms(72);
+const BASE_SEAT_SIZE = ms(50);
 const HOST_SIZE = ms(110);
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
@@ -1369,7 +1369,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             <MaterialIcons name="verified" size={13} color="#00F2EA" />
             <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
           </View>
-          {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="small" />}
+          {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="small" imageUrl={hostVipStyle?.imageUrl || hostVipStyle?.badgeImageUrl || undefined} />}
         </View>
       </View>
     );
@@ -1579,7 +1579,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
         <Text style={styles.seatLabel} numberOfLines={1}>
           {user ? user.username : `${index + 1}`}
         </Text>
-        {user?.vipLevel > 0 && <VipBadge level={user.vipLevel} size="small" />}
+        {user?.vipLevel > 0 && (() => {
+          const seatVipStyle = vipLevelCommentStyles?.[Number(user.vipLevel)];
+          return <VipBadge level={user.vipLevel} size="small" imageUrl={seatVipStyle?.imageUrl || seatVipStyle?.badgeImageUrl || undefined} />;
+        })()}
       </SeatWrapper>
     );
   };
