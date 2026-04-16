@@ -73,6 +73,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   const bubbleShape     = isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.bubbleShape : "classic";
   const commentFrameLottieUrl =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameLottieUrl || null : null;
+  // When a PNG/Lottie frame image is set it becomes the visual border — suppress the styled border
+  const hasBubbleFrame = !!commentFrameLottieUrl;
   const vipIconUrl =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.imageUrl || null : null;
   const commentTextColor =
@@ -152,10 +154,15 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
         <View
           style={[
             styles.bubble,
-            (isVip || isGift) && styles.vipBubble,
-            (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
-            (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
-            (isVip || isGift) ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
+            // When frame image is set it IS the border — clear styled border/bg and allow frame to extend outside
+            hasBubbleFrame
+              ? { overflow: "visible", backgroundColor: "transparent", borderWidth: 0, paddingHorizontal: ms(16), paddingVertical: ms(10) }
+              : [
+                  (isVip || isGift) && styles.vipBubble,
+                  (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
+                  (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
+                  (isVip || isGift) ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
+                ],
           ]}
         >
           {isGift && item.giftUrl ? (
@@ -493,11 +500,12 @@ const styles = StyleSheet.create({
   },
   commentFrame: {
     position: "absolute",
-    top: -8,
-    left: -8,
-    right: -8,
-    bottom: -8,
+    top: -12,
+    left: -12,
+    right: -12,
+    bottom: -12,
     pointerEvents: "none",
+    zIndex: -1,
   },
 });
 

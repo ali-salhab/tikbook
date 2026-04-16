@@ -814,6 +814,103 @@ const VipManagement = ({ onLogout }) => {
                   </div>
               </div>
 
+              {/* ── Row 6b: Profile frame ── */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>👤 إطار الصورة الشخصية (PNG / Lottie)</label>
+                <input ref={profileFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+                    if (profileFramePreview && profileFramePreview.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview);
+                    setProfileFramePreview(isImg ? URL.createObjectURL(file) : null);
+                    setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
+                    setProfileFrameLottieName(file.name);
+                  }} />
+                <div style={{ ...styles.uploadZone, padding: 0, overflow: "hidden", minHeight: 80 }} onClick={() => profileFrameLottieRef.current?.click()}>
+                  {profileFramePreview ? (
+                    <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
+                      <img src={profileFramePreview} alt="profile frame preview" style={{ maxWidth: "100%", maxHeight: 120, objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }} />
+                      <div style={{ fontSize: 10, color: "#64748b", padding: "4px 0" }}>{profileFrameLottieName}</div>
+                      <button style={{ ...styles.removeImgBtn, position: "absolute", top: 4, right: 4 }}
+                        onClick={(e) => { e.stopPropagation(); if (profileFramePreview?.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview); setProfileFramePreview(null); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : profileFrameLottieName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 10 }}>
+                      <span style={{ fontSize: 22 }}>👤</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profileFrameLottieName}</div>
+                        {form.profileFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                      </div>
+                      <button style={{ ...styles.removeImgBtn, position: "static" }}
+                        onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setProfileFramePreview(null); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>
+                      <div style={{ fontSize: 24, marginBottom: 4 }}>👤</div>
+                      <div style={{ fontSize: 12 }}>إطار الصورة الشخصية في البروفايل والبث</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Frames live preview ── */}
+              {(commentFramePreview || form.commentFrameLottieUrl || profileFramePreview || form.profileFrameLottieUrl) && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 8 }}>
+                  {/* Comment frame preview */}
+                  {(commentFramePreview || form.commentFrameLottieUrl) && (
+                    <div style={{ background: "#0d1117", borderRadius: 12, padding: 14, border: "1px solid #1e293b" }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>💬 معاينة إطار التعليق</div>
+                      <div style={{ display: "flex", justifyContent: "center" }}>
+                        <div style={{ position: "relative", display: "inline-block" }}>
+                          <div style={{
+                            padding: "10px 18px",
+                            background: "transparent",
+                            color: "#fff",
+                            fontSize: 13,
+                            borderRadius: 18,
+                            borderTopLeftRadius: 4,
+                            whiteSpace: "nowrap",
+                          }}>
+                            هذا شكل التعليق ✨
+                          </div>
+                          {(commentFramePreview || form.commentFrameLottieUrl) && (
+                            <img
+                              src={commentFramePreview || form.commentFrameLottieUrl}
+                              alt=""
+                              style={{ position: "absolute", top: -10, left: -10, right: -10, bottom: -10, width: "calc(100% + 20px)", height: "calc(100% + 20px)", objectFit: "fill", pointerEvents: "none", zIndex: -1 }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Profile frame preview */}
+                  {(profileFramePreview || form.profileFrameLottieUrl) && (
+                    <div style={{ background: "#0d1117", borderRadius: 12, padding: 14, border: "1px solid #1e293b" }}>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>👤 معاينة إطار البروفايل</div>
+                      <div style={{ display: "flex", justifyContent: "center" }}>
+                        <div style={{ position: "relative", width: 80, height: 80 }}>
+                          {/* Avatar circle */}
+                          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 54, height: 54, borderRadius: "50%", background: "linear-gradient(135deg,#374151,#6b7280)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: 22 }}>👤</span>
+                          </div>
+                          {/* Frame overlay */}
+                          <img
+                            src={profileFramePreview || form.profileFrameLottieUrl}
+                            alt=""
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* ── Row 7: Join animation + Join sound ── */}
               <div style={styles.twoCol}>
                 <div style={styles.formGroup}>

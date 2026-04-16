@@ -255,6 +255,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
     };
   }, []);
 
+  // Reload VIP level styles each time the screen is focused so admin changes are always fresh
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadVipLevelCommentStyles();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   // Fixed comment area top — always below header + typical 2-row seat grid, never shifts with seat count
   useEffect(() => {
     setCommentAreaTop(insets.top + ms(190));
@@ -346,6 +354,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
           commentTextColor: typeof level?.commentTextColor === "string" && level.commentTextColor.trim()
             ? level.commentTextColor.trim()
             : "",
+          commentFrameLottieUrl: level?.benefits?.find((b) => b.type === "chat")?.imageUrl ||
+            level?.benefits?.find((b) => b.type === "chat")?.lottieUrl ||
+            level?.commentFrameLottieUrl ||
+            null,
           profileFrameLottieUrl: level?.benefits?.find((b) => b.type === "frame")?.imageUrl ||
             level?.benefits?.find((b) => b.type === "frame")?.lottieUrl ||
             level?.profileFrameLottieUrl ||
@@ -354,7 +366,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         };
 
         return acc;
-      }, {});
+      }, {})
 
       // Also fetch live engagement VIP levels for Lottie frame and join animation URLs
       try {
@@ -1367,7 +1379,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         <View style={styles.hostBadgeRow}>
           <View style={styles.hostRoleRow}>
             <MaterialIcons name="verified" size={13} color="#00F2EA" />
-            <Text style={styles.hostRoleText}>صاحب الغرفة</Text>
+           
           </View>
           {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="small" imageUrl={hostVipStyle?.imageUrl || hostVipStyle?.badgeImageUrl || undefined} />}
         </View>

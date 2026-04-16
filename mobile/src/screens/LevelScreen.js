@@ -26,6 +26,7 @@ import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import { ms, fs } from "../utils/responsive";
 import { fetchLottieJson, getCachedLottieJson } from "../live/services/lottieCache";
+import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
 const { width } = Dimensions.get("window");
 
@@ -140,7 +141,16 @@ const RewardRow = ({ benefit, level, accentColor }) => {
   const iconBorder = accentColor + "44";
 
   const renderIcon = () => {
-    // 1. Benefit's own image (priority over lottie)
+    // 1. Frame-type benefit — render as ProfileBadgeFrame preview (frame over a circle)
+    if (benefit?.type === "frame" && benefit?.imageUrl) {
+      return (
+        <ProfileBadgeFrame
+          badgeImage={benefit.imageUrl}
+          size={ms(34)}
+        />
+      );
+    }
+    // 2. Other benefit images
     if (benefit?.imageUrl) {
       return (
         <View style={{ width: ms(38), height: ms(38) }}>
