@@ -637,7 +637,7 @@ const ProfileScreen = ({ navigation }) => {
                   color={vl?.color || "#FFD700"}
                 />
               );
-            })()}>
+            })()}
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
