@@ -5,7 +5,7 @@ const Video = require("../models/Video");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
-const { uploadToCloudinary } = require("../services/cloudinaryService");
+const { uploadToCloudinary, uploadBufferToCloudinary } = require("../services/cloudinaryService");
 
 // Helper: build a list of the last N months with formatted labels
 const buildMonthsRange = (count = 6) => {
@@ -593,7 +593,6 @@ const uploadAsset = async (req, res) => {
     }
 
     const folder = (req.body.folder || "tikbook/admin").replace(/[^a-zA-Z0-9/_-]/g, "");
-    const filePath = req.file.path;
     const fileName = req.file.originalname.toLowerCase();
     const mime = req.file.mimetype || "";
 
@@ -601,17 +600,18 @@ const uploadAsset = async (req, res) => {
     let resourceType = "raw"; // default for JSON / lottie
     if (mime.startsWith("image/")) resourceType = "image";
     else if (mime.startsWith("video/") || mime.startsWith("audio/")) resourceType = "video";
-    else if (fileName.endsWith(".json")) resourceType = "raw";
     // images with unknown mime but image extension
-    if (
-      resourceType === "raw" &&
-      /\.(png|jpe?g|webp|gif)$/.test(fileName)
-    ) resourceType = "image";
+    if (resourceType === "raw" && /\.(png|jpe?g|webp|gif)$/.test(fileName)) resourceType = "image";
 
-    const url = await uploadToCloudinary(filePath, folder, resourceType);
-
-    // clean up temp file
-    try { fs.unlinkSync(filePath); } catch (_) {}
+    let url;
+    if (req.file.buffer) {
+      // Memory storage (no temp file on disk — safe for Render / Heroku)
+      url = await uploadBufferToCloudinary(req.file.buffer, folder, resourceType);
+    } else {
+      // Disk storage fallback
+      url = await uploadToCloudinary(req.file.path, folder, resourceType);
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+    }
 
     return res.json({ success: true, url });
   } catch (err) {

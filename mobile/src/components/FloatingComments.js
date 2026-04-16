@@ -127,6 +127,27 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
 
       {/* ── Bubble second in JSX → renders to the LEFT of the avatar in RTL ── */}
       <View style={styles.rightCol}>
+        {isVip ? (
+          <View style={styles.headerRow}>
+            <Text
+              style={[styles.inlineUsername, { color: vipColor || "#FFD700" }]}
+              numberOfLines={1}
+            >
+              {item.user?.username || ""}
+            </Text>
+            <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
+              <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
+            </View>
+            {vipIconUrl ? (
+              <Image
+                source={{ uri: vipIconUrl }}
+                style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
+                resizeMode="contain"
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         <View
           style={[
             styles.bubble,
@@ -140,34 +161,9 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             <View style={styles.giftMsgRow}>
               <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
               <View style={{ flexShrink: 1 }}>
-                {isVip && (
-                  <View style={styles.headerRow}>
-                    {vipIconUrl ? (
-                      <Image
-                        source={{ uri: vipIconUrl }}
-                        style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
-                        resizeMode="contain"
-                      />
-                    ) : null}
-                    <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
-                      <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
-                    </View>
-                  </View>
-                )}
-                {!isSystem && item.user?.username ? (
-                  <Text style={styles.inlineBubbleText} numberOfLines={2} ellipsizeMode="tail">
-                    <Text style={[styles.inlineUsername, isVip && vipColor ? { color: vipColor } : null]}>
-                      {item.user.username}{" "}
-                    </Text>
-                    <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
-                      {messageText}
-                    </Text>
-                  </Text>
-                ) : (
-                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
-                    {messageText}
-                  </Text>
-                )}
+                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
+                  {messageText}
+                </Text>
               </View>
             </View>
           ) : isSystem ? (
@@ -175,38 +171,16 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
               {messageText}
             </Text>
           ) : (
-            <View>
-              {isVip ? (
-                <View style={styles.headerRow}>
-                  {vipIconUrl ? (
-                    <Image
-                      source={{ uri: vipIconUrl }}
-                      style={[styles.vipIcon, { borderColor: vipColor || "#FFD700" }]}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                  <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
-                    <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
-                  </View>
-                  <Text
-                    style={[styles.inlineUsername, { color: vipColor || "#FFD700" }]}
-                    numberOfLines={1}
-                  >
-                    {item.user?.username || ""}
-                  </Text>
-                </View>
-              ) : null}
-              <Text style={styles.inlineBubbleText} numberOfLines={isVip ? 2 : 3} ellipsizeMode="tail">
-                {!isVip && item.user?.username ? (
-                  <Text style={styles.inlineUsername}>
-                    {item.user.username}{" "}
-                  </Text>
-                ) : null}
-                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
-                  {messageText}
+            <Text style={styles.inlineBubbleText} numberOfLines={isVip ? 2 : 3} ellipsizeMode="tail">
+              {!isVip && item.user?.username ? (
+                <Text style={styles.inlineUsername}>
+                  {item.user.username}{" "}
                 </Text>
+              ) : null}
+              <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                {messageText}
               </Text>
-            </View>
+            </Text>
           )}
 
           {commentFrameLottieUrl ? (
@@ -494,7 +468,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   systemMessage: {
-    color: "#FFD700",
+    color: "#444338",
     fontSize: fs(12),
     fontStyle: "italic",
     textShadowColor: "rgba(0,0,0,0.85)",

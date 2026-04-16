@@ -128,10 +128,27 @@ const adminUpload = multer({
   },
 });
 
+// Memory-based admin upload — avoids disk writes on ephemeral file systems (Render, Heroku, etc.)
+const adminMemoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const isImage = file.mimetype.startsWith("image/");
+    const isAudio = file.mimetype.startsWith("audio/");
+    const isVideo = file.mimetype.startsWith("video/");
+    const isJson =
+      file.mimetype === "application/json" ||
+      file.originalname.toLowerCase().endsWith(".json");
+    if (isImage || isAudio || isVideo || isJson) return cb(null, true);
+    return cb(new Error("نوع الملف غير مدعوم"));
+  },
+});
+
 module.exports = {
   imageUpload,
   videoUpload,
   giftUpload,
   statusUpload,
   adminUpload,
+  adminMemoryUpload,
 };

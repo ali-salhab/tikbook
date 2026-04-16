@@ -14,7 +14,7 @@ const {
   uploadAsset,
 } = require("../controllers/adminController");
 const { protect, admin } = require("../middleware/authMiddleware");
-const { adminUpload } = require("../middleware/uploadMiddleware");
+const { adminMemoryUpload } = require("../middleware/uploadMiddleware");
 
 router.get("/stats", protect, admin, getDashboardStats);
 router.get("/users", protect, admin, getAllUsers);
@@ -28,7 +28,7 @@ router.put("/users/:id/level", protect, admin, updateUserLevel);
 router.put("/users/:id/vip-level", protect, admin, updateUserVipLevel);
 
 // Generic asset upload — returns Cloudinary URL
-router.post("/upload", protect, admin, adminUpload.single("file"), uploadAsset);
+router.post("/upload", protect, admin, adminMemoryUpload.single("file"), uploadAsset);
 
 // Withdrawal requests management
 router.get("/withdrawals", protect, admin, async (req, res) => {

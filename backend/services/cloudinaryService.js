@@ -111,9 +111,26 @@ const getPublicIdFromUrl = (url) => {
     }
 };
 
+/**
+ * Uploads a Buffer directly to Cloudinary (no temp file needed)
+ */
+const uploadBufferToCloudinary = (buffer, folder, resourceType = "auto") => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder, resource_type: resourceType, use_filename: false, unique_filename: true },
+            (err, result) => {
+                if (err) return reject(err);
+                resolve(result.secure_url);
+            }
+        );
+        stream.end(buffer);
+    });
+};
+
 module.exports = {
     uploadToCloudinary,
     uploadImageToCloudinary,
+    uploadBufferToCloudinary,
     deleteFromCloudinary,
     getPublicIdFromUrl,
 };

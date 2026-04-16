@@ -58,6 +58,13 @@ const normalizeBorderWidth = (borderWidth) => {
   return Math.min(Math.max(value, 0), 8);
 };
 
+const isLevelActiveForAssign = (level) => (
+  level?.isActive === true ||
+  level?.isActive === 1 ||
+  level?.isActive === "1" ||
+  level?.isActive === "true"
+);
+
 const getBubbleShapeStyle = (shape) => {
   switch (normalizeBubbleShape(shape)) {
     case "rounded":
@@ -91,6 +98,8 @@ const VipManagement = ({ onLogout }) => {
   const [assignData, setAssignData] = useState({ userId: "", username: "", vipLevel: 1, userImage: "" });
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [hasSearchedUser, setHasSearchedUser] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
@@ -109,6 +118,10 @@ const VipManagement = ({ onLogout }) => {
   const [benefitImgPreview, setBenefitImgPreview] = useState(null);
   const [benefitLottieName, setBenefitLottieName] = useState("");
   const [uploadingBenefit, setUploadingBenefit] = useState(false);
+  const [benefitImgUploading, setBenefitImgUploading] = useState(false);
+  const [benefitImgUploaded, setBenefitImgUploaded] = useState(false);
+  const [benefitLottieUploading, setBenefitLottieUploading] = useState(false);
+  const [benefitLottieUploaded, setBenefitLottieUploaded] = useState(false);
 
   const fileInputRef = useRef(null);
   const badgeLottieRef = useRef(null);
@@ -146,6 +159,10 @@ const VipManagement = ({ onLogout }) => {
     setBenefitForm({ ...defaultBenefitForm });
     setBenefitImgPreview(null);
     setBenefitLottieName("");
+    setBenefitImgUploading(false);
+    setBenefitImgUploaded(false);
+    setBenefitLottieUploading(false);
+    setBenefitLottieUploaded(false);
     setShowBenefitForm(true);
   };
 
@@ -155,6 +172,10 @@ const VipManagement = ({ onLogout }) => {
     setBenefitForm({ ...defaultBenefitForm, ...b, imageFile: null, lottieFile: null });
     setBenefitImgPreview(b.imageUrl || null);
     setBenefitLottieName(b.lottieUrl ? "(ملف محفوظ)" : "");
+    setBenefitImgUploading(false);
+    setBenefitImgUploaded(!!b.imageUrl);
+    setBenefitLottieUploading(false);
+    setBenefitLottieUploaded(!!b.lottieUrl);
     setShowBenefitForm(true);
   };
 
@@ -189,6 +210,37 @@ const VipManagement = ({ onLogout }) => {
       setError(e.message || "فشل رفع ملفات الميزة");
     } finally {
       setUploadingBenefit(false);
+    }
+  };
+
+  const handleBenefitImgUpload = async () => {
+    if (!benefitForm.imageFile) return;
+    setBenefitImgUploading(true);
+    setError("");
+    try {
+      const url = await uploadToCloudinary(benefitForm.imageFile);
+      setBenefitForm(prev => ({ ...prev, imageUrl: url, imageFile: null }));
+      setBenefitImgPreview(url);
+      setBenefitImgUploaded(true);
+    } catch (e) {
+      setError(e.message || "فشل رفع الصورة");
+    } finally {
+      setBenefitImgUploading(false);
+    }
+  };
+
+  const handleBenefitLottieUpload = async () => {
+    if (!benefitForm.lottieFile) return;
+    setBenefitLottieUploading(true);
+    setError("");
+    try {
+      const url = await uploadLottieToCloudinary(benefitForm.lottieFile);
+      setBenefitForm(prev => ({ ...prev, lottieUrl: url, lottieFile: null }));
+      setBenefitLottieUploaded(true);
+    } catch (e) {
+      setError(e.message || "فشل رفع الانيميشن");
+    } finally {
+      setBenefitLottieUploading(false);
     }
   };
 
@@ -358,12 +410,26 @@ const VipManagement = ({ onLogout }) => {
   };
 
   const handleSearchUser = async () => {
-    if (!searchQuery.trim()) return;
-    try {
-      const res = await api.get(`/users/search?q=${searchQuery}`, authHeader);
-      setUserSearchResults(res.data.users || res.data || []);
-    } catch {
+    const query = searchQuery.trim();
+    if (!query) {
       setUserSearchResults([]);
+      setHasSearchedUser(false);
+      return;
+    }
+    setSearchingUsers(true);
+    setHasSearchedUser(true);
+    setError("");
+    try {
+      const res = await api.get(`/users/search?q=${encodeURIComponent(query)}`, authHeader);
+      const users = Array.isArray(res.data?.users)
+        ? res.data.users
+        : (Array.isArray(res.data) ? res.data : []);
+      setUserSearchResults(users);
+    } catch (e) {
+      setUserSearchResults([]);
+      setError(e.response?.data?.message || "فشل البحث عن المستخدم");
+    } finally {
+      setSearchingUsers(false);
     }
   };
 
@@ -413,10 +479,11 @@ const VipManagement = ({ onLogout }) => {
               🌱 بيانات تجريبية
             </button>
             <button style={styles.assignBtn} onClick={() => {
-              const firstLevel = levels.filter(l => l.isActive).sort((a,b) => a.level - b.level)[0];
+              const firstLevel = levels.filter(isLevelActiveForAssign).sort((a,b) => a.level - b.level)[0];
               setAssignData({ userId: "", username: "", vipLevel: firstLevel?.level || 1, userImage: "" });
               setUserSearchResults([]);
               setSearchQuery("");
+              setHasSearchedUser(false);
               setShowAssignModal(true);
               setError("");
             }}>
@@ -879,12 +946,25 @@ const VipManagement = ({ onLogout }) => {
                             const f = e.target.files?.[0]; if (!f) return;
                             setBenefitForm({ ...benefitForm, imageFile: f, imageUrl: "" });
                             setBenefitImgPreview(URL.createObjectURL(f));
+                            setBenefitImgUploaded(false);
                           }} />
                         <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitImgRef.current?.click()}>
                           {benefitImgPreview
                             ? <img src={benefitImgPreview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} />
                             : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}><FiImage size={18} /><br/>صورة</div>}
                         </div>
+                        {benefitForm.imageFile && !benefitImgUploaded && (
+                          <button
+                            style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
+                            onClick={(e) => { e.stopPropagation(); handleBenefitImgUpload(); }}
+                            disabled={benefitImgUploading}
+                          >
+                            {benefitImgUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع الصورة</>}
+                          </button>
+                        )}
+                        {benefitImgUploaded && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع بنجاح</div>
+                        )}
                       </div>
                       {/* Benefit lottie upload */}
                       <div>
@@ -894,12 +974,25 @@ const VipManagement = ({ onLogout }) => {
                             const f = e.target.files?.[0]; if (!f) return;
                             setBenefitForm({ ...benefitForm, lottieFile: f, lottieUrl: "" });
                             setBenefitLottieName(f.name);
+                            setBenefitLottieUploaded(false);
                           }} />
                         <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitLottieRef.current?.click()}>
                           {benefitLottieName
                             ? <div style={{ fontSize: 11, color: "#6366f1", textAlign: "center", fontWeight: 600 }}>🎞 {benefitLottieName}</div>
                             : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}>🎞<br/>Lottie JSON</div>}
                         </div>
+                        {benefitForm.lottieFile && !benefitLottieUploaded && (
+                          <button
+                            style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
+                            onClick={(e) => { e.stopPropagation(); handleBenefitLottieUpload(); }}
+                            disabled={benefitLottieUploading}
+                          >
+                            {benefitLottieUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع الانيميشن</>}
+                          </button>
+                        )}
+                        {benefitLottieUploaded && (
+                          <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع بنجاح</div>
+                        )}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
@@ -949,7 +1042,14 @@ const VipManagement = ({ onLogout }) => {
 
         {/* Assign Modal */}
         {showAssignModal && (() => {
-          const selLevel = levels.find((l) => l.level === assignData.vipLevel) || null;
+          const assignableLevels = levels
+            .filter(isLevelActiveForAssign)
+            .sort((a, b) => a.level - b.level);
+          const selectedLevelExists = assignableLevels.some((l) => l.level === assignData.vipLevel);
+          const selectedVipLevel = selectedLevelExists
+            ? assignData.vipLevel
+            : (assignableLevels[0]?.level || 1);
+          const selLevel = assignableLevels.find((l) => l.level === selectedVipLevel) || null;
           const lvlColor = selLevel?.color || "#FFD700";
           const bubbleShape = selLevel?.commentBubbleShape || "classic";
           const borderWidth = normalizeBorderWidth(selLevel?.commentBorderWidth ?? 1.4);
@@ -969,15 +1069,28 @@ const VipManagement = ({ onLogout }) => {
                   <input
                     style={{ ...styles.input, flex: 1 }}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setHasSearchedUser(false);
+                    }}
                     placeholder="اسم المستخدم أو الإيميل"
                     onKeyDown={(e) => e.key === "Enter" && handleSearchUser()}
                   />
-                  <button style={styles.saveBtn} onClick={handleSearchUser}>
-                    <FiUser size={14} /> بحث
+                  <button
+                    style={{ ...styles.saveBtn, opacity: (searchingUsers || !searchQuery.trim()) ? 0.7 : 1 }}
+                    onClick={handleSearchUser}
+                    disabled={searchingUsers || !searchQuery.trim()}
+                  >
+                    <FiUser size={14} /> {searchingUsers ? "جاري البحث..." : "بحث"}
                   </button>
                 </div>
               </div>
+
+              {hasSearchedUser && !searchingUsers && userSearchResults.length === 0 && (
+                <div style={{ marginBottom: 12, fontSize: 13, color: "#64748b" }}>
+                  لا توجد نتائج مطابقة.
+                </div>
+              )}
 
               {/* ── Dropdown search results ── */}
               {userSearchResults.length > 0 && (
@@ -1037,16 +1150,15 @@ const VipManagement = ({ onLogout }) => {
                 <label style={styles.label}>مستوى VIP</label>
                 {levels.length === 0 ? (
                   <div style={{ color: "#ef4444", fontSize: 13 }}>لا توجد مستويات. أضف مستويات أولاً.</div>
+                ) : assignableLevels.length === 0 ? (
+                  <div style={{ color: "#ef4444", fontSize: 13 }}>لا توجد مستويات VIP مفعّلة للتعيين.</div>
                 ) : (
                   <select
                     style={styles.input}
-                    value={assignData.vipLevel}
+                    value={selectedVipLevel}
                     onChange={(e) => setAssignData({ ...assignData, vipLevel: +e.target.value })}
                   >
-                    {levels
-                      .filter((l) => l.isActive)
-                      .sort((a, b) => a.level - b.level)
-                      .map((l) => (
+                    {assignableLevels.map((l) => (
                         <option key={l.level} value={l.level}>
                           VIP {l.level}{l.nameAr ? ` — ${l.nameAr}` : ""}{l.name ? ` (${l.name})` : ""}
                         </option>
