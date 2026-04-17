@@ -75,6 +75,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameLottieUrl || null : null;
   // When a PNG/Lottie frame image is set it becomes the visual border — suppress the styled border
   const hasBubbleFrame = !!commentFrameLottieUrl;
+  const commentFrameBgColor =
+    isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameBgColor || null : null;
   const vipIconUrl =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.imageUrl || null : null;
   const commentTextColor =
@@ -183,7 +185,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                   pointerEvents="none"
                 />
               )}
-              <View style={[styles.bubble, { backgroundColor: "transparent", borderWidth: 0, paddingHorizontal: ms(18), paddingVertical: ms(10) }]}>
+              <View style={[styles.bubble, { backgroundColor: commentFrameBgColor || "transparent", borderWidth: 0, paddingHorizontal: ms(18), paddingVertical: ms(10) }]}>
                 {isGift && item.giftUrl ? (
                   <View style={styles.giftMsgRow}>
                     <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />

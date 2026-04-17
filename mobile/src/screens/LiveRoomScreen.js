@@ -372,6 +372,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
             level?.benefits?.find((b) => b.type === "chat")?.lottieUrl ||
             level?.commentFrameLottieUrl ||
             null,
+          commentFrameBgColor: level?.commentFrameBgColor || null,
           profileFrameLottieUrl: level?.benefits?.find((b) => b.type === "frame")?.imageUrl ||
             level?.benefits?.find((b) => b.type === "frame")?.lottieUrl ||
             level?.profileFrameLottieUrl ||

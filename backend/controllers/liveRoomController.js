@@ -258,6 +258,24 @@ exports.joinLiveRoom = async (req, res) => {
     liveRoom.addListener(userId);
     await liveRoom.save();
 
+    // If the host is re-joining their own active room, notify followers they are live again
+    if (liveRoom.host.toString() === userId.toString()) {
+      try {
+        const host = await User.findById(userId).select("followers username");
+        if (host?.followers?.length > 0) {
+          const notifPromises = host.followers.map((followerId) =>
+            sendNotificationToUser(
+              followerId,
+              "صاحبك لايف الآن 🎙️",
+              `${host.username} عاد إلى الغرفة الصوتية! انضم الآن`,
+              { screen: "LiveRoom", roomId },
+            ).catch(() => {}),
+          );
+          await Promise.allSettled(notifPromises);
+        }
+      } catch (_) {}
+    }
+
     const populatedRoom = await LiveRoom.findById(liveRoom._id)
       .populate({
         path: "host",

@@ -70,7 +70,7 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
           useNativeDriver: true,
         }),
       ]),
-      Animated.delay(1700),
+      Animated.delay(3500),
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
