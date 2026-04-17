@@ -255,10 +255,24 @@ const LiveRoomScreen = ({ route, navigation }) => {
     };
   }, []);
 
-  // Reload VIP level styles each time the screen is focused so admin changes are always fresh
+  // Reload VIP level styles each time the screen is focused so admin changes are always fresh.
+  // Also reconnect the socket if it was dropped while the screen was in the background.
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       loadVipLevelCommentStyles();
+
+      // If the socket disconnected while the screen was blurred (app backgrounded,
+      // OS killed the connection, etc.) and didn't auto-reconnect, reconnect now.
+      if (socketRef.current && !socketRef.current.connected) {
+        socketRef.current.connect();
+        socketRef.current.once("connect", () => {
+          socketRef.current.emit("liveroom:join", {
+            roomId,
+            userId: userInfo._id,
+            user: userInfo,
+          });
+        });
+      }
     });
     return unsubscribe;
   }, [navigation]);
@@ -584,6 +598,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       engine.joinChannel(agoraToken, channelName, 0, {});
       // Hosts/speakers join with mic live; audience is muted
       engine.muteLocalAudioStream(!isHostOrSpeaker);
+      // Always subscribe to all remote audio streams (audience must hear speakers)
+      engine.muteAllRemoteAudioStreams(false);
       // Sync React state to match actual Agora mute state
       setIsMuted(!isHostOrSpeaker);
     } catch (e) {
@@ -623,6 +639,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
       roomId,
       userId: userInfo._id,
       user: userInfo,
+    });
+
+    // Re-join the socket room after any automatic reconnection (e.g. app backgrounded,
+    // network blip) so the server keeps routing messages to this socket.
+    socket.io.on("reconnect", () => {
+      socket.emit("liveroom:join", {
+        roomId,
+        userId: userInfo._id,
+        user: userInfo,
+      });
     });
 
     socket.on("liveroom:user_joined", ({ user }) => {
@@ -669,6 +695,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
         SoundService.play("mic_on");
       }
     });
+
+    // Host joined and server sends the last 50 messages so they're visible immediately
+    socket.on("liveroom:recent_messages", ({ messages }) => {
+      if (!messages || messages.length === 0) return;
+      const normalized = messages.map(normalizeLiveMessage).filter(Boolean);
+      if (normalized.length === 0) return;
+      liveMessageKeysRef.current = new Set(
+        normalized.map((m) => m.clientMessageId || m.id),
+      );
+      setMessages(normalized);
+    });
+
     socket.on("liveroom:mute_toggled", fetchRoomData);
     socket.on(
       "liveroom:hand_raised",
@@ -1465,8 +1503,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (isMe) {
         // Regular tap on own seat does nothing — use long press
       } else if (user && isHostOrMod) {
-        // Occupied seat — host/mod can kick or send gift
+        // Occupied seat — host/mod can mute/unmute, kick, or send gift
         playTap();
+        const isUserMuted = speaker?.isMuted ?? false;
         const buttons = [
           { text: "إلغاء", style: "cancel" },
           {
@@ -1476,6 +1515,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 const next = new Set(prev);
                 next.add(user._id);
                 return next;
+              });
+            },
+          },
+          {
+            text: isUserMuted ? "🔊 رفع الكتم" : "🔇 كتم الصوت",
+            onPress: () => {
+              socketRef.current?.emit("liveroom:host_force_mute", {
+                roomId,
+                targetUserId: user._id,
+                mute: !isUserMuted,
+                byUserId: userInfo._id,
               });
             },
           },
@@ -1609,8 +1659,47 @@ const LiveRoomScreen = ({ route, navigation }) => {
     for (let r = 0; r < Math.ceil(maxSeats / 4); r++) {
       rows.push(slots.slice(r * 4, r * 4 + 4));
     }
+
+    const activeSpeakers = speakers.filter((s) => s.user);
+
+    const muteAll = () => {
+      activeSpeakers.forEach((s) => {
+        if (s.user?._id === userInfo._id) return;
+        socketRef.current?.emit("liveroom:host_force_mute", {
+          roomId,
+          targetUserId: s.user._id,
+          mute: true,
+          byUserId: userInfo._id,
+        });
+      });
+    };
+
+    const unmuteAll = () => {
+      activeSpeakers.forEach((s) => {
+        if (s.user?._id === userInfo._id) return;
+        socketRef.current?.emit("liveroom:host_force_mute", {
+          roomId,
+          targetUserId: s.user._id,
+          mute: false,
+          byUserId: userInfo._id,
+        });
+      });
+    };
+
     return (
       <View style={styles.seatGrid}>
+        {isHostRef.current && activeSpeakers.length > 0 && (
+          <View style={styles.hostAudioCtrlRow}>
+            <TouchableOpacity style={styles.hostAudioBtn} onPress={muteAll}>
+              <Ionicons name="mic-off" size={ms(12)} color="#fff" />
+              <Text style={styles.hostAudioBtnText}>كتم الكل</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.hostAudioBtn, styles.hostAudioBtnUnmute]} onPress={unmuteAll}>
+              <Ionicons name="mic" size={ms(12)} color="#10C870" />
+              <Text style={[styles.hostAudioBtnText, { color: "#10C870" }]}>رفع الكتم</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         {rows.map((row, r) => (
           <View key={r} style={styles.seatRow}>
             {row.map((speaker, i) => (

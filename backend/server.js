@@ -86,6 +86,9 @@ app.get("/", (req, res) => {
 });
 
 // Socket.io connection
+// Per-room message history — last 50 messages, cleared when room ends
+const roomMessageHistory = new Map();
+
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
@@ -108,6 +111,12 @@ io.on("connection", (socket) => {
   socket.on("liveroom:join", ({ roomId, userId, user }) => {
     socket.join(`liveroom:${roomId}`);
     console.log(`User ${userId} joined live room ${roomId}`);
+
+    // Send recent message history to the joining user only
+    const history = roomMessageHistory.get(roomId);
+    if (history && history.length > 0) {
+      socket.emit("liveroom:recent_messages", { messages: history });
+    }
 
     // Notify all participants in the room
     io.to(`liveroom:${roomId}`).emit("liveroom:user_joined", {
@@ -197,6 +206,8 @@ io.on("connection", (socket) => {
   // Room ended
   socket.on("liveroom:end", ({ roomId }) => {
     console.log(`Live room ${roomId} ended`);
+    // Clear message history when room ends
+    roomMessageHistory.delete(roomId);
 
     io.to(`liveroom:${roomId}`).emit("liveroom:ended", {
       roomId,
@@ -215,13 +226,20 @@ io.on("connection", (socket) => {
 
   // Chat message in live room
   socket.on("liveroom:send_message", ({ roomId, message, user, clientMessageId }) => {
-    io.to(`liveroom:${roomId}`).emit("liveroom:message_received", {
+    const msg = {
       message,
       user,
       id: clientMessageId || Date.now().toString(),
       clientMessageId: clientMessageId || null,
       timestamp: new Date(),
-    });
+    };
+    // Store in per-room history (max 50)
+    if (!roomMessageHistory.has(roomId)) roomMessageHistory.set(roomId, []);
+    const hist = roomMessageHistory.get(roomId);
+    hist.push(msg);
+    if (hist.length > 50) hist.splice(0, hist.length - 50);
+
+    io.to(`liveroom:${roomId}`).emit("liveroom:message_received", msg);
   });
 
   // ── Agora Live Stream Chat (LiveScreen.js) ────────────────────────────────
