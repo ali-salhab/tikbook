@@ -23,21 +23,28 @@ const VipBadge = ({ level, size = "small", imageUrl }) => {
   if (!level || level <= 0) return null;
   const color = VIP_COLORS[level] || "#FFD700";
   const isSmall = size === "small";
-  const iconSize = isSmall ? 18 : 24;
+  const isMedium = size === "medium";
+  const iconSize = isSmall ? 22 : isMedium ? 28 : 32;
 
   if (imageUrl) {
+    const numFontSize = isSmall ? 9 : isMedium ? 11 : 13;
     return (
-      <Image
-        source={{ uri: imageUrl }}
-        style={{ width: iconSize, height: iconSize, borderRadius: iconSize / 2 }}
-        resizeMode="contain"
-      />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: iconSize, height: iconSize }}
+          resizeMode="contain"
+        />
+        <Text style={{ color: "#FFF", fontSize: numFontSize, fontWeight: "bold", textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
+          {level}
+        </Text>
+      </View>
     );
   }
 
-  const fontSize = isSmall ? 9 : 11;
-  const paddingH = isSmall ? 4 : 7;
-  const paddingV = isSmall ? 1 : 3;
+  const fontSize = isSmall ? 9 : isMedium ? 11 : 13;
+  const paddingH = isSmall ? 4 : isMedium ? 7 : 9;
+  const paddingV = isSmall ? 1 : isMedium ? 3 : 4;
 
   return (
     <View style={[styles.badge, { backgroundColor: color, paddingHorizontal: paddingH, paddingVertical: paddingV, borderRadius: isSmall ? 3 : 5 }]}>

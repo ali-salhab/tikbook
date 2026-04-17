@@ -1593,7 +1593,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         </Text>
         {user?.vipLevel > 0 && (() => {
           const seatVipStyle = vipLevelCommentStyles?.[Number(user.vipLevel)];
-          return <VipBadge level={user.vipLevel} size="small" imageUrl={seatVipStyle?.imageUrl || seatVipStyle?.badgeImageUrl || undefined} />;
+          return <VipBadge level={user.vipLevel} size="medium" imageUrl={seatVipStyle?.imageUrl || seatVipStyle?.badgeImageUrl || undefined} />;
         })()}
       </SeatWrapper>
     );
@@ -2884,6 +2884,10 @@ const styles = StyleSheet.create({
   },
   seatFrameWrap: {
     position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: "center",
     alignItems: "center",
   },

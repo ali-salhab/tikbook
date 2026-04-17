@@ -151,67 +151,93 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
           </View>
         ) : null}
 
-        <View
-          style={[
-            styles.bubble,
-            // When frame image is set it IS the border — clear styled border/bg and allow frame to extend outside
-            hasBubbleFrame
-              ? { overflow: "visible", backgroundColor: "transparent", borderWidth: 0, paddingHorizontal: ms(16), paddingVertical: ms(10) }
-              : [
-                  (isVip || isGift) && styles.vipBubble,
-                  (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
-                  (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
-                  (isVip || isGift) ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
-                ],
-          ]}
-        >
-          {/* Frame rendered FIRST so it sits behind text by natural draw order */}
-          {commentFrameLottieUrl ? (
-            (/\.json($|\?)/i.test(commentFrameLottieUrl) || (commentFrameLottieUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
+        {hasBubbleFrame ? (
+          // ── Frame wrapper: wrapper sized by content, frame fills it completely ──
+          <View style={{ position: "relative", alignSelf: "flex-start" }}>
+            {/* Frame image fills 100% of wrapper — no negative offsets needed */}
+            {(/\.json($|\?)/i.test(commentFrameLottieUrl) || (commentFrameLottieUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
               <LottieView
                 source={{ uri: commentFrameLottieUrl }}
                 autoPlay
                 loop
-                style={styles.commentFrame}
+                style={StyleSheet.absoluteFillObject}
                 pointerEvents="none"
                 resizeMode="cover"
               />
             ) : (
               <Image
                 source={{ uri: commentFrameLottieUrl }}
-                style={styles.commentFrame}
+                style={StyleSheet.absoluteFillObject}
                 resizeMode="stretch"
                 pointerEvents="none"
               />
-            )
-          ) : null}
-          {isGift && item.giftUrl ? (
-            <View style={styles.giftMsgRow}>
-              <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
-              <View style={{ flexShrink: 1 }}>
-                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
+            )}
+            {/* Text content — padding keeps it inside the frame's inner area */}
+            <View style={[styles.bubble, { backgroundColor: "transparent", borderWidth: 0, paddingHorizontal: ms(18), paddingVertical: ms(10) }]}>
+              {isGift && item.giftUrl ? (
+                <View style={styles.giftMsgRow}>
+                  <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
+                      {messageText}
+                    </Text>
+                  </View>
+                </View>
+              ) : isSystem ? (
+                <Text style={[styles.message, styles.systemMessage]} numberOfLines={3} ellipsizeMode="tail">
                   {messageText}
                 </Text>
-              </View>
-            </View>
-          ) : isSystem ? (
-            <Text style={[styles.message, styles.systemMessage]} numberOfLines={3} ellipsizeMode="tail">
-              {messageText}
-            </Text>
-          ) : (
-            <Text style={styles.inlineBubbleText} numberOfLines={isVip ? 2 : 3} ellipsizeMode="tail">
-              {!isVip && item.user?.username ? (
-                <Text style={styles.inlineUsername}>
-                  {item.user.username}{" "}
+              ) : (
+                <Text style={styles.inlineBubbleText} numberOfLines={isVip ? 2 : 3} ellipsizeMode="tail">
+                  {!isVip && item.user?.username ? (
+                    <Text style={styles.inlineUsername}>
+                      {item.user.username}{" "}
+                    </Text>
+                  ) : null}
+                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                    {messageText}
+                  </Text>
                 </Text>
-              ) : null}
-              <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+              )}
+            </View>
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.bubble,
+              (isVip || isGift) && styles.vipBubble,
+              (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
+              (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
+              (isVip || isGift) ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
+            ]}
+          >
+            {isGift && item.giftUrl ? (
+              <View style={styles.giftMsgRow}>
+                <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
+                    {messageText}
+                  </Text>
+                </View>
+              </View>
+            ) : isSystem ? (
+              <Text style={[styles.message, styles.systemMessage]} numberOfLines={3} ellipsizeMode="tail">
                 {messageText}
               </Text>
-            </Text>
-          )}
-
-        </View>
+            ) : (
+              <Text style={styles.inlineBubbleText} numberOfLines={isVip ? 2 : 3} ellipsizeMode="tail">
+                {!isVip && item.user?.username ? (
+                  <Text style={styles.inlineUsername}>
+                    {item.user.username}{" "}
+                  </Text>
+                ) : null}
+                <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]}>
+                  {messageText}
+                </Text>
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     </Animated.View>
   );
@@ -498,14 +524,6 @@ const styles = StyleSheet.create({
     paddingVertical: ms(6),
     borderRadius: ms(20),
     overflow: "hidden",
-  },
-  commentFrame: {
-    position: "absolute",
-    top: -12,
-    left: -12,
-    right: -12,
-    bottom: -12,
-    pointerEvents: "none",
   },
 });
 
