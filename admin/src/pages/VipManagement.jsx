@@ -46,6 +46,12 @@ const defaultForm = {
   joinSoundUrl: "", joinSoundFile: null,
   specialJoinText: "",
   benefits: [],
+  features: {
+    animatedCommentFrame: true,
+    coloredUsername: true,
+    specialBadge: true,
+    specialJoinAnimation: true,
+  },
   isActive: true, sortOrder: 0,
 };
 
@@ -342,6 +348,12 @@ const VipManagement = ({ onLogout }) => {
         }
         return deduped;
       })() : [],
+      features: {
+        animatedCommentFrame: lvl.features?.animatedCommentFrame !== false,
+        coloredUsername: lvl.features?.coloredUsername !== false,
+        specialBadge: lvl.features?.specialBadge !== false,
+        specialJoinAnimation: lvl.features?.specialJoinAnimation !== false,
+      },
       isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
     });
@@ -404,6 +416,12 @@ const VipManagement = ({ onLogout }) => {
         profileFrameLottieUrl: finalProfileFrameLottieUrl,
         joinAnimationLottieUrl: finalJoinAnimationLottieUrl,
         joinSoundUrl: finalJoinSoundUrl,
+        features: {
+          animatedCommentFrame: !!form.features?.animatedCommentFrame,
+          coloredUsername: !!form.features?.coloredUsername,
+          specialBadge: !!form.features?.specialBadge,
+          specialJoinAnimation: !!form.features?.specialJoinAnimation,
+        },
       };
       delete payload.imageFile;
       delete payload.badgeLottieFile;
@@ -879,6 +897,32 @@ const VipManagement = ({ onLogout }) => {
                 <input style={styles.input} value={form.specialJoinText}
                   onChange={(e) => setForm({ ...form, specialJoinText: e.target.value })}
                   placeholder="مثال: لقد انضم الملك إلى الغرفة 👑" />
+              </div>
+
+              {/* ── Features toggles ── */}
+              <div style={{ ...styles.formGroup, border: "1px solid #e0e7ff", borderRadius: 12, padding: 16, background: "#f8faff", marginBottom: 16 }}>
+                <label style={{ ...styles.label, marginBottom: 12, fontSize: 13, fontWeight: 700, color: "#3730a3" }}>✨ الخصائص (تحكم بما يظهر في صفحة المستويات)</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[
+                    { key: "animatedCommentFrame", label: "إطار تعليق متحرك",   icon: "💬" },
+                    { key: "coloredUsername",      label: "اسم ملون في التعليقات", icon: "🎨" },
+                    { key: "specialBadge",          label: "شارة حصرية",           icon: "🏅" },
+                    { key: "specialJoinAnimation", label: "انيميشن خاص عند الدخول", icon: "✨" },
+                  ].map((f) => {
+                    const enabled = !!form.features?.[f.key];
+                    return (
+                      <div key={f.key}
+                        onClick={() => setForm({ ...form, features: { ...form.features, [f.key]: !enabled } })}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", border: `2px solid ${enabled ? "#6366f1" : "#e2e8f0"}`, background: enabled ? "#6366f108" : "#fff", userSelect: "none", transition: "all .15s" }}>
+                        <span style={{ fontSize: 18 }}>{f.icon}</span>
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: enabled ? "#3730a3" : "#94a3b8" }}>{f.label}</span>
+                        <div style={{ width: 38, height: 22, borderRadius: 11, background: enabled ? "#6366f1" : "#e2e8f0", display: "flex", alignItems: "center", padding: "0 3px", justifyContent: enabled ? "flex-end" : "flex-start", transition: "all .15s" }}>
+                          <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Benefits Editor */}

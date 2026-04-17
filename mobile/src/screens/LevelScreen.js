@@ -203,7 +203,26 @@ const RewardRow = ({ benefit, level, accentColor }) => {
         )}
       </View>
       <View style={styles.rewardTexts}>
-        <Text style={styles.rewardTitle}>{benefit?.titleAr || benefit?.title || "ميزة"}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: ms(6), flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <Text style={styles.rewardTitle}>{benefit?.titleAr || benefit?.title || "ميزة"}</Text>
+          {benefit?.type && (() => {
+            const TYPE_META = {
+              badge:  { label: "شارة",        bg: "#1e3a5f", color: "#60A5FA" },
+              frame:  { label: "إطار صورة",   bg: "#2d1b69", color: "#A78BFA" },
+              chat:   { label: "فقاعة دردشة", bg: "#134e3a", color: "#34D399" },
+              points: { label: "نقاط",         bg: "#451a03", color: "#FBBF24" },
+              medal:  { label: "وسام",         bg: "#431407", color: "#F59E42" },
+              entry:  { label: "انيميشن دخول", bg: "#500724", color: "#EC4899" },
+              other:  { label: "أخرى",         bg: "#1e293b", color: "#94A3B8" },
+            };
+            const meta = TYPE_META[benefit.type] || TYPE_META.other;
+            return (
+              <View style={{ backgroundColor: meta.bg, paddingHorizontal: ms(6), paddingVertical: ms(2), borderRadius: ms(6) }}>
+                <Text style={{ color: meta.color, fontSize: fs(8.5), fontWeight: "700" }}>{meta.label}</Text>
+              </View>
+            );
+          })()}
+        </View>
         {(benefit?.descriptionAr || benefit?.description) ? (
           <Text style={styles.rewardSubtitle}>{benefit?.descriptionAr || benefit?.description}</Text>
         ) : null}
