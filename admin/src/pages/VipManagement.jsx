@@ -12,13 +12,13 @@ const VIP_COLORS = {
 };
 
 const BENEFIT_TYPES = [
-  { value: "badge",  label: "شارة (Badge)" },
-  { value: "frame",  label: "إطار صورة (Frame)" },
-  { value: "chat",   label: "فقاعة دردشة (Chat)" },
-  { value: "points", label: "نقاط (Points)" },
-  { value: "medal",  label: "وسام (Medal)" },
-  { value: "entry",  label: "انيميشن دخول (Entry)" },
-  { value: "other",  label: "أخرى" },
+  { value: "badge",  label: "شارة (Badge)",           hint: "تظهر كأيقونة صغيرة بجانب اسم المستخدم في شبكة المقاعد والتعليقات داخل البث المباشر.", icon: "🏅" },
+  { value: "frame",  label: "إطار صورة (Frame)",      hint: "يحيط بالصورة الشخصية للمضيف في البث المباشر وفي الدردشة.", icon: "👤" },
+  { value: "chat",   label: "فقاعة دردشة (Chat)",    hint: "يُطبَّق على فقاعة التعليق عند الكتابة في البث المباشر.", icon: "💬" },
+  { value: "points", label: "نقاط (Points)",          hint: "نقاط إضافية تُضاف تلقائياً عند الترقية — تظهر في صفحة المستوى VIP.", icon: "⭐" },
+  { value: "medal",  label: "وسام (Medal)",           hint: "وسام يظهر في صفحة الملف الشخصي ضمن قائمة مزايا مستوى VIP.", icon: "🥇" },
+  { value: "entry",  label: "انيميشن دخول (Entry)",  hint: "أنيميشن يُشغَّل عند دخول المستخدم إلى غرفة بث مباشر.", icon: "✨" },
+  { value: "other",  label: "أخرى",                  hint: "ميزة عامة تظهر فقط في قائمة مزايا صفحة مستوى VIP.", icon: "🎁" },
 ];
 
 const defaultBenefitForm = {
@@ -938,6 +938,16 @@ const VipManagement = ({ onLogout }) => {
                             return <option key={t.value} value={t.value} disabled={alreadyUsed}>{t.label}{alreadyUsed ? " (مضاف مسبقاً)" : ""}</option>;
                           })}
                         </select>
+                        {(() => {
+                          const typeInfo = BENEFIT_TYPES.find(t => t.value === benefitForm.type);
+                          if (!typeInfo) return null;
+                          return (
+                            <div style={{ marginTop: 6, display: "flex", alignItems: "flex-start", gap: 6, background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: 8, padding: "7px 10px" }}>
+                              <span style={{ fontSize: 16, lineHeight: 1 }}>{typeInfo.icon}</span>
+                              <span style={{ fontSize: 11, color: "#4338ca", lineHeight: 1.5, direction: "rtl" }}>{typeInfo.hint}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div style={{ gridColumn: "1/-1" }}>
                         <label style={styles.label}>الوصف العربي</label>
