@@ -538,6 +538,39 @@ exports.toggleMute = async (req, res) => {
   }
 };
 
+// Host force-sets mute for any speaker (admin audio control)
+exports.forceMute = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId, mute } = req.body;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Live room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId.toString();
+    const isMod = (liveRoom.moderators || []).some(
+      (m) => (m.user || m).toString() === requesterId.toString()
+    );
+    if (!isHost && !isMod) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const speaker = liveRoom.speakers.find(
+      (s) => s.user.toString() === userId.toString()
+    );
+    if (!speaker) return res.status(400).json({ message: "User is not a speaker" });
+
+    speaker.isMuted = !!mute;
+    await liveRoom.save();
+
+    res.json({ success: true, isMuted: speaker.isMuted });
+  } catch (error) {
+    console.error("Error force-muting speaker:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Get user's live rooms (history)
 exports.getMyLiveRooms = async (req, res) => {
   try {

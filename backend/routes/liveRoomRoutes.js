@@ -22,6 +22,7 @@ const {
   controlMusic,
   getAgoraToken,
   updateRoomSettings,
+  forceMute,
 } = require("../controllers/liveRoomController");
 const { protect } = require("../middleware/authMiddleware");
 const { imageUpload } = require("../middleware/uploadMiddleware");
@@ -46,6 +47,7 @@ router.post("/:roomId/make-speaker", protect, makeSpeaker);
 router.post("/:roomId/make-speaker/:userId", protect, makeSpeaker);
 router.post("/:roomId/remove-speaker", protect, removeSpeaker);
 router.post("/:roomId/toggle-mute", protect, toggleMute);
+router.post("/:roomId/force-mute", protect, forceMute);
 router.post("/:roomId/end", protect, endLiveRoom);
 router.get("/my/rooms", protect, getMyLiveRooms);
 

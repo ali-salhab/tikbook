@@ -562,6 +562,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
           userId: userInfo._id,
           agoraUid: uid,
         });
+        // Ensure we receive all remote audio — must be called after join completes
+        engine.muteAllRemoteAudioStreams(false);
         setJoinedAgora(true);
       });
       engine.addListener("onAudioVolumeIndication", (connection, speakers) => {
@@ -595,11 +597,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
           tokenErr?.message,
         );
       }
-      engine.joinChannel(agoraToken, channelName, 0, {});
-      // Hosts/speakers join with mic live; audience is muted
+      engine.joinChannel(agoraToken, channelName, 0, {
+        // Auto-subscribe to remote audio so audience hears speakers immediately
+        autoSubscribeAudio: true,
+        autoSubscribeVideo: false,
+        publishMicrophoneTrack: isHostOrSpeaker,
+      });
+      // Hosts/speakers join with mic live; audience is muted locally
       engine.muteLocalAudioStream(!isHostOrSpeaker);
-      // Always subscribe to all remote audio streams (audience must hear speakers)
-      engine.muteAllRemoteAudioStreams(false);
       // Sync React state to match actual Agora mute state
       setIsMuted(!isHostOrSpeaker);
     } catch (e) {
@@ -685,6 +690,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
     // Host force-mutes or force-unmutes this user
     socket.on("liveroom:force_mute", ({ targetUserId, mute }) => {
+      // Refresh room data everywhere so seat mute icon updates
+      fetchRoomData();
       if (targetUserId !== userInfo._id) return;
       agoraEngineRef.current?.muteLocalAudioStream(mute);
       setIsMuted(mute);
@@ -1520,7 +1527,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
           },
           {
             text: isUserMuted ? "🔊 رفع الكتم" : "🔇 كتم الصوت",
-            onPress: () => {
+            onPress: async () => {
+              // Persist mute state to DB so everyone sees the update
+              try {
+                await axios.post(
+                  `${BASE_URL}/live-rooms/${roomId}/force-mute`,
+                  { userId: user._id, mute: !isUserMuted },
+                  { headers: { Authorization: `Bearer ${userToken}` } },
+                );
+              } catch (_) {}
+              // Broadcast via socket so target applies it to their mic
               socketRef.current?.emit("liveroom:host_force_mute", {
                 roomId,
                 targetUserId: user._id,
@@ -1662,28 +1678,42 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
     const activeSpeakers = speakers.filter((s) => s.user);
 
-    const muteAll = () => {
-      activeSpeakers.forEach((s) => {
-        if (s.user?._id === userInfo._id) return;
+    const muteAll = async () => {
+      for (const s of activeSpeakers) {
+        if (s.user?._id === userInfo._id) continue;
+        try {
+          await axios.post(
+            `${BASE_URL}/live-rooms/${roomId}/force-mute`,
+            { userId: s.user._id, mute: true },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          );
+        } catch (_) {}
         socketRef.current?.emit("liveroom:host_force_mute", {
           roomId,
           targetUserId: s.user._id,
           mute: true,
           byUserId: userInfo._id,
         });
-      });
+      }
     };
 
-    const unmuteAll = () => {
-      activeSpeakers.forEach((s) => {
-        if (s.user?._id === userInfo._id) return;
+    const unmuteAll = async () => {
+      for (const s of activeSpeakers) {
+        if (s.user?._id === userInfo._id) continue;
+        try {
+          await axios.post(
+            `${BASE_URL}/live-rooms/${roomId}/force-mute`,
+            { userId: s.user._id, mute: false },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          );
+        } catch (_) {}
         socketRef.current?.emit("liveroom:host_force_mute", {
           roomId,
           targetUserId: s.user._id,
           mute: false,
           byUserId: userInfo._id,
         });
-      });
+      }
     };
 
     return (
@@ -2257,24 +2287,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
                   {canManage && !isSpeaker && (
                     <TouchableOpacity
                       style={styles.inviteBtn}
-                      onPress={async () => {
-                        try {
-                          await axios.post(
-                            BASE_URL + "/live-rooms/" + roomId + "/make-speaker/" + u._id,
-                            {},
-                            { headers: { Authorization: "Bearer " + userToken } }
-                          );
-                          if (socketRef.current) {
-                            socketRef.current.emit("liveroom:seat_request_approved", {
-                              roomId,
-                              userId: u._id,
-                              approvedBy: { _id: userInfo._id, username: userInfo.username }
-                            });
-                          }
-                          fetchRoomData();
-                        } catch (e) {
-                          Alert.alert("خطأ", e?.response?.data?.message || "فشل الدعوة");
-                        }
+                      onPress={() => {
+                        // Send an invite — the other user sees accept/reject dialog
+                        socketRef.current?.emit("liveroom:invite_to_seat", {
+                          roomId,
+                          userId: u._id,
+                          invitedBy: { _id: userInfo._id, username: userInfo.username },
+                        });
+                        Alert.alert("✅", `تم إرسال دعوة المقعد إلى ${u.username}`);
                       }}
                     >
                       <Text style={styles.inviteBtnText}>دعوة 💺</Text>
