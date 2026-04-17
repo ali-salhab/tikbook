@@ -374,14 +374,13 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: ms(5),
     alignSelf: "flex-start",
     maxWidth: "100%",
   },
   avatarWrap: {
     marginRight: ms(7),
-    marginTop: ms(2),
     flexShrink: 0,
   },
   rightCol: {

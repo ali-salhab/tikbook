@@ -209,11 +209,13 @@ const VipManagement = ({ onLogout }) => {
         updated.push(saved);
       }
       const newForm = { ...form, benefits: updated };
-      // Sync frame URLs back to top-level for mobile app
+      // Sync frame/badge URLs back to top-level for mobile app
       if (saved.type === "chat") {
         newForm.commentFrameLottieUrl = saved.frameDisplayType === "image" ? (saved.imageUrl || saved.lottieUrl || "") : "";
       } else if (saved.type === "frame") {
         newForm.profileFrameLottieUrl = saved.frameDisplayType === "image" ? (saved.imageUrl || saved.lottieUrl || "") : "";
+      } else if (saved.type === "badge") {
+        newForm.imageUrl = saved.imageUrl || saved.lottieUrl || "";
       }
       setForm(newForm);
       setShowBenefitForm(false);
