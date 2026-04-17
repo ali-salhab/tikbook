@@ -2937,6 +2937,32 @@ const styles = StyleSheet.create({
     paddingVertical: ms(6),
     marginHorizontal: ms(6),
   },
+  hostAudioCtrlRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: ms(8),
+    paddingBottom: ms(4),
+  },
+  hostAudioBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(4),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(4),
+    borderRadius: ms(20),
+    backgroundColor: "rgba(220,50,50,0.35)",
+    borderWidth: 1,
+    borderColor: "rgba(220,80,80,0.6)",
+  },
+  hostAudioBtnUnmute: {
+    backgroundColor: "rgba(16,200,112,0.2)",
+    borderColor: "rgba(16,200,112,0.5)",
+  },
+  hostAudioBtnText: {
+    color: "#fff",
+    fontSize: fs(11),
+    fontWeight: "700",
+  },
   seatRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center" },
   seatWrap: { alignItems: "center", width: BASE_SEAT_SIZE + ms(22) },
   seatCircle: {
