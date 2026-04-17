@@ -24,19 +24,19 @@ const VipBadge = ({ level, size = "small", imageUrl }) => {
   const color = VIP_COLORS[level] || "#FFD700";
   const isSmall = size === "small";
   const isMedium = size === "medium";
-  const iconSize = isSmall ? 22 : isMedium ? 28 : 32;
+  const iconSize = isSmall ? 22 : isMedium ? 32 : 40;
 
   if (imageUrl) {
-    const numFontSize = isSmall ? 9 : isMedium ? 11 : 13;
+    const numFontSize = isSmall ? 9 : isMedium ? 10 : 12;
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
         <Image
           source={{ uri: imageUrl }}
           style={{ width: iconSize, height: iconSize }}
           resizeMode="contain"
         />
-        <Text style={{ color: "#FFF", fontSize: numFontSize, fontWeight: "bold", textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-          {level}
+        <Text style={{ color: "#FFF", fontSize: numFontSize, fontWeight: "bold", textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+          VIP{level}
         </Text>
       </View>
     );

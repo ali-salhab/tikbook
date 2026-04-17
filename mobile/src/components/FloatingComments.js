@@ -137,16 +137,15 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             >
               {item.user?.username || ""}
             </Text>
-            <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}33` : "rgba(249, 218, 40, 0.2)", borderWidth: 1, borderColor: vipColor || "#FFD700" }]}>
+            <View style={[styles.vipChip, { backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)", borderWidth: 1, borderColor: vipColor || "#FFD700", flexDirection: "row", alignItems: "center", gap: 3 }]}>
               {vipIconUrl ? (
                 <Image
                   source={{ uri: vipIconUrl }}
-                  style={{ width: 16, height: 16, borderRadius: 8 }}
+                  style={{ width: ms(18), height: ms(18) }}
                   resizeMode="contain"
                 />
-              ) : (
-                <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP {vipLevel}</Text>
-              )}
+              ) : null}
+              <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP{vipLevel}</Text>
             </View>
           </View>
         ) : null}
@@ -454,8 +453,10 @@ const styles = StyleSheet.create({
   },
   vipChip: {
     paddingHorizontal: ms(5),
-    paddingVertical: ms(1.5),
+    paddingVertical: ms(2),
     borderRadius: ms(8),
+    flexDirection: "row",
+    alignItems: "center",
   },
   vipIcon: {
     width: ms(15),
@@ -465,8 +466,9 @@ const styles = StyleSheet.create({
   },
   vipChipText: {
     color: "#FFF",
-    fontSize: fs(9),
+    fontSize: fs(9.5),
     fontWeight: "800",
+    letterSpacing: 0.2,
   },
   inlineBubbleText: {
     color: "rgba(255,255,255,0.96)",

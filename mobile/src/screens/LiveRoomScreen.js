@@ -108,7 +108,7 @@ const HostAvatarFrame = React.memo(({ imageUrl, size, isSpeaking, showOnline }) 
 
   return (
     // transparent — no background, no box
-    <View style={{ width: size + ms(70), height: size + ms(70), alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: size + ms(30), height: size + ms(30), alignItems: "center", justifyContent: "center" }}>
 
       {/* ripple rings — only visible while speaking */}
       <Animated.View pointerEvents="none" style={ringStyle(r1, RIPPLE_COLORS[0])} />
@@ -1279,8 +1279,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
             </Text>
           </View>
         </View>
-        {/* Center spacer — host avatar is rendered absolutely behind this row */}
-        <View style={{ flex: 1 }} />
+        {/* Center — room title */}
+        <View style={{ flex: 1, alignItems: "center" }}>
+          {room?.title ? (
+            <Text style={styles.headerRoomTitle} numberOfLines={1}>{room.title}</Text>
+          ) : null}
+        </View>
         {/* Right */}
         <View style={styles.headerRight}>
           {/* Hand-raise requests badge (host/mod only) */}
@@ -1335,15 +1339,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       null;
     return (
       <View style={styles.hostSection}>
-        {/* Room title */}
-        {room?.title ? (
-          <View style={styles.roomTitleRow}>
-            <MaterialCommunityIcons name="broadcast" size={12} color="#A855F7" />
-            <Text style={styles.roomTitleText} numberOfLines={1}>{room.title}</Text>
-          </View>
-        ) : null}
         {/* Host avatar with frame + ripple rings */}
-        <View style={[styles.hostAvatarWrap, { width: HOST_SIZE + ms(70), height: HOST_SIZE + ms(70) }]}>
+        <View style={[styles.hostAvatarWrap, { width: HOST_SIZE + ms(30), height: HOST_SIZE + ms(30) }]}>
           <HostAvatarFrame
             imageUrl={host?.profileImage || host?.avatar || null}
             size={HOST_SIZE}
@@ -2775,15 +2772,15 @@ const styles = StyleSheet.create({
   // ── Host ─────────────────────────────────────────────────────────────────────
   hostSection: {
     alignItems: "center",
-    paddingTop: ms(8),
-    paddingBottom: ms(4),
-    minHeight: ms(200),
+    paddingTop: ms(4),
+    paddingBottom: ms(2),
+    minHeight: ms(160),
   },
   roomTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: ms(5),
-    marginBottom: ms(8),
+    marginBottom: ms(4),
     backgroundColor: "rgba(0,0,0,0.38)",
     paddingHorizontal: ms(14),
     paddingVertical: ms(5),
@@ -2798,10 +2795,20 @@ const styles = StyleSheet.create({
     maxWidth: width * 0.55,
     letterSpacing: 0.3,
   },
+  headerRoomTitle: {
+    color: "#FFF",
+    fontSize: fs(13),
+    fontWeight: "700",
+    maxWidth: width * 0.45,
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   hostAvatarWrap: { position: "relative", alignItems: "center", justifyContent: "center" },
   hostSoundWaveRow: {
-    marginTop: ms(4),
-    height: ms(20),
+    marginTop: ms(2),
+    height: ms(16),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2809,13 +2816,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: ms(6),
-    marginTop: ms(4),
+    marginTop: ms(2),
   },
   hostName: {
     color: "#FFF",
     fontWeight: "700",
-    fontSize: fs(14),
-    marginTop: ms(6),
+    fontSize: fs(13),
+    marginTop: ms(3),
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: ms(3),
@@ -2834,15 +2841,15 @@ const styles = StyleSheet.create({
   seatSizeBtnText: {},
   seatGrid: {
     paddingHorizontal: ms(4),
-    gap: ms(6),
-    marginTop: ms(8),
+    gap: ms(4),
+    marginTop: ms(4),
     backgroundColor: "rgba(0,0,0,0.28)",
     borderRadius: ms(16),
-    paddingVertical: ms(10),
+    paddingVertical: ms(6),
     marginHorizontal: ms(6),
   },
   seatRow: { flexDirection: "row", justifyContent: "space-evenly", alignItems: "center" },
-  seatWrap: { alignItems: "center", width: BASE_SEAT_SIZE + ms(18) },
+  seatWrap: { alignItems: "center", width: BASE_SEAT_SIZE + ms(22) },
   seatCircle: {
     width: BASE_SEAT_SIZE,
     height: BASE_SEAT_SIZE,
@@ -2852,6 +2859,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "visible",
   },
   seatEmpty: {
     borderStyle: "dashed",
