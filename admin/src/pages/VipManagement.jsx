@@ -25,6 +25,10 @@ const defaultBenefitForm = {
   titleAr: "", title: "", descriptionAr: "", description: "",
   type: "other", imageUrl: "", imageFile: null,
   lottieUrl: "", lottieFile: null, isLocked: false, sortOrder: 0,
+  // Frame/chat specific
+  frameDisplayType: "image", // "image" | "designed"
+  profileFrameBorderColor: "",
+  profileFrameBorderWidth: 2,
 };
 
 const defaultForm = {
@@ -169,7 +173,8 @@ const VipManagement = ({ onLogout }) => {
   const openEditBenefit = (idx) => {
     const b = form.benefits[idx];
     setEditingBenefitIdx(idx);
-    setBenefitForm({ ...defaultBenefitForm, ...b, imageFile: null, lottieFile: null });
+    const inferredDisplayType = b.frameDisplayType || ((b.imageUrl || b.lottieUrl) ? "image" : "designed");
+    setBenefitForm({ ...defaultBenefitForm, ...b, imageFile: null, lottieFile: null, frameDisplayType: inferredDisplayType });
     setBenefitImgPreview(b.imageUrl || null);
     setBenefitLottieName(b.lottieUrl ? "(ملف محفوظ)" : "");
     setBenefitImgUploading(false);
@@ -203,7 +208,14 @@ const VipManagement = ({ onLogout }) => {
       } else {
         updated.push(saved);
       }
-      setForm({ ...form, benefits: updated });
+      const newForm = { ...form, benefits: updated };
+      // Sync frame URLs back to top-level for mobile app
+      if (saved.type === "chat") {
+        newForm.commentFrameLottieUrl = saved.frameDisplayType === "image" ? (saved.imageUrl || saved.lottieUrl || "") : "";
+      } else if (saved.type === "frame") {
+        newForm.profileFrameLottieUrl = saved.frameDisplayType === "image" ? (saved.imageUrl || saved.lottieUrl || "") : "";
+      }
+      setForm(newForm);
       setShowBenefitForm(false);
       setError("");
     } catch (e) {
@@ -245,8 +257,12 @@ const VipManagement = ({ onLogout }) => {
   };
 
   const deleteBenefit = (idx) => {
+    const b = form.benefits[idx];
     const updated = form.benefits.filter((_, i) => i !== idx);
-    setForm({ ...form, benefits: updated });
+    const newForm = { ...form, benefits: updated };
+    if (b?.type === "chat") newForm.commentFrameLottieUrl = "";
+    if (b?.type === "frame") newForm.profileFrameLottieUrl = "";
+    setForm(newForm);
   };
 
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -314,6 +330,13 @@ const VipManagement = ({ onLogout }) => {
           } else {
             deduped.unshift(b);
           }
+        }
+        // Migrate top-level frame URLs into benefits (if not already there)
+        if (lvl.commentFrameLottieUrl && !deduped.some(b => b.type === "chat")) {
+          deduped.push({ titleAr: "إطار التعليق", title: "Comment Frame", descriptionAr: "", description: "", type: "chat", imageUrl: lvl.commentFrameLottieUrl, lottieUrl: "", isLocked: false, sortOrder: 0, frameDisplayType: "image", profileFrameBorderColor: "", profileFrameBorderWidth: 2 });
+        }
+        if (lvl.profileFrameLottieUrl && !deduped.some(b => b.type === "frame")) {
+          deduped.push({ titleAr: "إطار الصورة الشخصية", title: "Profile Frame", descriptionAr: "", description: "", type: "frame", imageUrl: lvl.profileFrameLottieUrl, lottieUrl: "", isLocked: false, sortOrder: 0, frameDisplayType: "image", profileFrameBorderColor: "", profileFrameBorderWidth: 2 });
         }
         return deduped;
       })() : [],
@@ -785,136 +808,6 @@ const VipManagement = ({ onLogout }) => {
                 </div>
               </div>
 
-              {/* ── Row 6: Comment frame ── */}
-              <div style={styles.formGroup}>
-                  <label style={styles.label}>💬 إطار التعليق (PNG / Lottie)</label>
-                  <input ref={commentFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]; if (!file) return;
-                      const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
-                      if (commentFramePreview && commentFramePreview.startsWith("blob:")) URL.revokeObjectURL(commentFramePreview);
-                      setCommentFramePreview(isImg ? URL.createObjectURL(file) : null);
-                      setForm({ ...form, commentFrameLottieFile: file, commentFrameLottieUrl: "" });
-                      setCommentFrameLottieName(file.name);
-                    }} />
-                  <div style={{ ...styles.uploadZone, padding: 0, overflow: "hidden", minHeight: 80 }} onClick={() => commentFrameLottieRef.current?.click()}>
-                    {commentFramePreview ? (
-                      <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
-                        <img src={commentFramePreview} alt="comment frame preview" style={{ maxWidth: "100%", maxHeight: 120, objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }} />
-                        <div style={{ fontSize: 10, color: "#64748b", padding: "4px 0" }}>{commentFrameLottieName}</div>
-                        <button style={{ ...styles.removeImgBtn, position: "absolute", top: 4, right: 4 }}
-                          onClick={(e) => { e.stopPropagation(); if (commentFramePreview?.startsWith("blob:")) URL.revokeObjectURL(commentFramePreview); setCommentFramePreview(null); setCommentFrameLottieName(""); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
-                          <FiX size={12} />
-                        </button>
-                      </div>
-                    ) : commentFrameLottieName ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 10 }}>
-                        <span style={{ fontSize: 22 }}>💬</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{commentFrameLottieName}</div>
-                          {form.commentFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
-                        </div>
-                        <button style={{ ...styles.removeImgBtn, position: "static" }}
-                          onClick={(e) => { e.stopPropagation(); setCommentFrameLottieName(""); setCommentFramePreview(null); setForm({ ...form, commentFrameLottieFile: null, commentFrameLottieUrl: "" }); }}>
-                          <FiX size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>
-                        <div style={{ fontSize: 24, marginBottom: 4 }}>💬</div>
-                        <div style={{ fontSize: 12 }}>إطار فقاعة التعليق</div>
-                      </div>
-                    )}
-                  </div>
-              </div>
-
-              {/* ── Row 6b: Profile frame ── */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>👤 إطار الصورة الشخصية (PNG / Lottie)</label>
-                <input ref={profileFrameLottieRef} type="file" accept=".json,application/json,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]; if (!file) return;
-                    const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
-                    if (profileFramePreview && profileFramePreview.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview);
-                    setProfileFramePreview(isImg ? URL.createObjectURL(file) : null);
-                    setForm({ ...form, profileFrameLottieFile: file, profileFrameLottieUrl: "" });
-                    setProfileFrameLottieName(file.name);
-                  }} />
-                <div style={{ ...styles.uploadZone, padding: 0, overflow: "hidden", minHeight: 80 }} onClick={() => profileFrameLottieRef.current?.click()}>
-                  {profileFramePreview ? (
-                    <div style={{ position: "relative", width: "100%", textAlign: "center" }}>
-                      <img src={profileFramePreview} alt="profile frame preview" style={{ maxWidth: "100%", maxHeight: 120, objectFit: "contain", borderRadius: 6, display: "block", margin: "0 auto" }} />
-                      <div style={{ fontSize: 10, color: "#64748b", padding: "4px 0" }}>{profileFrameLottieName}</div>
-                      <button style={{ ...styles.removeImgBtn, position: "absolute", top: 4, right: 4 }}
-                        onClick={(e) => { e.stopPropagation(); if (profileFramePreview?.startsWith("blob:")) URL.revokeObjectURL(profileFramePreview); setProfileFramePreview(null); setProfileFrameLottieName(""); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : profileFrameLottieName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: 10 }}>
-                      <span style={{ fontSize: 22 }}>👤</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profileFrameLottieName}</div>
-                        {form.profileFrameLottieUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
-                      </div>
-                      <button style={{ ...styles.removeImgBtn, position: "static" }}
-                        onClick={(e) => { e.stopPropagation(); setProfileFrameLottieName(""); setProfileFramePreview(null); setForm({ ...form, profileFrameLottieFile: null, profileFrameLottieUrl: "" }); }}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", color: "#94a3b8", padding: 16 }}>
-                      <div style={{ fontSize: 24, marginBottom: 4 }}>👤</div>
-                      <div style={{ fontSize: 12 }}>إطار الصورة الشخصية في البروفايل والبث</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Frames live preview ── */}
-              {(commentFramePreview || form.commentFrameLottieUrl || profileFramePreview || form.profileFrameLottieUrl) && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 8 }}>
-                  {/* Comment frame preview */}
-                  {(commentFramePreview || form.commentFrameLottieUrl) && (
-                    <div style={{ background: "#0d1117", borderRadius: 12, padding: 14, border: "1px solid #1e293b" }}>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>💬 معاينة إطار التعليق</div>
-                      <div style={{ display: "flex", justifyContent: "center" }}>
-                        <div style={{ position: "relative", display: "inline-block", padding: "14px 22px" }}>
-                          {/* frame sits behind via absolute, text on top */}
-                          <img
-                            src={commentFramePreview || form.commentFrameLottieUrl}
-                            alt=""
-                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
-                          />
-                          <span style={{ position: "relative", color: "#fff", fontSize: 13, whiteSpace: "nowrap" }}>
-                            هذا شكل التعليق ✨
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Profile frame preview */}
-                  {(profileFramePreview || form.profileFrameLottieUrl) && (
-                    <div style={{ background: "#0d1117", borderRadius: 12, padding: 14, border: "1px solid #1e293b" }}>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>👤 معاينة إطار البروفايل</div>
-                      <div style={{ display: "flex", justifyContent: "center" }}>
-                        <div style={{ position: "relative", width: 80, height: 80 }}>
-                          {/* Avatar circle */}
-                          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 54, height: 54, borderRadius: "50%", background: "linear-gradient(135deg,#374151,#6b7280)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <span style={{ fontSize: 22 }}>👤</span>
-                          </div>
-                          {/* Frame overlay */}
-                          <img
-                            src={profileFramePreview || form.profileFrameLottieUrl}
-                            alt=""
-                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* ── Row 7: Join animation + Join sound ── */}
               <div style={styles.twoCol}>
@@ -999,11 +892,19 @@ const VipManagement = ({ onLogout }) => {
                 )}
                 {form.benefits.map((b, idx) => (
                   <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#fff", borderRadius: 8, marginBottom: 6, border: "1px solid #e2e8f0" }}>
-                    {b.imageUrl && <img src={b.imageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} />}
-                    {b.lottieUrl && !b.imageUrl && <span style={{ fontSize: 22 }}>🎞</span>}
+                    {/* Benefit icon in list */}
+                    {(b.type === "frame" || b.type === "chat") && b.frameDisplayType === "designed"
+                      ? <div style={{ width: 36, height: 36, borderRadius: b.type === "frame" ? "50%" : 6, border: `${b.profileFrameBorderWidth || 2}px solid ${b.profileFrameBorderColor || form.color || "#FFD700"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ fontSize: 14 }}>{b.type === "frame" ? "👤" : "💬"}</span></div>
+                      : b.imageUrl ? <img src={b.imageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                      : b.lottieUrl ? <span style={{ fontSize: 22 }}>🎞</span>
+                      : <span style={{ fontSize: 22 }}>{b.type === "frame" ? "👤" : b.type === "chat" ? "💬" : "🎁"}</span>
+                    }
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{b.titleAr}</div>
-                      <div style={{ fontSize: 11, color: "#64748b" }}>{BENEFIT_TYPES.find(t => t.value === b.type)?.label || b.type}</div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>
+                        {BENEFIT_TYPES.find(t => t.value === b.type)?.label || b.type}
+                        {(b.type === "frame" || b.type === "chat") && <span style={{ marginRight: 4, color: b.frameDisplayType === "image" ? "#6366f1" : "#059669", fontWeight: 600 }}> — {b.frameDisplayType === "image" ? "📷 صورة" : "🎨 تصميم"}</span>}
+                      </div>
                     </div>
                     {b.isLocked && <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>🔒</span>}
                     <button style={styles.editBtn} onClick={() => openEditBenefit(idx)}><FiEdit size={12} /></button>
@@ -1018,6 +919,7 @@ const VipManagement = ({ onLogout }) => {
                       <strong style={{ fontSize: 13 }}>{editingBenefitIdx !== null ? "تعديل ميزة" : "إضافة ميزة جديدة"}</strong>
                       <button style={styles.closeBtn} onClick={() => setShowBenefitForm(false)}><FiX /></button>
                     </div>
+                    {/* ── Common fields: title + type + description ── */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <div>
                         <label style={styles.label}>العنوان العربي *</label>
@@ -1040,73 +942,252 @@ const VipManagement = ({ onLogout }) => {
                         <input style={styles.input} value={benefitForm.descriptionAr}
                           onChange={(e) => setBenefitForm({ ...benefitForm, descriptionAr: e.target.value })} placeholder="وصف قصير للميزة" />
                       </div>
-                      {/* Benefit image upload */}
-                      <div>
-                        <label style={styles.label}>📷 صورة الميزة</label>
-                        <input ref={benefitImgRef} type="file" accept="image/*" style={{ display: "none" }}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0]; if (!f) return;
-                            setBenefitForm({ ...benefitForm, imageFile: f, imageUrl: "" });
-                            setBenefitImgPreview(URL.createObjectURL(f));
-                            setBenefitImgUploaded(false);
-                          }} />
-                        <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitImgRef.current?.click()}>
-                          {benefitImgPreview
-                            ? <img src={benefitImgPreview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} />
-                            : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}><FiImage size={18} /><br/>صورة</div>}
-                        </div>
-                        {benefitForm.imageFile && !benefitImgUploaded && (
-                          <button
-                            style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
-                            onClick={(e) => { e.stopPropagation(); handleBenefitImgUpload(); }}
-                            disabled={benefitImgUploading}
-                          >
-                            {benefitImgUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع الصورة</>}
-                          </button>
-                        )}
-                        {benefitImgUploaded && (
-                          <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع بنجاح</div>
-                        )}
-                      </div>
-                      {/* Benefit lottie upload */}
-                      <div>
-                        <label style={styles.label}>🎞 انيميشن (Lottie JSON)</label>
-                        <input ref={benefitLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0]; if (!f) return;
-                            setBenefitForm({ ...benefitForm, lottieFile: f, lottieUrl: "" });
-                            setBenefitLottieName(f.name);
-                            setBenefitLottieUploaded(false);
-                          }} />
-                        <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitLottieRef.current?.click()}>
-                          {benefitLottieName
-                            ? <div style={{ fontSize: 11, color: "#6366f1", textAlign: "center", fontWeight: 600 }}>🎞 {benefitLottieName}</div>
-                            : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}>🎞<br/>Lottie JSON</div>}
-                        </div>
-                        {benefitForm.lottieFile && !benefitLottieUploaded && (
-                          <button
-                            style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
-                            onClick={(e) => { e.stopPropagation(); handleBenefitLottieUpload(); }}
-                            disabled={benefitLottieUploading}
-                          >
-                            {benefitLottieUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع الانيميشن</>}
-                          </button>
-                        )}
-                        {benefitLottieUploaded && (
-                          <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع بنجاح</div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
-                          onChange={(e) => setBenefitForm({ ...benefitForm, isLocked: e.target.checked })} />
-                        <label htmlFor="bLocked" style={{ fontSize: 13, color: "#374151" }}>مقفل (يحتاج مستوى أعلى)</label>
-                      </div>
-                      <div>
-                        <label style={styles.label}>الترتيب</label>
-                        <input style={styles.input} type="number" value={benefitForm.sortOrder}
-                          onChange={(e) => setBenefitForm({ ...benefitForm, sortOrder: +e.target.value })} />
-                      </div>
                     </div>
+
+                    {/* ── Frame / Chat: طريقة العرض ── */}
+                    {(benefitForm.type === "frame" || benefitForm.type === "chat") && (
+                      <div style={{ marginTop: 12, border: "1px solid #c7d2fe", borderRadius: 10, padding: 14, background: "#fafbff" }}>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: "#374151", marginBottom: 10 }}>
+                          {benefitForm.type === "frame" ? "👤 إطار الصورة الشخصية" : "💬 إطار التعليق"} — اختر طريقة العرض
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                          <button type="button"
+                            onClick={() => setBenefitForm({ ...benefitForm, frameDisplayType: "image" })}
+                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `2px solid ${benefitForm.frameDisplayType === "image" ? "#6366f1" : "#e2e8f0"}`, background: benefitForm.frameDisplayType === "image" ? "#6366f115" : "#fff", color: benefitForm.frameDisplayType === "image" ? "#6366f1" : "#64748b", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                            📷 صورة / Lottie
+                          </button>
+                          <button type="button"
+                            onClick={() => setBenefitForm({ ...benefitForm, frameDisplayType: "designed" })}
+                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `2px solid ${benefitForm.frameDisplayType === "designed" ? "#059669" : "#e2e8f0"}`, background: benefitForm.frameDisplayType === "designed" ? "#05966915" : "#fff", color: benefitForm.frameDisplayType === "designed" ? "#059669" : "#64748b", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                            🎨 تصميم مخصص
+                          </button>
+                        </div>
+
+                        {/* Image mode */}
+                        {benefitForm.frameDisplayType === "image" && (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <div>
+                              <label style={styles.label}>📷 صورة الإطار (PNG/WebP)</label>
+                              <input ref={benefitImgRef} type="file" accept="image/*,.json,application/json" style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0]; if (!f) return;
+                                  setBenefitForm({ ...benefitForm, imageFile: f, imageUrl: "" });
+                                  setBenefitImgPreview(URL.createObjectURL(f));
+                                  setBenefitImgUploaded(false);
+                                }} />
+                              <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitImgRef.current?.click()}>
+                                {benefitImgPreview
+                                  ? <img src={benefitImgPreview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "contain" }} />
+                                  : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}><FiImage size={18} /><br/>PNG/WebP</div>}
+                              </div>
+                              {benefitForm.imageFile && !benefitImgUploaded && (
+                                <button style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
+                                  onClick={(e) => { e.stopPropagation(); handleBenefitImgUpload(); }}
+                                  disabled={benefitImgUploading}>
+                                  {benefitImgUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع</>}
+                                </button>
+                              )}
+                              {benefitImgUploaded && <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع</div>}
+                            </div>
+                            <div>
+                              <label style={styles.label}>🎞 Lottie JSON</label>
+                              <input ref={benefitLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0]; if (!f) return;
+                                  setBenefitForm({ ...benefitForm, lottieFile: f, lottieUrl: "" });
+                                  setBenefitLottieName(f.name);
+                                  setBenefitLottieUploaded(false);
+                                }} />
+                              <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitLottieRef.current?.click()}>
+                                {benefitLottieName
+                                  ? <div style={{ fontSize: 11, color: "#6366f1", textAlign: "center", fontWeight: 600 }}>🎞 {benefitLottieName}</div>
+                                  : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}>🎞<br/>Lottie JSON</div>}
+                              </div>
+                              {benefitForm.lottieFile && !benefitLottieUploaded && (
+                                <button style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
+                                  onClick={(e) => { e.stopPropagation(); handleBenefitLottieUpload(); }}
+                                  disabled={benefitLottieUploading}>
+                                  {benefitLottieUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع</>}
+                                </button>
+                              )}
+                              {benefitLottieUploaded && <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع</div>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Designed mode — chat */}
+                        {benefitForm.frameDisplayType === "designed" && benefitForm.type === "chat" && (
+                          <div style={{ background: "#f0f4ff", borderRadius: 8, padding: 12, border: "1px solid #c7d2fe" }}>
+                            <div style={{ fontSize: 12, color: "#4338ca", fontWeight: 700, marginBottom: 8 }}>يستخدم إعدادات فقاعة التعليق من الخصائص الرئيسية:</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                              <span style={{ fontSize: 12, background: "#e0e7ff", color: "#4338ca", borderRadius: 6, padding: "3px 10px" }}>شكل: {form.commentBubbleShape}</span>
+                              <span style={{ fontSize: 12, background: "#e0e7ff", color: "#4338ca", borderRadius: 6, padding: "3px 10px" }}>سماكة: {form.commentBorderWidth}px</span>
+                              <span style={{ fontSize: 12, borderRadius: 6, padding: "3px 10px", background: (form.color || "#FFD700") + "22", color: form.color || "#FFD700", fontWeight: 700 }}>لون: {form.color || "#FFD700"}</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: "#6366f1", marginTop: 6 }}>💡 عدّل إعدادات التعليق من قسم "سماكة الإطار / شكل الفقاعة" في النموذج</div>
+                          </div>
+                        )}
+
+                        {/* Designed mode — profile frame */}
+                        {benefitForm.frameDisplayType === "designed" && benefitForm.type === "frame" && (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <div>
+                              <label style={styles.label}>🎨 لون الإطار</label>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <input type="color" value={benefitForm.profileFrameBorderColor || form.color || "#FFD700"}
+                                  onChange={(e) => setBenefitForm({ ...benefitForm, profileFrameBorderColor: e.target.value })}
+                                  style={{ width: 36, height: 36, border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0 }} />
+                                <input style={{ ...styles.input, flex: 1 }} value={benefitForm.profileFrameBorderColor || form.color || "#FFD700"}
+                                  onChange={(e) => setBenefitForm({ ...benefitForm, profileFrameBorderColor: e.target.value })} />
+                              </div>
+                            </div>
+                            <div>
+                              <label style={styles.label}>📏 سماكة الإطار (px)</label>
+                              <input style={styles.input} type="number" min="1" max="12" step="0.5"
+                                value={benefitForm.profileFrameBorderWidth || 2}
+                                onChange={(e) => setBenefitForm({ ...benefitForm, profileFrameBorderWidth: +e.target.value })} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Live Preview */}
+                        <div style={{ marginTop: 14, background: "#0f0f1a", borderRadius: 10, padding: 14 }}>
+                          <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>
+                            {benefitForm.type === "frame" ? "👤 معاينة إطار البروفايل" : "💬 معاينة إطار التعليق"}
+                          </div>
+                          {benefitForm.type === "frame" && (
+                            <div style={{ display: "flex", justifyContent: "center" }}>
+                              <div style={{ position: "relative", width: 90, height: 90 }}>
+                                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 62, height: 62, borderRadius: "50%", background: "linear-gradient(135deg,#374151,#6b7280)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <span style={{ fontSize: 28 }}>👤</span>
+                                </div>
+                                {benefitForm.frameDisplayType === "image" && (benefitImgPreview || benefitForm.imageUrl) && (
+                                  <img src={benefitImgPreview || benefitForm.imageUrl} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }} />
+                                )}
+                                {benefitForm.frameDisplayType === "designed" && (
+                                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: "50%", border: `${benefitForm.profileFrameBorderWidth || 2}px solid ${benefitForm.profileFrameBorderColor || form.color || "#FFD700"}`, boxShadow: `0 0 14px ${benefitForm.profileFrameBorderColor || form.color || "#FFD700"}55` }} />
+                                )}
+                                {benefitForm.frameDisplayType === "image" && !benefitImgPreview && !benefitForm.imageUrl && (
+                                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: "50%", border: "2px dashed #6366f144", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <span style={{ fontSize: 10, color: "#6366f1" }}>ارفع صورة</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {benefitForm.type === "chat" && (
+                            <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                              <div style={{ width: 30, height: 30, borderRadius: "50%", background: (form.color || "#FFD700") + "33", border: `2px solid ${form.color || "#FFD700"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <span style={{ fontSize: 11, color: form.color || "#FFD700", fontWeight: 700 }}>م</span>
+                              </div>
+                              <div style={{ position: "relative", maxWidth: "75%" }}>
+                                {benefitForm.frameDisplayType === "image" && (benefitImgPreview || benefitForm.imageUrl) && (
+                                  <img src={benefitImgPreview || benefitForm.imageUrl} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none", zIndex: 1, borderRadius: 8 }} />
+                                )}
+                                <div style={{ ...getBubbleShapeStyle(form.commentBubbleShape), border: benefitForm.frameDisplayType === "designed" ? `${normalizeBorderWidth(form.commentBorderWidth)}px solid ${form.color || "#FFD700"}` : "1px solid rgba(255,255,255,0.08)", background: "rgba(8,8,20,0.9)", padding: "8px 14px", position: "relative", zIndex: 2 }}>
+                                  <div style={{ color: form.color || "#FFD700", fontWeight: 700, fontSize: 11, marginBottom: 2 }}>مستخدم VIP{form.level}</div>
+                                  <div style={{ color: form.commentTextColor || "#fff", fontSize: 12 }}>شكل التعليق في البث ✨</div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* isLocked + sortOrder */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
+                              onChange={(e) => setBenefitForm({ ...benefitForm, isLocked: e.target.checked })} />
+                            <label htmlFor="bLocked" style={{ fontSize: 13, color: "#374151" }}>مقفل (يحتاج مستوى أعلى)</label>
+                          </div>
+                          <div>
+                            <label style={styles.label}>الترتيب</label>
+                            <input style={styles.input} type="number" value={benefitForm.sortOrder}
+                              onChange={(e) => setBenefitForm({ ...benefitForm, sortOrder: +e.target.value })} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Generic benefit types ── */}
+                    {benefitForm.type !== "frame" && benefitForm.type !== "chat" && (
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          {/* Benefit image upload */}
+                          <div>
+                            <label style={styles.label}>📷 صورة الميزة</label>
+                            <input ref={benefitImgRef} type="file" accept="image/*" style={{ display: "none" }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0]; if (!f) return;
+                                setBenefitForm({ ...benefitForm, imageFile: f, imageUrl: "" });
+                                setBenefitImgPreview(URL.createObjectURL(f));
+                                setBenefitImgUploaded(false);
+                              }} />
+                            <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitImgRef.current?.click()}>
+                              {benefitImgPreview
+                                ? <img src={benefitImgPreview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover" }} />
+                                : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}><FiImage size={18} /><br/>صورة</div>}
+                            </div>
+                            {benefitForm.imageFile && !benefitImgUploaded && (
+                              <button style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
+                                onClick={(e) => { e.stopPropagation(); handleBenefitImgUpload(); }}
+                                disabled={benefitImgUploading}>
+                                {benefitImgUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع الصورة</>}
+                              </button>
+                            )}
+                            {benefitImgUploaded && <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع بنجاح</div>}
+                          </div>
+                          {/* Benefit lottie upload */}
+                          <div>
+                            <label style={styles.label}>🎞 انيميشن (Lottie JSON)</label>
+                            <input ref={benefitLottieRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0]; if (!f) return;
+                                setBenefitForm({ ...benefitForm, lottieFile: f, lottieUrl: "" });
+                                setBenefitLottieName(f.name);
+                                setBenefitLottieUploaded(false);
+                              }} />
+                            <div style={{ ...styles.uploadZone, padding: 10, minHeight: 60 }} onClick={() => benefitLottieRef.current?.click()}>
+                              {benefitLottieName
+                                ? <div style={{ fontSize: 11, color: "#6366f1", textAlign: "center", fontWeight: 600 }}>🎞 {benefitLottieName}</div>
+                                : <div style={{ color: "#94a3b8", fontSize: 11, textAlign: "center" }}>🎞<br/>Lottie JSON</div>}
+                            </div>
+                            {benefitForm.lottieFile && !benefitLottieUploaded && (
+                              <button style={{ ...styles.saveBtn, marginTop: 6, padding: "5px 10px", fontSize: 11, width: "100%", justifyContent: "center" }}
+                                onClick={(e) => { e.stopPropagation(); handleBenefitLottieUpload(); }}
+                                disabled={benefitLottieUploading}>
+                                {benefitLottieUploading ? "جاري الرفع..." : <><FiUpload size={11} /> رفع الانيميشن</>}
+                              </button>
+                            )}
+                            {benefitLottieUploaded && <div style={{ marginTop: 4, fontSize: 11, color: "#22c55e", fontWeight: 600, textAlign: "center" }}>✅ تم الرفع بنجاح</div>}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
+                              onChange={(e) => setBenefitForm({ ...benefitForm, isLocked: e.target.checked })} />
+                            <label htmlFor="bLocked" style={{ fontSize: 13, color: "#374151" }}>مقفل (يحتاج مستوى أعلى)</label>
+                          </div>
+                          <div>
+                            <label style={styles.label}>الترتيب</label>
+                            <input style={styles.input} type="number" value={benefitForm.sortOrder}
+                              onChange={(e) => setBenefitForm({ ...benefitForm, sortOrder: +e.target.value })} />
+                          </div>
+                        </div>
+                        {/* Generic preview */}
+                        {(benefitImgPreview || benefitForm.imageUrl) && (
+                          <div style={{ marginTop: 10, background: "#0f0f1a", borderRadius: 10, padding: 14 }}>
+                            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>🖼 معاينة الميزة</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <img src={benefitImgPreview || benefitForm.imageUrl} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "contain", background: "#1a1a2e", border: `2px solid ${(form.color || "#FFD700")}33` }} />
+                              <div>
+                                <div style={{ color: "#e2e8f0", fontWeight: 600, fontSize: 13 }}>{benefitForm.titleAr || "اسم الميزة"}</div>
+                                {benefitForm.descriptionAr && <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 2 }}>{benefitForm.descriptionAr}</div>}
+                                <div style={{ color: form.color || "#FFD700", fontSize: 11, fontWeight: 600, marginTop: 2 }}>{BENEFIT_TYPES.find(t => t.value === benefitForm.type)?.label}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                       <button style={styles.cancelBtn} onClick={() => setShowBenefitForm(false)}>إلغاء</button>
                       <button style={styles.saveBtn} onClick={saveBenefit} disabled={uploadingBenefit}>
