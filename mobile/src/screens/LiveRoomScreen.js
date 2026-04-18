@@ -2898,6 +2898,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       ))}
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      {seatControlModal}
       {musicPlayerModal}
       {audioPanelModal}
       {handRaiseModal}
@@ -3532,6 +3533,129 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "rgba(160,32,240,0.4)",
     minHeight: ms(200),
+  },
+
+  // ── Seat control bottom sheet ─────────────────────────────────────────────────
+  seatCtrlSheet: {
+    paddingHorizontal: ms(16),
+    paddingBottom: ms(24),
+  },
+  seatCtrlHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(12),
+    marginBottom: ms(14),
+  },
+  seatCtrlAvatar: {
+    width: ms(52),
+    height: ms(52),
+    borderRadius: ms(26),
+    borderWidth: 2,
+    borderColor: "rgba(160,32,240,0.6)",
+  },
+  seatCtrlAvatarPlaceholder: {
+    backgroundColor: "rgba(160,32,240,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  seatCtrlAvatarInitial: {
+    color: "#FFF",
+    fontSize: fs(20),
+    fontWeight: "700",
+  },
+  seatCtrlUsername: {
+    color: "#FFF",
+    fontSize: fs(15),
+    fontWeight: "700",
+  },
+  seatCtrlVip: {
+    color: "#FFD700",
+    fontSize: fs(11),
+    fontWeight: "600",
+    marginTop: ms(2),
+  },
+  seatCtrlMuteBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(4),
+    borderRadius: ms(12),
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(4),
+  },
+  seatCtrlMutedBadge: {
+    backgroundColor: "rgba(255,68,68,0.3)",
+    borderWidth: 1,
+    borderColor: "rgba(255,68,68,0.6)",
+  },
+  seatCtrlActiveBadge: {
+    backgroundColor: "rgba(0,220,130,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(0,220,130,0.5)",
+  },
+  seatCtrlMuteBadgeText: {
+    color: "#FFF",
+    fontSize: fs(11),
+    fontWeight: "600",
+  },
+  seatCtrlDivider: {
+    height: 1,
+    backgroundColor: "rgba(160,32,240,0.25)",
+    marginBottom: ms(14),
+  },
+  seatCtrlActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: ms(10),
+    marginBottom: ms(16),
+  },
+  seatCtrlBtn: {
+    flex: 1,
+    minWidth: "44%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: ms(14),
+    borderRadius: ms(14),
+    gap: ms(6),
+    borderWidth: 1,
+  },
+  seatCtrlBtnText: {
+    color: "#FFF",
+    fontSize: fs(12),
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  seatCtrlBtnGift: {
+    backgroundColor: "rgba(255,0,200,0.18)",
+    borderColor: "rgba(255,0,200,0.45)",
+  },
+  seatCtrlBtnMute: {
+    backgroundColor: "rgba(255,68,68,0.18)",
+    borderColor: "rgba(255,68,68,0.45)",
+  },
+  seatCtrlBtnUnmute: {
+    backgroundColor: "rgba(0,220,130,0.18)",
+    borderColor: "rgba(0,220,130,0.45)",
+  },
+  seatCtrlBtnProfile: {
+    backgroundColor: "rgba(80,120,255,0.18)",
+    borderColor: "rgba(80,120,255,0.45)",
+  },
+  seatCtrlBtnRemove: {
+    backgroundColor: "rgba(255,140,0,0.18)",
+    borderColor: "rgba(255,140,0,0.45)",
+  },
+  seatCtrlCancel: {
+    alignItems: "center",
+    paddingVertical: ms(12),
+    borderRadius: ms(12),
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  seatCtrlCancelText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: fs(13),
+    fontWeight: "600",
   },
   sheetHandle: {
     alignSelf: "center",
