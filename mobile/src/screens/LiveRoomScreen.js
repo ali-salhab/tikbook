@@ -277,6 +277,58 @@ const LiveRoomScreen = ({ route, navigation }) => {
     return unsubscribe;
   }, [navigation]);
 
+  // Warn user if they try to navigate away (back gesture / hardware back) while still in an active room
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      const isHost = room?.host?._id === userInfo?._id;
+      // Only intercept if the room is still active (not already ended/left via UI)
+      if (!room || room.status !== "live") return;
+
+      e.preventDefault();
+
+      if (isHost) {
+        Alert.alert(
+          "أنت لا تزال في بث مباشر",
+          "ما زلت تبث مباشرة! هل تريد الخروج من الغرفة دون إنهائها، أم إنهاء البث تماماً؟",
+          [
+            { text: "إلغاء", style: "cancel" },
+            {
+              text: "خروج فقط",
+              onPress: async () => {
+                await leaveRoomBackend();
+                navigation.dispatch(e.data.action);
+              },
+            },
+            {
+              text: "إنهاء البث",
+              style: "destructive",
+              onPress: () => {
+                // Delegate to existing handleExitPress logic which shows summary
+                handleExitPress();
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "أنت في غرفة بث مباشر",
+          "هل تريد الخروج من الغرفة؟",
+          [
+            { text: "إلغاء", style: "cancel" },
+            {
+              text: "خروج",
+              onPress: async () => {
+                await leaveRoomBackend();
+                navigation.dispatch(e.data.action);
+              },
+            },
+          ]
+        );
+      }
+    });
+    return unsubscribe;
+  }, [navigation, room]);
+
   // Fixed comment area top — always below header + typical 2-row seat grid, never shifts with seat count
   useEffect(() => {
     setCommentAreaTop(insets.top + ms(190));

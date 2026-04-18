@@ -47,6 +47,7 @@ const vipLevelSchema = new mongoose.Schema(
         imageUrl: { type: String, default: "" },
         lottieUrl: { type: String, default: "" },
         isLocked: { type: Boolean, default: false },
+        isVisible: { type: Boolean, default: true },
         sortOrder: { type: Number, default: 0 },
       },
     ],

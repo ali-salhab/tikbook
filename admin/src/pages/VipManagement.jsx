@@ -24,11 +24,15 @@ const BENEFIT_TYPES = [
 const defaultBenefitForm = {
   titleAr: "", title: "", descriptionAr: "", description: "",
   type: "other", imageUrl: "", imageFile: null,
-  lottieUrl: "", lottieFile: null, isLocked: false, sortOrder: 0,
+  lottieUrl: "", lottieFile: null, isLocked: false, isVisible: true, sortOrder: 0,
   // Frame/chat specific
   frameDisplayType: "image", // "image" | "designed"
   profileFrameBorderColor: "",
   profileFrameBorderWidth: 2,
+  // Chat / comment frame colours (type=chat only)
+  commentFrameBgColor: "",
+  commentBubbleBgColor: "",
+  commentTextColor: "",
 };
 
 const defaultForm = {
@@ -182,7 +186,16 @@ const VipManagement = ({ onLogout }) => {
     const b = form.benefits[idx];
     setEditingBenefitIdx(idx);
     const inferredDisplayType = b.frameDisplayType || ((b.imageUrl || b.lottieUrl) ? "image" : "designed");
-    setBenefitForm({ ...defaultBenefitForm, ...b, imageFile: null, lottieFile: null, frameDisplayType: inferredDisplayType });
+    setBenefitForm({
+      ...defaultBenefitForm, ...b,
+      imageFile: null, lottieFile: null,
+      frameDisplayType: inferredDisplayType,
+      isVisible: b.isVisible !== false, // default true
+      // Pre-populate chat colours from main form if not stored in benefit
+      commentFrameBgColor: b.commentFrameBgColor || (b.type === "chat" ? (form.commentFrameBgColor || "") : ""),
+      commentBubbleBgColor: b.commentBubbleBgColor || (b.type === "chat" ? (form.commentBubbleBgColor || "") : ""),
+      commentTextColor: b.commentTextColor || (b.type === "chat" ? (form.commentTextColor || "") : ""),
+    });
     setBenefitImgPreview(b.imageUrl || null);
     setBenefitLottieName(b.lottieUrl ? "(ملف محفوظ)" : "");
     setBenefitImgUploading(false);
@@ -220,6 +233,9 @@ const VipManagement = ({ onLogout }) => {
       // Sync frame/badge URLs back to top-level for mobile app
       if (saved.type === "chat") {
         newForm.commentFrameLottieUrl = saved.frameDisplayType === "image" ? (saved.imageUrl || saved.lottieUrl || "") : "";
+        if (saved.commentFrameBgColor !== undefined) newForm.commentFrameBgColor = saved.commentFrameBgColor;
+        if (saved.commentBubbleBgColor !== undefined) newForm.commentBubbleBgColor = saved.commentBubbleBgColor;
+        if (saved.commentTextColor !== undefined) newForm.commentTextColor = saved.commentTextColor;
       } else if (saved.type === "frame") {
         newForm.profileFrameLottieUrl = saved.frameDisplayType === "image" ? (saved.imageUrl || saved.lottieUrl || "") : "";
       } else if (saved.type === "badge") {
@@ -1060,7 +1076,7 @@ const VipManagement = ({ onLogout }) => {
                   <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "12px 0" }}>لا توجد مزايا بعد</div>
                 )}
                 {form.benefits.map((b, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#fff", borderRadius: 8, marginBottom: 6, border: "1px solid #e2e8f0" }}>
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: b.isVisible === false ? "#f8f8f8" : "#fff", borderRadius: 8, marginBottom: 6, border: `1px solid ${b.isVisible === false ? "#e2e8f0" : "#e2e8f0"}`, opacity: b.isVisible === false ? 0.6 : 1 }}>
                     {/* Benefit icon in list */}
                     {(b.type === "frame" || b.type === "chat") && b.frameDisplayType === "designed"
                       ? <div style={{ width: 36, height: 36, borderRadius: b.type === "frame" ? "50%" : 6, border: `${b.profileFrameBorderWidth || 2}px solid ${b.profileFrameBorderColor || form.color || "#FFD700"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ fontSize: 14 }}>{b.type === "frame" ? "👤" : "💬"}</span></div>
@@ -1076,6 +1092,16 @@ const VipManagement = ({ onLogout }) => {
                       </div>
                     </div>
                     {b.isLocked && <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>🔒</span>}
+                    {/* Visibility toggle */}
+                    <button
+                      title={b.isVisible === false ? "إظهار الميزة" : "إخفاء الميزة"}
+                      style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "3px 7px", fontSize: 14, color: b.isVisible === false ? "#94a3b8" : "#22c55e" }}
+                      onClick={() => {
+                        const updated = [...form.benefits];
+                        updated[idx] = { ...b, isVisible: b.isVisible === false ? true : false };
+                        setForm({ ...form, benefits: updated });
+                      }}
+                    >{b.isVisible === false ? "🙈" : "👁"}</button>
                     <button style={styles.editBtn} onClick={() => openEditBenefit(idx)}><FiEdit size={12} /></button>
                     <button style={styles.deleteBtn} onClick={() => deleteBenefit(idx)}><FiTrash2 size={12} /></button>
                   </div>
@@ -1207,6 +1233,64 @@ const VipManagement = ({ onLogout }) => {
                           </div>
                         )}
 
+                        {/* Chat color controls — shown for both image and designed modes */}
+                        {benefitForm.type === "chat" && (
+                          <div style={{ marginTop: 12, border: "1px solid #fde68a", borderRadius: 10, padding: 14, background: "#fffbeb" }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: "#92400e", marginBottom: 10 }}>🎨 ألوان التعليق</div>
+
+                            {/* Bubble bg color */}
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={{ ...styles.label, fontSize: 12, color: "#92400e" }}>لون خلفية فقاعة التعليق</label>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <input type="color"
+                                  value={(() => { const c = benefitForm.commentBubbleBgColor || "#000000"; if (c.startsWith("#")) return c; const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); return m ? "#" + [m[1],m[2],m[3]].map(n => parseInt(n).toString(16).padStart(2,"0")).join("") : "#000000"; })()}
+                                  onChange={(e) => { const hex = e.target.value; const cur = benefitForm.commentBubbleBgColor || ""; const a = (cur.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/) || [])[1] || "0.45"; const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); setBenefitForm({ ...benefitForm, commentBubbleBgColor: `rgba(${r},${g},${b},${a})` }); }}
+                                  style={{ width: 36, height: 30, border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0 }} />
+                                <input type="range" min="0" max="1" step="0.05"
+                                  value={(benefitForm.commentBubbleBgColor || "").match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/)?.[1] || "0.45"}
+                                  onChange={(e) => { const cur = benefitForm.commentBubbleBgColor || "rgba(100,0,180,0.45)"; const m = cur.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/); const rgb = m ? `${m[1]},${m[2]},${m[3]}` : "100,0,180"; setBenefitForm({ ...benefitForm, commentBubbleBgColor: `rgba(${rgb},${e.target.value})` }); }}
+                                  style={{ width: 80 }} />
+                                <input style={{ ...styles.input, flex: 1, fontSize: 11 }} value={benefitForm.commentBubbleBgColor} placeholder="rgba(100,0,180,0.45)"
+                                  onChange={(e) => setBenefitForm({ ...benefitForm, commentBubbleBgColor: e.target.value })} />
+                                {benefitForm.commentBubbleBgColor && <button style={{ padding: "3px 7px", borderRadius: 5, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 10, color: "#6b7280" }} onClick={() => setBenefitForm({ ...benefitForm, commentBubbleBgColor: "" })}>✕</button>}
+                              </div>
+                            </div>
+
+                            {/* Frame bg color — only when image mode */}
+                            {benefitForm.frameDisplayType === "image" && (
+                              <div style={{ marginBottom: 10 }}>
+                                <label style={{ ...styles.label, fontSize: 12, color: "#92400e" }}>لون خلفية النص داخل الإطار</label>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <input type="color"
+                                    value={(() => { const c = benefitForm.commentFrameBgColor || "#000000"; if (c.startsWith("#")) return c; const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); return m ? "#" + [m[1],m[2],m[3]].map(n => parseInt(n).toString(16).padStart(2,"0")).join("") : "#000000"; })()}
+                                    onChange={(e) => { const hex = e.target.value; const cur = benefitForm.commentFrameBgColor || ""; const a = (cur.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/) || [])[1] || "0.5"; const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); setBenefitForm({ ...benefitForm, commentFrameBgColor: `rgba(${r},${g},${b},${a})` }); }}
+                                    style={{ width: 36, height: 30, border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0 }} />
+                                  <input type="range" min="0" max="1" step="0.05"
+                                    value={(benefitForm.commentFrameBgColor || "").match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/)?.[1] || "0.5"}
+                                    onChange={(e) => { const cur = benefitForm.commentFrameBgColor || "rgba(0,0,0,0.5)"; const m = cur.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/); const rgb = m ? `${m[1]},${m[2]},${m[3]}` : "0,0,0"; setBenefitForm({ ...benefitForm, commentFrameBgColor: `rgba(${rgb},${e.target.value})` }); }}
+                                    style={{ width: 80 }} />
+                                  <input style={{ ...styles.input, flex: 1, fontSize: 11 }} value={benefitForm.commentFrameBgColor} placeholder="rgba(0,0,0,0.5)"
+                                    onChange={(e) => setBenefitForm({ ...benefitForm, commentFrameBgColor: e.target.value })} />
+                                  {benefitForm.commentFrameBgColor && <button style={{ padding: "3px 7px", borderRadius: 5, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 10, color: "#6b7280" }} onClick={() => setBenefitForm({ ...benefitForm, commentFrameBgColor: "" })}>✕</button>}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Text color */}
+                            <div>
+                              <label style={{ ...styles.label, fontSize: 12, color: "#92400e" }}>لون نص التعليق</label>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <input type="color" value={benefitForm.commentTextColor || "#FFFFFF"}
+                                  onChange={(e) => setBenefitForm({ ...benefitForm, commentTextColor: e.target.value })}
+                                  style={{ width: 36, height: 30, border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0 }} />
+                                <input style={{ ...styles.input, flex: 1, fontSize: 11 }} value={benefitForm.commentTextColor} placeholder="#FFFFFF (افتراضي أبيض)"
+                                  onChange={(e) => setBenefitForm({ ...benefitForm, commentTextColor: e.target.value })} />
+                                {benefitForm.commentTextColor && <button style={{ padding: "3px 7px", borderRadius: 5, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 10, color: "#6b7280" }} onClick={() => setBenefitForm({ ...benefitForm, commentTextColor: "" })}>✕</button>}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Designed mode — profile frame */}
                         {benefitForm.frameDisplayType === "designed" && benefitForm.type === "frame" && (
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1272,12 +1356,17 @@ const VipManagement = ({ onLogout }) => {
                           )}
                         </div>
 
-                        {/* isLocked + sortOrder */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                        {/* isLocked + isVisible + sortOrder */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 12 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
                               onChange={(e) => setBenefitForm({ ...benefitForm, isLocked: e.target.checked })} />
                             <label htmlFor="bLocked" style={{ fontSize: 13, color: "#374151" }}>مقفل (يحتاج مستوى أعلى)</label>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <input type="checkbox" id="bVisible" checked={benefitForm.isVisible !== false}
+                              onChange={(e) => setBenefitForm({ ...benefitForm, isVisible: e.target.checked })} />
+                            <label htmlFor="bVisible" style={{ fontSize: 13, color: "#374151" }}>ظاهر للمستخدم</label>
                           </div>
                           <div>
                             <label style={styles.label}>الترتيب</label>
@@ -1344,6 +1433,11 @@ const VipManagement = ({ onLogout }) => {
                             <input type="checkbox" id="bLocked" checked={benefitForm.isLocked}
                               onChange={(e) => setBenefitForm({ ...benefitForm, isLocked: e.target.checked })} />
                             <label htmlFor="bLocked" style={{ fontSize: 13, color: "#374151" }}>مقفل (يحتاج مستوى أعلى)</label>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <input type="checkbox" id="bVisible2" checked={benefitForm.isVisible !== false}
+                              onChange={(e) => setBenefitForm({ ...benefitForm, isVisible: e.target.checked })} />
+                            <label htmlFor="bVisible2" style={{ fontSize: 13, color: "#374151" }}>ظاهر للمستخدم</label>
                           </div>
                           <div>
                             <label style={styles.label}>الترتيب</label>
