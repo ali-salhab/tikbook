@@ -170,7 +170,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             )}
             {/* Frame wraps ONLY the message text */}
             <View style={{ position: "relative", alignSelf: "flex-start" }}>
-              <View style={[styles.bubble, { backgroundColor: commentFrameBgColor || "transparent", borderWidth: 0, paddingHorizontal: ms(18), paddingVertical: ms(10) }]}>
+              <View style={[styles.bubble, { backgroundColor: commentFrameBgColor || "transparent", borderWidth: 0, borderRadius: 0, paddingHorizontal: ms(18), paddingVertical: ms(10) }]}>
                 {isGift && item.giftUrl ? (
                   <View style={styles.giftMsgRow}>
                     <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />

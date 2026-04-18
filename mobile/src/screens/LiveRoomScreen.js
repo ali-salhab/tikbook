@@ -20,6 +20,7 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 import Slider from "@react-native-community/slider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -52,6 +53,39 @@ import VipBadge from "../components/VipBadge";
 import SoundService from "../services/soundService";
 import { ms, fs } from "../utils/responsive";
 import JoinAnimation from "../live/components/JoinAnimation";
+
+const LIVE_NOTIF_ID = "live_room_active";
+
+// Show a persistent local notification so the user can return to the live room
+const showLiveNotification = async (roomId, roomTitle) => {
+  try {
+    await Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    await Notifications.scheduleNotificationAsync({
+      identifier: LIVE_NOTIF_ID,
+      content: {
+        title: "🔴 أنت في بث مباشر",
+        body: roomTitle ? `الغرفة: ${roomTitle} — انقر للعودة` : "انقر للعودة إلى الغرفة",
+        data: { screen: "LiveRoom", roomId },
+        sticky: true,
+        autoDismiss: false,
+      },
+      trigger: null, // show immediately
+    });
+  } catch (_) {}
+};
+
+const dismissLiveNotification = async () => {
+  try {
+    await Notifications.dismissNotificationAsync(LIVE_NOTIF_ID);
+    await Notifications.cancelScheduledNotificationAsync(LIVE_NOTIF_ID);
+  } catch (_) {}
+};
 
 const { width, height } = Dimensions.get("window");
 const BASE_SEAT_SIZE = ms(50);
@@ -572,6 +606,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   };
 
   const cleanup = async () => {
+    await dismissLiveNotification();
     if (sound) {
       try {
         await sound.unloadAsync();
@@ -730,7 +765,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
         agoraEngineRef.current?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
         agoraEngineRef.current?.muteLocalAudioStream(false);
         setIsMuted(false);
+        // Notify so user can return from home screen
+        showLiveNotification(roomId, room?.title || room?.name || null);
       }
+      // Ensure all participants (including host) can hear the new speaker
+      agoraEngineRef.current?.muteAllRemoteAudioStreams(false);
     });
     socket.on("liveroom:speaker_removed", ({ userId }) => {
       fetchRoomData();
@@ -826,6 +865,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       },
     );
     socket.on("liveroom:ended", () => {
+      dismissLiveNotification();
       Alert.alert("انتهت الغرفة", "أنهى المضيف هذه الغرفة.", [
         { text: "حسناً", onPress: () => navigation.goBack() },
       ]);
@@ -1008,6 +1048,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
           isHost || isSpeaker,
         );
         setupSocket();
+        // Show persistent notification so user can return if they navigate away
+        if (isHost || isSpeaker) {
+          showLiveNotification(roomId, rData.title || rData.name || null);
+        }
       }
     } catch (err) {
       console.error("Join room error:", err);
@@ -1082,6 +1126,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
               { headers: { Authorization: `Bearer ${userToken}` } },
             );
             socketRef.current?.emit("liveroom:end", { roomId });
+            await dismissLiveNotification();
           } catch (_) {}
           const durationSec = Math.floor(
             (Date.now() - liveStartRef.current) / 1000,

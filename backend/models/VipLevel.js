@@ -49,6 +49,23 @@ const vipLevelSchema = new mongoose.Schema(
         isLocked: { type: Boolean, default: false },
         isVisible: { type: Boolean, default: true },
         sortOrder: { type: Number, default: 0 },
+        // Frame / chat display settings
+        frameDisplayType: { type: String, default: "image" },
+        profileFrameBorderColor: { type: String, default: "" },
+        profileFrameBorderWidth: { type: Number, default: 2 },
+        commentFrameBgColor: { type: String, default: "" },
+        commentBubbleBgColor: { type: String, default: "" },
+        commentTextColor: { type: String, default: "" },
+      },
+    ],
+    // Admin-defined custom feature bullets shown on the VIP profile page
+    customFeatures: [
+      {
+        titleAr: { type: String, required: true },
+        title: { type: String, default: "" },
+        icon: { type: String, default: "🎁" },
+        isVisible: { type: Boolean, default: true },
+        sortOrder: { type: Number, default: 0 },
       },
     ],
     features: {

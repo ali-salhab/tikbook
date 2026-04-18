@@ -209,7 +209,12 @@ export default function VipProfileScreen({ navigation, route }) {
   const grad = VIP_GRADIENT[levelData.level] || ["#1A1A2E", "#2D2D4E"];
   const color = levelData.color || "#FFD700";
   const owned = myVipLevel >= levelData.level;
-  const benefits = Array.isArray(levelData.benefits) ? levelData.benefits : [];
+  const benefits = Array.isArray(levelData.benefits)
+    ? levelData.benefits.filter((b) => b.isVisible !== false)
+    : [];
+  const customFeatures = Array.isArray(levelData.customFeatures)
+    ? levelData.customFeatures.filter((cf) => cf.isVisible !== false)
+    : [];
 
   return (
     <View style={styles.container}>
@@ -354,6 +359,31 @@ export default function VipProfileScreen({ navigation, route }) {
                   );
                 })
             )}
+            {/* Custom admin-defined features */}
+            {customFeatures
+              .slice()
+              .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+              .map((cf, idx) => (
+                <View key={`cf-${idx}`} style={styles.benefitRow}>
+                  <View style={[styles.benefitMediaWrap, { justifyContent: "center", alignItems: "center" }]}>
+                    <View style={{ width: ms(70), height: ms(70), borderRadius: ms(14), backgroundColor: color + "22", justifyContent: "center", alignItems: "center" }}>
+                      <Text style={{ fontSize: ms(32) }}>{cf.icon || "🎁"}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.benefitTextWrap}>
+                    <Text style={styles.benefitTitle}>{cf.titleAr}</Text>
+                    {cf.title ? <Text style={styles.benefitDesc}>{cf.title}</Text> : null}
+                  </View>
+                  <View style={styles.benefitLockWrap}>
+                    {owned ? (
+                      <Ionicons name="lock-open-outline" size={ms(18)} color="#4ADE80" />
+                    ) : (
+                      <Ionicons name="lock-closed-outline" size={ms(18)} color="#475569" />
+                    )}
+                  </View>
+                </View>
+              ))
+            }
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -58,6 +58,7 @@ const defaultForm = {
     specialBadge: true,
     specialJoinAnimation: true,
   },
+  customFeatures: [],
   isActive: true, sortOrder: 0,
 };
 
@@ -134,6 +135,7 @@ const VipManagement = ({ onLogout }) => {
   const [benefitImgPreview, setBenefitImgPreview] = useState(null);
   const [benefitLottieName, setBenefitLottieName] = useState("");
   const [uploadingBenefit, setUploadingBenefit] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState("basic");
   const [benefitImgUploading, setBenefitImgUploading] = useState(false);
   const [benefitImgUploaded, setBenefitImgUploaded] = useState(false);
   const [benefitLottieUploading, setBenefitLottieUploading] = useState(false);
@@ -323,6 +325,7 @@ const VipManagement = ({ onLogout }) => {
     setJoinSoundName("");
     setShowBenefitForm(false);
     setError("");
+    setActiveModalTab("basic");
     setShowModal(true);
   };
 
@@ -376,6 +379,7 @@ const VipManagement = ({ onLogout }) => {
       },
       isActive: lvl.isActive,
       sortOrder: lvl.sortOrder || 0,
+      customFeatures: Array.isArray(lvl.customFeatures) ? lvl.customFeatures : [],
     });
     setImagePreview(lvl.imageUrl || null);
     setBadgeLottieName(lvl.badgeLottieUrl ? "(ملف محفوظ)" : "");
@@ -387,6 +391,7 @@ const VipManagement = ({ onLogout }) => {
     setJoinSoundName(lvl.joinSoundUrl ? "(ملف محفوظ)" : "");
     setShowBenefitForm(false);
     setError("");
+    setActiveModalTab("basic");
     setShowModal(true);
   };
 
@@ -664,6 +669,29 @@ const VipManagement = ({ onLogout }) => {
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
 
+              {/* ── Tab Navigation ── */}
+              <div style={{ display: "flex", borderBottom: "2px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
+                {[
+                  { id: "basic",      label: "البيانات الأساسية", icon: "📋" },
+                  { id: "properties", label: "الخصائص",           icon: "⚙️" },
+                  { id: "benefits",   label: "المزايا",            icon: "🎁" },
+                  { id: "gifts",      label: "الهدايا",            icon: "🎀" },
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => setActiveModalTab(tab.id)} style={{
+                    flex: "0 0 auto", padding: "10px 18px", border: "none", cursor: "pointer", fontWeight: 700,
+                    fontSize: 13, borderBottom: activeModalTab === tab.id ? "3px solid #6366f1" : "3px solid transparent",
+                    marginBottom: -2, background: activeModalTab === tab.id ? "#f5f3ff" : "transparent",
+                    color: activeModalTab === tab.id ? "#6366f1" : "#64748b", transition: "all .15s", whiteSpace: "nowrap",
+                  }}>
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* ════════════════════════════════════════════════════════
+                  TAB: البيانات الأساسية
+                  ════════════════════════════════════════════════════════ */}
+              {activeModalTab === "basic" && (<>
               {/* ── Row 1: Level + Arabic name ── */}
               <div style={styles.twoCol}>
                 <div style={styles.formGroup}>
@@ -693,20 +721,6 @@ const VipManagement = ({ onLogout }) => {
                   <input style={styles.input} type="number" min="0" value={form.price}
                     onChange={(e) => setForm({ ...form, price: +e.target.value })} />
                 </div>
-              </div>
-
-              {/* ── Row 2b: Gift threshold (auto-upgrade) ── */}
-              <div style={styles.twoCol}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>🎁 حد الهدايا للترقية التلقائية (عدد العملات)</label>
-                  <input style={styles.input} type="number" min="0" value={form.giftThreshold}
-                    onChange={(e) => setForm({ ...form, giftThreshold: +e.target.value })}
-                    placeholder="0 = معطّل" />
-                  <span style={{ fontSize: 11, color: "#64748b", marginTop: 3, display: "block" }}>
-                    عندما يصل مجموع ما أنفقه المستخدم على الهدايا لهذا الرقم يتم ترقيته تلقائياً. اترك 0 لتعطيل الترقية التلقائية لهذا المستوى.
-                  </span>
-                </div>
-                <div style={styles.formGroup} />
               </div>
 
               {/* ── Row 3: Level color + Username color ── */}
@@ -864,14 +878,81 @@ const VipManagement = ({ onLogout }) => {
                   placeholder="مثال: لقد انضم الملك إلى الغرفة 👑" />
               </div>
 
-              {/* ── Features toggles ── */}
+              {/* ── Sort order + Active (basic tab footer) ── */}
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>الترتيب</label>
+                  <input style={styles.input} type="number" value={form.sortOrder}
+                    onChange={(e) => setForm({ ...form, sortOrder: +e.target.value })} />
+                </div>
+                <div style={{ ...styles.formGroup, display: "flex", alignItems: "center", paddingTop: 24 }}>
+                  <label style={{ ...styles.label, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                    <input type="checkbox" checked={form.isActive}
+                      onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                    مفعّل
+                  </label>
+                </div>
+              </div>
+              </>)}
+
+              {/* ════════════════════════════════════════════════════════
+                  TAB: الخصائص
+                  ════════════════════════════════════════════════════════ */}
+              {activeModalTab === "properties" && (<>
+              {/* Comment bubble appearance */}
               <div style={{ ...styles.formGroup, border: "1px solid #e0e7ff", borderRadius: 12, padding: 16, background: "#f8faff", marginBottom: 16 }}>
-                <label style={{ ...styles.label, marginBottom: 12, fontSize: 13, fontWeight: 700, color: "#3730a3" }}>✨ الخصائص (تحكم بما يظهر في صفحة المستويات)</label>
+                <label style={{ ...styles.label, marginBottom: 12, fontSize: 13, fontWeight: 700, color: "#3730a3" }}>💬 شكل فقاعة التعليق (وضع التصميم)</label>
+                <div style={styles.twoCol}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>شكل الفقاعة</label>
+                    <select style={styles.input} value={form.commentBubbleShape}
+                      onChange={(e) => setForm({ ...form, commentBubbleShape: e.target.value })}>
+                      <option value="classic">Classic (كلاسيكي)</option>
+                      <option value="rounded">Rounded (مدوّر)</option>
+                      <option value="square">Square (مربع)</option>
+                      <option value="pill">Pill (بيضاوي)</option>
+                    </select>
+                  </div>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>سماكة الإطار (px)</label>
+                    <input style={styles.input} type="number" min="0" max="8" step="0.5"
+                      value={form.commentBorderWidth}
+                      onChange={(e) => setForm({ ...form, commentBorderWidth: +e.target.value })} />
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>لون نص التعليق</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="color" value={form.commentTextColor || "#FFFFFF"}
+                      onChange={(e) => setForm({ ...form, commentTextColor: e.target.value })}
+                      style={{ width: 40, height: 36, border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0 }} />
+                    <input style={{ ...styles.input, flex: 1 }} value={form.commentTextColor} placeholder="#FFFFFF (افتراضي أبيض)"
+                      onChange={(e) => setForm({ ...form, commentTextColor: e.target.value })} />
+                    {form.commentTextColor && <button style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 11 }} onClick={() => setForm({ ...form, commentTextColor: "" })}>✕</button>}
+                  </div>
+                </div>
+                <div style={{ marginTop: 10, background: "#0f0f1a", borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8 }}>معاينة الفقاعة</div>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: (form.color||"#FFD700")+"33", border: `2px solid ${form.color||"#FFD700"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 11, color: form.color||"#FFD700", fontWeight: 700 }}>م</span>
+                    </div>
+                    <div style={{ ...getBubbleShapeStyle(form.commentBubbleShape), border: `${normalizeBorderWidth(form.commentBorderWidth)}px solid ${form.color||"#FFD700"}`, background: "rgba(8,8,20,0.86)", padding: "7px 12px" }}>
+                      <div style={{ color: form.color||"#FFD700", fontWeight: 700, fontSize: 11, marginBottom: 2 }}>VIP{form.level} مستخدم</div>
+                      <div style={{ color: form.commentTextColor||"#fff", fontSize: 12 }}>شكل التعليق في البث ✨</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feature toggles */}
+              <div style={{ ...styles.formGroup, border: "1px solid #e0e7ff", borderRadius: 12, padding: 16, background: "#f8faff", marginBottom: 16 }}>
+                <label style={{ ...styles.label, marginBottom: 12, fontSize: 13, fontWeight: 700, color: "#3730a3" }}>✨ الخصائص الافتراضية</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {[
-                    { key: "animatedCommentFrame", label: "إطار تعليق متحرك",   icon: "💬" },
-                    { key: "coloredUsername",      label: "اسم ملون في التعليقات", icon: "🎨" },
-                    { key: "specialBadge",          label: "شارة حصرية",           icon: "🏅" },
+                    { key: "animatedCommentFrame", label: "إطار تعليق متحرك",        icon: "💬" },
+                    { key: "coloredUsername",      label: "اسم ملون في التعليقات",  icon: "🎨" },
+                    { key: "specialBadge",          label: "شارة حصرية",              icon: "🏅" },
                     { key: "specialJoinAnimation", label: "انيميشن خاص عند الدخول", icon: "✨" },
                   ].map((f) => {
                     const enabled = !!form.features?.[f.key];
@@ -890,7 +971,45 @@ const VipManagement = ({ onLogout }) => {
                 </div>
               </div>
 
-              {/* Benefits Editor */}
+              {/* Custom features editor */}
+              <div style={{ ...styles.formGroup, border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, background: "#f8fafc" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <label style={{ ...styles.label, marginBottom: 0, fontWeight: 700, color: "#374151" }}>⚙️ خصائص مخصصة</label>
+                  <button style={{ ...styles.saveBtn, padding: "6px 12px", fontSize: 12 }}
+                    onClick={() => setForm({ ...form, customFeatures: [...(form.customFeatures||[]), { titleAr: "", title: "", icon: "🎁", isVisible: true, sortOrder: (form.customFeatures||[]).length }] })}>
+                    <FiPlus size={12} /> إضافة خاصية
+                  </button>
+                </div>
+                {(!form.customFeatures || form.customFeatures.length === 0) && (
+                  <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "12px 0" }}>لا توجد خصائص مخصصة بعد — اضغط "إضافة خاصية"</div>
+                )}
+                {(form.customFeatures||[]).map((cf, idx) => (
+                  <div key={idx} style={{ display: "grid", gridTemplateColumns: "44px 1fr 1fr auto auto auto", gap: 6, alignItems: "center", marginBottom: 8, padding: "8px 10px", background: cf.isVisible ? "#fff" : "#f8f8f8", borderRadius: 8, border: "1px solid #e2e8f0", opacity: cf.isVisible ? 1 : 0.6 }}>
+                    <input style={{ ...styles.input, textAlign: "center", fontSize: 16, padding: "6px 0" }} value={cf.icon}
+                      onChange={(e) => { const u=[...(form.customFeatures||[])]; u[idx]={...cf,icon:e.target.value}; setForm({...form,customFeatures:u}); }} placeholder="🎁" />
+                    <input style={{ ...styles.input, fontSize: 12 }} value={cf.titleAr}
+                      onChange={(e) => { const u=[...(form.customFeatures||[])]; u[idx]={...cf,titleAr:e.target.value}; setForm({...form,customFeatures:u}); }} placeholder="الاسم بالعربي" />
+                    <input style={{ ...styles.input, fontSize: 12 }} value={cf.title}
+                      onChange={(e) => { const u=[...(form.customFeatures||[])]; u[idx]={...cf,title:e.target.value}; setForm({...form,customFeatures:u}); }} placeholder="English name" />
+                    <button title={cf.isVisible ? "إخفاء" : "إظهار"}
+                      style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", padding: "5px 8px", fontSize: 14, color: cf.isVisible ? "#22c55e" : "#94a3b8" }}
+                      onClick={() => { const u=[...(form.customFeatures||[])]; u[idx]={...cf,isVisible:!cf.isVisible}; setForm({...form,customFeatures:u}); }}>
+                      {cf.isVisible ? "👁" : "🙈"}
+                    </button>
+                    <input style={{ ...styles.input, width: 50, fontSize: 12, textAlign: "center" }} type="number" value={cf.sortOrder} title="الترتيب"
+                      onChange={(e) => { const u=[...(form.customFeatures||[])]; u[idx]={...cf,sortOrder:+e.target.value}; setForm({...form,customFeatures:u}); }} />
+                    <button style={styles.deleteBtn} onClick={() => setForm({...form,customFeatures:(form.customFeatures||[]).filter((_,i)=>i!==idx)})}>
+                      <FiTrash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              </>)}
+
+              {/* ════════════════════════════════════════════════════════
+                  TAB: المزايا
+                  ════════════════════════════════════════════════════════ */}
+              {activeModalTab === "benefits" && (
               <div style={{ ...styles.formGroup, border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, background: "#f8fafc" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <label style={{ ...styles.label, marginBottom: 0 }}>🎁 مزايا المستوى (Benefits)</label>
@@ -975,23 +1094,49 @@ const VipManagement = ({ onLogout }) => {
                       </div>
                     </div>
 
-                    {/* ── Frame / Chat: طريقة العرض ── */}
+                    {/* ── Frame / Chat: اختيار نوع الإطار ── */}
                     {(benefitForm.type === "frame" || benefitForm.type === "chat") && (
                       <div style={{ marginTop: 12, border: "1px solid #c7d2fe", borderRadius: 10, padding: 14, background: "#fafbff" }}>
                         <div style={{ fontWeight: 700, fontSize: 12, color: "#374151", marginBottom: 10 }}>
-                          {benefitForm.type === "frame" ? "👤 إطار الصورة الشخصية" : "💬 إطار التعليق"} — اختر طريقة العرض
+                          {benefitForm.type === "frame" ? "👤 إطار الصورة الشخصية" : "💬 إطار التعليق"} — اختر نوع الإطار
                         </div>
-                        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                        {/* Mutual-exclusive toggle — only ONE option active at a time */}
+                        <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
                           <button type="button"
                             onClick={() => setBenefitForm({ ...benefitForm, frameDisplayType: "image" })}
-                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `2px solid ${benefitForm.frameDisplayType === "image" ? "#6366f1" : "#e2e8f0"}`, background: benefitForm.frameDisplayType === "image" ? "#6366f115" : "#fff", color: benefitForm.frameDisplayType === "image" ? "#6366f1" : "#64748b", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-                            📷 صورة / Lottie
+                            style={{
+                              flex: 1, padding: "14px 8px", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                              border: `2px solid ${benefitForm.frameDisplayType === "image" ? "#6366f1" : "#e2e8f0"}`,
+                              background: benefitForm.frameDisplayType === "image" ? "linear-gradient(135deg,#f5f3ff,#ede9fe)" : "#fff",
+                              color: benefitForm.frameDisplayType === "image" ? "#6366f1" : "#64748b",
+                              cursor: "pointer", fontWeight: 700, fontSize: 13,
+                              boxShadow: benefitForm.frameDisplayType === "image" ? "0 0 0 3px #6366f128" : "none", transition: "all .2s",
+                            }}>
+                            <span style={{ fontSize: 26 }}>📷</span>
+                            <span>صورة / Lottie مخصصة</span>
+                            {benefitForm.frameDisplayType === "image" && (
+                              <span style={{ fontSize: 10, background: "#6366f1", color: "#fff", borderRadius: 10, padding: "2px 10px", marginTop: 2 }}>✓ مفعّل الآن</span>
+                            )}
                           </button>
                           <button type="button"
                             onClick={() => setBenefitForm({ ...benefitForm, frameDisplayType: "designed" })}
-                            style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `2px solid ${benefitForm.frameDisplayType === "designed" ? "#059669" : "#e2e8f0"}`, background: benefitForm.frameDisplayType === "designed" ? "#05966915" : "#fff", color: benefitForm.frameDisplayType === "designed" ? "#059669" : "#64748b", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-                            🎨 تصميم مخصص
+                            style={{
+                              flex: 1, padding: "14px 8px", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                              border: `2px solid ${benefitForm.frameDisplayType === "designed" ? "#059669" : "#e2e8f0"}`,
+                              background: benefitForm.frameDisplayType === "designed" ? "linear-gradient(135deg,#f0fdf4,#dcfce7)" : "#fff",
+                              color: benefitForm.frameDisplayType === "designed" ? "#059669" : "#64748b",
+                              cursor: "pointer", fontWeight: 700, fontSize: 13,
+                              boxShadow: benefitForm.frameDisplayType === "designed" ? "0 0 0 3px #05966928" : "none", transition: "all .2s",
+                            }}>
+                            <span style={{ fontSize: 26 }}>🎨</span>
+                            <span>تصميم مخصص (حدود)</span>
+                            {benefitForm.frameDisplayType === "designed" && (
+                              <span style={{ fontSize: 10, background: "#059669", color: "#fff", borderRadius: 10, padding: "2px 10px", marginTop: 2 }}>✓ مفعّل الآن</span>
+                            )}
                           </button>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#64748b", textAlign: "center", background: "#f1f5f9", borderRadius: 8, padding: "6px 10px", marginBottom: 12 }}>
+                          ⚠️ يظهر في التطبيق <strong>نوع واحد فقط</strong> — تفعيل أحدهما يُلغي الآخر تلقائياً
                         </div>
 
                         {/* Image mode */}
@@ -1049,13 +1194,13 @@ const VipManagement = ({ onLogout }) => {
                         {/* Designed mode — chat */}
                         {benefitForm.frameDisplayType === "designed" && benefitForm.type === "chat" && (
                           <div style={{ background: "#f0f4ff", borderRadius: 8, padding: 12, border: "1px solid #c7d2fe" }}>
-                            <div style={{ fontSize: 12, color: "#4338ca", fontWeight: 700, marginBottom: 8 }}>يستخدم إعدادات فقاعة التعليق من الخصائص الرئيسية:</div>
+                            <div style={{ fontSize: 12, color: "#4338ca", fontWeight: 700, marginBottom: 8 }}>يستخدم إعدادات فقاعة التعليق من تبويب الخصائص:</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                               <span style={{ fontSize: 12, background: "#e0e7ff", color: "#4338ca", borderRadius: 6, padding: "3px 10px" }}>شكل: {form.commentBubbleShape}</span>
                               <span style={{ fontSize: 12, background: "#e0e7ff", color: "#4338ca", borderRadius: 6, padding: "3px 10px" }}>سماكة: {form.commentBorderWidth}px</span>
                               <span style={{ fontSize: 12, borderRadius: 6, padding: "3px 10px", background: (form.color || "#FFD700") + "22", color: form.color || "#FFD700", fontWeight: 700 }}>لون: {form.color || "#FFD700"}</span>
                             </div>
-                            <div style={{ fontSize: 11, color: "#6366f1", marginTop: 6 }}>💡 عدّل إعدادات التعليق من قسم "سماكة الإطار / شكل الفقاعة" في النموذج</div>
+                            <div style={{ fontSize: 11, color: "#6366f1", marginTop: 6 }}>💡 عدّل من تبويب "الخصائص"</div>
                           </div>
                         )}
 
@@ -1307,26 +1452,47 @@ const VipManagement = ({ onLogout }) => {
                   </div>
                 )}
               </div>
+              )}
 
-              {/* ── Row 8: Sort order + Active toggle ── */}
-              <div style={styles.twoCol}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>الترتيب</label>
-                  <input style={styles.input} type="number" value={form.sortOrder}
-                    onChange={(e) => setForm({ ...form, sortOrder: +e.target.value })} />
-                </div>
-                <div style={{ ...styles.formGroup, display: "flex", alignItems: "center", paddingTop: 24 }}>
-                  <label style={{ ...styles.label, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
-                    <input type="checkbox" checked={form.isActive}
-                      onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                    مفعّل
-                  </label>
+              {/* ════════════════════════════════════════════════════════
+                  TAB: الهدايا
+                  ════════════════════════════════════════════════════════ */}
+              {activeModalTab === "gifts" && (
+              <div style={{ ...styles.formGroup, border: "1px solid #fef3c7", borderRadius: 12, padding: 20, background: "#fffbeb" }}>
+                <label style={{ ...styles.label, marginBottom: 16, fontSize: 14, fontWeight: 700, color: "#92400e" }}>🎀 إعدادات الهدايا والترقية التلقائية</label>
+                <div style={styles.twoCol}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>🎁 حد الهدايا للترقية (عدد العملات)</label>
+                    <input style={styles.input} type="number" min="0" value={form.giftThreshold}
+                      onChange={(e) => setForm({ ...form, giftThreshold: +e.target.value })}
+                      placeholder="0 = معطّل" />
+                    <span style={{ fontSize: 11, color: "#64748b", marginTop: 4, display: "block" }}>
+                      عند بلوغ هذا الرقم من إنفاق الهدايا يُرقَّى المستخدم تلقائياً. اترك 0 لتعطيل هذه الميزة.
+                    </span>
+                  </div>
+                  <div style={styles.formGroup}>
+                    {form.giftThreshold > 0 ? (
+                      <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: 16, marginTop: 22 }}>
+                        <div style={{ fontSize: 13, color: "#16a34a", fontWeight: 700, marginBottom: 6 }}>✅ الترقية التلقائية مفعّلة</div>
+                        <div style={{ fontSize: 12, color: "#374151" }}>
+                          يُرقَّى المستخدم عند إنفاق <strong style={{ color: "#16a34a" }}>{form.giftThreshold.toLocaleString()}</strong> عملة على الهدايا
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: 16, marginTop: 22 }}>
+                        <div style={{ fontSize: 13, color: "#c2410c", fontWeight: 700, marginBottom: 6 }}>⛔ الترقية التلقائية معطّلة</div>
+                        <div style={{ fontSize: 12, color: "#374151" }}>أدخل رقماً أكبر من 0 لتفعيل الترقية بالهدايا</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+              )}
+
               <div style={styles.modalFooter}>
                 <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>إلغاء</button>
-              <button style={styles.saveBtn} onClick={handleSave} disabled={saving || uploading}>
-                {uploading ? "جاري الرفع..." : saving ? "جاري الحفظ..." : <><FiCheck size={14} /> حفظ</>}
+                <button style={styles.saveBtn} onClick={handleSave} disabled={saving || uploading}>
+                  {uploading ? "جاري الرفع..." : saving ? "جاري الحفظ..." : <><FiCheck size={14} /> حفظ</>}
                 </button>
               </div>
             </div>
