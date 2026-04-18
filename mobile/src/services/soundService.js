@@ -14,7 +14,7 @@
  *   etc.
  */
 
-import { Audio } from "expo-av";
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 
 // ── sound map ─────────────────────────────────────────────────────────────────
 const SOUNDS = {
@@ -49,15 +49,21 @@ class SoundService {
     this._muted = false;
   }
 
+  /** Audio mode that lets expo-av mix with Agora's RTC audio session */
+  static AUDIO_MODE = {
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+    shouldDuckAndroid: false,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    playThroughEarpieceAndroid: false,
+  };
+
   /** Pre-load all sounds. Call once (e.g. from App.js useEffect). */
   async preload() {
     if (this._loaded) return;
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-      });
+      await Audio.setAudioModeAsync(SoundService.AUDIO_MODE);
       await Promise.all(
         Object.entries(SOUNDS).map(async ([key, src]) => {
           try {
@@ -90,6 +96,8 @@ class SoundService {
       return;
     }
     try {
+      // Re-apply audio mode — Agora may have changed the session after preload
+      await Audio.setAudioModeAsync(SoundService.AUDIO_MODE);
       if (volume !== undefined) await sound.setVolumeAsync(volume);
       await sound.setPositionAsync(0);
       await sound.playAsync();

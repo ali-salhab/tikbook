@@ -243,6 +243,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // Set of userIds of occupied seats selected as gift targets
   const [selectedGiftSeats, setSelectedGiftSeats] = useState(new Set());
 
+  // ── Seat control bottom sheet ────────────────────────────────────────────────
+  // { user, speaker, isHostOrMod } – null when hidden
+  const [seatControlSheet, setSeatControlSheet] = useState(null);
+
   // ── Viewers modal (eye icon) ─────────────────────────────────────────────────
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [userCoinsInRoom, setUserCoinsInRoom] = useState({}); // userId -> total coins sent
@@ -633,6 +637,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       agoraEngineRef.current = engine;
       engine.initialize({ appId: AGORA_APP_ID });
       engine.enableAudio();
+      // Route audio through speaker (not earpiece) — must be called before joinChannel
+      engine.setEnableSpeakerphone(true);
       engine.enableAudioVolumeIndication(1000, 3, false);
       engine.setChannelProfile(
         ChannelProfileType.ChannelProfileLiveBroadcasting,
@@ -653,6 +659,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
         // Ensure we receive all remote audio — must be called after join completes
         engine.muteAllRemoteAudioStreams(false);
+        // Re-assert speakerphone after join (Agora may reset routing on join)
+        engine.setEnableSpeakerphone(true);
         setJoinedAgora(true);
       });
       engine.addListener("onAudioVolumeIndication", (connection, speakers) => {
@@ -1608,76 +1616,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const handleSeatPress = () => {
       if (isMe) {
         // Regular tap on own seat does nothing — use long press
-      } else if (user && isHostOrMod) {
-        // Occupied seat — host/mod can mute/unmute, kick, or send gift
+      } else if (user) {
+        // Any occupied seat (non-self) → open control bottom sheet
         playTap();
-        const isUserMuted = speaker?.isMuted ?? false;
-        const buttons = [
-          { text: "إلغاء", style: "cancel" },
-          {
-            text: "🎁 إرسال هدية",
-            onPress: () => {
-              setSelectedGiftSeats((prev) => {
-                const next = new Set(prev);
-                next.add(user._id);
-                return next;
-              });
-            },
-          },
-          {
-            text: isUserMuted ? "🔊 رفع الكتم" : "🔇 كتم الصوت",
-            onPress: async () => {
-              // Persist mute state to DB so everyone sees the update
-              try {
-                await axios.post(
-                  `${BASE_URL}/live-rooms/${roomId}/force-mute`,
-                  { userId: user._id, mute: !isUserMuted },
-                  { headers: { Authorization: `Bearer ${userToken}` } },
-                );
-              } catch (_) {}
-              // Broadcast via socket so target applies it to their mic
-              socketRef.current?.emit("liveroom:host_force_mute", {
-                roomId,
-                targetUserId: user._id,
-                mute: !isUserMuted,
-                byUserId: userInfo._id,
-              });
-            },
-          },
-          {
-            text: "❌ إزالة من المقعد",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await axios.post(
-                  `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
-                  { userId: user._id },
-                  { headers: { Authorization: `Bearer ${userToken}` } },
-                );
-                socketRef.current?.emit("liveroom:remove_speaker", {
-                  roomId,
-                  userId: user._id,
-                });
-                fetchRoomData();
-              } catch (e) {
-                Alert.alert("خطأ", e?.response?.data?.message || "فشل الإزالة");
-              }
-            },
-          },
-        ];
-        Alert.alert(user.username, "اختر الإجراء", buttons);
-      } else if (user && !isMe) {
-        // Non-host viewer taps an occupied seat — just gift selection
-        playTap();
-        setSelectedGiftSeats((prev) => {
-          const next = new Set(prev);
-          if (next.has(user._id)) {
-            next.delete(user._id);
-          } else {
-            next.add(user._id);
-          }
-          return next;
-        });
+        setSeatControlSheet({ user, speaker, isHostOrMod });
       } else if (canRequestSeat) {
         playTap();
         const requester = freshUser || userInfo;
@@ -2038,6 +1980,151 @@ const LiveRoomScreen = ({ route, navigation }) => {
       </View>
     );
   };
+
+  // ─── SEAT CONTROL SHEET ───────────────────────────────────────────────────────
+
+  const seatControlModal = (() => {
+    const sc = seatControlSheet;
+    if (!sc) return null;
+    const { user: scUser, speaker: scSpeaker, isHostOrMod: scHostOrMod } = sc;
+    const isUserMuted = scSpeaker?.isMuted ?? false;
+
+    const closeSeatSheet = () => setSeatControlSheet(null);
+
+    const handleGift = () => {
+      closeSeatSheet();
+      setSelectedGiftSeats((prev) => {
+        const next = new Set(prev);
+        next.add(scUser._id);
+        return next;
+      });
+      setShowGiftModal(true);
+    };
+
+    const handleToggleMute = async () => {
+      closeSeatSheet();
+      try {
+        await axios.post(
+          `${BASE_URL}/live-rooms/${roomId}/force-mute`,
+          { userId: scUser._id, mute: !isUserMuted },
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+      } catch (_) {}
+      socketRef.current?.emit("liveroom:host_force_mute", {
+        roomId,
+        targetUserId: scUser._id,
+        mute: !isUserMuted,
+        byUserId: userInfo._id,
+      });
+    };
+
+    const handleRemove = async () => {
+      closeSeatSheet();
+      try {
+        await axios.post(
+          `${BASE_URL}/live-rooms/${roomId}/remove-speaker`,
+          { userId: scUser._id },
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        socketRef.current?.emit("liveroom:remove_speaker", {
+          roomId,
+          userId: scUser._id,
+        });
+        fetchRoomData();
+      } catch (e) {
+        Alert.alert("خطأ", e?.response?.data?.message || "فشل الإزالة");
+      }
+    };
+
+    return (
+      <Modal
+        visible={!!seatControlSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={closeSeatSheet}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={closeSeatSheet}
+        />
+        <View style={[styles.sheet, styles.seatCtrlSheet]}>
+          <View style={styles.sheetHandle} />
+
+          {/* User info header */}
+          <View style={styles.seatCtrlHeader}>
+            {scUser.profileImage ? (
+              <Image source={{ uri: scUser.profileImage }} style={styles.seatCtrlAvatar} />
+            ) : (
+              <View style={[styles.seatCtrlAvatar, styles.seatCtrlAvatarPlaceholder]}>
+                <Text style={styles.seatCtrlAvatarInitial}>
+                  {(scUser.username || "?").charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.seatCtrlUsername} numberOfLines={1}>{scUser.username}</Text>
+              {scUser.vipLevel > 0 && (
+                <Text style={styles.seatCtrlVip}>VIP {scUser.vipLevel}</Text>
+              )}
+            </View>
+            {/* Mute indicator badge */}
+            <View style={[styles.seatCtrlMuteBadge, isUserMuted ? styles.seatCtrlMutedBadge : styles.seatCtrlActiveBadge]}>
+              <Ionicons name={isUserMuted ? "mic-off" : "mic"} size={12} color="#FFF" />
+              <Text style={styles.seatCtrlMuteBadgeText}>
+                {isUserMuted ? "مكتوم" : "نشط"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.seatCtrlDivider} />
+
+          {/* Action buttons */}
+          <View style={styles.seatCtrlActions}>
+            {/* Gift – visible to all */}
+            <TouchableOpacity style={[styles.seatCtrlBtn, styles.seatCtrlBtnGift]} onPress={handleGift}>
+              <Ionicons name="gift" size={22} color="#FFF" />
+              <Text style={styles.seatCtrlBtnText}>إرسال هدية</Text>
+            </TouchableOpacity>
+
+            {/* Mute / Unmute – host/mod only */}
+            {scHostOrMod && (
+              <TouchableOpacity style={[styles.seatCtrlBtn, isUserMuted ? styles.seatCtrlBtnUnmute : styles.seatCtrlBtnMute]} onPress={handleToggleMute}>
+                <Ionicons name={isUserMuted ? "mic" : "mic-off"} size={22} color="#FFF" />
+                <Text style={styles.seatCtrlBtnText}>{isUserMuted ? "رفع الكتم" : "كتم الصوت"}</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* View profile – visible to all */}
+            <TouchableOpacity
+              style={[styles.seatCtrlBtn, styles.seatCtrlBtnProfile]}
+              onPress={() => {
+                closeSeatSheet();
+                navigation.navigate("Profile", { userId: scUser._id });
+              }}
+            >
+              <Ionicons name="person-circle-outline" size={22} color="#FFF" />
+              <Text style={styles.seatCtrlBtnText}>عرض الملف</Text>
+            </TouchableOpacity>
+
+            {/* Remove from seat – host/mod only */}
+            {scHostOrMod && (
+              <TouchableOpacity style={[styles.seatCtrlBtn, styles.seatCtrlBtnRemove]} onPress={handleRemove}>
+                <Ionicons name="remove-circle-outline" size={22} color="#FFF" />
+                <Text style={styles.seatCtrlBtnText}>إزالة من المقعد</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Cancel */}
+          <TouchableOpacity style={styles.seatCtrlCancel} onPress={closeSeatSheet}>
+            <Text style={styles.seatCtrlCancelText}>إغلاق</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
+  })();
 
   // ─── MUSIC PLAYER MODAL ───────────────────────────────────────────────────────
 

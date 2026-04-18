@@ -899,8 +899,8 @@ const VipManagement = ({ onLogout }) => {
                   TAB: الخصائص
                   ════════════════════════════════════════════════════════ */}
               {activeModalTab === "properties" && (<>
-              {/* Comment bubble appearance */}
-              <div style={{ ...styles.formGroup, border: "1px solid #e0e7ff", borderRadius: 12, padding: 16, background: "#f8faff", marginBottom: 16 }}>
+              Comment bubble appearance
+              {/* <div style={{ ...styles.formGroup, border: "1px solid #e0e7ff", borderRadius: 12, padding: 16, background: "#f8faff", marginBottom: 16 }}>
                 <label style={{ ...styles.label, marginBottom: 12, fontSize: 13, fontWeight: 700, color: "#3730a3" }}>💬 شكل فقاعة التعليق (وضع التصميم)</label>
                 <div style={styles.twoCol}>
                   <div style={styles.formGroup}>
@@ -943,7 +943,7 @@ const VipManagement = ({ onLogout }) => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Feature toggles */}
               <div style={{ ...styles.formGroup, border: "1px solid #e0e7ff", borderRadius: 12, padding: 16, background: "#f8faff", marginBottom: 16 }}>
