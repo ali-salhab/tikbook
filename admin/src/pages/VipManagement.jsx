@@ -733,181 +733,7 @@ const VipManagement = ({ onLogout }) => {
                 </div>
               </div>
 
-              {/* ── Row 4: Border width + Bubble shape ── */}
-              <div style={styles.twoCol}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>سماكة إطار التعليق</label>
-                  <input style={styles.input} type="number" min="0" max="8" step="0.1"
-                    value={form.commentBorderWidth}
-                    onChange={(e) => setForm({ ...form, commentBorderWidth: +e.target.value })} />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>شكل فقاعة التعليق</label>
-                  <select style={styles.input} value={form.commentBubbleShape}
-                    onChange={(e) => setForm({ ...form, commentBubbleShape: e.target.value })}>
-                    <option value="classic">Classic</option>
-                    <option value="rounded">Rounded</option>
-                    <option value="square">Square</option>
-                    <option value="pill">Pill</option>
-                  </select>
-                </div>
-              </div>
 
-              {/* ── Row 4b: Comment text color ── */}
-              <div style={styles.twoCol}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>🎨 لون نص التعليق</label>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type="color"
-                      value={form.commentTextColor || "#FFFFFF"}
-                      onChange={(e) => setForm({ ...form, commentTextColor: e.target.value })}
-                      style={{ width: 40, height: 36, border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0 }} />
-                    <input style={{ ...styles.input, flex: 1 }}
-                      value={form.commentTextColor}
-                      placeholder="#FFFFFF (افتراضي أبيض)"
-                      onChange={(e) => setForm({ ...form, commentTextColor: e.target.value })} />
-                    {form.commentTextColor && (
-                      <button
-                        style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #475569", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 11 }}
-                        onClick={() => setForm({ ...form, commentTextColor: "" })}
-                        title="إعادة تعيين للأبيض"
-                      >✕ إعادة</button>
-                    )}
-                  </div>
-                </div>
-                <div style={styles.formGroup} />
-              </div>
-
-              {/* ── Comment preview (full width) ── */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>معاينة التعليق</label>
-
-                {/* Background colour picker for the comment bubble (no frame) */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <label style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>🎨 لون خلفية فقاعة التعليق</label>
-                  <input type="color"
-                    value={(() => {
-                      const c = form.commentBubbleBgColor || "#000000";
-                      if (c.startsWith("#")) return c;
-                      const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                      if (m) return "#" + [m[1],m[2],m[3]].map(n => parseInt(n).toString(16).padStart(2,"0")).join("");
-                      return "#000000";
-                    })()}
-                    onChange={(e) => {
-                      const hex = e.target.value;
-                      const cur = form.commentBubbleBgColor || "";
-                      const alphaMatch = cur.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
-                      const alpha = alphaMatch ? alphaMatch[1] : "0.45";
-                      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-                      setForm({ ...form, commentBubbleBgColor: `rgba(${r},${g},${b},${alpha})` });
-                    }}
-                    style={{ width: 36, height: 32, border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0 }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <label style={{ fontSize: 11, color: "#94a3b8" }}>شفافية</label>
-                    <input type="range" min="0" max="1" step="0.05"
-                      value={(() => {
-                        const m = (form.commentBubbleBgColor || "").match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
-                        return m ? m[1] : "0.45";
-                      })()}
-                      onChange={(e) => {
-                        const cur = form.commentBubbleBgColor || "rgba(100,0,180,0.45)";
-                        const m = cur.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
-                        const rgb = m ? `${m[1]},${m[2]},${m[3]}` : "100,0,180";
-                        setForm({ ...form, commentBubbleBgColor: `rgba(${rgb},${e.target.value})` });
-                      }}
-                      style={{ width: 90 }} />
-                    <input style={{ ...styles.input, width: 160, fontSize: 11 }}
-                      value={form.commentBubbleBgColor}
-                      placeholder="rgba(100,0,180,0.45) — فارغ = افتراضي"
-                      onChange={(e) => setForm({ ...form, commentBubbleBgColor: e.target.value })} />
-                    {form.commentBubbleBgColor && (
-                      <button
-                        style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #475569", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 11 }}
-                        onClick={() => setForm({ ...form, commentBubbleBgColor: "" })}
-                        title="إعادة تعيين للون الافتراضي"
-                      >✕ إعادة</button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Background colour picker for the frame bubble — only relevant when a frame image is set */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <label style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>🎨 لون خلفية النص داخل الإطار</label>
-                  <input type="color"
-                    value={(() => {
-                      // Parse rgba/hex to a hex value for the color picker
-                      const c = form.commentFrameBgColor || "rgba(0,0,0,0.5)";
-                      if (c.startsWith("#")) return c;
-                      const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                      if (m) return "#" + [m[1],m[2],m[3]].map(n => parseInt(n).toString(16).padStart(2,"0")).join("");
-                      return "#000000";
-                    })()}
-                    onChange={(e) => {
-                      const hex = e.target.value;
-                      // Keep existing alpha if current value is rgba
-                      const cur = form.commentFrameBgColor || "";
-                      const alphaMatch = cur.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
-                      const alpha = alphaMatch ? alphaMatch[1] : "0.5";
-                      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-                      setForm({ ...form, commentFrameBgColor: `rgba(${r},${g},${b},${alpha})` });
-                    }}
-                    style={{ width: 36, height: 32, border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0 }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <label style={{ fontSize: 11, color: "#94a3b8" }}>شفافية</label>
-                    <input type="range" min="0" max="1" step="0.05"
-                      value={(() => {
-                        const m = (form.commentFrameBgColor || "").match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
-                        return m ? m[1] : "0.5";
-                      })()}
-                      onChange={(e) => {
-                        const cur = form.commentFrameBgColor || "rgba(0,0,0,0.5)";
-                        const m = cur.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
-                        const rgb = m ? `${m[1]},${m[2]},${m[3]}` : "0,0,0";
-                        setForm({ ...form, commentFrameBgColor: `rgba(${rgb},${e.target.value})` });
-                      }}
-                      style={{ width: 90 }} />
-                    <input style={{ ...styles.input, width: 160, fontSize: 11 }}
-                      value={form.commentFrameBgColor}
-                      placeholder="rgba(0,0,0,0.5)"
-                      onChange={(e) => setForm({ ...form, commentFrameBgColor: e.target.value })} />
-                  </div>
-                </div>
-
-                <div style={styles.previewWrap}>
-                  {/* If a frame image is uploaded, show it as an overlay on the bubble */}
-                  {commentFramePreview ? (
-                    <div style={{ position: "relative", display: "inline-block", alignSelf: "flex-start" }}>
-                      {/* Bubble with custom bg color */}
-                      <div style={{
-                        ...styles.previewBubble,
-                        ...getBubbleShapeStyle(form.commentBubbleShape),
-                        backgroundColor: form.commentFrameBgColor || "rgba(0,0,0,0.5)",
-                        borderWidth: 0,
-                        padding: "12px 18px",
-                        position: "relative",
-                        zIndex: 1,
-                      }}>
-                        <div style={styles.previewHeader}>
-                          <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>مستخدم VIP{Number(form.level) || 1}</span>
-                          <span style={{ ...styles.previewChip, backgroundColor: form.color || "#FFD700" }}>VIP{Number(form.level) || 1}</span>
-                        </div>
-                        <div style={{ ...styles.previewMessage, color: form.commentTextColor || "#FFFFFF" }}>هذا شكل التعليق داخل صفحة البث المباشر.</div>
-                      </div>
-                      {/* Frame image overlay — stretches to fill the bubble */}
-                      <img src={commentFramePreview} alt="frame"
-                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 2, pointerEvents: "none", borderRadius: "inherit" }} />
-                    </div>
-                  ) : (
-                    <div style={{ ...styles.previewBubble, ...getBubbleShapeStyle(form.commentBubbleShape), borderColor: form.color || "#FFD700", borderWidth: normalizeBorderWidth(form.commentBorderWidth), backgroundColor: form.commentBubbleBgColor || (form.color ? `${form.color}22` : "rgba(100,0,180,0.45)") }}>
-                      <div style={styles.previewHeader}>
-                        <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>مستخدم VIP{Number(form.level) || 1}</span>
-                        <span style={{ ...styles.previewChip, backgroundColor: form.color || "#FFD700" }}>VIP{Number(form.level) || 1}</span>
-                      </div>
-                      <div style={{ ...styles.previewMessage, color: form.commentTextColor || "#FFFFFF" }}>هذا شكل التعليق داخل صفحة البث المباشر.</div>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {/* ── Row 5: Badge image + Badge Lottie ── */}
               <div style={styles.twoCol}>
@@ -1344,13 +1170,24 @@ const VipManagement = ({ onLogout }) => {
                                 <span style={{ fontSize: 11, color: form.color || "#FFD700", fontWeight: 700 }}>م</span>
                               </div>
                               <div style={{ position: "relative", maxWidth: "75%" }}>
-                                {benefitForm.frameDisplayType === "image" && (benefitImgPreview || benefitForm.imageUrl) && (
-                                  <img src={benefitImgPreview || benefitForm.imageUrl} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none", zIndex: 1, borderRadius: 8 }} />
-                                )}
-                                <div style={{ ...getBubbleShapeStyle(form.commentBubbleShape), border: benefitForm.frameDisplayType === "designed" ? `${normalizeBorderWidth(form.commentBorderWidth)}px solid ${form.color || "#FFD700"}` : "1px solid rgba(255,255,255,0.08)", background: "rgba(8,8,20,0.9)", padding: "8px 14px", position: "relative", zIndex: 2 }}>
+                                {/* Content bubble rendered first, frame image on top */}
+                                <div style={{
+                                  ...getBubbleShapeStyle(benefitForm.commentBubbleShape || form.commentBubbleShape),
+                                  border: benefitForm.frameDisplayType === "designed"
+                                    ? `${normalizeBorderWidth(benefitForm.commentBorderWidth ?? form.commentBorderWidth)}px solid ${form.color || "#FFD700"}`
+                                    : "1px solid rgba(255,255,255,0.08)",
+                                  background: benefitForm.frameDisplayType === "image"
+                                    ? (benefitForm.commentFrameBgColor || "rgba(0,0,0,0.75)")
+                                    : (benefitForm.commentBubbleBgColor || (form.color ? `${form.color}22` : "rgba(100,0,180,0.45)")),
+                                  padding: "8px 14px", position: "relative", zIndex: 2
+                                }}>
                                   <div style={{ color: form.color || "#FFD700", fontWeight: 700, fontSize: 11, marginBottom: 2 }}>مستخدم VIP{form.level}</div>
-                                  <div style={{ color: form.commentTextColor || "#fff", fontSize: 12 }}>شكل التعليق في البث ✨</div>
+                                  <div style={{ color: benefitForm.commentTextColor || form.commentTextColor || "#fff", fontSize: 12 }}>شكل التعليق في البث ✨</div>
                                 </div>
+                                {/* Frame image on top */}
+                                {benefitForm.frameDisplayType === "image" && (benefitImgPreview || benefitForm.imageUrl) && (
+                                  <img src={benefitImgPreview || benefitForm.imageUrl} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none", zIndex: 3, borderRadius: 8 }} />
+                                )}
                               </div>
                             </div>
                           )}
