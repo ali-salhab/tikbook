@@ -42,6 +42,7 @@ const defaultForm = {
   badgeLottieUrl: "", badgeLottieFile: null,
   commentFrameLottieUrl: "", commentFrameLottieFile: null,
   commentFrameBgColor: "rgba(0,0,0,0.5)",
+  commentBubbleBgColor: "",
   profileFrameLottieUrl: "", profileFrameLottieFile: null,
   joinAnimationLottieUrl: "", joinAnimationLottieFile: null,
   joinSoundUrl: "", joinSoundFile: null,
@@ -324,6 +325,7 @@ const VipManagement = ({ onLogout }) => {
       badgeLottieUrl: lvl.badgeLottieUrl || "", badgeLottieFile: null,
       commentFrameLottieUrl: lvl.commentFrameLottieUrl || "", commentFrameLottieFile: null,
       commentFrameBgColor: lvl.commentFrameBgColor || "rgba(0,0,0,0.5)",
+      commentBubbleBgColor: lvl.commentBubbleBgColor || "",
       profileFrameLottieUrl: lvl.profileFrameLottieUrl || "", profileFrameLottieFile: null,
       joinAnimationLottieUrl: lvl.joinAnimationLottieUrl || "", joinAnimationLottieFile: null,
       joinSoundUrl: lvl.joinSoundUrl || "", joinSoundFile: null,
@@ -416,6 +418,7 @@ const VipManagement = ({ onLogout }) => {
         badgeLottieUrl: finalBadgeLottieUrl,
         commentFrameLottieUrl: finalCommentFrameLottieUrl,
         commentFrameBgColor: form.commentFrameBgColor ?? "",
+        commentBubbleBgColor: form.commentBubbleBgColor ?? "",
         profileFrameLottieUrl: finalProfileFrameLottieUrl,
         joinAnimationLottieUrl: finalJoinAnimationLottieUrl,
         joinSoundUrl: finalJoinSoundUrl,
@@ -763,6 +766,54 @@ const VipManagement = ({ onLogout }) => {
               <div style={styles.formGroup}>
                 <label style={styles.label}>معاينة التعليق</label>
 
+                {/* Background colour picker for the comment bubble (no frame) */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>🎨 لون خلفية فقاعة التعليق</label>
+                  <input type="color"
+                    value={(() => {
+                      const c = form.commentBubbleBgColor || "#000000";
+                      if (c.startsWith("#")) return c;
+                      const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                      if (m) return "#" + [m[1],m[2],m[3]].map(n => parseInt(n).toString(16).padStart(2,"0")).join("");
+                      return "#000000";
+                    })()}
+                    onChange={(e) => {
+                      const hex = e.target.value;
+                      const cur = form.commentBubbleBgColor || "";
+                      const alphaMatch = cur.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
+                      const alpha = alphaMatch ? alphaMatch[1] : "0.45";
+                      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+                      setForm({ ...form, commentBubbleBgColor: `rgba(${r},${g},${b},${alpha})` });
+                    }}
+                    style={{ width: 36, height: 32, border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0 }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <label style={{ fontSize: 11, color: "#94a3b8" }}>شفافية</label>
+                    <input type="range" min="0" max="1" step="0.05"
+                      value={(() => {
+                        const m = (form.commentBubbleBgColor || "").match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
+                        return m ? m[1] : "0.45";
+                      })()}
+                      onChange={(e) => {
+                        const cur = form.commentBubbleBgColor || "rgba(100,0,180,0.45)";
+                        const m = cur.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
+                        const rgb = m ? `${m[1]},${m[2]},${m[3]}` : "100,0,180";
+                        setForm({ ...form, commentBubbleBgColor: `rgba(${rgb},${e.target.value})` });
+                      }}
+                      style={{ width: 90 }} />
+                    <input style={{ ...styles.input, width: 160, fontSize: 11 }}
+                      value={form.commentBubbleBgColor}
+                      placeholder="rgba(100,0,180,0.45) — فارغ = افتراضي"
+                      onChange={(e) => setForm({ ...form, commentBubbleBgColor: e.target.value })} />
+                    {form.commentBubbleBgColor && (
+                      <button
+                        style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #475569", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 11 }}
+                        onClick={() => setForm({ ...form, commentBubbleBgColor: "" })}
+                        title="إعادة تعيين للون الافتراضي"
+                      >✕ إعادة</button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Background colour picker for the frame bubble — only relevant when a frame image is set */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <label style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>🎨 لون خلفية النص داخل الإطار</label>
@@ -831,7 +882,7 @@ const VipManagement = ({ onLogout }) => {
                         style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 2, pointerEvents: "none", borderRadius: "inherit" }} />
                     </div>
                   ) : (
-                    <div style={{ ...styles.previewBubble, ...getBubbleShapeStyle(form.commentBubbleShape), borderColor: form.color || "#FFD700", borderWidth: normalizeBorderWidth(form.commentBorderWidth) }}>
+                    <div style={{ ...styles.previewBubble, ...getBubbleShapeStyle(form.commentBubbleShape), borderColor: form.color || "#FFD700", borderWidth: normalizeBorderWidth(form.commentBorderWidth), backgroundColor: form.commentBubbleBgColor || (form.color ? `${form.color}22` : "rgba(100,0,180,0.45)") }}>
                       <div style={styles.previewHeader}>
                         <span style={{ ...styles.previewUsername, color: form.color || "#FFD700" }}>مستخدم VIP{Number(form.level) || 1}</span>
                         <span style={{ ...styles.previewChip, backgroundColor: form.color || "#FFD700" }}>VIP{Number(form.level) || 1}</span>

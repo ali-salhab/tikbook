@@ -77,6 +77,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
   const hasBubbleFrame = !!commentFrameLottieUrl;
   const commentFrameBgColor =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameBgColor || null : null;
+  const commentBubbleBgColor =
+    isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentBubbleBgColor || null : null;
   const vipIconUrl =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.imageUrl || null : null;
   const commentTextColor =
@@ -210,7 +212,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
               (isVip || isGift) && styles.vipBubble,
               (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
               (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
-              (isVip || isGift) ? { backgroundColor: vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)" } : null,
+              (isVip || isGift) ? { backgroundColor: commentBubbleBgColor || (vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)") } : null,
             ]}
           >
             {!isSystem && (

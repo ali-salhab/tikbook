@@ -60,6 +60,7 @@ const vipLevelSchema = new mongoose.Schema(
     giftThreshold: { type: Number, default: 0, min: 0 },
     commentTextColor: { type: String, default: "" },  // empty = white (#FFFFFF)
     commentFrameBgColor: { type: String, default: "" }, // background color inside the comment frame, e.g. "rgba(0,0,0,0.5)"
+    commentBubbleBgColor: { type: String, default: "" }, // background color of the comment bubble (no frame), e.g. "rgba(100,0,180,0.45)"
     commentBorderWidth: { type: Number, default: 1.4, min: 0, max: 8 },
     commentBubbleShape: {
       type: String,
