@@ -415,7 +415,7 @@ const VipManagement = ({ onLogout }) => {
         imageUrl: finalImageUrl,
         badgeLottieUrl: finalBadgeLottieUrl,
         commentFrameLottieUrl: finalCommentFrameLottieUrl,
-        commentFrameBgColor: form.commentFrameBgColor || "rgba(0,0,0,0.5)",
+        commentFrameBgColor: form.commentFrameBgColor ?? "",
         profileFrameLottieUrl: finalProfileFrameLottieUrl,
         joinAnimationLottieUrl: finalJoinAnimationLottieUrl,
         joinSoundUrl: finalJoinSoundUrl,

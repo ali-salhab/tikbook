@@ -59,6 +59,7 @@ const vipLevelSchema = new mongoose.Schema(
     // Coins threshold for auto-upgrade (admin configurable). 0 = disabled.
     giftThreshold: { type: Number, default: 0, min: 0 },
     commentTextColor: { type: String, default: "" },  // empty = white (#FFFFFF)
+    commentFrameBgColor: { type: String, default: "" }, // background color inside the comment frame, e.g. "rgba(0,0,0,0.5)"
     commentBorderWidth: { type: Number, default: 1.4, min: 0, max: 8 },
     commentBubbleShape: {
       type: String,
