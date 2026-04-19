@@ -157,8 +157,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                 {isVip ? (
                   <>
                     {vipIconUrl ? (
-                      <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
-                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(18), height: ms(18) }} resizeMode="contain" />
+                      <View style={[ { borderColor: vipColor || "#FFD700", }]}>
+                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(35), height: ms(35) }} resizeMode="contain" />
                       </View>
                     ) : null}
                     <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   levelChip: {
-    paddingHorizontal: ms(4),
+    paddingHorizontal: ms(5),
     paddingVertical: ms(1),
     borderRadius: ms(6),
     borderWidth: 1,

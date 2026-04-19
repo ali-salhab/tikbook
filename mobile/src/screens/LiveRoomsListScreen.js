@@ -489,7 +489,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: ms(200),
     borderRadius: ms(12),
-    justifyContent: "space-between",
     overflow: "hidden",
   },
   cardGradient: {
@@ -531,6 +530,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   cardBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     alignItems: "center",
     padding: ms(8),
