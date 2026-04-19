@@ -718,21 +718,19 @@ const ProfileScreen = ({ navigation }) => {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <View style={[styles.actionBtnIcon, { backgroundColor: "rgba(100,160,255,0.18)" }]}>
-                  {(() => {
+                {(() => {
                     const vipLvl = profile?.vipLevel || 0;
                     const vl = vipLevels.find((l) => l.level === vipLvl);
                     return (
                       <LevelBadgeIcon
                         level={vipLvl || 1}
-                        size="small"
+                        size="medium"
                         imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
                         lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
                         color={vl?.color || "#60A5FA"}
                       />
                     );
                   })()}
-                </View>
                 <Text style={[styles.actionBtnLabel, { color: "#89C4FF" }]}>المستويات</Text>
               </LinearGradient>
             </TouchableOpacity>

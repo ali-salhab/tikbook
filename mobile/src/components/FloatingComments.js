@@ -158,7 +158,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                   <>
                     {vipIconUrl ? (
                       <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
-                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(14), height: ms(14) }} resizeMode="contain" />
+                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(18), height: ms(18) }} resizeMode="contain" />
                       </View>
                     ) : null}
                     <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
@@ -233,7 +233,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                   <>
                     {vipIconUrl ? (
                       <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
-                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(14), height: ms(14) }} resizeMode="contain" />
+                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(16), height: ms(16) }} resizeMode="contain" />
                       </View>
                     ) : null}
                     <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   levelChipText: {
-    fontSize: fs(8),
+    fontSize: fs(10),
     fontWeight: "900",
   },
   username: {
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   vipChipText: {
     color: "#FFF",
-    fontSize: fs(9.5),
+    fontSize: fs(11),
     fontWeight: "800",
     letterSpacing: 0.2,
   },
@@ -501,15 +501,15 @@ const styles = StyleSheet.create({
   inlineHeader: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
     gap: ms(4),
     marginBottom: ms(3),
     alignSelf: "flex-start",
   },
   badgeIcon: {
-    width: ms(16),
-    height: ms(16),
-    borderRadius: ms(3),
+    width: ms(20),
+    height: ms(20),
+    borderRadius: ms(4),
   },
   inlineUsername: {
     color: "rgba(200,190,255,0.95)",
@@ -565,3 +565,4 @@ const styles = StyleSheet.create({
 });
 
 export default FloatingComments;
+

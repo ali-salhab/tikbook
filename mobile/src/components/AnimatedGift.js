@@ -355,18 +355,18 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false, containerTop 
   // ── Lottie ───────────────────────────────────────────────────────────────────
   if (isLottie) {
     const sz = gift.fullScreen ? width * 0.85 : 230;
-    const lottieSource = lottieJson
-      ? lottieJson
-      : (gift.lottieUrl || gift.animationUrl)
-        ? { uri: gift.lottieUrl || gift.animationUrl }
-        : null;
+    // Only give LottieView the pre-fetched JSON object — never pass a { uri } source
+    // directly because lottie-react-native will show a loading spinner while it
+    // downloads the file, producing the visible circle artefact.
+    // While waiting, show the thumbnail/png image instead.
+    const fallbackImgUri = gift.thumbnailUrl || gift.pngUrl || undefined;
     return (
       <View style={[styles.standardContainer, containerTop != null && { top: containerTop }]} pointerEvents="none">
         <Animated.View style={[styles.card, danceStyleAnim]}>
           <View style={[styles.glow, { shadowColor: glowColor, shadowOpacity: Math.min(glowOpacity * 2.5 + 0.3, 0.95) }]} />
-          {lottieSource
-            ? <LottieView source={lottieSource} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
-            : <Image source={{ uri: gift.thumbnailUrl || gift.pngUrl || gift.animationUrl || undefined }} style={{ width: sz, height: sz }} resizeMode="contain" />
+          {lottieJson
+            ? <LottieView source={lottieJson} autoPlay loop style={{ width: sz, height: sz }} resizeMode="contain" />
+            : <Image source={{ uri: fallbackImgUri }} style={{ width: sz, height: sz }} resizeMode="contain" />
           }
           <SenderPill sender={sender} gift={gift} />
           {isCombo && <ComboBadge />}
