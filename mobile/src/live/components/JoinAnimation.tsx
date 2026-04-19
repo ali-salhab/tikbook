@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { LiveRoomUser, VipTierConfig } from "../types";
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
 };
 
 const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, vipTier, onDone }: Props) => {
+  const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-24)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -118,6 +120,7 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
         styles.container,
         {
           opacity,
+          top: insets.top + 10,
           transform: [{ translateY }],
         },
       ]}
@@ -144,7 +147,7 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 10,
+    top: 10, // overridden inline with insets.top + 10
     left: 12,
     right: 12,
     zIndex: 65,

@@ -37,6 +37,7 @@ import {
   createAgoraRtcEngine,
   ChannelProfileType,
   ClientRoleType,
+  AudienceLatencyLevelType,
 } from "react-native-agora";
 import { PermissionsAndroid } from "react-native";
 
@@ -268,6 +269,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [speakingUserIds, setSpeakingUserIds] = useState(new Set());
   const agoraUidMapRef = useRef({}); // agoraUid (number) → userId (string)
   const localAgoraUidRef = useRef(null);
+  const isMutedRef = useRef(true); // mirror of isMuted state for Agora callbacks
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const socketRef = useRef(null);
@@ -647,6 +649,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
         isHostOrSpeaker
           ? ClientRoleType.ClientRoleBroadcaster
           : ClientRoleType.ClientRoleAudience,
+        isHostOrSpeaker
+          ? undefined
+          : { audienceLatencyLevel: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency },
       );
       engine.addListener("onJoinChannelSuccess", (connection) => {
         const uid = connection?.localUid ?? 0;
@@ -663,14 +668,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
         engine.setEnableSpeakerphone(true);
         setJoinedAgora(true);
       });
+      // Subscribe to each remote broadcaster's audio as they join the channel
+      engine.addListener("onUserJoined", (connection, remoteUid) => {
+        engine.muteRemoteAudioStream(remoteUid, false);
+        engine.setEnableSpeakerphone(true);
+      });
       engine.addListener("onAudioVolumeIndication", (connection, speakers) => {
         const THRESHOLD = 30;
         const nowSpeaking = new Set();
         (speakers || []).forEach(({ uid, volume }) => {
           if (volume >= THRESHOLD) {
             if (uid === 0) {
-              // Local user
-              nowSpeaking.add(userInfo._id);
+              // Local user — only add if not muted
+              if (!isMutedRef.current) nowSpeaking.add(userInfo._id);
             } else {
               const userId = agoraUidMapRef.current[uid];
               if (userId) nowSpeaking.add(userId);
@@ -704,6 +714,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       engine.muteLocalAudioStream(!isHostOrSpeaker);
       // Sync React state to match actual Agora mute state
       setIsMuted(!isHostOrSpeaker);
+      isMutedRef.current = !isHostOrSpeaker;
     } catch (e) {
       console.error("Agora init error:", e);
     }
@@ -715,8 +726,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
       isBroadcaster
         ? ClientRoleType.ClientRoleBroadcaster
         : ClientRoleType.ClientRoleAudience,
+      isBroadcaster
+        ? undefined
+        : { audienceLatencyLevel: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency },
     );
-    if (isBroadcaster) agoraEngineRef.current.muteLocalAudioStream(isMuted);
+    if (isBroadcaster) {
+      agoraEngineRef.current.muteLocalAudioStream(isMuted);
+    } else {
+      // After demoting to audience, ensure we can still hear all remote broadcasters
+      agoraEngineRef.current.muteAllRemoteAudioStreams(false);
+      agoraEngineRef.current.setEnableSpeakerphone(true);
+    }
   };
 
   const applyMicVolume = (vol) => {
@@ -760,9 +780,22 @@ const LiveRoomScreen = ({ route, navigation }) => {
         setJoinAnimationUser(user);
         SoundService.play("join");
       }
+      // Re-broadcast our own Agora UID so the newly joined user can populate their UID map
+      if (localAgoraUidRef.current) {
+        socketRef.current?.emit("liveroom:agora_uid", {
+          roomId,
+          userId: userInfo._id,
+          agoraUid: localAgoraUidRef.current,
+        });
+      }
     });
     socket.on("liveroom:agora_uid", ({ userId, agoraUid }) => {
       agoraUidMapRef.current[agoraUid] = userId;
+      // Explicitly subscribe to this user's audio — handles the case where
+      // they just switched from audience to broadcaster (role change doesn't
+      // re-trigger onUserJoined so we must do it here)
+      agoraEngineRef.current?.muteRemoteAudioStream(agoraUid, false);
+      agoraEngineRef.current?.setEnableSpeakerphone(true);
     });
     socket.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();
@@ -773,11 +806,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
         agoraEngineRef.current?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
         agoraEngineRef.current?.muteLocalAudioStream(false);
         setIsMuted(false);
+        isMutedRef.current = false;
         // Notify so user can return from home screen
         showLiveNotification(roomId, room?.title || room?.name || null);
+        // Re-broadcast our Agora UID now that we're a broadcaster so others can map us
+        if (localAgoraUidRef.current) {
+          socketRef.current?.emit("liveroom:agora_uid", {
+            roomId,
+            userId: userInfo._id,
+            agoraUid: localAgoraUidRef.current,
+          });
+        }
       }
       // Ensure all participants (including host) can hear the new speaker
       agoraEngineRef.current?.muteAllRemoteAudioStreams(false);
+      agoraEngineRef.current?.setEnableSpeakerphone(true);
     });
     socket.on("liveroom:speaker_removed", ({ userId }) => {
       fetchRoomData();
@@ -785,6 +828,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         Alert.alert("ℹ️", "تم نقلك إلى المستمعين");
         updateAgoraRole(false);
         setIsMuted(true);
+        isMutedRef.current = true;
         agoraEngineRef.current?.muteLocalAudioStream(true);
       }
     });
@@ -796,6 +840,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (targetUserId !== userInfo._id) return;
       agoraEngineRef.current?.muteLocalAudioStream(mute);
       setIsMuted(mute);
+      isMutedRef.current = mute;
       // Brief feedback so the speaker knows
       if (mute) {
         SoundService.play("mic_off");
@@ -1164,7 +1209,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const handleToggleMute = async () => {
     const next = !isMuted;
     setIsMuted(next);
+    isMutedRef.current = next;
     agoraEngineRef.current?.muteLocalAudioStream(next);
+    // Immediately clear local user from speaking set when muting
+    if (next) {
+      setSpeakingUserIds((prev) => {
+        const updated = new Set(prev);
+        updated.delete(userInfo._id);
+        return updated;
+      });
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     SoundService.play(next ? "mic_off" : "mic_on");
     try {
@@ -1190,9 +1244,18 @@ const LiveRoomScreen = ({ route, navigation }) => {
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
       setIsHandRaised(!isHandRaised);
+      const handUser = freshUser || userInfo;
       socketRef.current?.emit(
         isHandRaised ? "liveroom:lower_hand" : "liveroom:raise_hand",
-        { roomId, userId: userInfo._id },
+        {
+          roomId,
+          userId: userInfo._id,
+          user: {
+            _id: userInfo._id,
+            username: handUser?.username || userInfo?.username || "",
+            profileImage: handUser?.profileImage || userInfo?.profileImage || null,
+          },
+        },
       );
     } catch (_) {
       Alert.alert("خطأ", "تعذّر تغيير حالة رفع اليد");
@@ -1549,6 +1612,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
         null
       : user?.activeBadge?.imageUrl || user?.activeBadge?.image || null;
     const isSpeaking = user && speakingUserIds.has(user._id);
+    // For own seat use local isMuted state (instant feedback); for others use server data
+    const effectiveMuted = isMe ? isMuted : !!speaker?.isMuted;
 
     const isHostSeat = room?.host?._id === userInfo?._id;
     const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
@@ -1579,6 +1644,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
         updateAgoraRole(false);
         setIsMuted(true);
+        isMutedRef.current = true;
         agoraEngineRef.current?.muteLocalAudioStream(true);
         fetchRoomData();
       } catch (e) {
@@ -1623,12 +1689,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
       } else if (canRequestSeat) {
         playTap();
         const requester = freshUser || userInfo;
+        const reqUsername = requester?.username || userInfo?.username || "";
         socketRef.current?.emit("liveroom:seat_request", {
           roomId,
           user: {
-            _id: requester._id,
-            username: requester.username,
-            profileImage: requester.profileImage || null,
+            _id: requester?._id || userInfo?._id,
+            username: reqUsername,
+            profileImage: requester?.profileImage || userInfo?.profileImage || null,
           },
         });
         Alert.alert("💺 طلب جلوس", "تم إرسال طلبك إلى المضيف. انتظر الموافقة.");
@@ -1653,8 +1720,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
             styles.seatCircle,
             { width: SEAT_SIZE, height: SEAT_SIZE, borderRadius: SEAT_SIZE / 2 },
             !user && styles.seatEmpty,
-            !speaker?.isMuted && user && styles.seatActive,
-            isSpeaking && styles.seatSpeaking,
+            !effectiveMuted && user && styles.seatActive,
+            isSpeaking && !effectiveMuted && styles.seatSpeaking,
             isGiftSelected && styles.seatGiftSelected,
           ]}
         >
@@ -1674,15 +1741,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
           <View style={styles.seatNum}>
             <Text style={styles.seatNumText}>{index + 1}</Text>
           </View>
-          {speaker?.isMuted && (
+          {effectiveMuted && (
             <View style={styles.mutedDot}>
               <Ionicons name="mic-off" size={7} color="#FFF" />
-            </View>
-          )}
-          {/* Speaking sound-wave indicator */}
-          {isSpeaking && !speaker?.isMuted && (
-            <View style={styles.seatSoundWave} pointerEvents="none">
-              <SoundWave active={true} color="#00F2EA" size="small" />
             </View>
           )}
           {/* Gift selection checkmark */}
@@ -1692,6 +1753,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
             </View>
           )}
         </View>
+        {/* Speaking sound-wave indicator — shown under the seat circle */}
+        {isSpeaking && !effectiveMuted && (
+          <View style={styles.seatSoundWaveBelow}>
+            <SoundWave active={true} color="#00F2EA" size="small" />
+          </View>
+        )}
         <Text style={styles.seatLabel} numberOfLines={1}>
           {user ? user.username : `${index + 1}`}
         </Text>
@@ -2048,7 +2115,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
           activeOpacity={1}
           onPress={closeSeatSheet}
         />
-        <View style={[styles.sheet, styles.seatCtrlSheet]}>
+        <View style={[styles.sheet, styles.seatCtrlSheet, { paddingBottom: insets.bottom + ms(16) }]}>
           <View style={styles.sheetHandle} />
 
           {/* User info header */}
@@ -2083,35 +2150,43 @@ const LiveRoomScreen = ({ route, navigation }) => {
           {/* Action buttons */}
           <View style={styles.seatCtrlActions}>
             {/* Gift – visible to all */}
-            <TouchableOpacity style={[styles.seatCtrlBtn, styles.seatCtrlBtnGift]} onPress={handleGift}>
-              <Ionicons name="gift" size={22} color="#FFF" />
+            <TouchableOpacity style={styles.seatCtrlIconBtn} onPress={handleGift}>
+              <View style={[styles.seatCtrlIconCircle, styles.seatCtrlBtnGift]}>
+                <Ionicons name="gift" size={22} color="#FFF" />
+              </View>
               <Text style={styles.seatCtrlBtnText}>إرسال هدية</Text>
             </TouchableOpacity>
 
             {/* Mute / Unmute – host/mod only */}
             {scHostOrMod && (
-              <TouchableOpacity style={[styles.seatCtrlBtn, isUserMuted ? styles.seatCtrlBtnUnmute : styles.seatCtrlBtnMute]} onPress={handleToggleMute}>
-                <Ionicons name={isUserMuted ? "mic" : "mic-off"} size={22} color="#FFF" />
+              <TouchableOpacity style={styles.seatCtrlIconBtn} onPress={handleToggleMute}>
+                <View style={[styles.seatCtrlIconCircle, isUserMuted ? styles.seatCtrlBtnUnmute : styles.seatCtrlBtnMute]}>
+                  <Ionicons name={isUserMuted ? "mic" : "mic-off"} size={22} color="#FFF" />
+                </View>
                 <Text style={styles.seatCtrlBtnText}>{isUserMuted ? "رفع الكتم" : "كتم الصوت"}</Text>
               </TouchableOpacity>
             )}
 
             {/* View profile – visible to all */}
             <TouchableOpacity
-              style={[styles.seatCtrlBtn, styles.seatCtrlBtnProfile]}
+              style={styles.seatCtrlIconBtn}
               onPress={() => {
                 closeSeatSheet();
                 navigation.navigate("Profile", { userId: scUser._id });
               }}
             >
-              <Ionicons name="person-circle-outline" size={22} color="#FFF" />
+              <View style={[styles.seatCtrlIconCircle, styles.seatCtrlBtnProfile]}>
+                <Ionicons name="person-circle-outline" size={22} color="#FFF" />
+              </View>
               <Text style={styles.seatCtrlBtnText}>عرض الملف</Text>
             </TouchableOpacity>
 
             {/* Remove from seat – host/mod only */}
             {scHostOrMod && (
-              <TouchableOpacity style={[styles.seatCtrlBtn, styles.seatCtrlBtnRemove]} onPress={handleRemove}>
-                <Ionicons name="remove-circle-outline" size={22} color="#FFF" />
+              <TouchableOpacity style={styles.seatCtrlIconBtn} onPress={handleRemove}>
+                <View style={[styles.seatCtrlIconCircle, styles.seatCtrlBtnRemove]}>
+                  <Ionicons name="remove-circle-outline" size={22} color="#FFF" />
+                </View>
                 <Text style={styles.seatCtrlBtnText}>إزالة من المقعد</Text>
               </TouchableOpacity>
             )}
@@ -3200,10 +3275,16 @@ const styles = StyleSheet.create({
   },
   seatSoundWave: {
     position: "absolute",
-    top: -ms(13),
+    bottom: ms(4),
     left: 0,
     right: 0,
     alignItems: "center",
+    zIndex: 10,
+  },
+  seatSoundWaveBelow: {
+    alignItems: "center",
+    marginTop: ms(3),
+    marginBottom: -ms(4),
   },
   hostSoundWave: {
     position: "absolute",
@@ -3604,45 +3685,50 @@ const styles = StyleSheet.create({
   },
   seatCtrlActions: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: ms(10),
-    marginBottom: ms(16),
+    justifyContent: "space-around",
+    paddingHorizontal: ms(4),
+    marginBottom: ms(12),
   },
-  seatCtrlBtn: {
-    flex: 1,
-    minWidth: "44%",
+  seatCtrlIconBtn: {
+    alignItems: "center",
+    gap: ms(6),
+    paddingHorizontal: ms(6),
+    minWidth: ms(60),
+  },
+  seatCtrlIconCircle: {
+    width: ms(52),
+    height: ms(52),
+    borderRadius: ms(26),
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: ms(14),
-    borderRadius: ms(14),
-    gap: ms(6),
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   seatCtrlBtnText: {
-    color: "#FFF",
-    fontSize: fs(12),
+    color: "rgba(255,255,255,0.85)",
+    fontSize: fs(10),
     fontWeight: "700",
     textAlign: "center",
+    maxWidth: ms(64),
   },
   seatCtrlBtnGift: {
-    backgroundColor: "rgba(255,0,200,0.18)",
-    borderColor: "rgba(255,0,200,0.45)",
+    backgroundColor: "rgba(255,0,200,0.22)",
+    borderColor: "rgba(255,0,200,0.6)",
   },
   seatCtrlBtnMute: {
-    backgroundColor: "rgba(255,68,68,0.18)",
-    borderColor: "rgba(255,68,68,0.45)",
+    backgroundColor: "rgba(255,68,68,0.22)",
+    borderColor: "rgba(255,68,68,0.6)",
   },
   seatCtrlBtnUnmute: {
-    backgroundColor: "rgba(0,220,130,0.18)",
-    borderColor: "rgba(0,220,130,0.45)",
+    backgroundColor: "rgba(0,220,130,0.22)",
+    borderColor: "rgba(0,220,130,0.6)",
   },
   seatCtrlBtnProfile: {
-    backgroundColor: "rgba(80,120,255,0.18)",
-    borderColor: "rgba(80,120,255,0.45)",
+    backgroundColor: "rgba(80,120,255,0.22)",
+    borderColor: "rgba(80,120,255,0.6)",
   },
   seatCtrlBtnRemove: {
-    backgroundColor: "rgba(255,140,0,0.18)",
-    borderColor: "rgba(255,140,0,0.45)",
+    backgroundColor: "rgba(255,140,0,0.22)",
+    borderColor: "rgba(255,140,0,0.6)",
   },
   seatCtrlCancel: {
     alignItems: "center",

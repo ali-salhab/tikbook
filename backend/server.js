@@ -294,6 +294,12 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Relay Agora UID so all participants can build their uid→userId map
+  socket.on("liveroom:agora_uid", ({ roomId, userId, agoraUid }) => {
+    // Broadcast to everyone else in the room (not the sender)
+    socket.to(`liveroom:${roomId}`).emit("liveroom:agora_uid", { userId, agoraUid });
+  });
+
   // Host approves a seat request
   socket.on("liveroom:seat_request_approved", ({ roomId, userId, approvedBy }) => {
     io.to(`liveroom:${roomId}`).emit("liveroom:seat_request_approved", {
