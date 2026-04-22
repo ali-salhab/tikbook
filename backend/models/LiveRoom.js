@@ -85,6 +85,25 @@ const liveRoomSchema = new mongoose.Schema(
         },
       },
     ],
+    // Pending seat invitations sent by host/moderators. A user may only
+    // self-promote to speaker via /make-speaker/:userId if they appear in
+    // this list (or in handRaised), guarding against self-invite abuse.
+    pendingInvites: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        invitedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        invitedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     // Banned users - kicked and cannot rejoin
     bannedUsers: [
       {
@@ -241,6 +260,9 @@ liveRoomSchema.methods.removeParticipant = function (userId) {
   );
   this.handRaised = this.handRaised.filter(
     (h) => h.user.toString() !== userId.toString(),
+  );
+  this.pendingInvites = (this.pendingInvites || []).filter(
+    (p) => p.user.toString() !== userId.toString(),
   );
 };
 

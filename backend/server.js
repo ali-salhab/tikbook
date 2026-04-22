@@ -276,8 +276,40 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Host/mod invites a viewer to a seat
-  socket.on("liveroom:invite_to_seat", ({ roomId, userId, invitedBy }) => {
+  // Host/mod invites a viewer to a seat.
+  // Hard-guard: never relay a self-invite (inviter === invitee). This prevents
+  // a buggy/forged client from triggering the accept-seat dialog for itself
+  // and bypassing the host-approval flow.
+  socket.on("liveroom:invite_to_seat", async ({ roomId, userId, invitedBy }) => {
+    if (!roomId || !userId || !invitedBy?._id) return;
+    if (String(invitedBy._id) === String(userId)) {
+      return;
+    }
+    // Persist the pending invite so makeSpeaker can authorize the self-accept.
+    try {
+      const LiveRoom = require("./models/LiveRoom");
+      const liveRoom = await LiveRoom.findOne({ roomId });
+      if (liveRoom) {
+        const isHost = String(liveRoom.host) === String(invitedBy._id);
+        const isMod = (liveRoom.moderators || []).some(
+          (m) => String(m.user) === String(invitedBy._id),
+        );
+        if (isHost || isMod) {
+          const already = (liveRoom.pendingInvites || []).some(
+            (p) => String(p.user) === String(userId),
+          );
+          if (!already) {
+            liveRoom.pendingInvites.push({ user: userId, invitedBy: invitedBy._id });
+            await liveRoom.save();
+          }
+        } else {
+          // inviter is not authorized — drop silently
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to persist seat invite:", err.message);
+    }
     io.to(`liveroom:${roomId}`).emit("liveroom:seat_invite_received", {
       userId,
       invitedBy,

@@ -95,82 +95,137 @@ const BASE_SEAT_SIZE = ms(50);
 const HOST_SIZE = ms(110);
 const SOCKET_URL = BASE_URL.replace("/api", "");
 
-// ─── Host avatar: clean circle + animated pulse rings when speaking ───────────
-// ── Speaking ripple ring colors ───────────────────────────────────────────────
-const RIPPLE_COLORS = ["#7C3AED", "#2563EB", "#06B6D4"];   // violet, blue, cyan — cycle
+// ─── Host avatar: clean circle + Gemini-style multicolor ripples while speaking ─
+// Gemini palette (blue → violet → magenta → orange) — rings cycle through these
+// with staggered timing to produce a flowing, colorful "living" indicator.
+const RIPPLE_COLORS = ["#4285F4", "#9B72CB", "#D96570", "#F2A93B", "#34A853"];
 
 const HostAvatarFrame = React.memo(({ imageUrl, size, isSpeaking, showOnline }) => {
-  // 3 ripple rings — each is a scale+opacity value starting at 0
-  const r1 = useRef(new Animated.Value(0)).current;
-  const r2 = useRef(new Animated.Value(0)).current;
-  const r3 = useRef(new Animated.Value(0)).current;
+  // One Animated.Value per ring. Staggered delays produce a continuous flow.
+  const anims = useRef(RIPPLE_COLORS.map(() => new Animated.Value(0))).current;
+  // Subtle breathing scale on the inner avatar while speaking.
+  const breathe = useRef(new Animated.Value(0)).current;
 
   const makeRipple = (anim, delay) =>
     Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
-        Animated.timing(anim, { toValue: 1, duration: 2200, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 0,    useNativeDriver: true }),
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 2400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
       ])
     );
 
   useEffect(() => {
     if (isSpeaking) {
-      const a1 = makeRipple(r1, 0);
-      const a2 = makeRipple(r2, 730);
-      const a3 = makeRipple(r3, 1460);
-      a1.start(); a2.start(); a3.start();
+      const loops = anims.map((a, i) => makeRipple(a, i * 480));
+      loops.forEach((l) => l.start());
+      const breatheLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(breathe, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(breathe, {
+            toValue: 0,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      breatheLoop.start();
       return () => {
-        a1.stop(); a2.stop(); a3.stop();
-        r1.setValue(0); r2.setValue(0); r3.setValue(0);
+        loops.forEach((l) => l.stop());
+        breatheLoop.stop();
+        anims.forEach((a) => a.setValue(0));
+        breathe.setValue(0);
       };
     } else {
-      r1.setValue(0); r2.setValue(0); r3.setValue(0);
+      anims.forEach((a) => a.setValue(0));
+      breathe.setValue(0);
     }
   }, [isSpeaking]);
 
-  // Each ring: starts at image size, expands to 1.7× while fading out
+  // Each ring starts at image size, expands to ~1.9× while fading out.
+  // Thicker borders + glow shadow give a soft neon look, Gemini-style.
   const ringStyle = (anim, color) => ({
     position: "absolute",
-    width:  size,
+    width: size,
     height: size,
     borderRadius: size / 2,
-    borderWidth: 2.5,
+    borderWidth: 3,
     borderColor: color,
-    opacity: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.85, 0] }),
-    transform: [{
-      scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.75] }),
-    }],
+    shadowColor: color,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 4,
+    opacity: anim.interpolate({
+      inputRange: [0, 0.15, 0.9, 1],
+      outputRange: [0, 0.95, 0.2, 0],
+    }),
+    transform: [
+      {
+        scale: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.96, 1.9],
+        }),
+      },
+    ],
+  });
+
+  const breatheScale = breathe.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.04],
   });
 
   return (
-    // transparent — no background, no box
-    <View style={{ width: size + ms(30), height: size + ms(30), alignItems: "center", justifyContent: "center" }}>
-
-      {/* ripple rings — only visible while speaking */}
-      <Animated.View pointerEvents="none" style={ringStyle(r1, RIPPLE_COLORS[0])} />
-      <Animated.View pointerEvents="none" style={ringStyle(r2, RIPPLE_COLORS[1])} />
-      <Animated.View pointerEvents="none" style={ringStyle(r3, RIPPLE_COLORS[2])} />
+    <View
+      style={{
+        width: size + ms(30),
+        height: size + ms(30),
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* Multicolor ripple rings — only active while speaking */}
+      {anims.map((a, i) => (
+        <Animated.View
+          key={i}
+          pointerEvents="none"
+          style={ringStyle(a, RIPPLE_COLORS[i % RIPPLE_COLORS.length])}
+        />
+      ))}
 
       {/* profile image */}
-      <View style={{
-        width: size, height: size,
-        borderRadius: size / 2,
-        overflow: "hidden",
-        backgroundColor: "#2A1550",
-        borderWidth: 2.5,
-        borderColor: isSpeaking ? "#A855F7" : "rgba(120,40,200,0.35)",
-      }}>
+      <Animated.View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          overflow: "hidden",
+          backgroundColor: "#2A1550",
+          borderWidth: 2.5,
+          borderColor: isSpeaking ? "#A855F7" : "rgba(120,40,200,0.35)",
+          transform: [{ scale: breatheScale }],
+        }}
+      >
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} resizeMode="fill" />
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: size, height: size }}
+            resizeMode="fill"
+          />
         ) : (
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
             <Ionicons name="person" size={size * 0.38} color="rgba(255,255,255,0.4)" />
           </View>
         )}
-      </View>
-
-  
+      </Animated.View>
     </View>
   );
 });
@@ -1172,6 +1227,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
     // Host invited this user to a seat
     socket.on("liveroom:seat_invite_received", ({ userId, invitedBy }) => {
+      // Defensive: ignore self-invite (prevents the user seeing their own invite
+      // dialog if a buggy client somehow emits an invite targeting themselves).
+      if (invitedBy?._id && String(invitedBy._id) === String(userId)) return;
       if (userId === userInfo._id) {
         Alert.alert(
           "💺 دعوة للمقعد",
@@ -1633,8 +1691,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const isMod = room?.moderators?.some(
       (m) => (m.user?._id || m.user) === currentUser?._id,
     );
-    // handRaised is a top-level array in the room model
-    const raisers = room?.handRaised || [];
+    // Combine persistent hand-raise list with ephemeral socket-only seat requests,
+    // deduped by user id so host/mods always see a complete requester list.
+    const handRaisedList = room?.handRaised || [];
+    const combinedById = new Map();
+    handRaisedList.forEach((r) => {
+      const uid = r.user?._id || r.user;
+      if (!uid) return;
+      combinedById.set(String(uid), { user: r.user, timestamp: r.timestamp });
+    });
+    (seatRequests || []).forEach((r) => {
+      const uid = r.user?._id;
+      if (!uid || combinedById.has(String(uid))) return;
+      combinedById.set(String(uid), { user: r.user, timestamp: r.timestamp });
+    });
+    const raisers = Array.from(combinedById.values());
     return (
       <View style={[styles.header, { paddingTop: insets.top + ms(14) }]}>
         {/* Left */}
@@ -1721,22 +1792,36 @@ const LiveRoomScreen = ({ route, navigation }) => {
             isSpeaking={isHostSpeaking}
             showOnline={joinedAgora}
           />
-          {/* PNG / Lottie profile frame overlay — larger than avatar to show decorations */}
+          {/* PNG / Lottie profile frame overlay — clipped into a perfect circle
+              around the avatar, regardless of the source frame's aspect ratio. */}
           {hostFrameUrl ? (
-            (/\.json($|\?)/i.test(hostFrameUrl) || (hostFrameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(hostFrameUrl))) ? null : (
-              <Image
-                source={{ uri: hostFrameUrl }}
+            (/\.json($|\?)/i.test(hostFrameUrl) ||
+            (hostFrameUrl.includes("/raw/upload/") &&
+              !/\.(png|jpe?g|webp|gif)($|\?)/i.test(hostFrameUrl))) ? null : (
+              <View
+                pointerEvents="none"
                 style={{
                   position: "absolute",
                   top: -ms(20),
                   left: -ms(20),
                   width: HOST_SIZE + ms(70),
                   height: HOST_SIZE + ms(70),
+                  borderRadius: (HOST_SIZE + ms(70)) / 2,
+                  overflow: "hidden",
                   zIndex: 2,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-                resizeMode="stretch"
-                pointerEvents="none"
-              />
+              >
+                <Image
+                  source={{ uri: hostFrameUrl }}
+                  style={{
+                    width: HOST_SIZE + ms(70),
+                    height: HOST_SIZE + ms(70),
+                  }}
+                  resizeMode="cover"
+                />
+              </View>
             )
           ) : null}
         </View>
@@ -1769,24 +1854,36 @@ const LiveRoomScreen = ({ route, navigation }) => {
     // For own seat use local isMuted state (instant feedback); for others use server data
     const effectiveMuted = isMe ? isMuted : !!speaker?.isMuted;
     const showSpeakingFx = !!isSpeaking && !effectiveMuted;
-    const pulseAnim = useRef(new Animated.Value(0)).current;
+    // Gemini-style multicolor ripple anims — one per color, staggered.
+    const rippleAnims = useRef(
+      RIPPLE_COLORS.map(() => new Animated.Value(0)),
+    ).current;
     const dotAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
       if (!showSpeakingFx) {
-        pulseAnim.setValue(0);
+        rippleAnims.forEach((a) => a.setValue(0));
         dotAnim.setValue(0);
         return;
       }
 
-      const pulseLoop = Animated.loop(
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1150,
-          useNativeDriver: true,
-        }),
+      const loops = rippleAnims.map((a, i) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(i * 360),
+            Animated.timing(a, {
+              toValue: 1,
+              duration: 1700,
+              useNativeDriver: true,
+            }),
+            Animated.timing(a, {
+              toValue: 0,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+        ),
       );
-
       const dotLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(dotAnim, {
@@ -1802,14 +1899,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
         ]),
       );
 
-      pulseLoop.start();
+      loops.forEach((l) => l.start());
       dotLoop.start();
 
       return () => {
-        pulseLoop.stop();
+        loops.forEach((l) => l.stop());
         dotLoop.stop();
       };
-    }, [showSpeakingFx, pulseAnim, dotAnim]);
+    }, [showSpeakingFx, dotAnim]);
 
     const isHostSeat = room?.host?._id === userInfo?._id;
     const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
@@ -1923,28 +2020,36 @@ const LiveRoomScreen = ({ route, navigation }) => {
         >
           {showSpeakingFx && (
             <View pointerEvents="none" style={styles.speakingFxLayer}>
-              <Animated.View
-                style={[
-                  styles.speakingPulseRing,
-                  {
-                    width: SEAT_SIZE + ms(10),
-                    height: SEAT_SIZE + ms(10),
-                    borderRadius: (SEAT_SIZE + ms(10)) / 2,
-                    opacity: pulseAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.8, 0],
-                    }),
-                    transform: [
+              {rippleAnims.map((a, i) => {
+                const color = RIPPLE_COLORS[i % RIPPLE_COLORS.length];
+                return (
+                  <Animated.View
+                    key={i}
+                    style={[
+                      styles.speakingPulseRing,
                       {
-                        scale: pulseAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.92, 1.24],
+                        width: SEAT_SIZE + ms(6),
+                        height: SEAT_SIZE + ms(6),
+                        borderRadius: (SEAT_SIZE + ms(6)) / 2,
+                        borderColor: color,
+                        shadowColor: color,
+                        opacity: a.interpolate({
+                          inputRange: [0, 0.15, 0.9, 1],
+                          outputRange: [0, 0.95, 0.2, 0],
                         }),
+                        transform: [
+                          {
+                            scale: a.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.9, 1.55],
+                            }),
+                          },
+                        ],
                       },
-                    ],
-                  },
-                ]}
-              />
+                    ]}
+                  />
+                );
+              })}
               <Animated.View
                 style={[
                   styles.speakingMovingDot,
@@ -1990,13 +2095,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
             </View>
           )}
         </View>
-        {/* Speaking sound-wave indicator — shown under the seat circle */}
-        {showSpeakingFx && (
-          <View style={styles.seatSoundWaveBelow}>
-            <SoundWave active={true} color="#00F2EA" size="small" />
-            <Text style={styles.seatSpeakingLabel}>يتكلم الآن</Text>
-          </View>
-        )}
+        {/* Speaking state is already conveyed by the Gemini-style multicolor
+            ripples around the avatar, so no extra under-seat wave is needed —
+            this also prevents the seat row from shifting when someone speaks. */}
         <Text style={styles.seatLabel} numberOfLines={1}>
           {user ? user.username : `${index + 1}`}
         </Text>
@@ -2631,8 +2732,22 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ─── HAND RAISE LIST MODAL ───────────────────────────────────────────────────
 
-  // handRaised is a top-level array in the room model (not in speakers)
-  const raisers = room?.handRaised || [];
+  // Merge persistent handRaised (backend) with ephemeral seatRequests (socket),
+  // deduped by user id, so host/mods can always see WHO is requesting the seat.
+  const raisers = (() => {
+    const byId = new Map();
+    (room?.handRaised || []).forEach((r) => {
+      const uid = r.user?._id || r.user;
+      if (!uid) return;
+      byId.set(String(uid), r);
+    });
+    (seatRequests || []).forEach((r) => {
+      const uid = r.user?._id;
+      if (!uid || byId.has(String(uid))) return;
+      byId.set(String(uid), r);
+    });
+    return Array.from(byId.values());
+  })();
   const handRaiseModal = (
     <Modal
       visible={showHandRaiseList}
@@ -2658,9 +2773,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
           )}
           {raisers.map((r) => {
             const u = r.user || r;
-            const uid = u._id || u;
-            const username = u.username || "مستخدم";
-            const profileImg = u.profileImage || u.avatar || null;
+            const uid = u?._id || u;
+            const username = u?.username || "مستخدم";
+            const profileImg = u?.profileImage || u?.avatar || null;
             return (
               <View key={uid} style={styles.raiserRow}>
                 {profileImg ? (
@@ -2672,23 +2787,34 @@ const LiveRoomScreen = ({ route, navigation }) => {
                     </Text>
                   </View>
                 )}
-                <Text style={styles.raiserName}>{username}</Text>
+                <View style={{ flex: 1, marginHorizontal: ms(8) }}>
+                  <Text style={styles.raiserName} numberOfLines={1}>{username}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: fs(10) }} numberOfLines={1}>
+                    يطلب الانضمام للمقعد
+                  </Text>
+                </View>
                 {/* Accept */}
                 <TouchableOpacity
                   style={styles.approveBtn}
                   onPress={async () => {
                     try {
                       await axios.post(
-                        BASE_URL + "/api/live-rooms/" + roomId + "/make-speaker/" + uid,
+                        `${BASE_URL}/live-rooms/${roomId}/make-speaker/${uid}`,
                         {},
-                        { headers: { Authorization: "Bearer " + userToken } }
+                        { headers: { Authorization: `Bearer ${userToken}` } }
                       );
+                      setSeatRequests((prev) => prev.filter((rq) => (rq.user?._id || rq.user) !== uid));
                       fetchRoomData();
                       if (socketRef.current) {
                         socketRef.current.emit("liveroom:make_speaker", {
                           roomId,
                           userId: uid,
                           user: u
+                        });
+                        socketRef.current.emit("liveroom:seat_request_approved", {
+                          roomId,
+                          userId: uid,
+                          approvedBy: { _id: userInfo?._id, username: userInfo?.username },
                         });
                       }
                     } catch (e) {
@@ -2704,18 +2830,23 @@ const LiveRoomScreen = ({ route, navigation }) => {
                   onPress={async () => {
                     try {
                       await axios.post(
-                        BASE_URL + "/api/live-rooms/" + roomId + "/reject-hand/" + uid,
+                        `${BASE_URL}/live-rooms/${roomId}/reject-hand/${uid}`,
                         {},
-                        { headers: { Authorization: "Bearer " + userToken } }
+                        { headers: { Authorization: `Bearer ${userToken}` } }
                       );
-                      fetchRoomData();
-                      if (socketRef.current) {
-                        socketRef.current.emit("liveroom:reject_hand", {
-                          roomId,
-                          userId: uid
-                        });
-                      }
                     } catch (_) {}
+                    setSeatRequests((prev) => prev.filter((rq) => (rq.user?._id || rq.user) !== uid));
+                    fetchRoomData();
+                    if (socketRef.current) {
+                      socketRef.current.emit("liveroom:reject_hand", {
+                        roomId,
+                        userId: uid
+                      });
+                      socketRef.current.emit("liveroom:seat_request_rejected", {
+                        roomId,
+                        userId: uid,
+                      });
+                    }
                   }}
                 >
                   <Text style={styles.rejectBtnText}>رفض</Text>
@@ -2737,17 +2868,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
     const canManage = isHost || isMod;
 
-    // Combine all participants: listeners + speakers (excluding host)
+    // Combine all participants: listeners + speakers (excluding host AND the
+    // current user — a host/mod must not be able to invite themselves).
+    const currentUserId = userInfo?._id;
     const allViewers = [
       ...(room?.listeners || []).map((l) => l.user).filter(Boolean),
       ...(room?.speakers || [])
         .map((s) => s.user)
         .filter((u) => u && u._id !== room?.host?._id),
     ];
-    // Deduplicate
     const seen = new Set();
     const uniqueViewers = allViewers.filter((u) => {
+      if (!u?._id) return false;
       if (seen.has(u._id)) return false;
+      if (currentUserId && String(u._id) === String(currentUserId)) return false;
       seen.add(u._id);
       return true;
     });
@@ -2799,11 +2933,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
                     )}
                   </View>
                   {/* Invite to seat (host/mod only, user not already a speaker) */}
-                  {canManage && !isSpeaker && (
+                  {canManage && !isSpeaker && String(u._id) !== String(userInfo?._id) && (
                     <TouchableOpacity
                       style={styles.inviteBtn}
                       onPress={() => {
-                        // Send an invite — the other user sees accept/reject dialog
+                        // Hard-guard: never allow self-invite.
+                        if (String(u._id) === String(userInfo?._id)) {
+                          Alert.alert("خطأ", "لا يمكن دعوة نفسك للمقعد");
+                          return;
+                        }
                         socketRef.current?.emit("liveroom:invite_to_seat", {
                           roomId,
                           userId: u._id,
@@ -3535,9 +3673,13 @@ const styles = StyleSheet.create({
   },
   speakingPulseRing: {
     position: "absolute",
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: "rgba(0,242,234,0.95)",
-    backgroundColor: "rgba(0,242,234,0.06)",
+    backgroundColor: "transparent",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.85,
+    shadowRadius: 8,
+    elevation: 3,
   },
   speakingMovingDot: {
     position: "absolute",
@@ -3589,29 +3731,46 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 1,
   },
   seatNum: {
     position: "absolute",
-    bottom: ms(-2),
-    right: ms(-2),
-    backgroundColor: "rgba(254,44,85,0.82)",
-    paddingHorizontal: ms(3.5),
+    bottom: ms(-4),
+    right: ms(-4),
+    backgroundColor: "rgba(254,44,85,0.92)",
+    paddingHorizontal: ms(4),
     paddingVertical: ms(1),
-    borderRadius: ms(6),
+    borderRadius: ms(7),
     minWidth: ms(14),
     alignItems: "center",
+    zIndex: 30,
+    elevation: 30,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.35)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.45,
+    shadowRadius: 2,
   },
   seatNumText: { color: "#FFF", fontSize: fs(7.5), fontWeight: "700" },
   mutedDot: {
     position: "absolute",
-    top: 0,
-    right: 0,
+    top: ms(-2),
+    right: ms(-2),
     backgroundColor: "#FF4444",
-    width: ms(13),
-    height: ms(13),
-    borderRadius: ms(6.5),
+    width: ms(15),
+    height: ms(15),
+    borderRadius: ms(7.5),
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 30,
+    elevation: 30,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.45,
+    shadowRadius: 2,
   },
   handDot: {
     position: "absolute",

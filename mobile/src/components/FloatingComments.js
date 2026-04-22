@@ -104,11 +104,81 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
     (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
     (typeof vipProfileFrameUrl === "string" && vipProfileFrameUrl.startsWith("http") ? vipProfileFrameUrl : null);
   const hasActiveBadge = !!resolvedBadgeUrl;
-  // Personal badge icon shown inline in header (PNG/WebP only — no Lottie in tiny chip)
+  // Personal badge icon shown inline in header — supports PNG/WebP and Lottie JSON
+  const isBadgeLottie =
+    typeof activeBadgeUrl === "string" &&
+    activeBadgeUrl.startsWith("http") &&
+    (/\.json($|\?)/i.test(activeBadgeUrl) ||
+      (activeBadgeUrl.includes("/raw/upload/") &&
+        !/\.(png|jpe?g|webp|gif)($|\?)/i.test(activeBadgeUrl)));
   const badgeIconUrl =
-    typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") &&
-    !/\.json($|\?)/i.test(activeBadgeUrl)
-      ? activeBadgeUrl : null;
+    typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http")
+      ? activeBadgeUrl
+      : null;
+
+  // Unified inline header (username + admin-uploaded badges/icons) — always
+  // rendered ABOVE the comment bubble/frame so admin assets are never hidden.
+  const renderInlineHeader = () => {
+    if (isSystem) return null;
+    return (
+      <View style={styles.inlineHeader}>
+        <Text
+          style={[styles.inlineUsername, isVip && { color: vipColor || "#FFD700" }]}
+          numberOfLines={1}
+        >
+          {item.user?.username || ""}
+        </Text>
+        {badgeIconUrl ? (
+          isBadgeLottie ? (
+            <LottieView
+              source={{ uri: badgeIconUrl }}
+              autoPlay
+              loop
+              style={styles.badgeIcon}
+              resizeMode="contain"
+            />
+          ) : (
+            <Image
+              source={{ uri: badgeIconUrl }}
+              style={styles.badgeIcon}
+              resizeMode="contain"
+            />
+          )
+        ) : null}
+        {userLevel > 0 && levelColor ? (
+          <View style={[styles.levelChip, { borderColor: levelColor }]}>
+            <Text style={[styles.levelChipText, { color: levelColor }]}>
+              {userLevel}
+            </Text>
+          </View>
+        ) : null}
+        {isVip && vipIconUrl ? (
+          <Image
+            source={{ uri: vipIconUrl }}
+            style={styles.vipIconImg}
+            resizeMode="contain"
+          />
+        ) : isVip ? (
+          <View
+            style={[
+              styles.vipChip,
+              {
+                borderColor: vipColor || "#FFD700",
+                borderWidth: 1,
+                backgroundColor: vipColor
+                  ? `${vipColor}22`
+                  : "rgba(249,218,40,0.15)",
+              },
+            ]}
+          >
+            <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>
+              VIP{vipLevel}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <Animated.View style={[
@@ -138,119 +208,125 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
 
       {/* ── Bubble second in JSX → renders to the LEFT of the avatar in RTL ── */}
       <View style={styles.rightCol}>
+        {/* Inline header (admin-uploaded badges/icons) is ALWAYS above bubble */}
+        {renderInlineHeader()}
         {hasBubbleFrame ? (
-          <>
-            {/* Header (name + chips) sits ABOVE the frame, not inside it */}
-            {!isSystem && (
-              <View style={styles.inlineHeader}>
-                <Text style={[styles.inlineUsername, isVip && { color: vipColor || "#FFD700" }]} numberOfLines={1}>
-                  {item.user?.username || ""}
-                </Text>
-                {badgeIconUrl ? (
-                  <Image source={{ uri: badgeIconUrl }} style={styles.badgeIcon} resizeMode="contain" />
-                ) : null}
-                {userLevel > 0 && levelColor ? (
-                  <View style={[styles.levelChip, { borderColor: levelColor }]}>
-                    <Text style={[styles.levelChipText, { color: levelColor }]}>{userLevel}</Text>
+          <View style={{ position: "relative", alignSelf: "flex-start" }}>
+            <View
+              style={[
+                styles.bubble,
+                {
+                  backgroundColor: commentFrameBgColor || "transparent",
+                  borderWidth: 0,
+                  borderRadius: 0,
+                  paddingHorizontal: ms(18),
+                  paddingVertical: ms(10),
+                },
+              ]}
+            >
+              {isGift && item.giftUrl ? (
+                <View style={styles.giftMsgRow}>
+                  <Image
+                    source={{ uri: item.giftUrl }}
+                    style={styles.giftThumb}
+                    resizeMode="contain"
+                  />
+                  <View style={{ flexShrink: 1 }}>
+                    <Text
+                      style={[
+                        styles.message,
+                        commentTextColor ? { color: commentTextColor } : null,
+                      ]}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {messageText}
+                    </Text>
                   </View>
-                ) : null}
-                {isVip ? (
-                  <>
-                    {vipIconUrl ? (
-                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(35),marginHorizontal:ms(2), height: ms(35) }} resizeMode="contain" />
-                     
-                    ) : null}
-                
-                  </>
-                ) : null}
-              </View>
-            )}
-            {/* Frame wraps ONLY the message text */}
-            <View style={{ position: "relative", alignSelf: "flex-start" }}>
-              <View style={[styles.bubble, { backgroundColor: commentFrameBgColor || "transparent", borderWidth: 0, borderRadius: 0, paddingHorizontal: ms(18), paddingVertical: ms(10) }]}>
-                {isGift && item.giftUrl ? (
-                  <View style={styles.giftMsgRow}>
-                    <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
-                    <View style={{ flexShrink: 1 }}>
-                      <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
-                        {messageText}
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null, isSystem && styles.systemMessage]} numberOfLines={isSystem ? 3 : 2} ellipsizeMode="tail">
-                    {messageText}
-                  </Text>
-                )}
-              </View>
-              {/* Frame image rendered ON TOP so its border decorations are never covered by bg color */}
-              {(/\.json($|\?)/i.test(commentFrameLottieUrl) || (commentFrameLottieUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
-                <LottieView
-                  source={{ uri: commentFrameLottieUrl }}
-                  autoPlay
-                  loop
-                  style={StyleSheet.absoluteFillObject}
-                  pointerEvents="none"
-                  resizeMode="cover"
-                />
+                </View>
               ) : (
-                <Image
-                  source={{ uri: commentFrameLottieUrl }}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="stretch"
-                  pointerEvents="none"
-                />
+                <Text
+                  style={[
+                    styles.message,
+                    commentTextColor ? { color: commentTextColor } : null,
+                    isSystem && styles.systemMessage,
+                  ]}
+                  numberOfLines={isSystem ? 3 : 2}
+                  ellipsizeMode="tail"
+                >
+                  {messageText}
+                </Text>
               )}
             </View>
-          </>
+            {/* Frame image rendered ON TOP so its border decorations are never covered by bg color */}
+            {(/\.json($|\?)/i.test(commentFrameLottieUrl) ||
+            (commentFrameLottieUrl.includes("/raw/upload/") &&
+              !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
+              <LottieView
+                source={{ uri: commentFrameLottieUrl }}
+                autoPlay
+                loop
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={{ uri: commentFrameLottieUrl }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="stretch"
+                pointerEvents="none"
+              />
+            )}
+          </View>
         ) : (
           <View
             style={[
               styles.bubble,
               (isVip || isGift) && styles.vipBubble,
               (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
-              (isVip || isGift) && vipColor ? { borderColor: vipColor, borderWidth: vipBorderWidth } : null,
-              (isVip || isGift) ? { backgroundColor: commentBubbleBgColor || (vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)") } : null,
+              (isVip || isGift) && vipColor
+                ? { borderColor: vipColor, borderWidth: vipBorderWidth }
+                : null,
+              (isVip || isGift)
+                ? {
+                    backgroundColor:
+                      commentBubbleBgColor ||
+                      (vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)"),
+                  }
+                : null,
             ]}
           >
-            {!isSystem && (
-              <View style={styles.inlineHeader}>
-                <Text style={[styles.inlineUsername, isVip && { color: vipColor || "#FFD700" }]} numberOfLines={1}>
-                  {item.user?.username || ""}
-                </Text>
-                {badgeIconUrl ? (
-                  <Image source={{ uri: badgeIconUrl }} style={styles.badgeIcon} resizeMode="contain" />
-                ) : null}
-                {userLevel > 0 && levelColor ? (
-                  <View style={[styles.levelChip, { borderColor: levelColor }]}>
-                    <Text style={[styles.levelChipText, { color: levelColor }]}>{userLevel}</Text>
-                  </View>
-                ) : null}
-                {isVip ? (
-                  <>
-                    {vipIconUrl ? (
-                      <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
-                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(16), height: ms(16) }} resizeMode="contain" />
-                      </View>
-                    ) : null}
-                    <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
-                      <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP{vipLevel}</Text>
-                    </View>
-                  </>
-                ) : null}
-              </View>
-            )}
             {isGift && item.giftUrl ? (
               <View style={styles.giftMsgRow}>
-                <Image source={{ uri: item.giftUrl }} style={styles.giftThumb} resizeMode="contain" />
+                <Image
+                  source={{ uri: item.giftUrl }}
+                  style={styles.giftThumb}
+                  resizeMode="contain"
+                />
                 <View style={{ flexShrink: 1 }}>
-                  <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null]} numberOfLines={2} ellipsizeMode="tail">
+                  <Text
+                    style={[
+                      styles.message,
+                      commentTextColor ? { color: commentTextColor } : null,
+                    ]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
                     {messageText}
                   </Text>
                 </View>
               </View>
             ) : (
-              <Text style={[styles.message, commentTextColor ? { color: commentTextColor } : null, isSystem && styles.systemMessage]} numberOfLines={isSystem ? 3 : 3} ellipsizeMode="tail">
+              <Text
+                style={[
+                  styles.message,
+                  commentTextColor ? { color: commentTextColor } : null,
+                  isSystem && styles.systemMessage,
+                ]}
+                numberOfLines={isSystem ? 3 : 3}
+                ellipsizeMode="tail"
+              >
                 {messageText}
               </Text>
             )}
@@ -502,11 +578,18 @@ const styles = StyleSheet.create({
     gap: ms(4),
     marginBottom: ms(3),
     alignSelf: "flex-start",
+    zIndex: 20,
+    elevation: 20,
   },
   badgeIcon: {
-    width: ms(20),
-    height: ms(20),
+    width: ms(22),
+    height: ms(22),
     borderRadius: ms(4),
+  },
+  vipIconImg: {
+    width: ms(28),
+    height: ms(28),
+    marginHorizontal: ms(2),
   },
   inlineUsername: {
     color: "rgba(200,190,255,0.95)",

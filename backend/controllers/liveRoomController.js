@@ -413,11 +413,30 @@ exports.makeSpeaker = async (req, res) => {
       return res.status(404).json({ message: "Live room not found" });
     }
 
-    // Allow host OR the invited user themselves (accepting invite)
+    // Allow host, moderators, OR the invited/hand-raised user themselves.
+    // Self-promotion is only permitted if the user has a valid pending invite
+    // or is in the handRaised queue — preventing viewers from promoting
+    // themselves to the seat without host approval.
     const isHost = liveRoom.host.toString() === hostId.toString();
+    const isMod = (liveRoom.moderators || []).some(
+      (m) => m.user.toString() === hostId.toString(),
+    );
     const isSelf = hostId.toString() === userId.toString();
-    if (!isHost && !isSelf) {
+    if (!isHost && !isMod && !isSelf) {
       return res.status(403).json({ message: "غير مسموح" });
+    }
+    if (isSelf && !isHost && !isMod) {
+      const hasInvite = (liveRoom.pendingInvites || []).some(
+        (p) => p.user.toString() === userId.toString(),
+      );
+      const hasHandRaise = (liveRoom.handRaised || []).some(
+        (h) => h.user.toString() === userId.toString(),
+      );
+      if (!hasInvite && !hasHandRaise) {
+        return res
+          .status(403)
+          .json({ message: "لا توجد دعوة أو طلب جلوس صالح" });
+      }
     }
 
     // Check max speakers
@@ -425,6 +444,10 @@ exports.makeSpeaker = async (req, res) => {
       return res.status(400).json({ message: "Maximum speakers reached" });
     }
 
+    // Consume the invite/hand-raise record before promoting.
+    liveRoom.pendingInvites = (liveRoom.pendingInvites || []).filter(
+      (p) => p.user.toString() !== userId.toString(),
+    );
     liveRoom.addSpeaker(userId);
     await liveRoom.save();
 
