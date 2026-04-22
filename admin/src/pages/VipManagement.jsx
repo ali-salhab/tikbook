@@ -600,40 +600,61 @@ const VipManagement = ({ onLogout }) => {
               const profileFrameUrl = frameBenefit?.imageUrl || lvl.profileFrameLottieUrl;
               const commentFrameUrl = chatBenefit?.imageUrl || lvl.commentFrameLottieUrl;
               return (
-                <div key={lvl.level} style={{ ...styles.card, borderColor: color, boxShadow: `0 6px 22px ${color}22` }}>
+                <div key={lvl.level} style={{
+                  ...styles.card,
+                  borderColor: color,
+                  background: `linear-gradient(160deg, #0e0a1e 0%, #161030 60%, #0a0818 100%)`,
+                  boxShadow: `0 8px 32px ${color}30, 0 0 0 1px ${color}44`,
+                }}>
                   {/* ── Top ribbon with level number ── */}
-                  <div style={{ ...styles.cardBadge, background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
+                  <div style={{
+                    ...styles.cardBadge,
+                    background: `linear-gradient(135deg, ${color}, ${color}aa)`,
+                    boxShadow: `0 2px 10px ${color}66`,
+                  }}>
                     ⭐ المستوى {lvl.level}
                   </div>
 
-                  {/* ── Hero area: avatar ringed with profile frame + badge overlay ── */}
-                  <div style={{ position: "relative", width: 96, height: 96, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 4 }}>
-                    {/* Profile frame (PNG only — designed frames render as a colored ring below) */}
+                  {/* ── Hero area ── */}
+                  <div style={{ position: "relative", width: 96, height: 96, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 8, overflow: "visible" }}>
+                    {/* Profile frame: use explicit top/left to avoid inset+size conflict */}
                     {profileFrameUrl && frameIsPng && (
                       <img
                         src={profileFrameUrl}
                         alt=""
-                        style={{ position: "absolute", inset: -4, width: 104, height: 104, objectFit: "contain", pointerEvents: "none", zIndex: 2 }}
+                        style={{
+                          position: "absolute",
+                          top: -18, left: -18,
+                          width: 132, height: 132,
+                          objectFit: "contain",
+                          pointerEvents: "none",
+                          zIndex: 2,
+                        }}
                       />
                     )}
-                    {/* Level image (centre) */}
+                    {/* Level icon — no circular clip so complex badge shapes are fully visible */}
                     {lvl.imageUrl ? (
                       <img
                         src={lvl.imageUrl}
                         alt={lvl.nameAr}
                         style={{
-                          width: 72, height: 72, objectFit: "cover", borderRadius: "50%",
+                          width: 88, height: 88,
+                          objectFit: "contain",
+                          borderRadius: profileFrameUrl && frameIsPng ? 0 : "50%",
                           border: profileFrameUrl && frameIsPng ? "none" : `3px solid ${color}`,
-                          background: "#0f0f1a",
+                          background: "transparent",
+                          position: "relative", zIndex: 1,
+                          filter: `drop-shadow(0 2px 8px ${color}66)`,
                         }}
                       />
                     ) : (
                       <div style={{
-                        width: 72, height: 72, borderRadius: "50%",
+                        width: 88, height: 88, borderRadius: "50%",
                         background: `linear-gradient(135deg, ${color}55, ${color}11)`,
                         border: `3px solid ${color}`,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 22, fontWeight: 800, color,
+                        position: "relative", zIndex: 1,
                       }}>VIP{lvl.level}</div>
                     )}
                     {/* Badge overlay bottom-right */}
@@ -642,56 +663,61 @@ const VipManagement = ({ onLogout }) => {
                         src={lvl.badgeLottieUrl}
                         alt="badge"
                         style={{
-                          position: "absolute", bottom: -2, right: -2, width: 32, height: 32,
-                          objectFit: "contain", borderRadius: "50%", background: "#fff",
-                          boxShadow: `0 2px 6px ${color}66`, padding: 2, zIndex: 3,
+                          position: "absolute", bottom: -8, right: -8, width: 36, height: 36,
+                          objectFit: "contain", zIndex: 3,
+                          filter: `drop-shadow(0 2px 6px ${color}99)`,
                         }}
                       />
                     )}
                   </div>
 
-                  {/* ── Names + price ── */}
-                  <div style={styles.cardName}>{lvl.nameAr}</div>
-                  {lvl.name && <div style={styles.cardNameEn}>{lvl.name}</div>}
+                  {/* ── Name + price ── */}
+                  <div style={{ ...styles.cardName, color: "#f1f5f9" }}>{lvl.nameAr}</div>
+                  {lvl.name && <div style={{ ...styles.cardNameEn, color: "#94a3b8" }}>{lvl.name}</div>}
                   <div style={{ ...styles.cardPrice, color }}>💎 {lvl.price.toLocaleString()}</div>
 
                   {/* ── Active/Inactive chip ── */}
-                  <div style={{ ...styles.statusBadge, backgroundColor: lvl.isActive ? "#22c55e22" : "#ef444422", color: lvl.isActive ? "#22c55e" : "#ef4444" }}>
+                  <div style={{
+                    ...styles.statusBadge,
+                    backgroundColor: lvl.isActive ? "#22c55e22" : "#ef444422",
+                    color: lvl.isActive ? "#4ade80" : "#f87171",
+                    border: `1px solid ${lvl.isActive ? "#22c55e44" : "#ef444444"}`,
+                  }}>
                     {lvl.isActive ? "مفعّل" : "معطّل"}
                   </div>
 
-                  {/* ── Features row (icon chips, not text) ── */}
-                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 2, minHeight: 28 }}>
+                  {/* ── Feature chips ── */}
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 5, marginTop: 2, minHeight: 26 }}>
                     {profileFrameUrl && (
-                      <span title={frameIsPng ? "إطار PNG" : "إطار مصمم"} style={{ ...styles.featureChip, background: frameIsPng ? "#eef2ff" : "#ecfdf5", color: frameIsPng ? "#6366f1" : "#059669" }}>
+                      <span title={frameIsPng ? "إطار PNG" : "إطار مصمم"} style={{ ...styles.featureChip, background: "rgba(99,102,241,0.18)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.3)" }}>
                         {frameIsPng ? "🖼" : "🎨"} إطار
                       </span>
                     )}
                     {commentFrameUrl && (
-                      <span title={chatIsPng ? "تعليق PNG" : "تعليق مصمم"} style={{ ...styles.featureChip, background: chatIsPng ? "#f5f3ff" : "#ecfdf5", color: chatIsPng ? "#8b5cf6" : "#059669" }}>
-                        {chatIsPng ? "💬" : "🎨"} تعليق
+                      <span title={chatIsPng ? "تعليق PNG" : "تعليق مصمم"} style={{ ...styles.featureChip, background: "rgba(139,92,246,0.18)", color: "#c4b5fd", border: "1px solid rgba(139,92,246,0.3)" }}>
+                        💬 تعليق
                       </span>
                     )}
                     {lvl.badgeLottieUrl && (
-                      <span style={{ ...styles.featureChip, background: "#fffbeb", color: "#d97706" }}>🏅 شارة</span>
+                      <span style={{ ...styles.featureChip, background: "rgba(245,158,11,0.18)", color: "#fcd34d", border: "1px solid rgba(245,158,11,0.3)" }}>🏅 شارة</span>
                     )}
                     {lvl.joinAnimationLottieUrl && (
-                      <span style={{ ...styles.featureChip, background: "#fef2f2", color: "#ef4444" }}>✨ دخول</span>
+                      <span style={{ ...styles.featureChip, background: "rgba(239,68,68,0.18)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.3)" }}>✨ دخول</span>
                     )}
                     {lvl.joinSoundUrl && (
-                      <span style={{ ...styles.featureChip, background: "#f0fdf4", color: "#059669" }}>🔊 صوت</span>
+                      <span style={{ ...styles.featureChip, background: "rgba(34,197,94,0.18)", color: "#86efac", border: "1px solid rgba(34,197,94,0.3)" }}>🔊 صوت</span>
                     )}
                     {lvl.benefits?.length > 0 && (
-                      <span style={{ ...styles.featureChip, background: "#f0fdfa", color: "#0891b2" }}>🎁 {lvl.benefits.length}</span>
+                      <span style={{ ...styles.featureChip, background: "rgba(8,145,178,0.18)", color: "#67e8f9", border: "1px solid rgba(8,145,178,0.3)" }}>🎁 {lvl.benefits.length}</span>
                     )}
                   </div>
 
-                  {/* ── Live comment-bubble preview ── */}
-                  <div style={styles.cardPreviewWrap}>
+                  {/* ── Comment-bubble preview ── */}
+                  <div style={{ ...styles.cardPreviewWrap, background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)" }}>
                     {commentFrameUrl && chatIsPng ? (
-                      <div style={{ position: "relative", paddingTop: 8 }}>
-                        <img src={commentFrameUrl} alt="" style={{ width: "100%", maxHeight: 56, objectFit: "contain" }} />
-                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>
+                      <div style={{ position: "relative", paddingTop: 6 }}>
+                        <img src={commentFrameUrl} alt="" style={{ width: "100%", maxHeight: 52, objectFit: "contain" }} />
+                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700, textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
                           VIP تعليق
                         </div>
                       </div>
@@ -703,7 +729,8 @@ const VipManagement = ({ onLogout }) => {
                           borderColor: color,
                           borderWidth: normalizeBorderWidth(lvl.commentBorderWidth),
                           borderStyle: "solid",
-                          backgroundColor: lvl.commentFrameBgColor || "rgba(8,8,20,0.86)",
+                          backgroundColor: lvl.commentFrameBgColor || "rgba(8,8,20,0.9)",
+                          color: "#e2e8f0",
                         }}
                       >
                         VIP تعليق
@@ -711,12 +738,18 @@ const VipManagement = ({ onLogout }) => {
                     )}
                   </div>
 
-                  {/* ── Edit/Delete ── */}
+                  {/* ── Edit / Delete ── */}
                   <div style={styles.cardActions}>
-                    <button style={styles.editBtn} onClick={() => openEdit(lvl)} title="تعديل">
+                    <button
+                      style={{ ...styles.editBtn, background: "rgba(99,102,241,0.2)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.4)" }}
+                      onClick={() => openEdit(lvl)} title="تعديل"
+                    >
                       <FiEdit size={14} />
                     </button>
-                    <button style={styles.deleteBtn} onClick={() => handleDelete(lvl.level)} title="حذف">
+                    <button
+                      style={{ ...styles.deleteBtn, background: "rgba(239,68,68,0.18)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.35)" }}
+                      onClick={() => handleDelete(lvl.level)} title="حذف"
+                    >
                       <FiTrash2 size={14} />
                     </button>
                   </div>
@@ -1711,27 +1744,56 @@ const VipManagement = ({ onLogout }) => {
                     <span style={{ fontSize: 18, color: lvlColor, fontWeight: 800 }}>{(assignData.username || "م")[0].toUpperCase()}</span>
                   </div>
                 );
-                const renderAvatar = (size) => (
-                  <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-                    {/* Outer frame: PNG if provided, else designed (colored ring) */}
-                    {profileFrameUrl && frameIsPng ? (
-                      <img src={profileFrameUrl} alt="" style={{ position: "absolute", inset: -Math.round(size * 0.08), width: size * 1.16, height: size * 1.16, objectFit: "contain", pointerEvents: "none", zIndex: 2 }} />
-                    ) : profileFrameUrl ? null : null}
-                    <div style={{
-                      position: "absolute", inset: 0, borderRadius: "50%", overflow: "hidden",
-                      border: frameIsPng ? "none" : `${borderW}px solid ${borderCol}`,
-                      background: "#0f0f1a",
-                    }}>
-                      {assignData.userImage
-                        ? <img src={assignData.userImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : avatarFallback}
+                const renderAvatar = (size) => {
+                  const overhang = Math.round(size * 0.25);
+                  return (
+                    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+                      {/* Profile frame: explicit top/left, 25% overhang each side */}
+                      {profileFrameUrl && frameIsPng ? (
+                        <img
+                          src={profileFrameUrl}
+                          alt=""
+                          style={{
+                            position: "absolute",
+                            top: -overhang,
+                            left: -overhang,
+                            width: size + overhang * 2,
+                            height: size + overhang * 2,
+                            objectFit: "contain",
+                            pointerEvents: "none",
+                            zIndex: 2,
+                          }}
+                        />
+                      ) : null}
+                      <div style={{
+                        position: "absolute", inset: 0, borderRadius: "50%", overflow: "hidden",
+                        border: frameIsPng ? "none" : `${borderW}px solid ${borderCol}`,
+                        background: "#0f0f1a",
+                      }}>
+                        {assignData.userImage
+                          ? <img src={assignData.userImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : avatarFallback}
+                      </div>
+                      {/* Badge overlay */}
+                      {selLevel.badgeLottieUrl && isImageUrl(selLevel.badgeLottieUrl) && (
+                        <img
+                          src={selLevel.badgeLottieUrl}
+                          alt=""
+                          style={{
+                            position: "absolute",
+                            bottom: -Math.round(size * 0.12),
+                            right: -Math.round(size * 0.12),
+                            width: Math.max(22, size * 0.38),
+                            height: Math.max(22, size * 0.38),
+                            objectFit: "contain",
+                            zIndex: 3,
+                            filter: `drop-shadow(0 2px 6px ${lvlColor}88)`,
+                          }}
+                        />
+                      )}
                     </div>
-                    {/* Badge overlay */}
-                    {selLevel.badgeLottieUrl && isImageUrl(selLevel.badgeLottieUrl) && (
-                      <img src={selLevel.badgeLottieUrl} alt="" style={{ position: "absolute", bottom: -2, right: -2, width: Math.max(18, size * 0.32), height: Math.max(18, size * 0.32), borderRadius: "50%", background: "#fff", padding: 2, boxShadow: `0 2px 6px ${lvlColor}66`, zIndex: 3 }} />
-                    )}
-                  </div>
-                );
+                  );
+                };
 
                 return (
                   <div style={{ marginBottom: 16 }}>
@@ -1802,44 +1864,68 @@ const VipManagement = ({ onLogout }) => {
                             {selLevel.name && <div style={{ color: "#64748b", fontSize: 11 }}>{selLevel.name}</div>}
                             <div style={{ color: "#f59e0b", fontSize: 12, marginTop: 3 }}>💎 {selLevel.price?.toLocaleString?.() || selLevel.price} عملة</div>
                           </div>
-                          <div style={{ position: "relative", width: 76, height: 76, flexShrink: 0 }}>
+                          <div style={{ position: "relative", width: 80, height: 80, flexShrink: 0 }}>
                             {selLevel.imageUrl ? (
-                              <img src={selLevel.imageUrl} alt="" style={{ width: 76, height: 76, objectFit: "contain", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `2px solid ${lvlColor}` }} />
+                              <img
+                                src={selLevel.imageUrl}
+                                alt=""
+                                style={{
+                                  width: 80, height: 80, objectFit: "contain",
+                                  filter: `drop-shadow(0 2px 8px ${lvlColor}88)`,
+                                }}
+                              />
                             ) : (
-                              <div style={{ width: 76, height: 76, borderRadius: 14, background: `linear-gradient(135deg, ${lvlColor}55, ${lvlColor}11)`, border: `2px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: lvlColor }}>VIP{selLevel.level}</div>
+                              <div style={{ width: 80, height: 80, borderRadius: 16, background: `linear-gradient(135deg, ${lvlColor}55, ${lvlColor}11)`, border: `2px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: lvlColor }}>VIP{selLevel.level}</div>
                             )}
                             {selLevel.badgeLottieUrl && isImageUrl(selLevel.badgeLottieUrl) && (
-                              <img src={selLevel.badgeLottieUrl} alt="" style={{ position: "absolute", bottom: -4, right: -4, width: 30, height: 30, borderRadius: "50%", background: "#fff", padding: 2, boxShadow: `0 2px 6px ${lvlColor}66` }} />
+                              <img src={selLevel.badgeLottieUrl} alt="" style={{ position: "absolute", bottom: -6, right: -6, width: 32, height: 32, objectFit: "contain", filter: `drop-shadow(0 2px 6px ${lvlColor}88)` }} />
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* ── Profile-frame preview with avatar inside ── */}
-                      <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>👤 إطار البروفايل</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 14, flexDirection: "row-reverse" }}>
-                          {renderAvatar(72)}
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 11, color: frameIsPng ? "#a78bfa" : profileFrameUrl ? "#22c55e" : "#64748b" }}>
-                              {profileFrameUrl && frameIsPng ? "🖼 إطار PNG مخصص" : profileFrameUrl ? "🎨 إطار مصمم" : "— بدون إطار"}
-                            </div>
-                            {Array.isArray(selLevel.benefits) && selLevel.benefits.length > 0 ? (
-                              <div style={{ marginTop: 6 }}>
-                                {selLevel.benefits.slice(0, 4).map((b, i) => (
-                                  <div key={i} style={{ fontSize: 11, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
-                                    <span style={{ color: lvlColor }}>•</span> {b.titleAr}
-                                    <span style={{ color: "#64748b", fontSize: 10 }}>({b.type})</span>
-                                  </div>
-                                ))}
-                                {selLevel.benefits.length > 4 && (
-                                  <div style={{ fontSize: 10, color: "#64748b" }}>+ {selLevel.benefits.length - 4} مزيد…</div>
-                                )}
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>— لا مزايا مضافة</div>
-                            )}
+                      {/* ── Profile-frame preview — full-width, centered, prominent ── */}
+                      <div style={{ backgroundColor: "#0a0a18", borderRadius: 16, padding: 20, gridColumn: "1 / -1", border: `1px solid ${lvlColor}33` }}>
+                        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16, fontWeight: 700, textAlign: "center", letterSpacing: 0.5 }}>
+                          👤 معاينة إطار البروفايل
+                        </div>
+                        {/* Hero avatar display */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                          {/* Large centered avatar with enough padding for the overhang */}
+                          <div style={{ padding: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {renderAvatar(100)}
                           </div>
+
+                          {/* Frame type label */}
+                          <div style={{
+                            fontSize: 12, fontWeight: 700,
+                            color: frameIsPng ? "#a78bfa" : profileFrameUrl ? "#22c55e" : "#64748b",
+                            background: frameIsPng ? "#a78bfa18" : profileFrameUrl ? "#22c55e18" : "#64748b18",
+                            borderRadius: 8, padding: "4px 14px",
+                          }}>
+                            {profileFrameUrl && frameIsPng ? "🖼 إطار صورة PNG" : profileFrameUrl ? "🎨 إطار مصمم" : "— بدون إطار بروفايل"}
+                          </div>
+
+                          {/* Benefits chips */}
+                          {Array.isArray(selLevel.benefits) && selLevel.benefits.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", maxWidth: 400 }}>
+                              {selLevel.benefits.slice(0, 6).map((b, i) => (
+                                <span key={i} style={{
+                                  fontSize: 11, color: "#e2e8f0",
+                                  background: "rgba(255,255,255,0.07)",
+                                  border: `1px solid ${lvlColor}44`,
+                                  borderRadius: 20, padding: "3px 10px",
+                                  display: "flex", alignItems: "center", gap: 4,
+                                }}>
+                                  <span style={{ color: lvlColor, fontSize: 10 }}>●</span>
+                                  {b.titleAr}
+                                </span>
+                              ))}
+                              {selLevel.benefits.length > 6 && (
+                                <span style={{ fontSize: 11, color: "#64748b", padding: "3px 8px" }}>+{selLevel.benefits.length - 6} مزيد</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1875,26 +1961,31 @@ const styles = {
   assignBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#f59e0b", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   seedBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
   loading: { textAlign: "center", padding: 60, color: "#64748b", fontSize: 16 },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 18 },
-  card: { background: "#fff", borderRadius: 18, padding: 18, border: "2px solid", boxShadow: "0 4px 14px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative", transition: "transform .15s, box-shadow .15s" },
-  cardBadge: { color: "#fff", fontWeight: 700, fontSize: 12, borderRadius: 999, padding: "4px 14px", letterSpacing: 0.2 },
-  cardImg: { width: 72, height: 72, objectFit: "cover", borderRadius: 12 },
-  cardName: { fontWeight: 700, fontSize: 15, color: "#1e293b", marginTop: 2 },
-  cardNameEn: { fontSize: 12, color: "#64748b" },
-  cardPrice: { fontSize: 15, fontWeight: 700, color: "#6366f1" },
-  statusBadge: { fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "2px 10px" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 20 },
+  card: {
+    borderRadius: 20, padding: "20px 16px 16px", border: "1.5px solid",
+    display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+    position: "relative", transition: "transform .18s, box-shadow .18s",
+    overflow: "visible",
+  },
+  cardBadge: { color: "#fff", fontWeight: 700, fontSize: 12, borderRadius: 999, padding: "5px 16px", letterSpacing: 0.3 },
+  cardImg: { width: 72, height: 72, objectFit: "contain", borderRadius: 12 },
+  cardName: { fontWeight: 700, fontSize: 15, marginTop: 2 },
+  cardNameEn: { fontSize: 12 },
+  cardPrice: { fontSize: 14, fontWeight: 700 },
+  statusBadge: { fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 12px" },
   featureChip: { fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" },
-  cardPreviewWrap: { width: "100%", marginTop: 4 },
+  cardPreviewWrap: { width: "100%", marginTop: 4, padding: "6px 8px" },
   cardPreviewBubble: {
-    backgroundColor: "rgba(8,8,20,0.86)",
-    color: "#fff",
+    backgroundColor: "rgba(8,8,20,0.9)",
+    color: "#e2e8f0",
     fontSize: 11,
     textAlign: "center",
-    padding: "6px 8px",
+    padding: "6px 10px",
   },
   cardActions: { display: "flex", gap: 8, marginTop: 4 },
-  editBtn: { padding: "6px 10px", backgroundColor: "#e0e7ff", color: "#6366f1", border: "none", borderRadius: 8, cursor: "pointer" },
-  deleteBtn: { padding: "6px 10px", backgroundColor: "#fee2e2", color: "#ef4444", border: "none", borderRadius: 8, cursor: "pointer" },
+  editBtn: { padding: "6px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
+  deleteBtn: { padding: "6px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
   modal: { backgroundColor: "#fff", borderRadius: 16, padding: 32, width: "95%", maxWidth: 860, maxHeight: "92vh", overflowY: "auto", direction: "rtl" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },

@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   Platform,
   Keyboard,
+  KeyboardAvoidingView,
   Alert,
   ScrollView,
   Image,
@@ -24,7 +25,6 @@ import {
   Dimensions,
   StatusBar,
   InteractionManager,
-  useWindowDimensions,
 } from "react-native";
 import {
   SafeAreaView,
@@ -73,23 +73,6 @@ const ChatScreen = ({ route, navigation }) => {
   const [nowTick, setNowTick] = useState(Date.now()); // re-render "last seen" label every minute
   const socket = useRef(null);
   const flatListRef = useRef(null);
-
-  // ── Bulletproof keyboard handling ──────────────────────────────────────
-  // We cannot rely on Android `softwareKeyboardLayoutMode` alone because
-  // it requires a native rebuild and is inconsistent across OEMs (Xiaomi,
-  // Oppo, Samsung, Pixel). Instead we detect at runtime whether the OS
-  // actually resized the window when the keyboard appeared (by comparing
-  // the live window height with the initial one). If it didn't resize,
-  // we manually shift the input + list bottom by `keyboardHeight` so the
-  // input is always visible above the keyboard.
-  const { height: winHeight } = useWindowDimensions();
-  const initialWinHeightRef = useRef(winHeight);
-  useEffect(() => {
-    // Set once on first mount; keep stable afterwards.
-    if (!initialWinHeightRef.current) initialWinHeightRef.current = winHeight;
-  }, [winHeight]);
-  const windowDidShrink =
-    initialWinHeightRef.current - winHeight > 100; // OS already moved content
 
   // Reliable auto-scroll: scrolls to bottom regardless of animation/layout race.
   const scrollToBottom = useCallback((animated = true) => {
@@ -148,10 +131,7 @@ const ChatScreen = ({ route, navigation }) => {
     return () => clearInterval(t);
   }, []);
 
-  // Whenever the bottom overlay resizes (keyboard toggled, emoji picker opened,
-  // or the input grew from a multiline draft) the FlatList padding changes but
-  // content size does not — so we must re-scroll explicitly to keep the tail
-  // visible instead of letting it get covered by the input bar.
+  // Scroll to bottom whenever keyboard toggles, emoji picker opens, or a new message arrives.
   useEffect(() => {
     if (messages.length === 0) return;
     scrollToBottom(true);
@@ -238,7 +218,8 @@ const ChatScreen = ({ route, navigation }) => {
           headers: { Authorization: `Bearer ${userToken}` },
         });
         setMessages(res.data);
-        scrollToBottom(false);
+        // Delay to let the FlatList layout render before scrolling
+        setTimeout(() => scrollToBottom(false), 100);
       } catch (e) {
         console.log(e);
       }
@@ -629,142 +610,112 @@ const ChatScreen = ({ route, navigation }) => {
 
   // Chat view
   return (
-    // Only apply the TOP safe-area inset. The bottom inset is handled manually
-    // by the input container so it can sit flush against the keyboard when
-    // visible, and above the home indicator when hidden — without double-
-    // counting `insets.bottom` (which previously caused the input to float
-    // above the keyboard and hide the last messages).
     <SafeAreaView style={styles.container} edges={["top"]}>
       <GradientBackground />
-      {/*
-        The outer flex:1 View lays out Header + FlatList.
-        The input bar is ABSOLUTELY positioned at `bottom: keyboardHeight`
-        so it is always rendered above the on-screen keyboard regardless of
-        Android's window-resize behavior. The FlatList gets enough
-        `paddingBottom` in its content to never collide with the input.
-      */}
-      <View style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
-        <View style={styles.chatHeader}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.headerBtn}
-          >
-            <Ionicons name="chevron-back" size={26} color="#FFF" />
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.chatHeaderUser}
-            onPress={() => navigation.navigate("UserProfile", { userId })}
-            activeOpacity={0.85}
-          >
-            <View style={styles.chatHeaderAvatarWrap}>
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={[
-                    styles.chatHeaderAvatar,
-                    { borderColor: theme.avatarRing },
-                  ]}
-                />
-              ) : (
-                <View style={styles.chatHeaderAvatarPlaceholder}>
-                  <Ionicons name="person" size={20} color="#CCC" />
-                </View>
-              )}
-              {/* Live presence dot — green=online, grey=offline. Bottom-right. */}
-              <View
-                style={[
-                  styles.presenceDot,
-                  presence.isOnline
-                    ? styles.presenceDotOnline
-                    : styles.presenceDotOffline,
-                ]}
+      {/* ── Fixed header (outside KAV so it never moves) ── */}
+      <View style={styles.chatHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBtn}
+        >
+          <Ionicons name="chevron-back" size={26} color="#FFF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.chatHeaderUser}
+          onPress={() => navigation.navigate("UserProfile", { userId })}
+          activeOpacity={0.85}
+        >
+          <View style={styles.chatHeaderAvatarWrap}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={[styles.chatHeaderAvatar, { borderColor: theme.avatarRing }]}
               />
-            </View>
-            <View style={styles.chatHeaderInfo}>
-              <Text style={styles.chatHeaderTitle} numberOfLines={1}>
-                {username}
-              </Text>
-              <Text
-                style={[
-                  styles.chatHeaderOnline,
-                  !presence.isOnline && styles.chatHeaderOffline,
-                ]}
-                numberOfLines={1}
-              >
-                {formatLastSeen(presence.isOnline, presence.lastSeen)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.chatHeaderActions}>
-            <TouchableOpacity
-              style={[styles.followChip, isFollowing && styles.followingChip]}
-              onPress={handleToggleFollow}
-              disabled={followLoading}
-            >
-              {followLoading ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={styles.followChipText}>
-                  {isFollowing ? "متابَع" : "متابعة"}
-                </Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={handleCallPress}
-            >
-              <Ionicons name="call-outline" size={22} color="#FFF" />
-            </TouchableOpacity>
+            ) : (
+              <View style={styles.chatHeaderAvatarPlaceholder}>
+                <Ionicons name="person" size={20} color="#CCC" />
+              </View>
+            )}
+            <View
+              style={[
+                styles.presenceDot,
+                presence.isOnline ? styles.presenceDotOnline : styles.presenceDotOffline,
+              ]}
+            />
           </View>
-        </View>
+          <View style={styles.chatHeaderInfo}>
+            <Text style={styles.chatHeaderTitle} numberOfLines={1}>
+              {username}
+            </Text>
+            <Text
+              style={[styles.chatHeaderOnline, !presence.isOnline && styles.chatHeaderOffline]}
+              numberOfLines={1}
+            >
+              {formatLastSeen(presence.isOnline, presence.lastSeen)}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
+        <View style={styles.chatHeaderActions}>
+          <TouchableOpacity
+            style={[styles.followChip, isFollowing && styles.followingChip]}
+            onPress={handleToggleFollow}
+            disabled={followLoading}
+          >
+            {followLoading ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Text style={styles.followChipText}>
+                {isFollowing ? "متابَع" : "متابعة"}
+              </Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerBtn} onPress={handleCallPress}>
+            <Ionicons name="call-outline" size={22} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/*
+        KeyboardAvoidingView:
+        - iOS  → behavior="padding": adds bottom padding equal to keyboard height
+        - Android → behavior="height": shrinks its own height by keyboard height
+        Both keep the input bar fully visible above the keyboard with NO
+        absolute-positioning hacks needed.
+      */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        {/* Messages */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item, idx) =>
-            item._id ? String(item._id) : `m-${idx}`
-          }
+          keyExtractor={(item, idx) => (item._id ? String(item._id) : `m-${idx}`)}
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.messagesList,
-            {
-              // Reserve space so the last message is NOT covered by the
-              // absolutely-positioned input (which sits above the keyboard).
-              paddingBottom:
-                inputHeight +
-                (keyboardHeight > 0 && !windowDidShrink ? keyboardHeight : 0) +
-                (showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0) +
-                ms(16),
-            },
+            { paddingBottom: showEmojiPicker ? EMOJI_PICKER_HEIGHT + ms(8) : ms(16) },
           ]}
-          inverted={false}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => scrollToBottom(false)}
           onLayout={() => scrollToBottom(false)}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         />
-        </View>
+
+        {/* Input bar — in normal flow, always above emoji picker / nav bar */}
         <View
           style={[
             styles.inputContainer,
-            styles.inputContainerAbsolute,
             {
-              // Pin the input above the keyboard. If the OS already shrank
-              // the window (adjustResize), `windowDidShrink=true` and we
-              // sit at bottom:0 — the window edge is already above the
-              // keyboard. Otherwise we manually lift by keyboardHeight.
-              bottom:
-                (keyboardHeight > 0 && !windowDidShrink ? keyboardHeight : 0) +
-                (showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0),
-              paddingBottom:
-                keyboardHeight > 0 || showEmojiPicker
-                  ? ms(8)
-                  : (insets.bottom || 0) + ms(10),
+              paddingBottom: isKeyboardVisible
+                ? ms(8)
+                : (insets.bottom || 0) + ms(8),
             },
           ]}
           onLayout={(e) => {
@@ -772,58 +723,81 @@ const ChatScreen = ({ route, navigation }) => {
             if (h && h !== inputHeight) setInputHeight(h);
           }}
         >
-        <TouchableOpacity
-          style={styles.emojiButton}
-          onPress={toggleEmojiPicker}
-        >
-          <Ionicons name="happy-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.emojiButton} onPress={handlePickImage}>
-          <Ionicons name="image-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.emojiButton}
-          onPress={() => {
-            Keyboard.dismiss();
-            setShowEmojiPicker(false);
-            setShowGiftPanel(true);
-          }}
-        >
-          <Ionicons name="gift-outline" size={24} color="#FE2C55" />
-        </TouchableOpacity>
-        <TextInput
-          style={styles.input}
-          value={text}
-          onChangeText={setText}
-          placeholder="اكتب رسالة..."
-          placeholderTextColor="#888"
-          multiline
-          maxLength={500}
-          returnKeyType="send"
-          onSubmitEditing={sendMessage}
-          onFocus={() => {
-            setShowEmojiPicker(false);
-            setShowGiftPanel(false);
-            scrollToBottom(true);
-          }}
-        />
-        <TouchableOpacity
-          onPress={sendMessage}
-          disabled={!text.trim() || isSending}
-        >
-          {isSending ? (
-            <ActivityIndicator size={22} color="#FE2C55" />
-          ) : (
-            <Ionicons
-              name="send"
-              size={24}
-              color={text.trim() ? "#FE2C55" : "#888"}
-            />
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.emojiButton} onPress={toggleEmojiPicker}>
+            <Ionicons name="happy-outline" size={24} color="#888" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.emojiButton} onPress={handlePickImage}>
+            <Ionicons name="image-outline" size={24} color="#888" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.emojiButton}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowEmojiPicker(false);
+              setShowGiftPanel(true);
+            }}
+          >
+            <Ionicons name="gift-outline" size={24} color="#FE2C55" />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder="اكتب رسالة..."
+            placeholderTextColor="#888"
+            multiline
+            maxLength={500}
+            returnKeyType="send"
+            onSubmitEditing={sendMessage}
+            onFocus={() => {
+              setShowEmojiPicker(false);
+              setShowGiftPanel(false);
+              scrollToBottom(true);
+            }}
+          />
+          <TouchableOpacity onPress={sendMessage} disabled={!text.trim() || isSending}>
+            {isSending ? (
+              <ActivityIndicator size={22} color="#FE2C55" />
+            ) : (
+              <Ionicons name="send" size={24} color={text.trim() ? "#FE2C55" : "#888"} />
+            )}
+          </TouchableOpacity>
         </View>
-      </View>
-      {/* Emoji Picker anchored above bottom (behaves like YouTube) */}
+
+        {/* Emoji picker — in normal flow BELOW input, pushes list up naturally */}
+        {showEmojiPicker && (
+          <View style={[styles.emojiPickerContainer, { height: EMOJI_PICKER_HEIGHT }]}>
+            <View style={styles.emojiPickerHeader}>
+              <Text style={styles.emojiPickerTitle}>الرموز التعبيرية</Text>
+              <TouchableOpacity onPress={() => setShowEmojiPicker(false)}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.emojiGrid}>
+              <View style={styles.emojiRow}>
+                {[
+                  "😀","😂","😍","🥰","😘","😋","😜","🤓","😎","🤩",
+                  "🥳","😏","😒","🙄","🤔","🤨","😐","😑","😶","😌",
+                  "😔","😪","😴","🥵","🥶","😢","😭","😱","😨","😰",
+                  "😡","❤️","🧡","💛","💚","💙","💜","🤎","💔","👍",
+                  "👎","👏","🙌","🤲","🙏","✌️","🤞","👊","✊","🤛",
+                  "🤜","🤚","👌","🤏","👈","🎉","🎊","🎁","🎈","🎂",
+                  "🍰","🥳","⭐","🔥","⚡","✨","💫","💥","💨","💦","💧",
+                ].map((emoji, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.emojiItem}
+                    onPress={() => addEmoji(emoji)}
+                  >
+                    <Text style={styles.emojiText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+
       {/* Gift Panel */}
       <GiftPanel
         visible={showGiftPanel}
@@ -837,124 +811,6 @@ const ChatScreen = ({ route, navigation }) => {
         }}
       />
 
-      {showEmojiPicker && (
-        <>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: EMOJI_PICKER_HEIGHT + EMOJI_PICKER_BOTTOM,
-              zIndex: 15,
-            }}
-            onPress={() => setShowEmojiPicker(false)}
-          />
-          <View
-            style={[
-              styles.emojiPickerContainer,
-              { height: EMOJI_PICKER_HEIGHT, bottom: EMOJI_PICKER_BOTTOM },
-            ]}
-          >
-            <View style={styles.emojiPickerHeader}>
-              <Text style={styles.emojiPickerTitle}>الرموز التعبيرية</Text>
-              <TouchableOpacity onPress={() => setShowEmojiPicker(false)}>
-                <Ionicons name="close" size={24} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.emojiGrid}>
-              <View style={styles.emojiRow}>
-                {[
-                  "😀",
-                  "😂",
-                  "😍",
-                  "🥰",
-                  "😘",
-                  "😋",
-                  "😜",
-                  "🤓",
-                  "😎",
-                  "🤩",
-                  "🥳",
-                  "😏",
-                  "😒",
-                  "🙄",
-                  "🤔",
-                  "🤨",
-                  "😐",
-                  "😑",
-                  "😶",
-                  "🙄",
-                  "😌",
-                  "😔",
-                  "😪",
-                  "😴",
-                  "🥵",
-                  "🥶",
-                  "😢",
-                  "😭",
-                  "😱",
-                  "😨",
-                  "😰",
-                  "😡",
-                  "❤️",
-                  "🧡",
-                  "💛",
-                  "💚",
-                  "💙",
-                  "💜",
-                  "🤎",
-                  "💔",
-                  "👍",
-                  "👎",
-                  "👏",
-                  "🙌",
-                  "🤲",
-                  "🙏",
-                  "✌️",
-                  "🤞",
-                  "👊",
-                  "✊",
-                  "🤛",
-                  "🤜",
-                  "🤚",
-                  "👌",
-                  "🤏",
-                  "👈",
-                  "🎉",
-                  "🎊",
-                  "🎁",
-                  "🎈",
-                  "🎂",
-                  "🍰",
-                  "🥳",
-                  "⭐",
-                  "🔥",
-                  "⚡",
-                  "✨",
-                  "💫",
-                  "💥",
-                  "💨",
-                  "💦",
-                  "💧",
-                ].map((emoji, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.emojiItem}
-                    onPress={() => {
-                      addEmoji(emoji);
-                    }}
-                  >
-                    <Text style={styles.emojiText}>{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        </>
-      )}
-
       {/* Full-screen Image Viewer */}
       <Modal
         visible={imageViewerVisible}
@@ -965,7 +821,6 @@ const ChatScreen = ({ route, navigation }) => {
       >
         <View style={styles.imageViewerOverlay}>
           <StatusBar hidden />
-          {/* Close */}
           <TouchableOpacity
             style={styles.imageViewerClose}
             onPress={() => setImageViewerVisible(false)}
@@ -973,7 +828,6 @@ const ChatScreen = ({ route, navigation }) => {
             <Ionicons name="close" size={30} color="#FFF" />
           </TouchableOpacity>
 
-          {/* Image */}
           {selectedImage && (
             <Image
               source={{ uri: selectedImage }}
@@ -982,7 +836,6 @@ const ChatScreen = ({ route, navigation }) => {
             />
           )}
 
-          {/* Action buttons */}
           <View style={styles.imageViewerActions}>
             <TouchableOpacity
               style={styles.imageViewerBtn}
@@ -991,7 +844,6 @@ const ChatScreen = ({ route, navigation }) => {
               <Ionicons name="share-social-outline" size={26} color="#FFF" />
               <Text style={styles.imageViewerBtnText}>مشاركة</Text>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.imageViewerBtn}
               onPress={() => handleSaveImage(selectedImage)}
@@ -1327,21 +1179,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: ms(12),
-    paddingVertical: ms(10),
-    paddingBottom: Platform.OS === "android" ? ms(14) : ms(10),
+    paddingTop: ms(10),
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.06)",
-    backgroundColor: "rgba(14,11,30,0.92)",
-  },
-
-  // Anchor the input to the bottom of the screen (above keyboard).
-  // `bottom` is supplied inline based on the live keyboard height.
-  inputContainerAbsolute: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    elevation: 50,
+    backgroundColor: "rgba(14,11,30,0.95)",
   },
   emojiButton: {
     marginRight: ms(8),
@@ -1370,13 +1211,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#151228",
     borderTopLeftRadius: ms(20),
     borderTopRightRadius: ms(20),
-    maxHeight: "50%",
-    paddingBottom: ms(20),
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 20,
+    overflow: "hidden",
   },
   emojiPickerHeader: {
     flexDirection: "row",
