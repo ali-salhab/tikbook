@@ -455,6 +455,68 @@ const VerificationManagement = ({ onLogout }) => {
                     </div>
                   </div>
 
+                  {/* ── ID Documents section ── */}
+                  <div className="detail-section">
+                    <h3>🪪 وثائق الهوية</h3>
+                    <div className="id-documents-grid">
+                      <div className="id-document-card">
+                        <p className="id-doc-label">الوجه الأمامي للهوية</p>
+                        {selectedRequest.idDocumentFront ? (
+                          <a
+                            href={selectedRequest.idDocumentFront}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="id-doc-link"
+                          >
+                            <img
+                              src={selectedRequest.idDocumentFront}
+                              alt="الوجه الأمامي للهوية"
+                              className="id-doc-img"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
+                              }}
+                            />
+                            <div className="id-doc-error" style={{ display: "none" }}>
+                              ⚠️ تعذّر تحميل الصورة — <span style={{ textDecoration: "underline" }}>فتح الرابط</span>
+                            </div>
+                            <div className="id-doc-overlay">🔍 عرض بالحجم الكامل</div>
+                          </a>
+                        ) : (
+                          <div className="id-doc-missing">لم يتم رفع الصورة</div>
+                        )}
+                      </div>
+
+                      <div className="id-document-card">
+                        <p className="id-doc-label">الوجه الخلفي للهوية</p>
+                        {selectedRequest.idDocumentBack ? (
+                          <a
+                            href={selectedRequest.idDocumentBack}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="id-doc-link"
+                          >
+                            <img
+                              src={selectedRequest.idDocumentBack}
+                              alt="الوجه الخلفي للهوية"
+                              className="id-doc-img"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
+                              }}
+                            />
+                            <div className="id-doc-error" style={{ display: "none" }}>
+                              ⚠️ تعذّر تحميل الصورة — <span style={{ textDecoration: "underline" }}>فتح الرابط</span>
+                            </div>
+                            <div className="id-doc-overlay">🔍 عرض بالحجم الكامل</div>
+                          </a>
+                        ) : (
+                          <div className="id-doc-missing">لم يتم رفع الصورة</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="detail-section">
                     <h3>روابط وسائل التواصل</h3>
                     {selectedRequest.instagramUrl && (
