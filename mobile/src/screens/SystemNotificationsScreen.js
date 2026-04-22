@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback } from "react";
+import React, { useState, useContext, useCallback, useRef } from "react";
 import GradientBackground from "../components/GradientBackground";
 import {
   View,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Alert,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,75 +21,77 @@ import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
 
+// ─── Tab definitions with their matching notification types ──────────────────
+const TABS = [
+  { label: "الكل",              types: null },
+  { label: "LIVE",              types: ["live"] },
+  { label: "مساعد المعاملات",  types: ["admin", "admin_broadcast", "system", "announcement", "promo", "update"] },
+  { label: "TikTok",            types: ["like", "comment", "follow", "video", "mention"] },
+];
+
+// ─── Per-type display config ─────────────────────────────────────────────────
+const TYPE_CONFIG = {
+  live:            { icon: "radio",            color: "#FE2C55", bg: "#FE2C5522", label: "LIVE" },
+  admin:           { icon: "person-circle",    color: "#6366F1", bg: "#6366F122", label: "إدارة" },
+  admin_broadcast: { icon: "megaphone",        color: "#8B5CF6", bg: "#8B5CF622", label: "إعلان عام" },
+  system:          { icon: "notifications",    color: "#25F4EE", bg: "#25F4EE22", label: "النظام" },
+  announcement:    { icon: "megaphone-outline",color: "#F59E0B", bg: "#F59E0B22", label: "إعلان" },
+  promo:           { icon: "gift",             color: "#EC4899", bg: "#EC489922", label: "عرض" },
+  update:          { icon: "cloud-download",   color: "#10B981", bg: "#10B98122", label: "تحديث" },
+  follow:          { icon: "person-add",       color: "#3B82F6", bg: "#3B82F622", label: "متابعة" },
+  like:            { icon: "heart",            color: "#EF4444", bg: "#EF444422", label: "إعجاب" },
+  comment:         { icon: "chatbubble",       color: "#F97316", bg: "#F9731622", label: "تعليق" },
+  video:           { icon: "videocam",         color: "#A855F7", bg: "#A855F722", label: "فيديو" },
+  mention:         { icon: "at",               color: "#06B6D4", bg: "#06B6D422", label: "إشارة" },
+};
+
+const DEFAULT_CONFIG = { icon: "notifications", color: "#7C6FCD", bg: "#7C6FCD22", label: "إشعار" };
+
+const getTypeConfig = (type) => TYPE_CONFIG[type] || DEFAULT_CONFIG;
+
 const SystemNotificationsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("الكل");
-  const { userToken, setNotificationCount, fetchNotificationCount } =
-    useContext(AuthContext);
+  const { userToken, fetchNotificationCount } = useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [navigatingId, setNavigatingId] = useState(null);
 
-  const tabs = ["الكل", "TikTok", "مساعد المعاملات", "LIVE"];
-
+  // ── Helpers ─────────────────────────────────────────────────────────────
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
+    const diff = Date.now() - new Date(dateString).getTime();
+    const mins  = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "الآن";
-    if (minutes < 60) return `منذ ${minutes} د`;
+    const days  = Math.floor(diff / 86400000);
+    if (mins  < 1)  return "الآن";
+    if (mins  < 60) return `منذ ${mins} د`;
     if (hours < 24) return `منذ ${hours} س`;
-    if (days < 7) return `منذ ${days} ي`;
-    return date.toLocaleDateString("ar-EG");
+    if (days  <  7) return `منذ ${days} ي`;
+    return new Date(dateString).toLocaleDateString("ar-EG");
   };
 
-  const getSummaryText = (notification) => {
-    switch (notification.type) {
-      case "admin":
-        return notification.title || "إشعار من الإدارة";
-      case "admin_broadcast":
-        return notification.title || "إشعار عام من الإدارة";
-      case "system":
-        return notification.title || "إشعار من النظام";
-      case "announcement":
-        return notification.title || "إعلان";
-      case "promo":
-        return notification.title || "عرض خاص";
-      case "update":
-        return notification.title || "تحديث التطبيق";
-      default:
-        return notification.title || "إشعار من النظام";
-    }
-  };
+  // ── Filter tabs → notifications ─────────────────────────────────────────
+  const filteredNotifications = (() => {
+    const tab = TABS.find((t) => t.label === activeTab);
+    if (!tab || !tab.types) return notifications;
+    return notifications.filter((n) => {
+      if (tab.types.includes(n.type)) return true;
+      // Also match LIVE tab via data payload
+      if (activeTab === "LIVE" && (n.data?.roomId || n.data?.type === "live")) return true;
+      return false;
+    });
+  })();
 
-  const getDetailText = (notification) => {
-    return notification.message || notification.body || "";
-  };
-
+  // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchNotifications = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/notifications`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      // Include system notifications AND admin notifications (types: admin, admin_broadcast, system, announcement, promo, update)
-      const systemTypes = [
-        "admin",
-        "admin_broadcast",
-        "system",
-        "announcement",
-        "promo",
-        "update",
-      ];
-      const systemOnly = (res.data || []).filter(
-        (n) => systemTypes.includes(n.type) || !n.fromUser,
-      );
-      setNotifications(systemOnly);
+      setNotifications(res.data || []);
     } catch (e) {
-      console.error("Error fetching system notifications:", e);
+      console.error("Error fetching notifications:", e);
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -100,17 +104,10 @@ const SystemNotificationsScreen = ({ navigation }) => {
       await axios.put(
         `${BASE_URL}/notifications/mark-read`,
         {},
-        {
-          headers: { Authorization: `Bearer ${userToken}` },
-        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
-      // Update notification counter
-      if (fetchNotificationCount) {
-        await fetchNotificationCount();
-      }
-    } catch (error) {
-      console.error("Error marking notifications as read:", error);
-    }
+      fetchNotificationCount?.();
+    } catch (_) {}
   };
 
   useFocusEffect(
@@ -125,147 +122,232 @@ const SystemNotificationsScreen = ({ navigation }) => {
     fetchNotifications();
   };
 
-  const renderItem = ({ item }) => {
-    const isUnread = !item.read;
-
-    return (
-      <TouchableOpacity
-        style={[styles.card, isUnread && styles.unreadCard]}
-        onPress={() => markAsRead(item._id)}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.sourceContainer}>
-            <View
-              style={[
-                styles.iconContainer,
-                item.type === "admin" && { backgroundColor: "#007bff" },
-                item.type === "admin_broadcast" && {
-                  backgroundColor: "#28a745",
-                },
-                item.type === "announcement" && { backgroundColor: "#ffc107" },
-                item.type === "promo" && { backgroundColor: "#ff6b6b" },
-                item.type === "update" && { backgroundColor: "#6c757d" },
-              ]}
-            >
-              <Ionicons
-                name={
-                  item.type === "admin"
-                    ? "person-circle"
-                    : item.type === "admin_broadcast"
-                      ? "megaphone"
-                      : item.type === "announcement"
-                        ? "megaphone-outline"
-                        : item.type === "promo"
-                          ? "gift"
-                          : item.type === "update"
-                            ? "cloud-download"
-                            : "notifications"
-                }
-                size={16}
-                color="#fff"
-              />
-            </View>
-            <Text style={styles.sourceText}>TikBook . النظام</Text>
-          </View>
-          {isUnread && (
-            <View style={styles.unreadBadge}>
-              <View style={styles.unreadDot} />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, isUnread && styles.unreadTitle]}>
-            {getSummaryText(item)}
-          </Text>
-          {getDetailText(item) ? (
-            <Text style={styles.cardMessage} numberOfLines={2}>
-              {getDetailText(item)}
-            </Text>
-          ) : null}
-          <Text style={styles.moreText}>{formatDate(item.createdAt)}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const markAsRead = async (notificationId) => {
+  // ── Mark single as read ──────────────────────────────────────────────────
+  const markOneRead = async (id) => {
     try {
       await axios.put(
-        `${BASE_URL}/notifications/${notificationId}/read`,
+        `${BASE_URL}/notifications/${id}/read`,
         {},
-        {
-          headers: { Authorization: `Bearer ${userToken}` },
-        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
       );
-      // Update local state
-      setNotifications((prevNotifications) =>
-        prevNotifications.map((n) =>
-          n._id === notificationId ? { ...n, read: true } : n,
-        ),
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
       );
+      fetchNotificationCount?.();
     } catch (e) {
       console.error("Error marking notification as read:", e);
     }
   };
 
+  // ── Navigation on press ──────────────────────────────────────────────────
+  const handlePress = async (item) => {
+    if (navigatingId === item._id) return;
+    await markOneRead(item._id);
+
+    const type = item.type;
+    const data = item.data || {};
+
+    // ── LIVE notification ──
+    if (type === "live" || data.roomId || data.type === "live") {
+      const roomId = data.roomId;
+      if (!roomId) return;
+      setNavigatingId(item._id);
+      try {
+        const res = await axios.get(`${BASE_URL}/liverooms/${roomId}`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        const room = res.data;
+        if (room && room.isLive !== false) {
+          navigation.navigate("LiveRoom", {
+            roomId: room._id || roomId,
+            hostId: room.host?._id || data.hostId,
+            roomName: room.title || room.name || data.hostName,
+          });
+        } else {
+          Alert.alert("البث انتهى", "هذه الغرفة لم تعد متاحة");
+        }
+      } catch (_) {
+        Alert.alert("البث انتهى", "هذه الغرفة لم تعد متاحة");
+      } finally {
+        setNavigatingId(null);
+      }
+      return;
+    }
+
+    // ── Follow / social notification ──
+    if (type === "follow" && item.fromUser?._id) {
+      navigation.navigate("UserProfile", { userId: item.fromUser._id });
+      return;
+    }
+
+    // ── Like / Comment on a video ──
+    if ((type === "like" || type === "comment") && item.video?._id) {
+      navigation.navigate("VideoPlayer", { videoId: item.video._id });
+      return;
+    }
+
+    // ── Admin / system → already visible inline, nothing more to do ──
+  };
+
+  // ── Render item ──────────────────────────────────────────────────────────
+  const renderItem = ({ item }) => {
+    const cfg      = getTypeConfig(item.type);
+    const isUnread = !item.read;
+    const isNav    = navigatingId === item._id;
+    const title    = item.title || item.message || cfg.label;
+    const body     = item.message && item.title ? item.message : (item.body || "");
+    const isActionable =
+      item.type === "live" || item.data?.roomId ||
+      (item.type === "follow" && item.fromUser?._id) ||
+      ((item.type === "like" || item.type === "comment") && item.video?._id);
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.card,
+          isUnread && { borderLeftColor: cfg.color, borderLeftWidth: 3 },
+          !isUnread && styles.readCard,
+        ]}
+        onPress={() => handlePress(item)}
+        activeOpacity={0.8}
+      >
+        {/* Left icon */}
+        <View style={[styles.iconWrap, { backgroundColor: cfg.bg }]}>
+          <Ionicons name={cfg.icon} size={ms(20)} color={cfg.color} />
+        </View>
+
+        {/* Content */}
+        <View style={styles.cardBody}>
+          {/* Type chip + time row */}
+          <View style={styles.metaRow}>
+            <Text style={[styles.typeChip, { color: cfg.color, backgroundColor: cfg.bg }]}>
+              {cfg.label}
+            </Text>
+            {isUnread && <View style={[styles.unreadDot, { backgroundColor: cfg.color }]} />}
+            <Text style={styles.timeText}>{formatDate(item.createdAt)}</Text>
+          </View>
+
+          {/* Title */}
+          <Text style={[styles.cardTitle, isUnread && { color: "#FFF" }]} numberOfLines={2}>
+            {title}
+          </Text>
+
+          {/* Body */}
+          {!!body && (
+            <Text style={styles.cardMessage} numberOfLines={3}>
+              {body}
+            </Text>
+          )}
+
+          {/* CTA arrow for actionable items */}
+          {isActionable && (
+            <View style={styles.ctaRow}>
+              {isNav ? (
+                <ActivityIndicator size="small" color={cfg.color} />
+              ) : (
+                <>
+                  <Text style={[styles.ctaText, { color: cfg.color }]}>
+                    {item.type === "live" || item.data?.roomId
+                      ? "الانضمام للبث"
+                      : item.type === "follow"
+                        ? "عرض الملف الشخصي"
+                        : "عرض الفيديو"}
+                  </Text>
+                  <Ionicons name="chevron-back" size={ms(13)} color={cfg.color} />
+                </>
+              )}
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ── Count per tab ────────────────────────────────────────────────────────
+  const countForTab = (tab) => {
+    if (!tab.types) return notifications.length;
+    return notifications.filter((n) => {
+      if (tab.types.includes(n.type)) return true;
+      if (tab.label === "LIVE" && (n.data?.roomId || n.data?.type === "live")) return true;
+      return false;
+    }).length;
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <GradientBackground />
+
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-forward" size={24} color="#B8B0D8" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-forward" size={ms(22)} color="#B8B0D8" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>إشعارات النظام</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={markAllAsRead} style={styles.backBtn}>
+          <Ionicons name="checkmark-done" size={ms(20)} color="#25F4EE" />
+        </TouchableOpacity>
       </View>
 
+      {/* Filter tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsContent}
         >
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.activeTab]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab && styles.activeTabText,
-                ]}
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.label;
+            const count    = countForTab(tab);
+            return (
+              <TouchableOpacity
+                key={tab.label}
+                style={[styles.tab, isActive && styles.activeTab]}
+                onPress={() => setActiveTab(tab.label)}
               >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                  {tab.label}
+                </Text>
+                {count > 0 && (
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={styles.tabBadgeText}>{count}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
 
+      {/* List */}
       {loading ? (
         <View style={styles.center}>
-          <LottieView source={require("../../assets/lottie-loader.json")} style={{ width: 80, height: 80 }} autoPlay loop />
+          <LottieView
+            source={require("../../assets/lottie-loader.json")}
+            style={{ width: ms(80), height: ms(80) }}
+            autoPlay
+            loop
+          />
         </View>
       ) : (
         <FlatList
-          data={notifications}
+          data={filteredNotifications}
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#7C6FCD"
+            />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons
-                name="notifications-off-outline"
-                size={56}
-                color="#ccc"
-              />
-              <Text style={styles.emptyText}>لا توجد إشعارات نظام</Text>
+              <Ionicons name="notifications-off-outline" size={ms(56)} color="#3A3460" />
+              <Text style={styles.emptyText}>لا توجد إشعارات</Text>
+              <Text style={styles.emptySubText}>
+                {activeTab !== "الكل" ? `لا توجد إشعارات في هذه الفئة` : "ستظهر إشعاراتك هنا"}
+              </Text>
             </View>
           }
         />
@@ -275,149 +357,91 @@ const SystemNotificationsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
+  container: { flex: 1, backgroundColor: "transparent" },
+
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: ms(16),
-    backgroundColor: "transparent",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2550",
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: ms(16), paddingVertical: ms(12),
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(14,11,30,0.6)",
   },
-  headerTitle: {
-    fontSize: fs(17),
-    fontWeight: "bold",
-    color: "#FFF",
-  },
-  tabsContainer: {
-    backgroundColor: "transparent",
-    paddingVertical: ms(12),
-  },
-  tabsContent: {
-    paddingHorizontal: ms(16),
-    gap: ms(10),
-  },
+  backBtn: { padding: ms(4) },
+  headerTitle: { fontSize: fs(17), fontWeight: "700", color: "#FFF" },
+
+  tabsContainer: { paddingVertical: ms(10) },
+  tabsContent: { paddingHorizontal: ms(16), gap: ms(8) },
   tab: {
-    paddingHorizontal: ms(16),
-    paddingVertical: ms(8),
-    borderRadius: ms(20),
-    backgroundColor: "#151228",
+    flexDirection: "row", alignItems: "center", gap: ms(5),
+    paddingHorizontal: ms(14), paddingVertical: ms(7),
+    borderRadius: ms(20), backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
   },
   activeTab: {
-    backgroundColor: "#1A1630",
+    backgroundColor: "rgba(124,111,205,0.25)",
+    borderColor: "#7C6FCD",
   },
-  tabText: {
-    color: "#B8B0D8",
-    fontWeight: "600",
+  tabText: { color: "#9B94BD", fontWeight: "600", fontSize: fs(12) },
+  activeTabText: { color: "#FFF", fontWeight: "700" },
+  tabBadge: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: ms(9), minWidth: ms(18), height: ms(18),
+    alignItems: "center", justifyContent: "center", paddingHorizontal: ms(4),
   },
-  activeTabText: {
-    color: "#25F4EE",
-  },
-  listContent: {
-    padding: ms(16),
-    gap: ms(12),
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: ms(60),
-  },
-  emptyText: {
-    marginTop: ms(12),
-    color: "#B8B0D8",
-    fontSize: fs(14),
-  },
+  tabBadgeActive: { backgroundColor: "#7C6FCD" },
+  tabBadgeText: { color: "#FFF", fontSize: fs(10), fontWeight: "700" },
+
+  listContent: { padding: ms(16), gap: ms(10), paddingBottom: ms(32) },
+
   card: {
-    backgroundColor: "#151228",
-    borderRadius: ms(8),
-    padding: ms(16),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    flexDirection: "row", gap: ms(12),
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: ms(14), padding: ms(14),
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
+    borderLeftWidth: 0,
   },
-  unreadCard: {
-    backgroundColor: "#1A1630",
-    borderLeftWidth: 3,
-    borderLeftColor: "#7C6FCD",
+  readCard: { opacity: 0.85 },
+
+  iconWrap: {
+    width: ms(44), height: ms(44), borderRadius: ms(22),
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: ms(12),
+
+  cardBody: { flex: 1, gap: ms(4) },
+
+  metaRow: {
+    flexDirection: "row", alignItems: "center",
+    gap: ms(6), marginBottom: ms(2),
   },
-  sourceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(8),
-  },
-  iconContainer: {
-    width: ms(24),
-    height: ms(24),
-    borderRadius: ms(12),
-    backgroundColor: "#2A2550",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sourceText: {
-    color: "#B8B0D8",
-    fontSize: fs(13),
-    fontWeight: "600",
-  },
-  unreadBadge: {
-    width: ms(8),
-    height: ms(8),
-    borderRadius: ms(4),
-    backgroundColor: "#007bff",
+  typeChip: {
+    fontSize: fs(10), fontWeight: "700",
+    paddingHorizontal: ms(8), paddingVertical: ms(2),
+    borderRadius: ms(10), overflow: "hidden",
   },
   unreadDot: {
-    width: ms(8),
-    height: ms(8),
-    borderRadius: ms(4),
-    backgroundColor: "#007bff",
+    width: ms(6), height: ms(6), borderRadius: ms(3),
   },
-  cardContent: {
-    paddingRight: ms(32),
-  },
+  timeText: { color: "#6B6B80", fontSize: fs(11), marginLeft: "auto" },
+
   cardTitle: {
-    fontSize: fs(15),
-    fontWeight: "bold",
-    marginBottom: ms(8),
-    textAlign: "left",
-    color: "#FFF",
-  },
-  unreadTitle: {
-    color: "#25F4EE",
+    fontSize: fs(14), fontWeight: "700",
+    color: "#C8C5E8", lineHeight: ms(20),
   },
   cardMessage: {
-    fontSize: fs(14),
-    color: "#E8E5FF",
-    marginBottom: ms(8),
-    textAlign: "left",
-    lineHeight: ms(20),
+    fontSize: fs(13), color: "#9B94BD",
+    lineHeight: ms(19),
   },
-  cardDescription: {
-    fontSize: fs(13),
-    color: "#B8B0D8",
-    marginBottom: ms(8),
-    textAlign: "left",
+
+  ctaRow: {
+    flexDirection: "row", alignItems: "center",
+    gap: ms(3), marginTop: ms(4),
   },
-  moreText: {
-    fontSize: fs(13),
-    color: "#9B94BD",
-    textAlign: "left",
-  },
+  ctaText: { fontSize: fs(12), fontWeight: "700" },
+
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyState: { alignItems: "center", paddingVertical: ms(70) },
+  emptyText: { color: "#7C6FCD", fontSize: fs(16), fontWeight: "700", marginTop: ms(14) },
+  emptySubText: { color: "#6B6B80", fontSize: fs(13), marginTop: ms(6) },
 });
 
 export default SystemNotificationsScreen;

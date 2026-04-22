@@ -84,4 +84,24 @@ const markAsRead = async (req, res) => {
   }
 };
 
-module.exports = { getNotifications, getUnreadCount, markAsRead };
+// @desc    Mark a single notification as read
+// @route   PUT /api/notifications/:id/read
+// @access  Private
+const markOneAsRead = async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { read: true },
+      { new: true },
+    );
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+    res.json({ message: "Notification marked as read", notification });
+  } catch (error) {
+    console.error("Error marking single notification as read:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getNotifications, getUnreadCount, markAsRead, markOneAsRead };
