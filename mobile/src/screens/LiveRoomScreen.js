@@ -856,12 +856,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
-    socket.emit("liveroom:join", {
-      roomId,
-      userId: userInfo._id,
-      user: userInfo,
-    });
-
     // Re-join the socket room after any automatic reconnection (e.g. app backgrounded,
     // network blip) so the server keeps routing messages to this socket.
     socket.io.on("reconnect", () => {
@@ -869,6 +863,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
         roomId,
         userId: userInfo._id,
         user: userInfo,
+      });
+      if (localAgoraUidRef.current) {
+        socket.emit("liveroom:agora_uid", {
+          roomId,
+          userId: userInfo._id,
+          agoraUid: localAgoraUidRef.current,
+        });
+      }
+      socket.emit("liveroom:request_agora_uid_sync", {
+        roomId,
+        requesterUserId: userInfo._id,
       });
     });
 
@@ -895,6 +900,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
       // re-trigger onUserJoined so we must do it here)
       agoraEngineRef.current?.muteRemoteAudioStream(agoraUid, false);
       agoraEngineRef.current?.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+      ensureSpeakerAudioSubscriptions(room);
+    });
+    socket.on("liveroom:request_agora_uid_sync", ({ requesterUserId }) => {
+      if (!localAgoraUidRef.current) return;
+      if (requesterUserId === userInfo?._id) return;
+      socketRef.current?.emit("liveroom:agora_uid", {
+        roomId,
+        userId: userInfo._id,
+        agoraUid: localAgoraUidRef.current,
+      });
     });
     socket.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();
@@ -1195,6 +1210,27 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
       fetchRoomData();
     });
+
+    const joinPayload = { roomId, userId: userInfo._id, user: userInfo };
+    socket.emit("liveroom:join", joinPayload);
+    if (localAgoraUidRef.current) {
+      socket.emit("liveroom:agora_uid", {
+        roomId,
+        userId: userInfo._id,
+        agoraUid: localAgoraUidRef.current,
+      });
+    }
+    socket.emit("liveroom:request_agora_uid_sync", {
+      roomId,
+      requesterUserId: userInfo._id,
+    });
+    setTimeout(() => {
+      if (!socketRef.current?.connected) return;
+      socketRef.current.emit("liveroom:request_agora_uid_sync", {
+        roomId,
+        requesterUserId: userInfo._id,
+      });
+    }, 1000);
   };
 
   // ─── BACKEND ─────────────────────────────────────────────────────────────────
