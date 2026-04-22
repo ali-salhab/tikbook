@@ -213,14 +213,14 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                   autoPlay
                   loop
                   style={styles.vipBadgeSmall}
-                  resizeMode="contain"
+                  resizeMode="cover"
                 />
               ) : (
                 <Image
                   key={`vip-badge-img-${idx}`}
                   source={{ uri: badgeUrl }}
                   style={styles.vipBadgeSmall}
-                  resizeMode="contain"
+                  resizeMode="cover"
                 />
               )
             )}
@@ -646,14 +646,16 @@ const styles = StyleSheet.create({
     fontSize: fs(12),
     fontWeight: "700",
     maxWidth: ms(96),
+    marginRight: ms(2),
     textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   vipBadgeSmall: {
-    width: ms(34),
-    height: ms(34),
-    marginHorizontal: 0,
+    
+    width: ms(33),
+    height: ms(33),
+   
   },
   vipBadgesGroup: {
     flexDirection: "row",
