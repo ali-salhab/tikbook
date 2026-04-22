@@ -1782,140 +1782,183 @@ const VipManagement = ({ onLogout }) => {
                   );
                 };
 
-                return (
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ ...styles.label, marginBottom: 10 }}>🎨 معاينة المستوى</label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                /* ── tiny shared card style ── */
+                const previewCard = {
+                  background: "#0a0818",
+                  border: `1px solid ${lvlColor}28`,
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                };
+                const previewTitle = {
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#6b7280",
+                  textTransform: "uppercase",
+                  letterSpacing: ".6px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                };
 
-                      {/* ── Comment preview (PNG frame if available, else designed) ── */}
-                      <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>💬 شكل التعليق في البث</div>
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexDirection: "row-reverse" }}>
-                          {renderAvatar(42)}
+                return (
+                  <div style={{ marginBottom: 14 }}>
+                    {/* Section header */}
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      marginBottom: 10,
+                      paddingBottom: 8,
+                      borderBottom: `1px solid ${lvlColor}22`,
+                    }}>
+                      <span style={{ fontSize: 13 }}>🎨</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", letterSpacing: ".4px" }}>
+                        معاينة المستوى
+                      </span>
+                      <span style={{
+                        marginRight: "auto",
+                        fontSize: 10, fontWeight: 800,
+                        color: lvlColor,
+                        background: lvlColor + "18",
+                        border: `1px solid ${lvlColor}44`,
+                        borderRadius: 20, padding: "2px 10px",
+                      }}>
+                        VIP {selLevel.level} — {selLevel.nameAr || selLevel.name}
+                      </span>
+                    </div>
+
+                    {/* ── 2 × 2 compact grid ── */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+
+                      {/* 1 ── Profile frame */}
+                      <div style={previewCard}>
+                        <div style={previewTitle}>👤 إطار البروفايل</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {/* Avatar with frame — size 52, overhang 13 so container = 78 */}
+                          <div style={{ width: 78, height: 78, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {renderAvatar(52)}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#e2e8f0", marginBottom: 2 }}>
+                              {assignData.username || "المستخدم"}
+                            </div>
+                            <div style={{
+                              display: "inline-block",
+                              fontSize: 9, fontWeight: 800,
+                              color: frameIsPng ? "#a78bfa" : profileFrameUrl ? "#22d3ee" : "#4b5563",
+                              background: frameIsPng ? "#a78bfa18" : profileFrameUrl ? "#22d3ee18" : "#1e1e2e",
+                              border: `1px solid ${frameIsPng ? "#a78bfa44" : profileFrameUrl ? "#22d3ee44" : "#2d2b55"}`,
+                              borderRadius: 20, padding: "2px 8px", marginTop: 2,
+                            }}>
+                              {frameIsPng ? "🖼 PNG" : profileFrameUrl ? "🎨 مصمم" : "بلا إطار"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2 ── Comment bubble */}
+                      <div style={previewCard}>
+                        <div style={previewTitle}>💬 إطار التعليق</div>
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: "row-reverse" }}>
+                          {/* tiny avatar */}
+                          <div style={{ width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {renderAvatar(32)}
+                          </div>
                           {commentFrameUrl && chatIsPng ? (
-                            <div style={{ position: "relative", flex: 1, minHeight: 56 }}>
-                              <img src={commentFrameUrl} alt="" style={{ width: "100%", minHeight: 56, objectFit: "fill" }} />
-                              <div style={{ position: "absolute", inset: "10px 14px", color: "#fff", fontSize: 12, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                                <div style={{ fontWeight: 800, color: lvlColor }}>
-                                  {assignData.username || "اسم المستخدم"}{" "}
-                                  <span style={{ backgroundColor: lvlColor, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 8, padding: "1px 6px", marginInlineStart: 4 }}>VIP{selLevel.level}</span>
+                            <div style={{ position: "relative", flex: 1, minHeight: 44 }}>
+                              <img src={commentFrameUrl} alt="" style={{ width: "100%", minHeight: 44, objectFit: "fill", borderRadius: 4 }} />
+                              <div style={{ position: "absolute", inset: "6px 10px", color: "#fff", fontSize: 10, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+                                <div style={{ fontWeight: 800, color: lvlColor, fontSize: 10, display: "flex", alignItems: "center", gap: 4 }}>
+                                  {assignData.username || "المستخدم"}
+                                  <span style={{ background: lvlColor, color: "#fff", fontSize: 8, fontWeight: 800, borderRadius: 6, padding: "1px 5px" }}>VIP{selLevel.level}</span>
                                 </div>
-                                <div style={{ fontSize: 11 }}>هذا شكل التعليق في البث 🎉</div>
+                                <div style={{ fontSize: 9 }}>نص التعليق هنا...</div>
                               </div>
                             </div>
                           ) : (
                             <div style={{
                               ...getBubbleShapeStyle(bubbleShape),
                               border: `${borderWidth}px solid ${lvlColor}`,
-                              backgroundColor: selLevel.commentFrameBgColor || "rgba(8,8,20,0.86)",
-                              padding: "8px 12px",
-                              maxWidth: "75%",
+                              background: selLevel.commentFrameBgColor || "rgba(8,8,20,0.9)",
+                              padding: "6px 10px", flex: 1,
                             }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: lvlColor }}>{assignData.username || "اسم المستخدم"}</span>
-                                <span style={{ backgroundColor: lvlColor, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 8, padding: "1px 6px" }}>VIP{selLevel.level}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: lvlColor }}>{assignData.username || "المستخدم"}</span>
+                                <span style={{ background: lvlColor, color: "#fff", fontSize: 8, fontWeight: 800, borderRadius: 6, padding: "1px 5px" }}>VIP{selLevel.level}</span>
                               </div>
-                              <span style={{ color: "#fff", fontSize: 12 }}>هذا شكل التعليق في البث 🎉</span>
+                              <span style={{ color: "#e2e8f0", fontSize: 10 }}>نص التعليق هنا...</span>
                             </div>
                           )}
                         </div>
-                        <div style={{ fontSize: 10, color: chatIsPng ? "#a78bfa" : "#64748b", marginTop: 6, textAlign: "center" }}>
-                          {chatIsPng ? "🖼 إطار تعليق PNG" : "🎨 تصميم مخصص"}
+                        <div style={{ fontSize: 9, color: chatIsPng ? "#a78bfa" : "#4b5563", marginTop: 0 }}>
+                          {chatIsPng ? "🖼 PNG" : "🎨 تصميم مخصص"}
                         </div>
                       </div>
 
-                      {/* ── Join-banner preview ── */}
-                      <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>🚪 رسالة الانضمام</div>
-                        <div style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, flexDirection: "row-reverse" }}>
-                          {renderAvatar(34)}
-                          <div style={{ flex: 1 }}>
-                            <span style={{ color: lvlColor, fontWeight: 800, fontSize: 12 }}>{assignData.username || "المستخدم"}</span>
-                            <span style={{ color: "#cbd5e1", fontSize: 12 }}> {selLevel.specialJoinText || "انضم إلى الغرفة"}</span>
-                          </div>
-                          <span style={{ backgroundColor: lvlColor, color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: 8, padding: "2px 7px" }}>VIP{selLevel.level}</span>
-                        </div>
-                        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                          {selLevel.joinAnimationLottieUrl && <span style={{ fontSize: 10, color: "#22c55e", background: "#052e1b", borderRadius: 6, padding: "2px 8px" }}>✨ انيميشن دخول</span>}
-                          {selLevel.joinSoundUrl && <span style={{ fontSize: 10, color: "#60a5fa", background: "#0b1a33", borderRadius: 6, padding: "2px 8px" }}>🔊 صوت دخول</span>}
-                        </div>
-                      </div>
-
-                      {/* ── Big hero: icon / badge / frame as they actually render ── */}
-                      <div style={{ backgroundColor: "#0f0f1a", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 600 }}>🏅 الأيقونة والشارة</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 14, flexDirection: "row-reverse" }}>
-                          <div style={{ textAlign: "right", flex: 1 }}>
-                            <div style={{ color: lvlColor, fontWeight: 800, fontSize: 16 }}>VIP {selLevel.level}</div>
-                            <div style={{ color: "#e2e8f0", fontSize: 13 }}>{selLevel.nameAr}</div>
-                            {selLevel.name && <div style={{ color: "#64748b", fontSize: 11 }}>{selLevel.name}</div>}
-                            <div style={{ color: "#f59e0b", fontSize: 12, marginTop: 3 }}>💎 {selLevel.price?.toLocaleString?.() || selLevel.price} عملة</div>
-                          </div>
-                          <div style={{ position: "relative", width: 80, height: 80, flexShrink: 0 }}>
+                      {/* 3 ── Level icon */}
+                      <div style={previewCard}>
+                        <div style={previewTitle}>🏅 أيقونة المستوى</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}>
                             {selLevel.imageUrl ? (
-                              <img
-                                src={selLevel.imageUrl}
-                                alt=""
-                                style={{
-                                  width: 80, height: 80, objectFit: "contain",
-                                  filter: `drop-shadow(0 2px 8px ${lvlColor}88)`,
-                                }}
-                              />
+                              <img src={selLevel.imageUrl} alt="" style={{ width: 52, height: 52, objectFit: "contain", filter: `drop-shadow(0 2px 6px ${lvlColor}88)` }} />
                             ) : (
-                              <div style={{ width: 80, height: 80, borderRadius: 16, background: `linear-gradient(135deg, ${lvlColor}55, ${lvlColor}11)`, border: `2px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: lvlColor }}>VIP{selLevel.level}</div>
+                              <div style={{ width: 52, height: 52, borderRadius: 10, background: `linear-gradient(135deg,${lvlColor}44,${lvlColor}11)`, border: `1.5px solid ${lvlColor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: lvlColor }}>V{selLevel.level}</div>
                             )}
                             {selLevel.badgeLottieUrl && isImageUrl(selLevel.badgeLottieUrl) && (
-                              <img src={selLevel.badgeLottieUrl} alt="" style={{ position: "absolute", bottom: -6, right: -6, width: 32, height: 32, objectFit: "contain", filter: `drop-shadow(0 2px 6px ${lvlColor}88)` }} />
+                              <img src={selLevel.badgeLottieUrl} alt="" style={{ position: "absolute", bottom: -4, right: -4, width: 20, height: 20, objectFit: "contain", filter: `drop-shadow(0 1px 4px ${lvlColor}88)` }} />
                             )}
                           </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ color: lvlColor, fontWeight: 800, fontSize: 13 }}>VIP {selLevel.level}</div>
+                            <div style={{ color: "#94a3b8", fontSize: 11 }}>{selLevel.nameAr}</div>
+                            <div style={{ color: "#f59e0b", fontSize: 11, marginTop: 2 }}>💎 {(selLevel.price || 0).toLocaleString()} عملة</div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* ── Profile-frame preview — full-width, centered, prominent ── */}
-                      <div style={{ backgroundColor: "#0a0a18", borderRadius: 16, padding: 20, gridColumn: "1 / -1", border: `1px solid ${lvlColor}33` }}>
-                        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16, fontWeight: 700, textAlign: "center", letterSpacing: 0.5 }}>
-                          👤 معاينة إطار البروفايل
+                      {/* 4 ── Join message */}
+                      <div style={previewCard}>
+                        <div style={previewTitle}>🚪 رسالة الانضمام</div>
+                        <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "7px 10px", display: "flex", alignItems: "center", gap: 6, flexDirection: "row-reverse" }}>
+                          <div style={{ width: 42, height: 42, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {renderAvatar(28)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ color: lvlColor, fontWeight: 800, fontSize: 11 }}>{assignData.username || "المستخدم"}</span>
+                            <span style={{ color: "#94a3b8", fontSize: 11 }}> {selLevel.specialJoinText || "انضم إلى الغرفة"}</span>
+                          </div>
+                          <span style={{ background: lvlColor, color: "#fff", fontSize: 8, fontWeight: 800, borderRadius: 6, padding: "2px 6px", flexShrink: 0 }}>VIP{selLevel.level}</span>
                         </div>
-                        {/* Hero avatar display */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                          {/* Large centered avatar with enough padding for the overhang */}
-                          <div style={{ padding: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {renderAvatar(100)}
-                          </div>
-
-                          {/* Frame type label */}
-                          <div style={{
-                            fontSize: 12, fontWeight: 700,
-                            color: frameIsPng ? "#a78bfa" : profileFrameUrl ? "#22c55e" : "#64748b",
-                            background: frameIsPng ? "#a78bfa18" : profileFrameUrl ? "#22c55e18" : "#64748b18",
-                            borderRadius: 8, padding: "4px 14px",
-                          }}>
-                            {profileFrameUrl && frameIsPng ? "🖼 إطار صورة PNG" : profileFrameUrl ? "🎨 إطار مصمم" : "— بدون إطار بروفايل"}
-                          </div>
-
-                          {/* Benefits chips */}
-                          {Array.isArray(selLevel.benefits) && selLevel.benefits.length > 0 && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", maxWidth: 400 }}>
-                              {selLevel.benefits.slice(0, 6).map((b, i) => (
-                                <span key={i} style={{
-                                  fontSize: 11, color: "#e2e8f0",
-                                  background: "rgba(255,255,255,0.07)",
-                                  border: `1px solid ${lvlColor}44`,
-                                  borderRadius: 20, padding: "3px 10px",
-                                  display: "flex", alignItems: "center", gap: 4,
-                                }}>
-                                  <span style={{ color: lvlColor, fontSize: 10 }}>●</span>
-                                  {b.titleAr}
-                                </span>
-                              ))}
-                              {selLevel.benefits.length > 6 && (
-                                <span style={{ fontSize: 11, color: "#64748b", padding: "3px 8px" }}>+{selLevel.benefits.length - 6} مزيد</span>
-                              )}
-                            </div>
-                          )}
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {selLevel.joinAnimationLottieUrl && <span style={{ fontSize: 9, color: "#34d399", background: "#052e1b", borderRadius: 6, padding: "1px 7px" }}>✨ انيميشن</span>}
+                          {selLevel.joinSoundUrl && <span style={{ fontSize: 9, color: "#60a5fa", background: "#0b1a33", borderRadius: 6, padding: "1px 7px" }}>🔊 صوت</span>}
                         </div>
                       </div>
+
                     </div>
+
+                    {/* Benefits row */}
+                    {Array.isArray(selLevel.benefits) && selLevel.benefits.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                        {selLevel.benefits.slice(0, 5).map((b, i) => (
+                          <span key={i} style={{
+                            fontSize: 10, color: "#94a3b8",
+                            background: "#12102a",
+                            border: `1px solid ${lvlColor}33`,
+                            borderRadius: 20, padding: "2px 9px",
+                            display: "flex", alignItems: "center", gap: 3,
+                          }}>
+                            <span style={{ color: lvlColor, fontSize: 8 }}>●</span>
+                            {b.titleAr}
+                          </span>
+                        ))}
+                        {selLevel.benefits.length > 5 && (
+                          <span style={{ fontSize: 10, color: "#4b5563", padding: "2px 6px" }}>+{selLevel.benefits.length - 5}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
