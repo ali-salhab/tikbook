@@ -13,9 +13,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Platform,
-  I18nManager,
   Keyboard,
   Alert,
   ScrollView,
@@ -25,6 +23,8 @@ import {
   Share,
   Dimensions,
   StatusBar,
+  InteractionManager,
+  useWindowDimensions,
 } from "react-native";
 import {
   SafeAreaView,
@@ -35,7 +35,6 @@ import io from "socket.io-client";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import i18n from "../i18n";
 import { BASE_URL } from "../config/api";
 import GiftPanel from "../components/GiftPanel";
 import * as ImagePicker from "expo-image-picker";
@@ -75,6 +74,23 @@ const ChatScreen = ({ route, navigation }) => {
   const socket = useRef(null);
   const flatListRef = useRef(null);
 
+  // ── Bulletproof keyboard handling ──────────────────────────────────────
+  // We cannot rely on Android `softwareKeyboardLayoutMode` alone because
+  // it requires a native rebuild and is inconsistent across OEMs (Xiaomi,
+  // Oppo, Samsung, Pixel). Instead we detect at runtime whether the OS
+  // actually resized the window when the keyboard appeared (by comparing
+  // the live window height with the initial one). If it didn't resize,
+  // we manually shift the input + list bottom by `keyboardHeight` so the
+  // input is always visible above the keyboard.
+  const { height: winHeight } = useWindowDimensions();
+  const initialWinHeightRef = useRef(winHeight);
+  useEffect(() => {
+    // Set once on first mount; keep stable afterwards.
+    if (!initialWinHeightRef.current) initialWinHeightRef.current = winHeight;
+  }, [winHeight]);
+  const windowDidShrink =
+    initialWinHeightRef.current - winHeight > 100; // OS already moved content
+
   // Reliable auto-scroll: scrolls to bottom regardless of animation/layout race.
   const scrollToBottom = useCallback((animated = true) => {
     // Three-staged scroll handles the two common RN layout races: the first
@@ -88,6 +104,8 @@ const ChatScreen = ({ route, navigation }) => {
     run();
     requestAnimationFrame(run);
     setTimeout(run, 120);
+    setTimeout(run, 260);
+    InteractionManager.runAfterInteractions(run);
   }, []);
 
   const EMOJI_PICKER_HEIGHT = 260;
@@ -618,7 +636,21 @@ const ChatScreen = ({ route, navigation }) => {
     // above the keyboard and hide the last messages).
     <SafeAreaView style={styles.container} edges={["top"]}>
       <GradientBackground />
-      <View style={{ flex: 1 }}>
+      {/*
+        Instead of KeyboardAvoidingView (which behaves inconsistently on
+        Android with newArchEnabled + edge-to-edge), we push the whole
+        chat surface up by the live keyboard height whenever the OS did
+        NOT already resize the window. This guarantees the input bar is
+        always visible above the keyboard on every device.
+      */}
+      <View
+        style={{
+          flex: 1,
+          paddingBottom:
+            keyboardHeight > 0 && !windowDidShrink ? keyboardHeight : 0,
+        }}
+      >
+        <View style={{ flex: 1 }}>
         <View style={styles.chatHeader}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -705,21 +737,9 @@ const ChatScreen = ({ route, navigation }) => {
           contentContainerStyle={[
             styles.messagesList,
             {
-              // Reserve enough room for the last message to sit above the
-              // input bar in every state. IMPORTANT: on Android the manifest
-              // default is `adjustResize`, so the OS already shrinks the
-              // window when the keyboard opens — we must NOT add
-              // `keyboardHeight` on top of that or items would be pushed off
-              // screen. On iOS the keyboard overlays the window, so we do
-              // need to reserve space for it manually.
-              paddingBottom:
-                inputHeight +
-                (Platform.OS === "ios" && keyboardHeight > 0
-                  ? keyboardHeight
-                  : showEmojiPicker
-                    ? EMOJI_PICKER_HEIGHT
-                    : 0) +
-                ms(16),
+              // Input is now in normal layout flow (not absolute), so we only
+              // keep a small breathing space under the last bubble.
+              paddingBottom: ms(12),
             },
           ]}
           inverted={false}
@@ -729,34 +749,22 @@ const ChatScreen = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         />
-      </View>
-
-      {/* Input container anchored to bottom. onLayout captures its height.
-          On Android the OS resizes the window when the keyboard opens
-          (`adjustResize` — the Expo default), so `bottom: 0` keeps the input
-          naturally flush above the keyboard. On iOS we must offset by the
-          reported `keyboardHeight` because the keyboard overlays the view.
-          When the custom emoji picker is open, we always offset by its
-          fixed height on both platforms. */}
-      <View
-        style={[
-          styles.inputContainer,
-          styles.inputContainerAbsolute,
-          {
-            bottom:
-              Platform.OS === "ios" && keyboardHeight > 0
-                ? keyboardHeight
-                : showEmojiPicker
-                  ? EMOJI_PICKER_HEIGHT
-                  : 0,
-            paddingBottom:
-              keyboardHeight > 0 || showEmojiPicker
-                ? ms(10)
-                : (insets.bottom || 0) + ms(10),
-          },
-        ]}
-        onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
-      >
+        <View
+          style={[
+            styles.inputContainer,
+            {
+              marginBottom: showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0,
+              // When the keyboard is open we don't need the safe-area bottom
+              // inset (the keyboard sits there). When it's closed, respect
+              // the home-indicator / gesture bar.
+              paddingBottom:
+                keyboardHeight > 0 || showEmojiPicker
+                  ? ms(8)
+                  : (insets.bottom || 0) + ms(10),
+            },
+          ]}
+          onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
+        >
         <TouchableOpacity
           style={styles.emojiButton}
           onPress={toggleEmojiPicker}
@@ -806,6 +814,8 @@ const ChatScreen = ({ route, navigation }) => {
             />
           )}
         </TouchableOpacity>
+        </View>
+      </View>
       </View>
       {/* Emoji Picker anchored above bottom (behaves like YouTube) */}
       {/* Gift Panel */}
