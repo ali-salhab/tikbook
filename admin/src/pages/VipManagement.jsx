@@ -615,60 +615,46 @@ const VipManagement = ({ onLogout }) => {
                     ⭐ المستوى {lvl.level}
                   </div>
 
-                  {/* ── Hero area ── */}
-                  <div style={{ position: "relative", width: 96, height: 96, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 8, overflow: "visible" }}>
-                    {/* Profile frame: use explicit top/left to avoid inset+size conflict */}
-                    {profileFrameUrl && frameIsPng && (
-                      <img
-                        src={profileFrameUrl}
-                        alt=""
-                        style={{
-                          position: "absolute",
-                          top: -18, left: -18,
-                          width: 132, height: 132,
-                          objectFit: "contain",
-                          pointerEvents: "none",
-                          zIndex: 2,
-                        }}
-                      />
-                    )}
-                    {/* Level icon — no circular clip so complex badge shapes are fully visible */}
-                    {lvl.imageUrl ? (
-                      <img
-                        src={lvl.imageUrl}
-                        alt={lvl.nameAr}
-                        style={{
-                          width: 88, height: 88,
-                          objectFit: "contain",
-                          borderRadius: profileFrameUrl && frameIsPng ? 0 : "50%",
-                          border: profileFrameUrl && frameIsPng ? "none" : `3px solid ${color}`,
-                          background: "transparent",
-                          position: "relative", zIndex: 1,
-                          filter: `drop-shadow(0 2px 8px ${color}66)`,
-                        }}
-                      />
-                    ) : (
-                      <div style={{
-                        width: 88, height: 88, borderRadius: "50%",
-                        background: `linear-gradient(135deg, ${color}55, ${color}11)`,
-                        border: `3px solid ${color}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 22, fontWeight: 800, color,
-                        position: "relative", zIndex: 1,
-                      }}>VIP{lvl.level}</div>
-                    )}
-                    {/* Badge overlay bottom-right */}
-                    {lvl.badgeLottieUrl && isImageUrl(lvl.badgeLottieUrl) && (
-                      <img
-                        src={lvl.badgeLottieUrl}
-                        alt="badge"
-                        style={{
-                          position: "absolute", bottom: -8, right: -8, width: 36, height: 36,
-                          objectFit: "contain", zIndex: 3,
-                          filter: `drop-shadow(0 2px 6px ${color}99)`,
-                        }}
-                      />
-                    )}
+                  {/* ══ SECTION 1: أيقونة المستوى ══ */}
+                  <div style={{ width: "100%", marginTop: 6 }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textAlign: "center", letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>
+                      أيقونة المستوى
+                    </div>
+                    {/* Level icon — clean, no frame overlay */}
+                    <div style={{ position: "relative", width: 92, height: 92, margin: "0 auto", overflow: "visible" }}>
+                      {lvl.imageUrl ? (
+                        <img
+                          src={lvl.imageUrl}
+                          alt={lvl.nameAr}
+                          style={{
+                            width: 92, height: 92,
+                            objectFit: "contain",
+                            filter: `drop-shadow(0 3px 10px ${color}77)`,
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 92, height: 92, borderRadius: "50%",
+                          background: `linear-gradient(135deg, ${color}55, ${color}11)`,
+                          border: `3px solid ${color}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 20, fontWeight: 800, color,
+                        }}>VIP{lvl.level}</div>
+                      )}
+                      {/* Badge overlay bottom-right */}
+                      {lvl.badgeLottieUrl && isImageUrl(lvl.badgeLottieUrl) && (
+                        <img
+                          src={lvl.badgeLottieUrl}
+                          alt="badge"
+                          style={{
+                            position: "absolute", bottom: -6, right: -6, width: 32, height: 32,
+                            objectFit: "contain",
+                            filter: `drop-shadow(0 2px 5px ${color}99)`,
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
 
                   {/* ── Name + price ── */}
@@ -690,12 +676,7 @@ const VipManagement = ({ onLogout }) => {
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 5, marginTop: 2, minHeight: 26 }}>
                     {profileFrameUrl && (
                       <span title={frameIsPng ? "إطار PNG" : "إطار مصمم"} style={{ ...styles.featureChip, background: "rgba(99,102,241,0.18)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.3)" }}>
-                        {frameIsPng ? "🖼" : "🎨"} إطار
-                      </span>
-                    )}
-                    {commentFrameUrl && (
-                      <span title={chatIsPng ? "تعليق PNG" : "تعليق مصمم"} style={{ ...styles.featureChip, background: "rgba(139,92,246,0.18)", color: "#c4b5fd", border: "1px solid rgba(139,92,246,0.3)" }}>
-                        💬 تعليق
+                        🖼 إطار
                       </span>
                     )}
                     {lvl.badgeLottieUrl && (
@@ -712,29 +693,35 @@ const VipManagement = ({ onLogout }) => {
                     )}
                   </div>
 
-                  {/* ── Comment-bubble preview ── */}
-                  <div style={{ ...styles.cardPreviewWrap, background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {/* ══ SECTION 2: إطار التعليق — separate labeled block ══ */}
+                  <div style={{ width: "100%", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10, marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textAlign: "center", letterSpacing: 0.5, marginBottom: 8 }}>
+                      💬 إطار التعليق
+                    </div>
                     {commentFrameUrl && chatIsPng ? (
-                      <div style={{ position: "relative", paddingTop: 6 }}>
-                        <img src={commentFrameUrl} alt="" style={{ width: "100%", maxHeight: 52, objectFit: "contain" }} />
+                      <div style={{ position: "relative", borderRadius: 8, overflow: "hidden" }}>
+                        <img src={commentFrameUrl} alt="" style={{ width: "100%", maxHeight: 52, objectFit: "contain", display: "block" }} />
                         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700, textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
-                          VIP تعليق
+                          نص التعليق VIP
                         </div>
                       </div>
                     ) : (
-                      <div
-                        style={{
-                          ...styles.cardPreviewBubble,
-                          ...getBubbleShapeStyle(lvl.commentBubbleShape),
-                          borderColor: color,
-                          borderWidth: normalizeBorderWidth(lvl.commentBorderWidth),
-                          borderStyle: "solid",
-                          backgroundColor: lvl.commentFrameBgColor || "rgba(8,8,20,0.9)",
-                          color: "#e2e8f0",
-                        }}
-                      >
-                        VIP تعليق
+                      <div style={{
+                        ...styles.cardPreviewBubble,
+                        ...getBubbleShapeStyle(lvl.commentBubbleShape),
+                        borderColor: color,
+                        borderWidth: normalizeBorderWidth(lvl.commentBorderWidth),
+                        borderStyle: "solid",
+                        backgroundColor: lvl.commentFrameBgColor || "rgba(8,8,20,0.9)",
+                        color: "#e2e8f0",
+                        fontSize: 11,
+                      }}>
+                        <span style={{ color, fontWeight: 700, fontSize: 10 }}>VIP{lvl.level} </span>
+                        نص التعليق
                       </div>
+                    )}
+                    {!commentFrameUrl && (
+                      <div style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 4 }}>— لا يوجد إطار تعليق —</div>
                     )}
                   </div>
 
