@@ -637,19 +637,13 @@ const ChatScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <GradientBackground />
       {/*
-        Instead of KeyboardAvoidingView (which behaves inconsistently on
-        Android with newArchEnabled + edge-to-edge), we push the whole
-        chat surface up by the live keyboard height whenever the OS did
-        NOT already resize the window. This guarantees the input bar is
-        always visible above the keyboard on every device.
+        The outer flex:1 View lays out Header + FlatList.
+        The input bar is ABSOLUTELY positioned at `bottom: keyboardHeight`
+        so it is always rendered above the on-screen keyboard regardless of
+        Android's window-resize behavior. The FlatList gets enough
+        `paddingBottom` in its content to never collide with the input.
       */}
-      <View
-        style={{
-          flex: 1,
-          paddingBottom:
-            keyboardHeight > 0 && !windowDidShrink ? keyboardHeight : 0,
-        }}
-      >
+      <View style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
         <View style={styles.chatHeader}>
           <TouchableOpacity
@@ -734,12 +728,17 @@ const ChatScreen = ({ route, navigation }) => {
           keyExtractor={(item, idx) =>
             item._id ? String(item._id) : `m-${idx}`
           }
+          style={{ flex: 1 }}
           contentContainerStyle={[
             styles.messagesList,
             {
-              // Input is now in normal layout flow (not absolute), so we only
-              // keep a small breathing space under the last bubble.
-              paddingBottom: ms(12),
+              // Reserve space so the last message is NOT covered by the
+              // absolutely-positioned input (which sits above the keyboard).
+              paddingBottom:
+                inputHeight +
+                (keyboardHeight > 0 && !windowDidShrink ? keyboardHeight : 0) +
+                (showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0) +
+                ms(16),
             },
           ]}
           inverted={false}
@@ -749,21 +748,29 @@ const ChatScreen = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         />
+        </View>
         <View
           style={[
             styles.inputContainer,
+            styles.inputContainerAbsolute,
             {
-              marginBottom: showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0,
-              // When the keyboard is open we don't need the safe-area bottom
-              // inset (the keyboard sits there). When it's closed, respect
-              // the home-indicator / gesture bar.
+              // Pin the input above the keyboard. If the OS already shrank
+              // the window (adjustResize), `windowDidShrink=true` and we
+              // sit at bottom:0 — the window edge is already above the
+              // keyboard. Otherwise we manually lift by keyboardHeight.
+              bottom:
+                (keyboardHeight > 0 && !windowDidShrink ? keyboardHeight : 0) +
+                (showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0),
               paddingBottom:
                 keyboardHeight > 0 || showEmojiPicker
                   ? ms(8)
                   : (insets.bottom || 0) + ms(10),
             },
           ]}
-          onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h && h !== inputHeight) setInputHeight(h);
+          }}
         >
         <TouchableOpacity
           style={styles.emojiButton}
@@ -815,7 +822,6 @@ const ChatScreen = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
         </View>
-      </View>
       </View>
       {/* Emoji Picker anchored above bottom (behaves like YouTube) */}
       {/* Gift Panel */}
@@ -1328,12 +1334,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(14,11,30,0.92)",
   },
 
-  // anchor input to bottom so 'bottom' style works
+  // Anchor the input to the bottom of the screen (above keyboard).
+  // `bottom` is supplied inline based on the live keyboard height.
   inputContainerAbsolute: {
     position: "absolute",
     left: 0,
     right: 0,
-    zIndex: 30,
+    zIndex: 50,
+    elevation: 50,
   },
   emojiButton: {
     marginRight: ms(8),

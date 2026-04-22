@@ -750,6 +750,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
           ? undefined
           : { audienceLatencyLevel: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency },
       );
+      // Audience devices must not capture the mic at all — otherwise Agora
+      // may still forward a local audio track to the channel whenever the
+      // role flickers. Only hosts/speakers capture locally.
+      try {
+        if (!isHostOrSpeaker) engine.enableLocalAudio(false);
+        else engine.enableLocalAudio(true);
+      } catch (_) {}
       engine.addListener("onError", (errCode) => {
         console.warn("[Agora] error code:", errCode);
       });
@@ -762,6 +769,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
           userId: userInfo._id,
           agoraUid: uid,
         });
+        // Ask everyone already in the room to re-broadcast their Agora UID so
+        // we can hear users who joined BEFORE us. Without this, late joiners
+        // may miss the initial `agora_uid` broadcast and never subscribe.
+        socketRef.current?.emit("liveroom:request_agora_uid_sync", {
+          roomId,
+          requesterUserId: userInfo._id,
+        });
         // Ensure we receive all remote audio — must be called after join completes
         engine.muteAllRemoteAudioStreams(false);
         // Re-assert speakerphone routing after join (Agora can reset it on join)
@@ -770,6 +784,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
         // Boost playback volume (100 = standard max)
         engine.adjustPlaybackSignalVolume(100);
         setJoinedAgora(true);
+        // Safety: re-assert audio subscription a short while later in case
+        // remote broadcasters were publishing before we finished joining.
+        setTimeout(() => {
+          try {
+            engine.muteAllRemoteAudioStreams(false);
+            engine.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+            engine.adjustPlaybackSignalVolume(100);
+          } catch (_) {}
+        }, 1500);
       });
       // Token about to expire — fetch a fresh one and renew
       engine.addListener("onTokenPrivilegeWillExpire", async (connection, token) => {
@@ -782,17 +805,21 @@ const LiveRoomScreen = ({ route, navigation }) => {
           engine.renewToken(tokenRes.data.token);
         } catch (_) {}
       });
-      // Remote audio state changed — re-subscribe if stream was paused/failed
+      // Remote audio state changed — re-subscribe on ANY active state so we
+      // handle both the STARTING (1) and DECODING (2) transitions. If we only
+      // listen for state 2, very short talk bursts can be missed entirely.
       engine.addListener("onRemoteAudioStateChanged", (connection, remoteUid, state, reason) => {
-        // state 0 = stopped, reason 5 = remote muted — re-subscribe when it becomes active again
-        if (state === 2 /* Decoding */) {
+        if (state === 1 /* Starting */ || state === 2 /* Decoding */) {
           engine.muteRemoteAudioStream(remoteUid, false);
+          engine.adjustUserPlaybackSignalVolume?.(remoteUid, 100);
         }
       });
       // Subscribe to each remote broadcaster's audio as they join the channel
       engine.addListener("onUserJoined", (connection, remoteUid) => {
         engine.muteRemoteAudioStream(remoteUid, false);
         engine.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+        // Per-user volume max so no single speaker is unexpectedly quiet
+        engine.adjustUserPlaybackSignalVolume?.(remoteUid, 100);
       });
       //  here my soul // 
       engine.addListener("onAudioVolumeIndication", (connection, speakers) => {
@@ -814,6 +841,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
       // Always request a publisher token — already fetched at the top of initAgora.
       // Actual publishing is still controlled by muteLocalAudioStream + publishMicrophoneTrack.
       engine.joinChannel(agoraToken, channelName, 0, {
+        // Lock in the channel profile + role here too. Relying solely on
+        // `setClientRole()` can, in some RN Agora v4 builds, leave the
+        // subscription stack in an inconsistent state where audience members
+        // silently fail to receive broadcaster audio.
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        clientRoleType: isHostOrSpeaker
+          ? ClientRoleType.ClientRoleBroadcaster
+          : ClientRoleType.ClientRoleAudience,
         // Auto-subscribe to remote audio so audience hears speakers immediately
         autoSubscribeAudio: true,
         autoSubscribeVideo: false,
@@ -830,8 +865,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
   };
 
   const updateAgoraRole = (isBroadcaster) => {
-    if (!agoraEngineRef.current) return;
-    agoraEngineRef.current.setClientRole(
+    const engine = agoraEngineRef.current;
+    if (!engine) return;
+    engine.setClientRole(
       isBroadcaster
         ? ClientRoleType.ClientRoleBroadcaster
         : ClientRoleType.ClientRoleAudience,
@@ -840,15 +876,34 @@ const LiveRoomScreen = ({ route, navigation }) => {
         : { audienceLatencyLevel: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency },
     );
     if (isBroadcaster) {
-      agoraEngineRef.current.muteLocalAudioStream(isMuted);
-      agoraEngineRef.current.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
-      agoraEngineRef.current.setEnableSpeakerphone(playbackOnSpeaker);
+      // Becoming a speaker: start publishing the mic track again.
+      try {
+        engine.updateChannelMediaOptions({
+          publishMicrophoneTrack: true,
+          autoSubscribeAudio: true,
+        });
+      } catch (_) {}
+      engine.muteLocalAudioStream(isMuted);
+      engine.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+      engine.setEnableSpeakerphone(playbackOnSpeaker);
     } else {
-      // After demoting to audience, ensure we can still hear all remote broadcasters
-      agoraEngineRef.current.muteAllRemoteAudioStreams(false);
-      agoraEngineRef.current.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
-      agoraEngineRef.current.setEnableSpeakerphone(playbackOnSpeaker);
-      agoraEngineRef.current.adjustPlaybackSignalVolume(100);
+      // Demoting to audience — CRITICAL: stop publishing the mic track.
+      // Just calling setClientRole(Audience) is NOT enough in Agora RN v4:
+      // the mic track stays subscribed/published until we explicitly flip
+      // `publishMicrophoneTrack` off. Without this, ex-speakers continue to
+      // be heard by everyone after leaving the seat.
+      try {
+        engine.updateChannelMediaOptions({
+          publishMicrophoneTrack: false,
+          autoSubscribeAudio: true,
+        });
+      } catch (_) {}
+      engine.muteLocalAudioStream(true);
+      engine.enableLocalAudio?.(false); // stop capturing mic for good measure
+      engine.muteAllRemoteAudioStreams(false);
+      engine.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+      engine.setEnableSpeakerphone(playbackOnSpeaker);
+      engine.adjustPlaybackSignalVolume(100);
     }
   };
 
@@ -957,9 +1012,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
       agoraUidMapRef.current[agoraUid] = userId;
       // Explicitly subscribe to this user's audio — handles the case where
       // they just switched from audience to broadcaster (role change doesn't
-      // re-trigger onUserJoined so we must do it here)
-      agoraEngineRef.current?.muteRemoteAudioStream(agoraUid, false);
-      agoraEngineRef.current?.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+      // re-trigger onUserJoined so we must do it here).
+      // Skip our own uid — you never subscribe to yourself.
+      if (userId === userInfo?._id) return;
+      const engine = agoraEngineRef.current;
+      if (!engine) return;
+      try {
+        engine.muteRemoteAudioStream(agoraUid, false);
+        engine.muteAllRemoteAudioStreams(false);
+        engine.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+        engine.adjustUserPlaybackSignalVolume?.(agoraUid, 100);
+      } catch (_) {}
       ensureSpeakerAudioSubscriptions(room);
     });
     socket.on("liveroom:request_agora_uid_sync", ({ requesterUserId }) => {
@@ -991,12 +1054,16 @@ const LiveRoomScreen = ({ route, navigation }) => {
             } catch (_) {}
             if (newToken) agoraEngineRef.current?.renewToken(newToken);
           } catch (_) {}
-          agoraEngineRef.current?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-          agoraEngineRef.current?.updateChannelMediaOptions({
+          const engine = agoraEngineRef.current;
+          if (!engine) return;
+          engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+          // Re-enable mic capture (we disable it for pure audience in initAgora).
+          try { engine.enableLocalAudio(true); } catch (_) {}
+          engine.updateChannelMediaOptions({
             publishMicrophoneTrack: true,
             autoSubscribeAudio: true,
           });
-          agoraEngineRef.current?.muteLocalAudioStream(false);
+          engine.muteLocalAudioStream(false);
           setIsMuted(false);
           isMutedRef.current = false;
         };
@@ -1012,10 +1079,35 @@ const LiveRoomScreen = ({ route, navigation }) => {
           });
         }
       }
-      // Ensure all participants (including host) can hear the new speaker
-      agoraEngineRef.current?.muteAllRemoteAudioStreams(false);
-      agoraEngineRef.current?.setEnableSpeakerphone(playbackOnSpeakerRef.current);
-      ensureSpeakerAudioSubscriptions(room);
+      // Ensure all participants (including host) can hear the new speaker.
+      // We also do a delayed retry because the newly promoted user takes
+      // ~500–1500ms to actually start publishing through Agora.
+      const reSubscribe = () => {
+        const engine = agoraEngineRef.current;
+        if (!engine) return;
+        try {
+          engine.muteAllRemoteAudioStreams(false);
+          engine.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+          engine.adjustPlaybackSignalVolume(Math.round(masterVolume) || 100);
+        } catch (_) {}
+        ensureSpeakerAudioSubscriptions(room);
+        // If we know the promoted user's Agora UID, unmute their stream
+        // explicitly. This rescues audience members whose `onUserJoined`
+        // never fires for role-change transitions.
+        if (user?._id) {
+          Object.entries(agoraUidMapRef.current || {}).forEach(([uid, mappedId]) => {
+            if (mappedId === user._id) {
+              try {
+                engine.muteRemoteAudioStream(Number(uid), false);
+                engine.adjustUserPlaybackSignalVolume?.(Number(uid), 100);
+              } catch (_) {}
+            }
+          });
+        }
+      };
+      reSubscribe();
+      setTimeout(reSubscribe, 800);
+      setTimeout(reSubscribe, 2000);
     });
     socket.on("liveroom:speaker_removed", ({ userId }) => {
       fetchRoomData();
@@ -1427,6 +1519,24 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ─── ACTION HANDLERS ─────────────────────────────────────────────────────────
 
   const handleToggleMute = async () => {
+    // Only hosts and seated speakers may toggle the mic — an audience member
+    // must NEVER be able to start publishing audio by accident.
+    const isHost = room?.host?._id === userInfo?._id;
+    const isSpeaker = room?.speakers?.some(
+      (s) => s.user?._id === userInfo?._id,
+    );
+    if (!isHost && !isSpeaker) {
+      // Ensure we're hard-muted and not publishing.
+      const engine = agoraEngineRef.current;
+      try {
+        engine?.updateChannelMediaOptions?.({ publishMicrophoneTrack: false });
+        engine?.muteLocalAudioStream?.(true);
+        engine?.enableLocalAudio?.(false);
+      } catch (_) {}
+      setIsMuted(true);
+      isMutedRef.current = true;
+      return;
+    }
     const next = !isMuted;
     setIsMuted(next);
     isMutedRef.current = next;
