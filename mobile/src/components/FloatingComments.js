@@ -79,8 +79,25 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameBgColor || null : null;
   const commentBubbleBgColor =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentBubbleBgColor || null : null;
-  const vipIconUrl =
-    isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.imageUrl || null : null;
+  const vipLevelIconUrl =
+    isVip && typeof vipStyleEntry === "object"
+      ? vipStyleEntry?.levelIconUrl || vipStyleEntry?.imageUrl || null
+      : null;
+  const vipBadgeIcons =
+    isVip && typeof vipStyleEntry === "object"
+      ? [
+          ...(Array.isArray(vipStyleEntry?.vipBadgeIcons) ? vipStyleEntry.vipBadgeIcons : []),
+          vipStyleEntry?.badgeImageUrl || "",
+          vipStyleEntry?.badgeLottieUrl || "",
+        ]
+          .filter(Boolean)
+          .filter((url, idx, arr) => arr.indexOf(url) === idx)
+          .filter((url) => url !== vipLevelIconUrl)
+      : [];
+  const isLottieUrl = (url) =>
+    typeof url === "string" &&
+    (/\.json($|\?)/i.test(url) ||
+      (url.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(url)));
   const commentTextColor =
     isVip && typeof vipStyleEntry === "object" && vipStyleEntry?.commentTextColor
       ? vipStyleEntry.commentTextColor
@@ -152,12 +169,22 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             </Text>
           </View>
         ) : null}
-        {isVip && vipIconUrl ? (
-          <Image
-            source={{ uri: vipIconUrl }}
-            style={styles.vipIconImg}
-            resizeMode="contain"
-          />
+        {isVip && vipLevelIconUrl ? (
+          isLottieUrl(vipLevelIconUrl) ? (
+            <LottieView
+              source={{ uri: vipLevelIconUrl }}
+              autoPlay
+              loop
+              style={styles.vipIconImg}
+              resizeMode="contain"
+            />
+          ) : (
+            <Image
+              source={{ uri: vipLevelIconUrl }}
+              style={styles.vipIconImg}
+              resizeMode="contain"
+            />
+          )
         ) : isVip ? (
           <View
             style={[
@@ -174,6 +201,29 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>
               VIP{vipLevel}
             </Text>
+          </View>
+        ) : null}
+        {isVip && vipBadgeIcons.length > 0 ? (
+          <View style={styles.vipBadgesGroup}>
+            {vipBadgeIcons.slice(0, 2).map((badgeUrl, idx) =>
+              isLottieUrl(badgeUrl) ? (
+                <LottieView
+                  key={`vip-badge-lottie-${idx}`}
+                  source={{ uri: badgeUrl }}
+                  autoPlay
+                  loop
+                  style={styles.vipBadgeSmall}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Image
+                  key={`vip-badge-img-${idx}`}
+                  source={{ uri: badgeUrl }}
+                  style={styles.vipBadgeSmall}
+                  resizeMode="contain"
+                />
+              )
+            )}
           </View>
         ) : null}
       </View>
@@ -575,29 +625,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "nowrap",
-    gap: ms(4),
+    gap: ms(1),
     marginBottom: ms(3),
     alignSelf: "flex-start",
     zIndex: 20,
     elevation: 20,
   },
   badgeIcon: {
-    width: ms(22),
-    height: ms(22),
+    width: ms(25),
+    height: ms(25),
     borderRadius: ms(4),
   },
   vipIconImg: {
-    width: ms(28),
-    height: ms(28),
-    marginHorizontal: ms(2),
+    width: ms(32),
+    height: ms(32),
+    marginHorizontal: ms(1),
   },
   inlineUsername: {
     color: "rgba(200,190,255,0.95)",
     fontSize: fs(12),
     fontWeight: "700",
+    maxWidth: ms(96),
     textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  vipBadgeSmall: {
+    width: ms(34),
+    height: ms(34),
+    marginHorizontal: 0,
+  },
+  vipBadgesGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 0,
+    marginHorizontal: 0,
   },
   message: {
     color: "rgba(255,255,255,0.96)",

@@ -531,103 +531,101 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.profileInfo}>
           {/* Avatar with Badge Frame */}
           <View style={styles.avatarContainer}>
+            {/* ── Touchable: avatar photo + status ring ── */}
             <TouchableOpacity
               onPress={handleChangeProfilePicture}
               activeOpacity={0.9}
+              style={styles.avatarWrapper}
             >
-              {/* Avatar circle + floating camera button */}
-              <View style={styles.avatarWrapper}>
-                {/* Badge frame — rendered FIRST so photo sits on top, covering inner gap */}
-                {(() => {
-                  const activeBadgeUrl =
-                    profile?.activeBadge?.imageUrl ||
-                    profile?.activeBadge?.image ||
-                    (typeof profile?.activeBadge === "string" ? profile.activeBadge : null);
-                  const vl = vipLevels.find((l) => Number(l.level) === Number(profile?.vipLevel));
-                  const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
-                  const vipFrameUrl =
-                    frameBenefit?.imageUrl ||
-                    frameBenefit?.lottieUrl ||
-                    vl?.profileFrameLottieUrl ||
-                    vl?.badgeImageUrl ||
-                    null;
-                  const frameUrl =
-                    (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
-                    (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
-                  if (!frameUrl) return null;
-                  const isLottie = /\.json($|\?)/i.test(frameUrl) ||
-                    (frameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
-                  // Clip the frame to a perfect circle so decorative frames
-                  // (wings, crowns, etc.) don't render as a rectangle around
-                  // the avatar. `overflow: hidden` + circular borderRadius on
-                  // the wrapper guarantees a round outline regardless of the
-                  // source image's aspect ratio.
-                  return (
-                    <View
-                      pointerEvents="none"
-                      style={styles.badgeFrameOverlay}
-                    >
-                      {isLottie ? (
-                        <LottieView
-                          source={{ uri: frameUrl }}
-                          autoPlay
-                          loop
-                          style={styles.badgeFrameInner}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <Image
-                          source={{ uri: frameUrl }}
-                          style={styles.badgeFrameInner}
-                          resizeMode="cover"
-                        />
-                      )}
-                    </View>
-                  );
-                })()}
-                {/* Dual status ring */}
-                {userStatuses.length > 0 && (
-                  <View style={styles.statusRingOuter} pointerEvents="none">
-                    {userStatuses.length >= 2 ? (
-                      <LinearGradient
-                        colors={[
-                          userStatuses[0]?.bgColor || "#FE2C55",
-                          userStatuses[0]?.bgColor || "#FE2C55",
-                          userStatuses[1]?.bgColor || "#0A84FF",
-                          userStatuses[1]?.bgColor || "#0A84FF",
-                        ]}
-                        locations={[0, 0.49, 0.51, 1]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.statusRingGradient}
-                      />
-                    ) : (
-                      <View style={[styles.statusRingGradient, { backgroundColor: userStatuses[0]?.bgColor || "#FE2C55" }]} />
-                    )}
-                    <View style={styles.statusRingInner} />
-                  </View>
-                )}
-                <View style={styles.avatarCircle}>
-                  {profile?.profileImage ? (
-                    <Image
-                      source={{ uri: profile.profileImage }}
-                      style={styles.avatarImage}
-                      resizeMode="cover"
+              {/* Dual status ring */}
+              {userStatuses.length > 0 && (
+                <View style={styles.statusRingOuter} pointerEvents="none">
+                  {userStatuses.length >= 2 ? (
+                    <LinearGradient
+                      colors={[
+                        userStatuses[0]?.bgColor || "#FE2C55",
+                        userStatuses[0]?.bgColor || "#FE2C55",
+                        userStatuses[1]?.bgColor || "#0A84FF",
+                        userStatuses[1]?.bgColor || "#0A84FF",
+                      ]}
+                      locations={[0, 0.49, 0.51, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.statusRingGradient}
                     />
                   ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <Ionicons name="person" size={48} color="#bbb" />
-                    </View>
+                    <View style={[styles.statusRingGradient, { backgroundColor: userStatuses[0]?.bgColor || "#FE2C55" }]} />
                   )}
+                  <View style={styles.statusRingInner} />
                 </View>
-
-              </View>
-
-              {/* Camera icon — always above frame */}
-              <View style={styles.cameraBtn}>
-                <Ionicons name="camera" size={18} color="#FFF" />
+              )}
+              <View style={styles.avatarCircle}>
+                {profile?.profileImage ? (
+                  <Image
+                    source={{ uri: profile.profileImage }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Ionicons name="person" size={48} color="#bbb" />
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
+
+            {/* ── Camera button — rendered after the frame so it sits on top ── */}
+            <TouchableOpacity
+              onPress={handleChangeProfilePicture}
+              activeOpacity={0.8}
+              style={styles.cameraBtn}
+            >
+              <Ionicons name="camera" size={18} color="#FFF" />
+            </TouchableOpacity>
+
+            {/* ── Profile frame overlay — rendered as a SIBLING of the
+                 TouchableOpacity so it is never clipped by avatarWrapper's
+                 bounds (Android clips absolute children to parent even with
+                 overflow:visible). Fills the full avatarContainer (170×170). ── */}
+            {(() => {
+              const activeBadgeUrl =
+                profile?.activeBadge?.imageUrl ||
+                profile?.activeBadge?.image ||
+                (typeof profile?.activeBadge === "string" ? profile.activeBadge : null);
+              const vl = vipLevels.find((l) => Number(l.level) === Number(profile?.vipLevel));
+              const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
+              const vipFrameUrl =
+                frameBenefit?.imageUrl ||
+                frameBenefit?.lottieUrl ||
+                vl?.profileFrameLottieUrl ||
+                vl?.badgeImageUrl ||
+                null;
+              const frameUrl =
+                (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
+                (typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http") ? vipFrameUrl : null);
+              if (!frameUrl) return null;
+              const isLottie = /\.json($|\?)/i.test(frameUrl) ||
+                (frameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
+              return (
+                <View pointerEvents="none" style={styles.badgeFrameOverlay}>
+                  {isLottie ? (
+                    <LottieView
+                      source={{ uri: frameUrl }}
+                      autoPlay
+                      loop
+                      style={styles.badgeFrameInner}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: frameUrl }}
+                      style={styles.badgeFrameInner}
+                      resizeMode="contain"
+                    />
+                  )}
+                </View>
+              );
+            })()}
           </View>
 
           {/* Name & Username */}
@@ -838,8 +836,8 @@ const makeStyles = (theme) =>
     },
     avatarContainer: {
       position: "relative",
-      width: ms(130),
-      height: ms(130),
+      width: ms(170),
+      height: ms(170),
       marginBottom: ms(8),
       alignSelf: "center",
       alignItems: "center",
@@ -897,8 +895,10 @@ const makeStyles = (theme) =>
     },
     cameraBtn: {
       position: "absolute",
-      bottom: -ms(4),
-      left: -ms(4),
+      // avatarCircle (100px) is centered in avatarContainer (170px),
+      // so circle starts at 35px. Place camera at bottom-left corner of circle.
+      bottom: ms(22),
+      left: ms(28),
       width: ms(34),
       height: ms(34),
       borderRadius: ms(17),
@@ -907,26 +907,24 @@ const makeStyles = (theme) =>
       borderColor: "#FFF",
       justifyContent: "center",
       alignItems: "center",
-      zIndex: 20,
+      zIndex: 30,
+      elevation: 30,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.4,
       shadowRadius: 4,
-      elevation: 20,
     },
     badgeFrameOverlay: {
       position: "absolute",
-      // Keep the frame tight around the ms(100) avatar so decorative wings
-      // or crowns on the source image get cleanly clipped — result is a
-      // perfect circular ring, not an elongated silhouette.
-      width: ms(118),
-      height: ms(118),
-      top: -ms(9),
-      left: -ms(9),
-      borderRadius: ms(59),
-      overflow: "hidden",
+      // Fills the entire avatarContainer (170×170) — the frame is a sibling
+      // of TouchableOpacity so Android never clips it.
+      top: 0,
+      left: 0,
+      width: ms(170),
+      height: ms(170),
       pointerEvents: "none",
-      zIndex: 5,
+      zIndex: 10,
+      elevation: 10,
       backgroundColor: "transparent",
     },
     badgeFrameInner: {

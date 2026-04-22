@@ -509,11 +509,27 @@ const LiveRoomScreen = ({ route, navigation }) => {
           ? shapeRaw
           : "classic";
 
+        // Collect medal/badge assets from benefits so they can appear inline
+        // next to comments (separate from the level icon).
+        const benefitBadgeIcons = (level?.benefits || [])
+          .filter((b) => b?.type === "medal" || b?.type === "badge")
+          .map((b) => b?.imageUrl || b?.lottieUrl || "")
+          .filter(Boolean);
+        const uniqueBenefitBadgeIcons = [...new Set(benefitBadgeIcons)];
+
         acc[levelNumber] = {
           color,
           borderWidth,
           bubbleShape,
-          imageUrl: level?.imageUrl || null,
+          // Main level icon (icon field from "البيانات الأساسية")
+          levelIconUrl: level?.imageUrl || null,
+          // Backward-compatible single icon value used by existing clients.
+          imageUrl:
+            level?.imageUrl ||
+            uniqueBenefitBadgeIcons[0] ||
+            level?.badgeLottieUrl ||
+            level?.badgeImageUrl ||
+            null,
           nameAr: level?.nameAr || null,
           commentTextColor: typeof level?.commentTextColor === "string" && level.commentTextColor.trim()
             ? level.commentTextColor.trim()
@@ -529,6 +545,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
             level?.profileFrameLottieUrl ||
             null,
           badgeImageUrl: level?.badgeImageUrl || null,
+          badgeLottieUrl: level?.badgeLottieUrl || null,
+          vipBadgeIcons: uniqueBenefitBadgeIcons,
         };
 
         return acc;
@@ -558,6 +576,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
           }
           if (leLevel?.badgeImageUrl && commentStyles[lvl]) {
             commentStyles[lvl].badgeImageUrl = leLevel.badgeImageUrl;
+            const current = Array.isArray(commentStyles[lvl].vipBadgeIcons)
+              ? commentStyles[lvl].vipBadgeIcons
+              : [];
+            commentStyles[lvl].vipBadgeIcons = [...new Set([...current, leLevel.badgeImageUrl])];
+          }
+          if (leLevel?.badgeLottieUrl && commentStyles[lvl]) {
+            commentStyles[lvl].badgeLottieUrl = leLevel.badgeLottieUrl;
+            const current = Array.isArray(commentStyles[lvl].vipBadgeIcons)
+              ? commentStyles[lvl].vipBadgeIcons
+              : [];
+            commentStyles[lvl].vipBadgeIcons = [...new Set([...current, leLevel.badgeLottieUrl])];
           }
           if (leLevel?.joinAnimationLottieUrl) {
             joinUrls[lvl] = leLevel.joinAnimationLottieUrl;
