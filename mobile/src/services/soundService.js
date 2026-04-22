@@ -14,7 +14,8 @@
  *   etc.
  */
 
-import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
+import { Audio, InterruptionModeIOS } from "expo-av";
+import { Platform } from "react-native";
 
 // ── sound map ─────────────────────────────────────────────────────────────────
 const SOUNDS = {
@@ -49,21 +50,19 @@ class SoundService {
     this._muted = false;
   }
 
-  /** Audio mode that lets expo-av mix with Agora's RTC audio session */
-  static AUDIO_MODE = {
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-    interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-    shouldDuckAndroid: false,
-    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-    playThroughEarpieceAndroid: false,
-  };
-
   /** Pre-load all sounds. Call once (e.g. from App.js useEffect). */
   async preload() {
     if (this._loaded) return;
     try {
-      await Audio.setAudioModeAsync(SoundService.AUDIO_MODE);
+      // On iOS only: enable playback in silent mode.
+      // On Android: do NOT call setAudioModeAsync — it grabs exclusive audio focus
+      // (AUDIOFOCUS_GAIN) which conflicts with Agora RTC and silences remote speakers.
+      if (Platform.OS === "ios") {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+        });
+      }
       await Promise.all(
         Object.entries(SOUNDS).map(async ([key, src]) => {
           try {
@@ -96,8 +95,9 @@ class SoundService {
       return;
     }
     try {
-      // Re-apply audio mode — Agora may have changed the session after preload
-      await Audio.setAudioModeAsync(SoundService.AUDIO_MODE);
+      // Do NOT call setAudioModeAsync here — it requests Android audio focus
+      // with DuckOthers which silences Agora's RTC audio every time a sound plays.
+      // The mode is already set correctly at preload().
       if (volume !== undefined) await sound.setVolumeAsync(volume);
       await sound.setPositionAsync(0);
       await sound.playAsync();

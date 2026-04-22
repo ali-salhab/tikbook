@@ -497,8 +497,8 @@ const styles = StyleSheet.create({
   },
   viewerBadge: {
     position: "absolute",
-    top: ms(8),
-    left: ms(8),
+    top: ms(10),
+    left: ms(10),
     backgroundColor: "rgba(0,0,0,0.5)",
     flexDirection: "row",
     alignItems: "center",
@@ -506,11 +506,11 @@ const styles = StyleSheet.create({
     paddingVertical: ms(2),
     borderRadius: ms(4),
     gap: ms(4),
-    zIndex: 1,
+    zIndex: 12,
   },
   viewerCount: {
-    color: "#FFF",
-    fontSize: fs(10),
+    color: "#f00808",
+    fontSize: fs(14),
     fontWeight: "bold",
   },
   specialBanner: {

@@ -17,8 +17,8 @@ const API_CONFIGS = {
   PRODUCTION: "https://tikbook-1cdb.onrender.com/api",
 };
 
-// Agora Configuration
-export const AGORA_APP_ID = "12ae8a63ea3b4e46b65714d7f0a3a4f9"; // Agora App ID
+// Agora Configuration — must match the App ID used by the backend token generator
+export const AGORA_APP_ID = "230f860f09764dbbaf85a413912f768c"; // Agora App ID
 
 // Automatically detect and use the appropriate API URL
 import { Platform } from "react-native";

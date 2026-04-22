@@ -272,7 +272,7 @@ const AnimatedGift = ({ gift, sender, onComplete, isCombo = false, containerTop 
   const playSound = async () => {
     if (!gift.soundUrl) return;
     try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      // Do NOT call setAudioModeAsync — it ducks Agora's audio session.
       const { sound } = await Audio.Sound.createAsync({ uri: gift.soundUrl }, { shouldPlay: true, volume: 1.0 });
       soundRef.current = sound;
       sound.setOnPlaybackStatusUpdate((s) => { if (s.didJustFinish) sound.unloadAsync().catch(() => {}); });

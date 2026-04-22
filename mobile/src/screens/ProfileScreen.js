@@ -563,14 +563,14 @@ const ProfileScreen = ({ navigation }) => {
                       autoPlay
                       loop
                       style={styles.badgeFrameOverlay}
-                      resizeMode="contain"
+                      resizeMode="cover"
                       pointerEvents="none"
                     />
                   ) : (
                     <Image
                       source={{ uri: frameUrl }}
                       style={styles.badgeFrameOverlay}
-                      resizeMode="contain"
+                      resizeMode="stretch"
                       pointerEvents="none"
                     />
                   );
@@ -895,10 +895,10 @@ const makeStyles = (theme) =>
     },
     badgeFrameOverlay: {
       position: "absolute",
-      width: ms(135),
-      height: ms(135),
-      top: -ms(17),
-      left: -ms(17),
+      width: ms(160),
+      height: ms(160),
+      top: -ms(30),
+      left: -ms(30),
       pointerEvents: "none",
       zIndex: 5,
     },

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Image, StyleSheet, Text, View } from "react-native";
-import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
+import { Animated, Image, Platform, StyleSheet, Text, View } from "react-native";
+import { Audio, InterruptionModeIOS } from "expo-av";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { LiveRoomUser, VipTierConfig } from "../types";
 
@@ -45,15 +45,16 @@ const JoinAnimation = ({ user, joinAnimationUrl, joinSoundUrl, specialJoinText, 
     // Play join sound
     const soundUrl = joinSoundUrl || user?.joinSoundUrl;
     if (soundUrl) {
-      // Set audio mode to mix with Agora's active session before creating sound
-      Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-        shouldDuckAndroid: false,
-        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-        playThroughEarpieceAndroid: false,
-      }).catch(() => {});
+      // Avoid changing audio mode on Android to prevent conflicts with Agora.
+      if (Platform.OS === "ios") {
+        Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: false,
+        }).catch(() => {});
+      }
       Audio.Sound.createAsync({ uri: soundUrl }, { shouldPlay: true, volume: 1.0 })
         .then(({ sound }) => {
           soundRef.current = sound;

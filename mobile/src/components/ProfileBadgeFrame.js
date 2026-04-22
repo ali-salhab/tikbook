@@ -141,7 +141,7 @@ const ProfileBadgeFrame = ({ profileImage, badgeImage, size = 100, showSparks = 
           <Image
             source={{ uri: badgeImage }}
             style={{ position: "absolute", width: badgeSize, height: badgeSize, zIndex: 1 }}
-            resizeMode="contain"
+            resizeMode="fill"
           />
         )
       )}

@@ -1156,7 +1156,7 @@ exports.getAgoraToken = async (req, res) => {
       privilegeExpiredTs,
     );
 
-    res.json({ token });
+    res.json({ token, appId: APP_ID });
   } catch (error) {
     console.error("Error generating Agora token:", error);
     res.status(500).json({ message: "Server error", error: error.message });

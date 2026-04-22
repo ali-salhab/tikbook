@@ -121,7 +121,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
           <ProfileBadgeFrame
             profileImage={!imgError ? imageUri : null}
             badgeImage={resolvedBadgeUrl}
-            size={ms(36)}
+            size={ms(40)}
           />
         ) : imageUri && !imgError ? (
           <Image
@@ -157,13 +157,10 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
                 {isVip ? (
                   <>
                     {vipIconUrl ? (
-                      <View style={[ { borderColor: vipColor || "#FFD700", }]}>
-                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(35), height: ms(35) }} resizeMode="contain" />
-                      </View>
+                        <Image source={{ uri: vipIconUrl }} style={{ width: ms(35),marginHorizontal:ms(2), height: ms(35) }} resizeMode="contain" />
+                     
                     ) : null}
-                    <View style={[styles.vipChip, { borderColor: vipColor || "#FFD700", borderWidth: 1, backgroundColor: vipColor ? `${vipColor}22` : "rgba(249,218,40,0.15)" }]}>
-                      <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>VIP{vipLevel}</Text>
-                    </View>
+                
                   </>
                 ) : null}
               </View>
@@ -473,7 +470,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   vipChip: {
-    paddingHorizontal: ms(5),
+    paddingHorizontal: ms(2),
     paddingVertical: ms(2),
     borderRadius: ms(8),
     flexDirection: "row",

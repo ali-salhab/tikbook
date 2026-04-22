@@ -300,6 +300,16 @@ io.on("connection", (socket) => {
     socket.to(`liveroom:${roomId}`).emit("liveroom:agora_uid", { userId, agoraUid });
   });
 
+  // A client can request all current participants to re-broadcast their Agora UID.
+  // This helps late joiners rebuild uid->userId mapping for speaking indicators/audio subscription.
+  socket.on("liveroom:request_agora_uid_sync", ({ roomId, requesterUserId }) => {
+    socket.to(`liveroom:${roomId}`).emit("liveroom:request_agora_uid_sync", {
+      roomId,
+      requesterUserId,
+      timestamp: new Date(),
+    });
+  });
+
   // Host approves a seat request
   socket.on("liveroom:seat_request_approved", ({ roomId, userId, approvedBy }) => {
     io.to(`liveroom:${roomId}`).emit("liveroom:seat_request_approved", {

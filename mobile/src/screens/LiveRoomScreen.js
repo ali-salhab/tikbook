@@ -38,6 +38,8 @@ import {
   ChannelProfileType,
   ClientRoleType,
   AudienceLatencyLevelType,
+  AudioScenarioType,
+  AudioProfileType,
 } from "react-native-agora";
 import { PermissionsAndroid } from "react-native";
 
@@ -160,7 +162,7 @@ const HostAvatarFrame = React.memo(({ imageUrl, size, isSpeaking, showOnline }) 
         borderColor: isSpeaking ? "#A855F7" : "rgba(120,40,200,0.35)",
       }}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} resizeMode="cover" />
+          <Image source={{ uri: imageUrl }} style={{ width: size, height: size }} resizeMode="fill" />
         ) : (
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
             <Ionicons name="person" size={size * 0.38} color="rgba(255,255,255,0.4)" />
@@ -168,17 +170,7 @@ const HostAvatarFrame = React.memo(({ imageUrl, size, isSpeaking, showOnline }) 
         )}
       </View>
 
-      {/* online dot */}
-      {showOnline && (
-        <View style={{
-          position: "absolute",
-          bottom: ms(18), right: ms(16),
-          width: ms(14), height: ms(14),
-          borderRadius: ms(7),
-          backgroundColor: "#00BB55",
-          borderWidth: 2, borderColor: "#FFF",
-        }} />
-      )}
+  
     </View>
   );
 });
@@ -204,6 +196,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [micVolume, setMicVolume] = useState(100);
   const [masterVolume, setMasterVolume] = useState(100);
+  const [playbackOnSpeaker, setPlaybackOnSpeaker] = useState(true);
   const [showAudioPanel, setShowAudioPanel] = useState(false);
 
   // ── Music ────────────────────────────────────────────────────────────────────
@@ -270,6 +263,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const agoraUidMapRef = useRef({}); // agoraUid (number) → userId (string)
   const localAgoraUidRef = useRef(null);
   const isMutedRef = useRef(true); // mirror of isMuted state for Agora callbacks
+  const playbackOnSpeakerRef = useRef(true);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const socketRef = useRef(null);
@@ -294,6 +288,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
       cleanup();
     };
   }, []);
+
+  useEffect(() => {
+    playbackOnSpeakerRef.current = playbackOnSpeaker;
+  }, [playbackOnSpeaker]);
 
   // Reload VIP level styles each time the screen is focused so admin changes are always fresh.
   // Also reconnect the socket if it was dropped while the screen was in the background.
@@ -604,9 +602,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   const setupRoom = async () => {
     if (Platform.OS === "android") {
-      await PermissionsAndroid.requestMultiple([
+      const granted = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
       ]);
+      if (granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.warn("[Agora] RECORD_AUDIO permission denied");
+      }
     }
     await joinRoomBackend();
   };
@@ -635,12 +636,48 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const initAgora = async (channelName, isHostOrSpeaker) => {
     try {
       if (!AGORA_APP_ID) return;
+
+      // ── Fetch token FIRST so we also get the server's App ID ─────────────────
+      // This guarantees the mobile initialises with the exact same App ID that
+      // signed the token — mismatches cause silent join failures.
+      let agoraToken = null;
+      let resolvedAppId = AGORA_APP_ID; // fallback to hardcoded value
+      try {
+        const tokenRes = await axios.post(
+          `${BASE_URL}/live-rooms/agora-token`,
+          { channelName, role: "publisher" },
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        agoraToken = tokenRes.data.token;
+        if (tokenRes.data.appId) resolvedAppId = tokenRes.data.appId;
+      } catch (tokenErr) {
+        console.warn("[Agora] token fetch failed:", tokenErr?.message);
+      }
+
+      // Always release any previous engine before creating a new one
+      if (agoraEngineRef.current) {
+        try {
+          agoraEngineRef.current.leaveChannel();
+          agoraEngineRef.current.release();
+        } catch (_) {}
+        agoraEngineRef.current = null;
+      }
       const engine = createAgoraRtcEngine();
       agoraEngineRef.current = engine;
-      engine.initialize({ appId: AGORA_APP_ID });
+      engine.initialize({ appId: resolvedAppId });
+      // init th
       engine.enableAudio();
-      // Route audio through speaker (not earpiece) — must be called before joinChannel
-      engine.setEnableSpeakerphone(true);
+      try {
+        engine.setAudioProfile(
+          AudioProfileType.AudioProfileMusicHighQuality,
+          AudioScenarioType.AudioScenarioLiveBroadcasting,
+        );
+      } catch (audioProfileErr) {
+        console.warn("[Agora] setAudioProfile failed:", audioProfileErr?.message);
+      }
+      // Set DEFAULT route to speaker BEFORE joining (different from setEnableSpeakerphone)
+      engine.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+      engine.setEnableSpeakerphone(playbackOnSpeaker);
       engine.enableAudioVolumeIndication(1000, 3, false);
       engine.setChannelProfile(
         ChannelProfileType.ChannelProfileLiveBroadcasting,
@@ -653,6 +690,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
           ? undefined
           : { audienceLatencyLevel: AudienceLatencyLevelType.AudienceLatencyLevelLowLatency },
       );
+      engine.addListener("onError", (errCode) => {
+        console.warn("[Agora] error code:", errCode);
+      });
       engine.addListener("onJoinChannelSuccess", (connection) => {
         const uid = connection?.localUid ?? 0;
         localAgoraUidRef.current = uid;
@@ -664,17 +704,39 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
         // Ensure we receive all remote audio — must be called after join completes
         engine.muteAllRemoteAudioStreams(false);
-        // Re-assert speakerphone after join (Agora may reset routing on join)
-        engine.setEnableSpeakerphone(true);
+        // Re-assert speakerphone routing after join (Agora can reset it on join)
+        engine.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+        engine.setEnableSpeakerphone(playbackOnSpeaker);
+        // Boost playback volume (100 = standard max)
+        engine.adjustPlaybackSignalVolume(100);
         setJoinedAgora(true);
+      });
+      // Token about to expire — fetch a fresh one and renew
+      engine.addListener("onTokenPrivilegeWillExpire", async (connection, token) => {
+        try {
+          const tokenRes = await axios.post(
+            `${BASE_URL}/live-rooms/agora-token`,
+            { channelName, role: "publisher" },
+            { headers: { Authorization: `Bearer ${userToken}` } },
+          );
+          engine.renewToken(tokenRes.data.token);
+        } catch (_) {}
+      });
+      // Remote audio state changed — re-subscribe if stream was paused/failed
+      engine.addListener("onRemoteAudioStateChanged", (connection, remoteUid, state, reason) => {
+        // state 0 = stopped, reason 5 = remote muted — re-subscribe when it becomes active again
+        if (state === 2 /* Decoding */) {
+          engine.muteRemoteAudioStream(remoteUid, false);
+        }
       });
       // Subscribe to each remote broadcaster's audio as they join the channel
       engine.addListener("onUserJoined", (connection, remoteUid) => {
         engine.muteRemoteAudioStream(remoteUid, false);
-        engine.setEnableSpeakerphone(true);
+        engine.setEnableSpeakerphone(playbackOnSpeakerRef.current);
       });
+      //  here my soul // 
       engine.addListener("onAudioVolumeIndication", (connection, speakers) => {
-        const THRESHOLD = 30;
+        const THRESHOLD = 8;
         const nowSpeaking = new Set();
         (speakers || []).forEach(({ uid, volume }) => {
           if (volume >= THRESHOLD) {
@@ -689,21 +751,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
         });
         setSpeakingUserIds(nowSpeaking);
       });
-      // Fetch a signed Agora token from the backend
-      let agoraToken = null;
-      try {
-        const tokenRes = await axios.post(
-          `${BASE_URL}/live-rooms/agora-token`,
-          { channelName, role: isHostOrSpeaker ? "publisher" : "subscriber" },
-          { headers: { Authorization: `Bearer ${userToken}` } },
-        );
-        agoraToken = tokenRes.data.token;
-      } catch (tokenErr) {
-        console.warn(
-          "Could not fetch Agora token, joining without token:",
-          tokenErr?.message,
-        );
-      }
+      // Always request a publisher token — already fetched at the top of initAgora.
+      // Actual publishing is still controlled by muteLocalAudioStream + publishMicrophoneTrack.
       engine.joinChannel(agoraToken, channelName, 0, {
         // Auto-subscribe to remote audio so audience hears speakers immediately
         autoSubscribeAudio: true,
@@ -732,10 +781,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
     );
     if (isBroadcaster) {
       agoraEngineRef.current.muteLocalAudioStream(isMuted);
+      agoraEngineRef.current.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+      agoraEngineRef.current.setEnableSpeakerphone(playbackOnSpeaker);
     } else {
       // After demoting to audience, ensure we can still hear all remote broadcasters
       agoraEngineRef.current.muteAllRemoteAudioStreams(false);
-      agoraEngineRef.current.setEnableSpeakerphone(true);
+      agoraEngineRef.current.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+      agoraEngineRef.current.setEnableSpeakerphone(playbackOnSpeaker);
+      agoraEngineRef.current.adjustPlaybackSignalVolume(100);
     }
   };
 
@@ -749,6 +802,52 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const v = Math.round(vol);
     setMasterVolume(v);
     agoraEngineRef.current?.adjustPlaybackSignalVolume(v);
+  };
+
+  const ensureSpeakerAudioSubscriptions = (roomData = room) => {
+    const engine = agoraEngineRef.current;
+    if (!engine) return;
+    const speakerIds = new Set(
+      (roomData?.speakers || []).map((s) => s.user?._id).filter(Boolean),
+    );
+    Object.entries(agoraUidMapRef.current || {}).forEach(([agoraUid, mappedUserId]) => {
+      if (!speakerIds.has(mappedUserId)) return;
+      if (mappedUserId === userInfo?._id) return;
+      engine.muteRemoteAudioStream(Number(agoraUid), false);
+    });
+  };
+
+  const handleTogglePlaybackRoute = () => {
+    const next = !playbackOnSpeaker;
+    setPlaybackOnSpeaker(next);
+    if (!agoraEngineRef.current) return;
+    try {
+      agoraEngineRef.current.setDefaultAudioRouteToSpeakerphone(next);
+      agoraEngineRef.current.setEnableSpeakerphone(next);
+      agoraEngineRef.current.muteAllRemoteAudioStreams(false);
+      agoraEngineRef.current.adjustPlaybackSignalVolume(Math.round(masterVolume));
+    } catch (_) {}
+  };
+
+  const handleAudioRecovery = async () => {
+    const engine = agoraEngineRef.current;
+    if (!engine) {
+      Alert.alert("تنبيه", "محرك الصوت غير جاهز بعد");
+      return;
+    }
+    try {
+      engine.enableAudio();
+      engine.muteAllRemoteAudioStreams(false);
+      engine.setDefaultAudioRouteToSpeakerphone(playbackOnSpeaker);
+      engine.setEnableSpeakerphone(playbackOnSpeaker);
+      engine.adjustPlaybackSignalVolume(Math.round(masterVolume));
+
+      ensureSpeakerAudioSubscriptions(room);
+      await fetchRoomData();
+      Alert.alert("تم", "تمت إعادة ضبط مسار الصوت واشتراك المتحدثين");
+    } catch (_) {
+      Alert.alert("خطأ", "تعذر إصلاح الصوت الآن");
+    }
   };
 
   // ─── SOCKET ──────────────────────────────────────────────────────────────────
@@ -795,18 +894,38 @@ const LiveRoomScreen = ({ route, navigation }) => {
       // they just switched from audience to broadcaster (role change doesn't
       // re-trigger onUserJoined so we must do it here)
       agoraEngineRef.current?.muteRemoteAudioStream(agoraUid, false);
-      agoraEngineRef.current?.setEnableSpeakerphone(true);
+      agoraEngineRef.current?.setEnableSpeakerphone(playbackOnSpeakerRef.current);
     });
     socket.on("liveroom:speaker_added", ({ user }) => {
       fetchRoomData();
       if (user._id === userInfo._id) {
         Alert.alert("✅", "أصبحت متحدثاً الآن!");
-        // Promote to broadcaster and unmute — do NOT use updateAgoraRole here
-        // because it reads the stale isMuted closure value and would re-mute us.
-        agoraEngineRef.current?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-        agoraEngineRef.current?.muteLocalAudioStream(false);
-        setIsMuted(false);
-        isMutedRef.current = false;
+        // Promote to broadcaster: switch role, enable mic publishing, and update channel options.
+        // Must also update channel media options so Agora starts accepting our audio stream.
+        const doPromote = async () => {
+          try {
+            // Fetch a fresh publisher token (subscriber token cannot publish)
+            let newToken = null;
+            try {
+              const tokenRes = await axios.post(
+                `${BASE_URL}/live-rooms/agora-token`,
+                { channelName: room?.agoraChannelName || `room_${roomId}`, role: "publisher" },
+                { headers: { Authorization: `Bearer ${userToken}` } },
+              );
+              newToken = tokenRes.data.token;
+            } catch (_) {}
+            if (newToken) agoraEngineRef.current?.renewToken(newToken);
+          } catch (_) {}
+          agoraEngineRef.current?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+          agoraEngineRef.current?.updateChannelMediaOptions({
+            publishMicrophoneTrack: true,
+            autoSubscribeAudio: true,
+          });
+          agoraEngineRef.current?.muteLocalAudioStream(false);
+          setIsMuted(false);
+          isMutedRef.current = false;
+        };
+        doPromote();
         // Notify so user can return from home screen
         showLiveNotification(roomId, room?.title || room?.name || null);
         // Re-broadcast our Agora UID now that we're a broadcaster so others can map us
@@ -820,7 +939,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       }
       // Ensure all participants (including host) can hear the new speaker
       agoraEngineRef.current?.muteAllRemoteAudioStreams(false);
-      agoraEngineRef.current?.setEnableSpeakerphone(true);
+      agoraEngineRef.current?.setEnableSpeakerphone(playbackOnSpeakerRef.current);
     });
     socket.on("liveroom:speaker_removed", ({ userId }) => {
       fetchRoomData();
@@ -1416,7 +1535,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (sound) {
         await sound.unloadAsync();
       }
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      if (Platform.OS === "ios") {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      }
       const { sound: ns } = await Audio.Sound.createAsync(
         { uri: asset.uri },
         { shouldPlay: true, volume: musicVolume },
@@ -1562,20 +1683,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
             isSpeaking={isHostSpeaking}
             showOnline={joinedAgora}
           />
-          {/* PNG / Lottie profile frame overlay — centered over the avatar */}
+          {/* PNG / Lottie profile frame overlay — larger than avatar to show decorations */}
           {hostFrameUrl ? (
             (/\.json($|\?)/i.test(hostFrameUrl) || (hostFrameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(hostFrameUrl))) ? null : (
               <Image
                 source={{ uri: hostFrameUrl }}
                 style={{
                   position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
+                  top: -ms(20),
+                  left: -ms(20),
+                  width: HOST_SIZE + ms(70),
+                  height: HOST_SIZE + ms(70),
                   zIndex: 2,
                 }}
-                resizeMode="contain"
+                resizeMode="stretch"
                 pointerEvents="none"
               />
             )
@@ -1587,14 +1708,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
         </View>
         {/* Host name */}
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
-        {/* Role + VIP badge row */}
-        <View style={styles.hostBadgeRow}>
-          <View style={styles.hostRoleRow}>
-            <MaterialIcons name="verified" size={13} color="#00F2EA" />
-           
-          </View>
-          {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="small" imageUrl={hostVipStyle?.imageUrl || hostVipStyle?.badgeImageUrl || undefined} />}
-        </View>
+                              {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="large" imageUrl={hostVipStyle?.imageUrl || hostVipStyle?.badgeImageUrl || undefined} />}
+
+     
       </View>
     );
   };
@@ -2371,6 +2487,22 @@ const LiveRoomScreen = ({ route, navigation }) => {
             {isMuted ? "تفعيل الميك" : "كتم الميك"}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.muteBtn} onPress={handleTogglePlaybackRoute}>
+          <Ionicons
+            name={playbackOnSpeaker ? "volume-high" : "phone-portrait-outline"}
+            size={20}
+            color="#FFF"
+          />
+          <Text style={styles.muteBtnText}>
+            {playbackOnSpeaker ? "الإخراج: سماعة خارجية" : "الإخراج: سماعة المكالمات"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.muteBtn} onPress={handleAudioRecovery}>
+          <Ionicons name="refresh-circle-outline" size={20} color="#FFF" />
+          <Text style={styles.muteBtnText}>إصلاح الصوت (عدم سماع المتحدثين)</Text>
+        </TouchableOpacity>
       </View>
     </Modal>
   );
@@ -2896,7 +3028,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 }
         }
         style={StyleSheet.absoluteFill}
-        blurRadius={5}
+        blurRadius={3}
       />
       <LinearGradient
         colors={["rgba(8,0,22,0.28)", "rgba(8,0,22,0.52)", "rgba(0,0,0,0.88)"]}
@@ -3144,7 +3276,7 @@ const styles = StyleSheet.create({
   hostSection: {
     alignItems: "center",
     paddingTop: ms(4),
-    paddingBottom: ms(2),
+    paddingBottom: ms(1),
     minHeight: ms(160),
   },
   roomTitleRow: {
@@ -3178,7 +3310,7 @@ const styles = StyleSheet.create({
   },
   hostAvatarWrap: { position: "relative", alignItems: "center", justifyContent: "center" },
   hostSoundWaveRow: {
-    marginTop: ms(2),
+    marginTop: ms(1),
     height: ms(16),
     alignItems: "center",
     justifyContent: "center",
@@ -3193,7 +3325,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "700",
     fontSize: fs(13),
-    marginTop: ms(3),
+    marginTop: ms(1),
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: ms(3),
@@ -3965,3 +4097,6 @@ const styles = StyleSheet.create({
 });
 
 export default LiveRoomScreen;
+
+
+//  in God we Trust .... 
