@@ -89,16 +89,73 @@ app.get("/", (req, res) => {
 // Per-room message history — last 50 messages, cleared when room ends
 const roomMessageHistory = new Map();
 
+// ── Global presence tracking ──────────────────────────────────────────────
+// userId  -> Set<socketId>  (one user may have multiple active devices)
+// socketId -> userId        (reverse index for O(1) disconnect cleanup)
+const userSocketMap = new Map();
+const socketUserMap = new Map();
+const UserModel = require("./models/User");
+
+const broadcastPresence = (userId, isOnline, lastSeen) => {
+  io.emit("user:presence", {
+    userId: String(userId),
+    isOnline,
+    lastSeen: lastSeen || new Date(),
+  });
+};
+
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
   // Scalable live room engagement handlers (chat, gifts, presence).
   registerLiveEngagementHandlers(io, socket);
 
-  // Join user room
-  socket.on("join", (userId) => {
-    socket.join(userId);
+  // Join user room + mark online.
+  socket.on("join", async (userId) => {
+    if (!userId) return;
+    socket.join(String(userId));
+    socketUserMap.set(socket.id, String(userId));
+    let set = userSocketMap.get(String(userId));
+    if (!set) {
+      set = new Set();
+      userSocketMap.set(String(userId), set);
+    }
+    const wasOffline = set.size === 0;
+    set.add(socket.id);
+
+    // Only hit the DB + broadcast when the user transitions offline->online.
+    if (wasOffline) {
+      try {
+        const now = new Date();
+        await UserModel.findByIdAndUpdate(userId, {
+          isOnline: true,
+          lastSeen: now,
+        });
+        broadcastPresence(userId, true, now);
+      } catch (err) {
+        console.error("presence online update failed:", err.message);
+      }
+    }
     console.log(`User ${userId} joined room`);
+  });
+
+  // Client asks for the current presence of a specific user (used by ChatScreen
+  // on mount to avoid waiting for the next broadcast).
+  socket.on("presence:query", async ({ userId } = {}, ack) => {
+    if (!userId) return;
+    try {
+      const online = userSocketMap.has(String(userId));
+      let lastSeen = null;
+      if (!online) {
+        const u = await UserModel.findById(userId).select("lastSeen").lean();
+        lastSeen = u?.lastSeen || null;
+      }
+      const payload = { userId: String(userId), isOnline: online, lastSeen };
+      if (typeof ack === "function") ack(payload);
+      socket.emit("user:presence", payload);
+    } catch (err) {
+      if (typeof ack === "function") ack({ userId, isOnline: false, lastSeen: null });
+    }
   });
 
   // Messaging
@@ -442,8 +499,27 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("User disconnected:", socket.id);
+    const userId = socketUserMap.get(socket.id);
+    if (!userId) return;
+    socketUserMap.delete(socket.id);
+    const set = userSocketMap.get(userId);
+    if (!set) return;
+    set.delete(socket.id);
+    if (set.size === 0) {
+      userSocketMap.delete(userId);
+      try {
+        const now = new Date();
+        await UserModel.findByIdAndUpdate(userId, {
+          isOnline: false,
+          lastSeen: now,
+        });
+        broadcastPresence(userId, false, now);
+      } catch (err) {
+        console.error("presence offline update failed:", err.message);
+      }
+    }
   });
 });
 

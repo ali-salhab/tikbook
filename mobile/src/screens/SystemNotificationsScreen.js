@@ -291,6 +291,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fs(17),
     fontWeight: "bold",
+    color: "#FFF",
   },
   tabsContainer: {
     backgroundColor: "transparent",
@@ -332,7 +333,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: ms(12),
-    color: "#999",
+    color: "#B8B0D8",
+    fontSize: fs(14),
   },
   card: {
     backgroundColor: "#151228",
@@ -364,13 +366,14 @@ const styles = StyleSheet.create({
     width: ms(24),
     height: ms(24),
     borderRadius: ms(12),
-    backgroundColor: "#F1F1F1",
+    backgroundColor: "#2A2550",
     justifyContent: "center",
     alignItems: "center",
   },
   sourceText: {
-    color: "#666",
+    color: "#B8B0D8",
     fontSize: fs(13),
+    fontWeight: "600",
   },
   unreadBadge: {
     width: ms(8),
@@ -392,26 +395,27 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: ms(8),
     textAlign: "left",
+    color: "#FFF",
   },
   unreadTitle: {
-    color: "#007bff",
+    color: "#25F4EE",
   },
   cardMessage: {
     fontSize: fs(14),
-    color: "#333",
+    color: "#E8E5FF",
     marginBottom: ms(8),
     textAlign: "left",
     lineHeight: ms(20),
   },
   cardDescription: {
     fontSize: fs(13),
-    color: "#666",
+    color: "#B8B0D8",
     marginBottom: ms(8),
     textAlign: "left",
   },
   moreText: {
     fontSize: fs(13),
-    color: "#666",
+    color: "#9B94BD",
     textAlign: "left",
   },
 });

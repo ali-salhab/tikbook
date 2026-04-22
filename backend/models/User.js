@@ -116,6 +116,13 @@ const userSchema = mongoose.Schema(
     level: { type: Number, default: 0, min: 0 },
     totalSpent: { type: Number, default: 0, min: 0 },
     totalRecharged: { type: Number, default: 0, min: 0 },
+    // ── Presence / online status ──────────────────────────────────────────────
+    // Tracked by the socket layer. `isOnline` flips whenever the user connects
+    // or disconnects; `lastSeen` is refreshed on disconnect (and on every
+    // successful `join` event) so the chat screen can show "Active now" or
+    // "Last seen X".
+    isOnline: { type: Boolean, default: false, index: true },
+    lastSeen: { type: Date, default: Date.now },
   },
   {
     timestamps: true,

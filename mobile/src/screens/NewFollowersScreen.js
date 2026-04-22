@@ -425,8 +425,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: fs(16),
-    color: "#999",
+    color: "#B8B0D8",
     marginTop: ms(12),
+    fontWeight: "600",
   },
   header: {
     flexDirection: "row",
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: ms(16),
     borderBottomWidth: 0.5,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: "#2A2550",
     paddingTop: ms(12),
   },
   headerTitle: {
@@ -442,6 +443,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     flex: 1,
+    color: "#FFF",
   },
   listContent: {
     padding: ms(16),
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
     width: ms(56),
     height: ms(56),
     borderRadius: ms(28),
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#1A1630",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -495,14 +497,15 @@ const styles = StyleSheet.create({
     fontSize: fs(15),
     marginBottom: ms(4),
     textAlign: "right",
+    color: "#FFF",
   },
   actionText: {
-    color: "#666",
+    color: "#B8B0D8",
     fontSize: fs(13),
     textAlign: "right",
   },
   time: {
-    color: "#999",
+    color: "#7C73A6",
   },
   followButton: {
     backgroundColor: "#FE2C55",
@@ -533,7 +536,7 @@ const styles = StyleSheet.create({
   suggestedTitle: {
     fontSize: fs(15),
     fontWeight: "bold",
-    color: "#666",
+    color: "#E8E5FF",
     textAlign: "right",
   },
   suggestedList: {
@@ -542,10 +545,12 @@ const styles = StyleSheet.create({
   },
   suggestedCard: {
     width: ms(120),
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#151228",
     borderRadius: ms(12),
     padding: ms(12),
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2A2550",
   },
   suggestedAvatar: {
     width: ms(56),
@@ -554,7 +559,7 @@ const styles = StyleSheet.create({
     marginBottom: ms(8),
   },
   suggestedAvatarPlaceholder: {
-    backgroundColor: "#EAEAEA",
+    backgroundColor: "#1A1630",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -568,13 +573,13 @@ const styles = StyleSheet.create({
   suggestedName: {
     fontWeight: "700",
     fontSize: fs(13),
-    color: "#111",
+    color: "#FFF",
     textAlign: "center",
     marginBottom: ms(2),
   },
   suggestedReason: {
     fontSize: fs(11),
-    color: "#777",
+    color: "#9B94BD",
     marginTop: ms(2),
     textAlign: "center",
     marginBottom: ms(8),
@@ -587,9 +592,9 @@ const styles = StyleSheet.create({
     marginTop: ms(4),
   },
   suggestedFollowingBtn: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#151228",
     borderWidth: 1,
-    borderColor: "#DDD",
+    borderColor: "#2A2550",
   },
   suggestedFollowText: {
     color: "#FFF",
@@ -597,7 +602,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   suggestedFollowingText: {
-    color: "#333",
+    color: "#B8B0D8",
   },
 });
 

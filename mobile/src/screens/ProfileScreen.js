@@ -557,22 +557,32 @@ const ProfileScreen = ({ navigation }) => {
                   if (!frameUrl) return null;
                   const isLottie = /\.json($|\?)/i.test(frameUrl) ||
                     (frameUrl.includes("/raw/upload/") && !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
-                  return isLottie ? (
-                    <LottieView
-                      source={{ uri: frameUrl }}
-                      autoPlay
-                      loop
-                      style={styles.badgeFrameOverlay}
-                      resizeMode="cover"
+                  // Clip the frame to a perfect circle so decorative frames
+                  // (wings, crowns, etc.) don't render as a rectangle around
+                  // the avatar. `overflow: hidden` + circular borderRadius on
+                  // the wrapper guarantees a round outline regardless of the
+                  // source image's aspect ratio.
+                  return (
+                    <View
                       pointerEvents="none"
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: frameUrl }}
                       style={styles.badgeFrameOverlay}
-                      resizeMode="stretch"
-                      pointerEvents="none"
-                    />
+                    >
+                      {isLottie ? (
+                        <LottieView
+                          source={{ uri: frameUrl }}
+                          autoPlay
+                          loop
+                          style={styles.badgeFrameInner}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Image
+                          source={{ uri: frameUrl }}
+                          style={styles.badgeFrameInner}
+                          resizeMode="cover"
+                        />
+                      )}
+                    </View>
                   );
                 })()}
                 {/* Dual status ring */}
@@ -685,27 +695,8 @@ const ProfileScreen = ({ navigation }) => {
           {/* Bio */}
           <Text style={styles.bio}>{profile?.bio || "لا توجد نبذة بعد"}</Text>
 
-          {/* Action Buttons */}
+          {/* Action Buttons — compact pill design */}
           <View style={styles.actionButtons}>
-            {/* Edit */}
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => navigation.navigate("EditProfile", { profile })}
-              activeOpacity={0.82}
-            >
-              <LinearGradient
-                colors={theme.id === "dark" ? ["#232323", "#2E2E2E"] : ["#F5F5F5", "#E8E8E8"]}
-                style={styles.actionBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={[styles.actionBtnIcon, { backgroundColor: theme.id === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}>
-                  <Feather name="edit-2" size={16} color={theme.text} />
-                </View>
-                <Text style={[styles.actionBtnLabel, { color: theme.text }]}>تعديل</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
             {/* Levels */}
             <TouchableOpacity
               style={styles.actionBtn}
@@ -713,29 +704,59 @@ const ProfileScreen = ({ navigation }) => {
               activeOpacity={0.82}
             >
               <LinearGradient
-                colors={["#0D1B3E", "#1A3A7A", "#0D1B3E"]}
+                colors={["#1E3A8A", "#0B1E4A"]}
                 style={styles.actionBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 {(() => {
-                    const vipLvl = profile?.vipLevel || 0;
-                    const vl = vipLevels.find((l) => l.level === vipLvl);
-                    return (
-                      <LevelBadgeIcon
-                        level={vipLvl || 1}
-                        size="medium"
-                        imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
-                        lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
-                        color={vl?.color || "#60A5FA"}
-                      />
-                    );
-                  })()}
-                <Text style={[styles.actionBtnLabel, { color: "#89C4FF" }]}>المستويات</Text>
+                  const vipLvl = profile?.vipLevel || 0;
+                  const vl = vipLevels.find((l) => l.level === vipLvl);
+                  const badgeUrl = vl?.badgeImageUrl || vl?.imageUrl || null;
+                  const badgeLottie = !badgeUrl ? (vl?.badgeLottieUrl || null) : null;
+                  return (
+                    <View style={styles.actionBtnIconSmall}>
+                      {badgeUrl ? (
+                        <Image
+                          source={{ uri: badgeUrl }}
+                          style={styles.actionBtnIconImg}
+                          resizeMode="contain"
+                        />
+                      ) : badgeLottie ? (
+                        <LottieView
+                          source={{ uri: badgeLottie }}
+                          autoPlay
+                          loop
+                          style={styles.actionBtnIconImg}
+                        />
+                      ) : (
+                        <Ionicons name="ribbon" size={13} color="#FFD700" />
+                      )}
+                    </View>
+                  );
+                })()}
+                <Text style={[styles.actionBtnLabel, { color: "#DCE9FF" }]}>المستويات</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* END Badges/Frames removed */}
+            {/* Edit */}
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate("EditProfile", { profile })}
+              activeOpacity={0.82}
+            >
+              <LinearGradient
+                colors={theme.id === "dark" ? ["#2A2A2E", "#1E1E22"] : ["#F2F2F2", "#E4E4E7"]}
+                style={styles.actionBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={[styles.actionBtnIconSmall, { backgroundColor: theme.id === "dark" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)" }]}>
+                  <Feather name="edit-2" size={11} color={theme.text} />
+                </View>
+                <Text style={[styles.actionBtnLabel, { color: theme.text }]}>تعديل</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -895,12 +916,22 @@ const makeStyles = (theme) =>
     },
     badgeFrameOverlay: {
       position: "absolute",
-      width: ms(160),
-      height: ms(160),
-      top: -ms(30),
-      left: -ms(30),
+      // Keep the frame tight around the ms(100) avatar so decorative wings
+      // or crowns on the source image get cleanly clipped — result is a
+      // perfect circular ring, not an elongated silhouette.
+      width: ms(118),
+      height: ms(118),
+      top: -ms(9),
+      left: -ms(9),
+      borderRadius: ms(59),
+      overflow: "hidden",
       pointerEvents: "none",
       zIndex: 5,
+      backgroundColor: "transparent",
+    },
+    badgeFrameInner: {
+      width: "100%",
+      height: "100%",
     },
     badgeShopButton: {
       position: "absolute",
@@ -989,40 +1020,49 @@ const makeStyles = (theme) =>
     actionButtons: {
       flexDirection: "row",
       gap: ms(8),
+      marginTop: ms(2),
       marginBottom: ms(10),
       justifyContent: "center",
-      paddingHorizontal: ms(16),
+      alignItems: "center",
+      paddingHorizontal: ms(28),
     },
     actionBtn: {
-      flex: 1,
-      borderRadius: ms(14),
+      borderRadius: ms(999),
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.22,
-      shadowRadius: 6,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 2,
     },
     actionBtnGradient: {
-      flexDirection: "column",
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: ms(12),
-      paddingHorizontal: ms(8),
-      borderRadius: ms(14),
+      paddingVertical: ms(5),
+      paddingHorizontal: ms(11),
+      gap: ms(5),
+      borderRadius: ms(999),
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+      overflow: "hidden",
+      minHeight: ms(28),
+    },
+    actionBtnIconSmall: {
+      width: ms(18),
+      height: ms(18),
+      borderRadius: ms(9),
+      alignItems: "center",
+      justifyContent: "center",
       overflow: "hidden",
     },
-    actionBtnIcon: {
-      width: ms(36),
-      height: ms(36),
-      borderRadius: ms(18),
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: ms(6),
+    actionBtnIconImg: {
+      width: ms(18),
+      height: ms(18),
     },
     actionBtnLabel: {
       fontSize: fs(11),
       fontWeight: "700",
-      letterSpacing: 0.3,
+      letterSpacing: 0.2,
     },
     verificationButton: {
       flexDirection: "row",

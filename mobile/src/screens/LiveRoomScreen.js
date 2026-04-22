@@ -422,9 +422,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
     return unsubscribe;
   }, [navigation, room]);
 
-  // Fixed comment area top — always below header + typical 2-row seat grid, never shifts with seat count
+  // Fixed comment area top — positioned clearly BELOW the header + host + seat grid
+  // so animated gifts don't render on top of seats. Header (~ms(60)) + host block
+  // (~HOST_SIZE + ms(70)) + seat grid (2 rows of SEAT_SIZE + ms(40)) + extra padding.
   useEffect(() => {
-    setCommentAreaTop(insets.top + ms(190));
+    const headerH = ms(60);
+    const hostH = HOST_SIZE + ms(90);
+    const seatsH = BASE_SEAT_SIZE * 2 + ms(80);
+    setCommentAreaTop(insets.top + headerH + hostH + seatsH);
   }, [insets.top]);
 
   // Sync isHandRaised with server data so it survives reconnects / fetchRoomData
@@ -2510,8 +2515,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
             <TouchableOpacity
               style={styles.seatCtrlIconBtn}
               onPress={() => {
+                if (!scUser?._id) return;
                 closeSeatSheet();
-                navigation.navigate("Profile", { userId: scUser._id });
+                // Navigate to stack-level UserProfile (shows any user), not the
+                // tab-level "Profile" screen which always shows the logged-in user.
+                if (String(scUser._id) === String(userInfo?._id)) {
+                  navigation.navigate("MainTabs", { screen: "Profile" });
+                } else {
+                  navigation.navigate("UserProfile", { userId: scUser._id });
+                }
               }}
             >
               <View style={[styles.seatCtrlIconCircle, styles.seatCtrlBtnProfile]}>
@@ -3312,19 +3324,32 @@ const LiveRoomScreen = ({ route, navigation }) => {
         />
       </View>
 
-      {/* VIP join animation banner */}
+      {/* VIP join animation banner — wrapped with high zIndex so it clearly
+          appears above the header/host area while the user enters the room. */}
       {joinAnimationUser && (() => {
           const vipLvl = Number(joinAnimationUser?.vipLevel || 0);
           const lvlData = vipLevelData[vipLvl] || null;
           return (
-            <JoinAnimation
-              user={joinAnimationUser}
-              joinAnimationUrl={vipJoinAnimationUrls[vipLvl] || null}
-              joinSoundUrl={lvlData?.joinSoundUrl || null}
-              specialJoinText={lvlData?.specialJoinText || null}
-              vipTier={lvlData ? { color: lvlData.color } : null}
-              onDone={() => setJoinAnimationUser(null)}
-            />
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1200,
+                elevation: 1200,
+              }}
+            >
+              <JoinAnimation
+                user={joinAnimationUser}
+                joinAnimationUrl={vipJoinAnimationUrls[vipLvl] || null}
+                joinSoundUrl={lvlData?.joinSoundUrl || null}
+                specialJoinText={lvlData?.specialJoinText || null}
+                vipTier={lvlData ? { color: lvlData.color } : null}
+                onDone={() => setJoinAnimationUser(null)}
+              />
+            </View>
           );
         })()}
 

@@ -69,8 +69,26 @@ const ChatScreen = ({ route, navigation }) => {
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageSaving, setImageSaving] = useState(false);
+  // Real presence: { isOnline, lastSeen } for the opened user.
+  const [presence, setPresence] = useState({ isOnline: false, lastSeen: null });
+  const [nowTick, setNowTick] = useState(Date.now()); // re-render "last seen" label every minute
   const socket = useRef(null);
   const flatListRef = useRef(null);
+
+  // Reliable auto-scroll: scrolls to bottom regardless of animation/layout race.
+  const scrollToBottom = useCallback((animated = true) => {
+    // Three-staged scroll handles the two common RN layout races: the first
+    // call fires before the new item has measured, so we re-scroll on the
+    // next frame and once more after the layout flush.
+    const run = () => {
+      try {
+        flatListRef.current?.scrollToEnd({ animated });
+      } catch (_) {}
+    };
+    run();
+    requestAnimationFrame(run);
+    setTimeout(run, 120);
+  }, []);
 
   const EMOJI_PICKER_HEIGHT = 260;
   const insets = useSafeAreaInsets();
@@ -88,17 +106,38 @@ const ChatScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (!userId) return;
-    const fetchFollowStatus = async () => {
+    const fetchUser = async () => {
       try {
         const res = await axios.get(`${BASE_URL}/users/${userId}`, {
           headers: { Authorization: `Bearer ${userToken}` },
         });
         setIsFollowing(res.data?.followers?.includes(userInfo._id) ?? false);
+        // Seed initial presence from the profile payload so the header shows
+        // the real status immediately — the socket will then keep it live.
+        setPresence({
+          isOnline: !!res.data?.isOnline,
+          lastSeen: res.data?.lastSeen || null,
+        });
       } catch (_) {}
     };
     fetchBalance();
-    fetchFollowStatus();
+    fetchUser();
   }, [userId]);
+
+  // Tick every 60s so "last seen X minutes ago" stays fresh.
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Whenever the bottom overlay resizes (keyboard toggled, emoji picker opened,
+  // or the input grew from a multiline draft) the FlatList padding changes but
+  // content size does not — so we must re-scroll explicitly to keep the tail
+  // visible instead of letting it get covered by the input bar.
+  useEffect(() => {
+    if (messages.length === 0) return;
+    scrollToBottom(true);
+  }, [keyboardHeight, showEmojiPicker, inputHeight, scrollToBottom, messages.length]);
 
   // Re-fetch balance whenever the screen comes back into focus (e.g. after Wallet topup)
   useFocusEffect(
@@ -133,10 +172,7 @@ const ChatScreen = ({ route, navigation }) => {
       );
       setMessages((prev) => [...prev, res2.data]);
       socket.current?.emit("sendMessage", res2.data);
-      setTimeout(
-        () => flatListRef.current?.scrollToEnd({ animated: true }),
-        80,
-      );
+      scrollToBottom(true);
     } catch (e) {
       Alert.alert("خطأ", e?.response?.data?.message || "فشل إرسال الهدية");
     }
@@ -145,21 +181,35 @@ const ChatScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!userId) return;
 
-    // Update socket URL to use BASE_URL
     const socketUrl = BASE_URL.replace("/api", "");
     socket.current = io(socketUrl);
     socket.current.emit("join", userInfo._id);
 
+    // Ask the server for the opened user's current presence right away.
+    socket.current.emit("presence:query", { userId });
+
+    // Subscribe to presence broadcasts and only keep the ones for this user.
+    const onPresence = ({ userId: uid, isOnline, lastSeen }) => {
+      if (String(uid) === String(userId)) {
+        setPresence({ isOnline: !!isOnline, lastSeen: lastSeen || null });
+      }
+    };
+    socket.current.on("user:presence", onPresence);
+
     socket.current.on("receiveMessage", (message) => {
       if (message.sender === userId || message.receiver === userId) {
         setMessages((prev) => [...prev, message]);
+        scrollToBottom(true);
       }
     });
 
     return () => {
+      try {
+        socket.current?.off("user:presence", onPresence);
+      } catch (_) {}
       socket.current.disconnect();
     };
-  }, [userId]);
+  }, [userId, scrollToBottom]);
 
   useEffect(() => {
     if (!userId) return;
@@ -170,13 +220,14 @@ const ChatScreen = ({ route, navigation }) => {
           headers: { Authorization: `Bearer ${userToken}` },
         });
         setMessages(res.data);
+        scrollToBottom(false);
       } catch (e) {
         console.log(e);
       }
     };
 
     fetchMessages();
-  }, [userId]);
+  }, [userId, scrollToBottom]);
 
   const sendMessage = async () => {
     if (!text.trim() || isSending) return;
@@ -197,10 +248,7 @@ const ChatScreen = ({ route, navigation }) => {
       );
       setMessages((prev) => [...prev, res.data]);
       socket.current?.emit("sendMessage", res.data);
-      setTimeout(
-        () => flatListRef.current?.scrollToEnd({ animated: true }),
-        80,
-      );
+      scrollToBottom(true);
     } catch (e) {
       console.log("Error sending message:", e);
       setText(msgText); // restore on failure
@@ -285,10 +333,7 @@ const ChatScreen = ({ route, navigation }) => {
           _pending: true,
         };
         setMessages((prev) => [...prev, tempMsg]);
-        setTimeout(
-          () => flatListRef.current?.scrollToEnd({ animated: true }),
-          80,
-        );
+        scrollToBottom(true);
 
         setIsSending(true);
         try {
@@ -342,11 +387,7 @@ const ChatScreen = ({ route, navigation }) => {
       const h = e.endCoordinates ? e.endCoordinates.height : 260;
       setKeyboardHeight(h);
       setShowEmojiPicker(false);
-      // scroll messages up when keyboard appears
-      setTimeout(
-        () => flatListRef.current?.scrollToEnd({ animated: true }),
-        80,
-      );
+      scrollToBottom(true);
     };
 
     const onHide = () => {
@@ -361,7 +402,7 @@ const ChatScreen = ({ route, navigation }) => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [scrollToBottom]);
 
   const formatMsgTime = (dateStr) => {
     if (!dateStr) return "";
@@ -369,6 +410,48 @@ const ChatScreen = ({ route, navigation }) => {
     const hh = d.getHours().toString().padStart(2, "0");
     const mm = d.getMinutes().toString().padStart(2, "0");
     return `${hh}:${mm}`;
+  };
+
+  // Human "last seen" label — e.g. "نشط الآن" / "آخر ظهور قبل 5 د" / "أمس".
+  const formatLastSeen = (isOnline, lastSeenStr) => {
+    if (isOnline) return "نشط الآن";
+    if (!lastSeenStr) return "غير متصل";
+    const last = new Date(lastSeenStr).getTime();
+    if (!last || Number.isNaN(last)) return "غير متصل";
+    const diffMs = Math.max(0, nowTick - last);
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "نشط قبل لحظات";
+    if (mins < 60) return `آخر ظهور قبل ${mins} د`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `آخر ظهور قبل ${hours} س`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return "آخر ظهور أمس";
+    if (days < 7) return `آخر ظهور قبل ${days} أيام`;
+    const d = new Date(lastSeenStr);
+    return `آخر ظهور ${d.getDate()}/${d.getMonth() + 1}`;
+  };
+
+  // Arabic day-bucket label for date separators.
+  const dayBucketLabel = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const today = new Date();
+    const sameDay = (a, b) =>
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+    if (sameDay(d, today)) return "اليوم";
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (sameDay(d, y)) return "أمس";
+    const diffDays = Math.floor(
+      (today.getTime() - d.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    if (diffDays < 7) {
+      const days = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      return days[d.getDay()];
+    }
+    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
   const handleShareImage = async (imageUrl) => {
@@ -399,48 +482,72 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const renderMessage = ({ item }) => {
+  const renderMessage = ({ item, index }) => {
     const isOwn = item.sender === userInfo._id;
     const timeLabel = formatMsgTime(item.createdAt);
     const isPureImageMsg =
       item.imageUrl && (!item.text || item.text === "🖼️ صورة");
 
+    // Date separator: show whenever the bucket changes from the previous msg.
+    const prev = index > 0 ? messages[index - 1] : null;
+    const bucket = dayBucketLabel(item.createdAt);
+    const prevBucket = prev ? dayBucketLabel(prev.createdAt) : null;
+    const showDateSep = !prev || bucket !== prevBucket;
+
+    // Group consecutive bubbles from the same sender (hide avatar on followups).
+    const sameSenderAsPrev =
+      prev && prev.sender === item.sender && !showDateSep;
+
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isOwn ? styles.myMessage : styles.theirMessage,
-        ]}
-      >
-        {!isOwn && (
-          <View style={styles.messageAvatarWrap}>
-            {profileImage ? (
-              <Image
-                source={{ uri: profileImage }}
-                style={styles.messageAvatar}
-              />
-            ) : (
-              <View
-                style={[styles.messageAvatar, styles.messageAvatarPlaceholder]}
-              >
-                <Ionicons name="person" size={12} color="#CCC" />
-              </View>
-            )}
+      <>
+        {showDateSep && bucket ? (
+          <View style={styles.dateSeparator}>
+            <View style={styles.dateSeparatorLine} />
+            <Text style={styles.dateSeparatorText}>{bucket}</Text>
+            <View style={styles.dateSeparatorLine} />
           </View>
-        )}
-        <View style={styles.messageBubbleWrapper}>
-          <View
-            style={[
-              item.imageUrl && isPureImageMsg
-                ? styles.imageBubble
-                : styles.messageBubble,
-              item.imageUrl && isPureImageMsg
-                ? null
-                : isOwn
-                  ? styles.myBubble
-                  : styles.theirBubble,
-            ]}
-          >
+        ) : null}
+        <View
+          style={[
+            styles.messageContainer,
+            isOwn ? styles.myMessage : styles.theirMessage,
+            sameSenderAsPrev && { marginBottom: ms(3), marginTop: -ms(4) },
+          ]}
+        >
+          {!isOwn && (
+            <View style={styles.messageAvatarWrap}>
+              {sameSenderAsPrev ? (
+                <View style={styles.messageAvatar} />
+              ) : profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={styles.messageAvatar}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.messageAvatar,
+                    styles.messageAvatarPlaceholder,
+                  ]}
+                >
+                  <Ionicons name="person" size={12} color="#CCC" />
+                </View>
+              )}
+            </View>
+          )}
+          <View style={styles.messageBubbleWrapper}>
+            <View
+              style={[
+                item.imageUrl && isPureImageMsg
+                  ? styles.imageBubble
+                  : styles.messageBubble,
+                item.imageUrl && isPureImageMsg
+                  ? null
+                  : isOwn
+                    ? styles.myBubble
+                    : styles.theirBubble,
+              ]}
+            >
             {item.imageUrl ? (
               <TouchableOpacity
                 activeOpacity={0.9}
@@ -456,35 +563,43 @@ const ChatScreen = ({ route, navigation }) => {
                 />
               </TouchableOpacity>
             ) : null}
-            {!isPureImageMsg && item.text ? (
-              <Text style={styles.messageText}>{item.text}</Text>
-            ) : null}
-          </View>
-          <View
-            style={[
-              styles.msgMeta,
-              isOwn ? styles.msgMetaRight : styles.msgMetaLeft,
-            ]}
-          >
-            <Text style={styles.msgTime}>{timeLabel}</Text>
-            {isOwn && !item._pending && (
-              <Ionicons
-                name={item.read ? "checkmark-done" : "checkmark"}
-                size={14}
-                color={item.read ? "#4FC3F7" : "#AAA"}
-                style={{ marginLeft: 2 }}
-              />
-            )}
-            {isOwn && item._pending && (
-              <ActivityIndicator
-                size={10}
-                color="#AAA"
-                style={{ marginLeft: 2 }}
-              />
-            )}
+              {!isPureImageMsg && item.text ? (
+                <Text
+                  style={[
+                    styles.messageText,
+                    isOwn ? styles.messageTextMine : styles.messageTextTheirs,
+                  ]}
+                >
+                  {item.text}
+                </Text>
+              ) : null}
+            </View>
+            <View
+              style={[
+                styles.msgMeta,
+                isOwn ? styles.msgMetaRight : styles.msgMetaLeft,
+              ]}
+            >
+              <Text style={styles.msgTime}>{timeLabel}</Text>
+              {isOwn && !item._pending && (
+                <Ionicons
+                  name={item.read ? "checkmark-done" : "checkmark"}
+                  size={14}
+                  color={item.read ? "#4FC3F7" : "#AAA"}
+                  style={{ marginLeft: 2 }}
+                />
+              )}
+              {isOwn && item._pending && (
+                <ActivityIndicator
+                  size={10}
+                  color="#AAA"
+                  style={{ marginLeft: 2 }}
+                />
+              )}
+            </View>
           </View>
         </View>
-      </View>
+      </>
     );
   };
 
@@ -496,7 +611,12 @@ const ChatScreen = ({ route, navigation }) => {
 
   // Chat view
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    // Only apply the TOP safe-area inset. The bottom inset is handled manually
+    // by the input container so it can sit flush against the keyboard when
+    // visible, and above the home indicator when hidden — without double-
+    // counting `insets.bottom` (which previously caused the input to float
+    // above the keyboard and hide the last messages).
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <GradientBackground />
       <View style={{ flex: 1 }}>
         <View style={styles.chatHeader}>
@@ -510,20 +630,45 @@ const ChatScreen = ({ route, navigation }) => {
           <TouchableOpacity
             style={styles.chatHeaderUser}
             onPress={() => navigation.navigate("UserProfile", { userId })}
+            activeOpacity={0.85}
           >
-            {profileImage ? (
-              <Image
-                source={{ uri: profileImage }}
-                style={[styles.chatHeaderAvatar, { borderColor: theme.avatarRing }]}
+            <View style={styles.chatHeaderAvatarWrap}>
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={[
+                    styles.chatHeaderAvatar,
+                    { borderColor: theme.avatarRing },
+                  ]}
+                />
+              ) : (
+                <View style={styles.chatHeaderAvatarPlaceholder}>
+                  <Ionicons name="person" size={20} color="#CCC" />
+                </View>
+              )}
+              {/* Live presence dot — green=online, grey=offline. Bottom-right. */}
+              <View
+                style={[
+                  styles.presenceDot,
+                  presence.isOnline
+                    ? styles.presenceDotOnline
+                    : styles.presenceDotOffline,
+                ]}
               />
-            ) : (
-              <View style={styles.chatHeaderAvatarPlaceholder}>
-                <Ionicons name="person" size={20} color="#CCC" />
-              </View>
-            )}
+            </View>
             <View style={styles.chatHeaderInfo}>
-              <Text style={styles.chatHeaderTitle}>{username}</Text>
-              <Text style={styles.chatHeaderOnline}>نشط</Text>
+              <Text style={styles.chatHeaderTitle} numberOfLines={1}>
+                {username}
+              </Text>
+              <Text
+                style={[
+                  styles.chatHeaderOnline,
+                  !presence.isOnline && styles.chatHeaderOffline,
+                ]}
+                numberOfLines={1}
+              >
+                {formatLastSeen(presence.isOnline, presence.lastSeen)}
+              </Text>
             </View>
           </TouchableOpacity>
 
@@ -554,38 +699,60 @@ const ChatScreen = ({ route, navigation }) => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item._id || Math.random().toString()}
+          keyExtractor={(item, idx) =>
+            item._id ? String(item._id) : `m-${idx}`
+          }
           contentContainerStyle={[
             styles.messagesList,
             {
+              // Reserve enough room for the last message to sit above the
+              // input bar in every state. IMPORTANT: on Android the manifest
+              // default is `adjustResize`, so the OS already shrinks the
+              // window when the keyboard opens — we must NOT add
+              // `keyboardHeight` on top of that or items would be pushed off
+              // screen. On iOS the keyboard overlays the window, so we do
+              // need to reserve space for it manually.
               paddingBottom:
                 inputHeight +
-                Math.max(
-                  keyboardHeight,
-                  showEmojiPicker ? EMOJI_PICKER_HEIGHT : 0,
-                ) +
-                insets.bottom +
-                20,
+                (Platform.OS === "ios" && keyboardHeight > 0
+                  ? keyboardHeight
+                  : showEmojiPicker
+                    ? EMOJI_PICKER_HEIGHT
+                    : 0) +
+                ms(16),
             },
           ]}
           inverted={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollToBottom(false)}
+          onLayout={() => scrollToBottom(false)}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         />
       </View>
 
-      {/* Input container anchored to bottom. onLayout captures its height */}
+      {/* Input container anchored to bottom. onLayout captures its height.
+          On Android the OS resizes the window when the keyboard opens
+          (`adjustResize` — the Expo default), so `bottom: 0` keeps the input
+          naturally flush above the keyboard. On iOS we must offset by the
+          reported `keyboardHeight` because the keyboard overlays the view.
+          When the custom emoji picker is open, we always offset by its
+          fixed height on both platforms. */}
       <View
         style={[
           styles.inputContainer,
           styles.inputContainerAbsolute,
           {
             bottom:
-              keyboardHeight > 0
+              Platform.OS === "ios" && keyboardHeight > 0
                 ? keyboardHeight
                 : showEmojiPicker
                   ? EMOJI_PICKER_HEIGHT
-                  : insets.bottom,
-            paddingBottom: insets.bottom ? insets.bottom + 8 : 12,
+                  : 0,
+            paddingBottom:
+              keyboardHeight > 0 || showEmojiPicker
+                ? ms(10)
+                : (insets.bottom || 0) + ms(10),
           },
         ]}
         onLayout={(e) => setInputHeight(e.nativeEvent.layout.height)}
@@ -622,10 +789,7 @@ const ChatScreen = ({ route, navigation }) => {
           onFocus={() => {
             setShowEmojiPicker(false);
             setShowGiftPanel(false);
-            setTimeout(
-              () => flatListRef.current?.scrollToEnd({ animated: true }),
-              50,
-            );
+            scrollToBottom(true);
           }}
         />
         <TouchableOpacity
@@ -939,8 +1103,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     paddingVertical: ms(10),
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2550",
-    backgroundColor: "#0E0B1E",
+    borderBottomColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(14,11,30,0.92)",
   },
   headerBtn: {
     padding: ms(6),
@@ -952,13 +1116,24 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: ms(8),
   },
+  chatHeaderAvatarWrap: {
+    position: "relative",
+    width: ms(40),
+    height: ms(40),
+  },
   chatHeaderInfo: {
     flexDirection: "column",
+    flexShrink: 1,
   },
   chatHeaderOnline: {
     color: "#4CAF50",
     fontSize: fs(11),
     marginTop: ms(1),
+    fontWeight: "600",
+  },
+  chatHeaderOffline: {
+    color: "#9AA0B4",
+    fontWeight: "500",
   },
   chatHeaderActions: {
     flexDirection: "row",
@@ -982,9 +1157,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   chatHeaderAvatar: {
-    width: ms(36),
-    height: ms(36),
-    borderRadius: ms(18),
+    width: ms(40),
+    height: ms(40),
+    borderRadius: ms(20),
     borderWidth: 1.5,
   },
   chatHeaderAvatarPlaceholder: {
@@ -997,10 +1172,49 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#2A2550",
   },
+  presenceDot: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    width: ms(12),
+    height: ms(12),
+    borderRadius: ms(6),
+    borderWidth: 2,
+    borderColor: "#0E0B1E",
+  },
+  presenceDotOnline: {
+    backgroundColor: "#4CAF50",
+  },
+  presenceDotOffline: {
+    backgroundColor: "#6B6B80",
+  },
   chatHeaderTitle: {
     color: "#FFF",
     fontSize: fs(15),
     fontWeight: "700",
+  },
+  dateSeparator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: ms(12),
+    paddingHorizontal: ms(12),
+    gap: ms(8),
+  },
+  dateSeparatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  dateSeparatorText: {
+    color: "#9AA0B4",
+    fontSize: fs(11),
+    fontWeight: "600",
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(3),
+    borderRadius: ms(10),
+    backgroundColor: "rgba(255,255,255,0.04)",
+    overflow: "hidden",
   },
   messagesList: {
     padding: ms(12),
@@ -1038,31 +1252,44 @@ const styles = StyleSheet.create({
   messageBubble: {
     paddingHorizontal: ms(14),
     paddingVertical: ms(10),
-    borderRadius: ms(18),
+    borderRadius: ms(20),
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   imageBubble: {
     padding: 0,
     backgroundColor: "transparent",
     overflow: "hidden",
-    borderRadius: ms(14),
+    borderRadius: ms(16),
   },
   messageImage: {
-    width: ms(200),
-    height: ms(200),
-    borderRadius: ms(14),
+    width: ms(220),
+    height: ms(220),
+    borderRadius: ms(16),
   },
   myBubble: {
     backgroundColor: "#FE2C55",
-    borderBottomRightRadius: ms(4),
+    borderBottomRightRadius: ms(6),
   },
   theirBubble: {
-    backgroundColor: "#151228",
-    borderBottomLeftRadius: ms(4),
+    backgroundColor: "#1C1838",
+    borderBottomLeftRadius: ms(6),
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
   messageText: {
-    color: "#FFF",
     fontSize: fs(15),
     textAlign: "right",
+    lineHeight: fs(20),
+  },
+  messageTextMine: {
+    color: "#FFF",
+  },
+  messageTextTheirs: {
+    color: "#EDEAFF",
   },
   msgMeta: {
     flexDirection: "row",
@@ -1083,12 +1310,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: ms(16),
-    paddingVertical: ms(12),
-    paddingBottom: Platform.OS === "android" ? ms(16) : ms(12),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(10),
+    paddingBottom: Platform.OS === "android" ? ms(14) : ms(10),
     borderTopWidth: 1,
-    borderTopColor: "#2A2550",
-    backgroundColor: "transparent",
+    borderTopColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(14,11,30,0.92)",
   },
 
   // anchor input to bottom so 'bottom' style works
