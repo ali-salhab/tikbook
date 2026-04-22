@@ -955,6 +955,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       // Ensure all participants (including host) can hear the new speaker
       agoraEngineRef.current?.muteAllRemoteAudioStreams(false);
       agoraEngineRef.current?.setEnableSpeakerphone(playbackOnSpeakerRef.current);
+      ensureSpeakerAudioSubscriptions(room);
     });
     socket.on("liveroom:speaker_removed", ({ userId }) => {
       fetchRoomData();
@@ -1286,6 +1287,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       });
       if (res.data.success) {
         setRoom(res.data.data);
+        ensureSpeakerAudioSubscriptions(res.data.data);
         const viewers = res.data.data?.listeners?.length ?? 0;
         if (viewers > peakViewersRef.current) peakViewersRef.current = viewers;
       }
@@ -1766,6 +1768,48 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const isSpeaking = user && speakingUserIds.has(user._id);
     // For own seat use local isMuted state (instant feedback); for others use server data
     const effectiveMuted = isMe ? isMuted : !!speaker?.isMuted;
+    const showSpeakingFx = !!isSpeaking && !effectiveMuted;
+    const pulseAnim = useRef(new Animated.Value(0)).current;
+    const dotAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (!showSpeakingFx) {
+        pulseAnim.setValue(0);
+        dotAnim.setValue(0);
+        return;
+      }
+
+      const pulseLoop = Animated.loop(
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1150,
+          useNativeDriver: true,
+        }),
+      );
+
+      const dotLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(dotAnim, {
+            toValue: 1,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dotAnim, {
+            toValue: 0,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+
+      pulseLoop.start();
+      dotLoop.start();
+
+      return () => {
+        pulseLoop.stop();
+        dotLoop.stop();
+      };
+    }, [showSpeakingFx, pulseAnim, dotAnim]);
 
     const isHostSeat = room?.host?._id === userInfo?._id;
     const isSpeakerAlready = room?.speakers?.some((s) => s.user?._id === userInfo?._id);
@@ -1877,6 +1921,47 @@ const LiveRoomScreen = ({ route, navigation }) => {
             isGiftSelected && styles.seatGiftSelected,
           ]}
         >
+          {showSpeakingFx && (
+            <View pointerEvents="none" style={styles.speakingFxLayer}>
+              <Animated.View
+                style={[
+                  styles.speakingPulseRing,
+                  {
+                    width: SEAT_SIZE + ms(10),
+                    height: SEAT_SIZE + ms(10),
+                    borderRadius: (SEAT_SIZE + ms(10)) / 2,
+                    opacity: pulseAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 0],
+                    }),
+                    transform: [
+                      {
+                        scale: pulseAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.92, 1.24],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.speakingMovingDot,
+                  {
+                    transform: [
+                      {
+                        translateX: dotAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-SEAT_SIZE * 0.23, SEAT_SIZE * 0.23],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+          )}
           {user ? (
             <View style={styles.seatFrameWrap}>
               <ProfileBadgeFrame
@@ -1906,9 +1991,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
           )}
         </View>
         {/* Speaking sound-wave indicator — shown under the seat circle */}
-        {isSpeaking && !effectiveMuted && (
+        {showSpeakingFx && (
           <View style={styles.seatSoundWaveBelow}>
             <SoundWave active={true} color="#00F2EA" size="small" />
+            <Text style={styles.seatSpeakingLabel}>يتكلم الآن</Text>
           </View>
         )}
         <Text style={styles.seatLabel} numberOfLines={1}>
@@ -3441,6 +3527,31 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
   },
+  speakingFxLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 12,
+  },
+  speakingPulseRing: {
+    position: "absolute",
+    borderWidth: 2,
+    borderColor: "rgba(0,242,234,0.95)",
+    backgroundColor: "rgba(0,242,234,0.06)",
+  },
+  speakingMovingDot: {
+    position: "absolute",
+    top: -ms(2),
+    width: ms(8),
+    height: ms(8),
+    borderRadius: ms(4),
+    backgroundColor: "#10C870",
+    shadowColor: "#10C870",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.95,
+    shadowRadius: 6,
+    elevation: 12,
+  },
   seatSoundWave: {
     position: "absolute",
     bottom: ms(4),
@@ -3453,6 +3564,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: ms(3),
     marginBottom: -ms(4),
+  },
+  seatSpeakingLabel: {
+    color: "#00F2EA",
+    fontSize: fs(9),
+    fontWeight: "700",
+    marginTop: ms(1),
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: ms(2),
   },
   hostSoundWave: {
     position: "absolute",
