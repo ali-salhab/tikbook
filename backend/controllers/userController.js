@@ -319,6 +319,80 @@ const getSuggestedUsers = async (req, res) => {
 // @desc    Get current user's followers and following with basic info
 // @route   GET /api/users/my-connections
 // @access  Private
+// @desc    Get followers list of a user (populated)
+// @route   GET /api/users/:id/followers
+// @access  Public (auth optional — used to mark "isFollowing" for current user)
+const getFollowersList = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select("followers")
+      .populate(
+        "followers",
+        "_id username profileImage isOnline isVerified verificationBadge vipLevel followers",
+      );
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const meId = req.user?._id?.toString();
+    const list = (user.followers || []).map((u) => {
+      const obj = u.toObject ? u.toObject() : u;
+      const followers = Array.isArray(obj.followers) ? obj.followers : [];
+      return {
+        _id: obj._id,
+        username: obj.username,
+        profileImage: obj.profileImage,
+        isOnline: obj.isOnline,
+        isVerified: obj.isVerified,
+        verificationBadge: obj.verificationBadge,
+        vipLevel: obj.vipLevel,
+        isFollowing: meId
+          ? followers.some((f) => f?.toString() === meId)
+          : false,
+        isMe: meId ? obj._id?.toString() === meId : false,
+      };
+    });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get following list of a user (populated)
+// @route   GET /api/users/:id/following
+// @access  Public (auth optional — used to mark "isFollowing" for current user)
+const getFollowingList = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select("following")
+      .populate(
+        "following",
+        "_id username profileImage isOnline isVerified verificationBadge vipLevel followers",
+      );
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const meId = req.user?._id?.toString();
+    const list = (user.following || []).map((u) => {
+      const obj = u.toObject ? u.toObject() : u;
+      const followers = Array.isArray(obj.followers) ? obj.followers : [];
+      return {
+        _id: obj._id,
+        username: obj.username,
+        profileImage: obj.profileImage,
+        isOnline: obj.isOnline,
+        isVerified: obj.isVerified,
+        verificationBadge: obj.verificationBadge,
+        vipLevel: obj.vipLevel,
+        isFollowing: meId
+          ? followers.some((f) => f?.toString() === meId)
+          : false,
+        isMe: meId ? obj._id?.toString() === meId : false,
+      };
+    });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const getMyConnections = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
@@ -356,4 +430,6 @@ module.exports = {
   updateFcmToken,
   getSuggestedUsers,
   getMyConnections,
+  getFollowersList,
+  getFollowingList,
 };

@@ -39,4 +39,24 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+// Like `protect` but never blocks the request — populates `req.user` if a valid
+// token is present, otherwise just continues without it. Useful for public
+// endpoints that want to personalize the response when the caller is signed in.
+const protectOptional = async (req, res, next) => {
+  try {
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      const token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret");
+      const u = await User.findById(decoded.id).select("-password");
+      if (u) req.user = u;
+    }
+  } catch (_) {
+    // Ignore — auth is optional here.
+  }
+  next();
+};
+
+module.exports = { protect, admin, protectOptional };

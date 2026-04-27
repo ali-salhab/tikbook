@@ -197,7 +197,10 @@ const EditProfileScreen = ({ navigation, route }) => {
           <View style={styles.form}>
             {/* Username */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>اسم المستخدم</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>اسم المستخدم</Text>
+                <Text style={styles.characterCount}>{username.length}/30</Text>
+              </View>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
@@ -207,7 +210,6 @@ const EditProfileScreen = ({ navigation, route }) => {
                   placeholderTextColor="#666"
                   maxLength={30}
                 />
-                <Text style={styles.characterCount}>{username.length}/30</Text>
               </View>
               <Text style={styles.hint}>
                 tikbook.com/@{username || "username"}
@@ -216,7 +218,10 @@ const EditProfileScreen = ({ navigation, route }) => {
 
             {/* Bio */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>النبذة التعريفية</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>النبذة التعريفية</Text>
+                <Text style={styles.characterCount}>{bio.length}/80</Text>
+              </View>
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={[styles.input, styles.bioInput]}
@@ -228,9 +233,6 @@ const EditProfileScreen = ({ navigation, route }) => {
                   maxLength={80}
                   textAlignVertical="top"
                 />
-                <Text style={[styles.characterCount, styles.bioCharCount]}>
-                  {bio.length}/80
-                </Text>
               </View>
             </View>
 
@@ -469,11 +471,16 @@ const styles = StyleSheet.create({
   fieldContainer: {
     marginBottom: ms(24),
   },
+  labelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: ms(8),
+  },
   label: {
     color: "#FFF",
     fontSize: fs(15),
     fontWeight: "600",
-    marginBottom: ms(8),
   },
   inputWrapper: {
     position: "relative",
@@ -482,7 +489,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#1F1F1F",
     borderRadius: ms(8),
     padding: ms(12),
-    paddingRight: ms(50),
     color: "#FFF",
     fontSize: fs(15),
     textAlign: "right",
@@ -492,14 +498,10 @@ const styles = StyleSheet.create({
     paddingTop: ms(12),
   },
   characterCount: {
-    position: "absolute",
-    left: ms(12),
-    top: ms(12),
-    color: "#666",
-    fontSize: fs(13),
-  },
-  bioCharCount: {
-    top: ms(12),
+    color: "#888",
+    fontSize: fs(12),
+    fontVariant: ["tabular-nums"],
+    fontWeight: "600",
   },
   hint: {
     color: "#666",

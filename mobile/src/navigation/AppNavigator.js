@@ -34,6 +34,7 @@ import LiveStreamsListScreen from "../screens/LiveStreamsListScreen";
 import WalletScreen from "../screens/WalletScreen";
 import WithdrawalsTrackingScreen from "../screens/WithdrawalsTrackingScreen";
 import NewFollowersScreen from "../screens/NewFollowersScreen";
+import FollowListScreen from "../screens/FollowListScreen";
 import ActivityScreen from "../screens/ActivityScreen";
 import SystemNotificationsScreen from "../screens/SystemNotificationsScreen";
 import VerificationRequestScreen from "../screens/VerificationRequestScreen";
@@ -60,28 +61,43 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Linking } from "react-native";
 
-// Parse a tikbook://video/:videoId URL and return the videoId, or null
+// Parse a tikbook://video/:videoId URL and return the videoId, or null.
+// Also supports tikbook://user/:userId and https://tikbook.com/@username links.
 const parseDeepLink = (url) => {
   if (!url) return null;
   try {
-    // matches tikbook://video/SOME_ID
-    const match = url.match(/tikbook:\/\/video\/([^/?#]+)/);
-    return match ? match[1] : null;
+    const videoMatch = url.match(/tikbook:\/\/video\/([^/?#]+)/);
+    if (videoMatch) return { kind: "video", id: videoMatch[1] };
+
+    const userMatch = url.match(/tikbook:\/\/user\/([^/?#]+)/);
+    if (userMatch) return { kind: "user", id: userMatch[1] };
+
+    // Legacy: web URL like https://tikbook.com/@username
+    const webMatch = url.match(/tikbook\.com\/@([^/?#]+)/);
+    if (webMatch) return { kind: "username", id: webMatch[1] };
+
+    return null;
   } catch {
     return null;
   }
 };
 
-// Navigate to the video — waits until navigation is ready
-const navigateToVideo = (navigationRef, videoId) => {
-  if (!videoId) return;
-  // navigationRef.isReady() may be false on cold start → retry
+// Navigate based on deep link payload — waits until navigation is ready.
+const navigateFromDeepLink = (navigationRef, payload) => {
+  if (!payload) return;
   const attempt = (retries = 8) => {
     if (navigationRef.isReady()) {
-      navigationRef.navigate("MainTabs", {
-        screen: "Home",
-        params: { videoId },
-      });
+      if (payload.kind === "video") {
+        navigationRef.navigate("MainTabs", {
+          screen: "Home",
+          params: { videoId: payload.id },
+        });
+      } else if (payload.kind === "user") {
+        navigationRef.navigate("UserProfile", { userId: payload.id });
+      } else if (payload.kind === "username") {
+        // Username-based links open the search/users screen with a prefilled query.
+        navigationRef.navigate("Users", { search: payload.id });
+      }
     } else if (retries > 0) {
       setTimeout(() => attempt(retries - 1), 250);
     }
@@ -349,13 +365,13 @@ const AppNavigator = () => {
     // --- Deep link handling ---
     // Cold start: app was killed, opened via tikbook:// link
     Linking.getInitialURL().then((url) => {
-      const videoId = parseDeepLink(url);
-      if (videoId) navigateToVideo(navigationRef, videoId);
+      const payload = parseDeepLink(url);
+      if (payload) navigateFromDeepLink(navigationRef, payload);
     });
     // Warm start: app is in background/foreground, link tapped
     const linkingSub = Linking.addEventListener("url", ({ url }) => {
-      const videoId = parseDeepLink(url);
-      if (videoId) navigateToVideo(navigationRef, videoId);
+      const payload = parseDeepLink(url);
+      if (payload) navigateFromDeepLink(navigationRef, payload);
     });
 
     return () => {
@@ -462,6 +478,10 @@ const AppNavigator = () => {
                 <Stack.Screen
                   name="NewFollowers"
                   component={NewFollowersScreen}
+                />
+                <Stack.Screen
+                  name="FollowList"
+                  component={FollowListScreen}
                 />
                 <Stack.Screen name="Activity" component={ActivityScreen} />
                 <Stack.Screen

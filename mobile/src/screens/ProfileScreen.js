@@ -12,6 +12,7 @@ import {
   Alert,
   Clipboard,
   RefreshControl,
+  Share,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
@@ -201,6 +202,38 @@ const ProfileScreen = ({ navigation }) => {
         { text: "حسناً" },
       ]);
     }
+  };
+
+  const handleShareProfile = useCallback(async () => {
+    if (!userInfo?._id) {
+      Alert.alert("خطأ", "لا يمكن مشاركة الملف الشخصي حالياً");
+      return;
+    }
+    const handle = profile?.username || userInfo.username || "user";
+    const appLink = `tikbook://user/${userInfo._id}`;
+    const webLink = `https://tikbook.com/@${handle}`;
+    const message = `تابعني على TikBook 🎬\n@${handle}\n\nافتح داخل التطبيق:\n${appLink}\n\nأو من المتصفح:\n${webLink}`;
+    try {
+      await Share.share(
+        {
+          message,
+          url: webLink,
+          title: `@${handle}`,
+        },
+        { dialogTitle: "مشاركة الملف الشخصي" },
+      );
+    } catch (e) {
+      console.log("Share error:", e?.message);
+    }
+  }, [userInfo, profile]);
+
+  const openFollowList = (type) => {
+    if (!userInfo?._id) return;
+    navigation.navigate("FollowList", {
+      userId: userInfo._id,
+      type,
+      username: profile?.username || userInfo.username,
+    });
   };
 
   const handleChangeProfilePicture = async () => {
@@ -496,7 +529,11 @@ const ProfileScreen = ({ navigation }) => {
           >
             <MaterialCommunityIcons name="menu" size={28} color={theme.icon} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleShareProfile}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <MaterialCommunityIcons
               name="share-variant-outline"
               size={24}
@@ -505,8 +542,33 @@ const ProfileScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{profile?.username || "User"}</Text>
+        <View style={styles.headerCenter} pointerEvents="box-none">
+          {profile?.vipLevel > 0 &&
+            (() => {
+              const vl = vipLevels.find(
+                (l) => Number(l.level) === Number(profile.vipLevel),
+              );
+              return (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("Levels")}
+                  activeOpacity={0.85}
+                  style={styles.headerVipBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <LevelBadgeIcon
+                    level={profile.vipLevel}
+                    size="small"
+                    imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
+                    lottieUrl={
+                      !vl?.badgeImageUrl && !vl?.imageUrl
+                        ? vl?.badgeLottieUrl
+                        : undefined
+                    }
+                    color={vl?.color || "#FFD700"}
+                  />
+                </TouchableOpacity>
+              );
+            })()}
         </View>
 
         <View style={styles.headerRight}>
@@ -663,23 +725,21 @@ const ProfileScreen = ({ navigation }) => {
             })()}
           </View>
 
-          {/* Name & Username */}
+          {/* Name & Username (centered) */}
           <View style={styles.nameContainer}>
             <Text style={styles.displayName}>
               {profile?.username || "User"}
             </Text>
-            {(profile?.vipLevel > 0) && (() => {
-              const vl = vipLevels.find((l) => Number(l.level) === Number(profile.vipLevel));
-              return (
-                <LevelBadgeIcon
-                  level={profile.vipLevel}
-                  size="small"
-                  imageUrl={vl?.badgeImageUrl || vl?.imageUrl || undefined}
-                  lottieUrl={!vl?.badgeImageUrl && !vl?.imageUrl ? vl?.badgeLottieUrl : undefined}
-                  color={vl?.color || "#FFD700"}
-                />
-              );
-            })()}
+            {profile?.isVerified && (
+              <Ionicons
+                name="checkmark-circle"
+                size={ms(18)}
+                color={
+                  profile?.verificationBadge === "gold" ? "#FFD700" : "#1DA1F2"
+                }
+                style={{ marginLeft: ms(2) }}
+              />
+            )}
           </View>
           <Text style={styles.username}>@{profile?.username || "user"}</Text>
 
@@ -703,26 +763,38 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           )}
 
-          {/* Stats */}
+          {/* Stats — tappable */}
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              activeOpacity={0.7}
+              onPress={() => setActiveTab("liked")}
+            >
               <Text style={styles.statNumber}>{profile?.likesCount || 0}</Text>
               <Text style={styles.statLabel}>تسجيلات الإعجاب</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              activeOpacity={0.7}
+              onPress={() => openFollowList("followers")}
+            >
               <Text style={styles.statNumber}>
                 {profile?.followersCount || profile?.followers?.length || 0}
               </Text>
               <Text style={styles.statLabel}>متابعين</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              activeOpacity={0.7}
+              onPress={() => openFollowList("following")}
+            >
               <Text style={styles.statNumber}>
                 {profile?.followingCount || profile?.following?.length || 0}
               </Text>
               <Text style={styles.statLabel}>أتابعه</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Bio */}
@@ -861,6 +933,18 @@ const makeStyles = (theme) =>
       fontWeight: "bold",
       color: theme.text,
     },
+    headerVipBtn: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerVipBtnEmpty: {
+      width: ms(40),
+      height: ms(40),
+      borderRadius: ms(20),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.id === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+    },
     iconButton: {
       padding: ms(4),
     },
@@ -982,8 +1066,10 @@ const makeStyles = (theme) =>
     nameContainer: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
       gap: ms(6),
       marginBottom: ms(2),
+      alignSelf: "center",
     },
     displayName: {
       fontSize: fs(17),

@@ -10,8 +10,10 @@ const {
   updateFcmToken,
   getSuggestedUsers,
   getMyConnections,
+  getFollowersList,
+  getFollowingList,
 } = require("../controllers/userController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, protectOptional } = require("../middleware/authMiddleware");
 const { imageUpload } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
@@ -21,6 +23,8 @@ router.get("/search", searchUsers);
 router.get("/suggestions", protect, getSuggestedUsers);
 router.get("/my-connections", protect, getMyConnections);
 router.put("/fcm-token", protect, updateFcmToken);
+router.get("/:id/followers", protectOptional, getFollowersList);
+router.get("/:id/following", protectOptional, getFollowingList);
 router.get("/:id", getUserProfile);
 router.put("/profile", protect, updateUserProfile);
 router.put(

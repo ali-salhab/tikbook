@@ -126,11 +126,30 @@ const UserProfileScreen = ({ route, navigation }) => {
   };
 
   const handleShare = async () => {
+    if (!profile?._id) return;
+    const handle = profile.username || "user";
+    const appLink = `tikbook://user/${profile._id}`;
+    const webLink = `https://tikbook.com/@${handle}`;
+    const message = `تعرّف على @${handle} على TikBook 🎬\n\nافتح داخل التطبيق:\n${appLink}\n\nأو من المتصفح:\n${webLink}`;
     try {
-      await Share.share({
-        message: `تابعني على TikBook: @${profile?.username}`,
-      });
+      await Share.share(
+        {
+          message,
+          url: webLink,
+          title: `@${handle}`,
+        },
+        { dialogTitle: "مشاركة الملف الشخصي" },
+      );
     } catch (_) {}
+  };
+
+  const openFollowList = (type) => {
+    if (!profile?._id) return;
+    navigation.push("FollowList", {
+      userId: profile._id,
+      type,
+      username: profile.username,
+    });
   };
 
   const renderTabContent = () => {
@@ -244,29 +263,49 @@ const UserProfileScreen = ({ route, navigation }) => {
             />
           </View>
 
-          <Text style={styles.displayName}>{profile.username}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.displayName}>{profile.username}</Text>
+            {profile.isVerified && (
+              <Ionicons
+                name="checkmark-circle"
+                size={ms(18)}
+                color={
+                  profile.verificationBadge === "gold" ? "#FFD700" : "#1DA1F2"
+                }
+                style={{ marginLeft: ms(2) }}
+              />
+            )}
+          </View>
           <Text style={styles.username}>@{profile.username}</Text>
 
-          {/* Stats */}
+          {/* Stats — tappable */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{profile.totalLikes ?? 0}</Text>
               <Text style={styles.statLabel}>إعجاب</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              activeOpacity={0.7}
+              onPress={() => openFollowList("followers")}
+            >
               <Text style={styles.statNumber}>
-                {profile.followers?.length || 0}
+                {profile.followersCount ?? profile.followers?.length ?? 0}
               </Text>
               <Text style={styles.statLabel}>متابعون</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              activeOpacity={0.7}
+              onPress={() => openFollowList("following")}
+            >
               <Text style={styles.statNumber}>
-                {profile.following?.length || 0}
+                {profile.followingCount ?? profile.following?.length ?? 0}
               </Text>
               <Text style={styles.statLabel}>متابَعة</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
@@ -375,11 +414,17 @@ const styles = StyleSheet.create({
   avatarContainer: {
     marginBottom: ms(12),
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(6),
+    marginBottom: ms(4),
+  },
   displayName: {
     fontSize: fs(18),
     fontWeight: "bold",
     color: "#F0EEFF",
-    marginBottom: ms(4),
   },
   username: {
     fontSize: fs(14),
