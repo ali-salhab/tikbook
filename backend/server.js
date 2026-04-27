@@ -282,22 +282,51 @@ io.on("connection", (socket) => {
   });
 
   // Chat message in live room
-  socket.on("liveroom:send_message", ({ roomId, message, user, clientMessageId }) => {
-    const msg = {
-      message,
-      user,
-      id: clientMessageId || Date.now().toString(),
-      clientMessageId: clientMessageId || null,
-      timestamp: new Date(),
-    };
-    // Store in per-room history (max 50)
-    if (!roomMessageHistory.has(roomId)) roomMessageHistory.set(roomId, []);
-    const hist = roomMessageHistory.get(roomId);
-    hist.push(msg);
-    if (hist.length > 50) hist.splice(0, hist.length - 50);
+  socket.on(
+    "liveroom:send_message",
+    async ({ roomId, message, user, clientMessageId }) => {
+      // Block messages from chat-muted users (they stay in the room but
+      // cannot post comments). We acknowledge to the sender so their UI
+      // can react ("you are muted").
+      try {
+        const senderId = user?._id || user?.id;
+        if (senderId && roomId) {
+          const LiveRoomModel = require("./models/LiveRoom");
+          const liveRoom = await LiveRoomModel.findOne({ roomId }).select(
+            "mutedUsers",
+          );
+          const isMuted = (liveRoom?.mutedUsers || []).some(
+            (m) => (m.user || m).toString() === String(senderId),
+          );
+          if (isMuted) {
+            socket.emit("liveroom:chat_blocked", {
+              roomId,
+              reason: "muted",
+              clientMessageId: clientMessageId || null,
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("chat-mute check failed:", err.message);
+      }
 
-    io.to(`liveroom:${roomId}`).emit("liveroom:message_received", msg);
-  });
+      const msg = {
+        message,
+        user,
+        id: clientMessageId || Date.now().toString(),
+        clientMessageId: clientMessageId || null,
+        timestamp: new Date(),
+      };
+      // Store in per-room history (max 50)
+      if (!roomMessageHistory.has(roomId)) roomMessageHistory.set(roomId, []);
+      const hist = roomMessageHistory.get(roomId);
+      hist.push(msg);
+      if (hist.length > 50) hist.splice(0, hist.length - 50);
+
+      io.to(`liveroom:${roomId}`).emit("liveroom:message_received", msg);
+    },
+  );
 
   // ── Agora Live Stream Chat (LiveScreen.js) ────────────────────────────────
   socket.on("live:join", ({ channelName, userId }) => {

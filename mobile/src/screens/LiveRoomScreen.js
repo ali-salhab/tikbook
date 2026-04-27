@@ -51,6 +51,7 @@ import CommentParticles from "../components/CommentParticles";
 import FloatingComments from "../components/FloatingComments";
 import GiftPanel from "../components/GiftPanel";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import UserActionSheet from "../components/UserActionSheet";
 import SoundWave from "../components/SoundWave";
 import VipBadge from "../components/VipBadge";
 import SoundService from "../services/soundService";
@@ -268,6 +269,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [inputText, setInputText] = useState("");
   const [showInput, setShowInput] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+  // ── User profile sheet (tapped avatar in comments) ───────────────────────────
+  // { user, comment } — comment is null when opened from non-comment context.
+  const [userSheet, setUserSheet] = useState(null);
 
   // ── Gifts ────────────────────────────────────────────────────────────────────
   const [activeGifts, setActiveGifts] = useState([]);
@@ -1283,6 +1288,34 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
     socket.on("liveroom:settings_updated", fetchRoomData);
 
+    // --- CHAT MODERATION (mute / pin / cover) ---
+    socket.on("liveroom:chat_mute_changed", ({ userId, muted }) => {
+      handleChatMuteChanged(userId, !!muted);
+      if (String(userId) === String(userInfo?._id)) {
+        Alert.alert(
+          muted ? "تم كتمك" : "تم رفع الكتم",
+          muted
+            ? "تم كتم دردشتك في هذه الغرفة."
+            : "يمكنك الآن المشاركة في الدردشة.",
+        );
+      }
+    });
+    socket.on("liveroom:chat_blocked", ({ reason }) => {
+      if (reason === "muted") {
+        Alert.alert("ممنوع من الدردشة", "تم كتم دردشتك في هذه الغرفة.");
+      }
+    });
+    socket.on("liveroom:comment_pinned", ({ pinnedComment }) => {
+      setRoom((prev) => (prev ? { ...prev, pinnedComment } : prev));
+    });
+    socket.on("liveroom:comment_unpinned", () => {
+      setRoom((prev) => (prev ? { ...prev, pinnedComment: null } : prev));
+    });
+    socket.on("liveroom:cover_updated", ({ coverImage }) => {
+      if (!coverImage) return;
+      setRoom((prev) => (prev ? { ...prev, coverImage } : prev));
+    });
+
     // --- SEAT REQUEST FLOW ---
     // Incoming seat request (shown to host/mods)
     socket.on("liveroom:seat_request_received", ({ user }) => {
@@ -1621,9 +1654,95 @@ const LiveRoomScreen = ({ route, navigation }) => {
     }
   };
 
+  // ── Comment-row interactions ─────────────────────────────────────────────────
+  const handleAvatarPressInComments = (commentItem) => {
+    if (!commentItem?.user) return;
+    setUserSheet({ user: commentItem.user, comment: commentItem });
+  };
+
+  const handleLongPressComment = (commentItem) => {
+    if (!commentItem?.user) return;
+    const isHost = room?.host?._id === userInfo?._id || isHostRef.current;
+    const isMod = (room?.moderators || []).some(
+      (m) => (m.user?._id || m.user) === userInfo?._id,
+    );
+    if (!isHost && !isMod) return;
+    setUserSheet({ user: commentItem.user, comment: commentItem });
+  };
+
+  const handleMentionUser = (username) => {
+    if (!username) return;
+    const handle = `@${username} `;
+    setInputText((prev) => {
+      const trimmed = (prev || "").trimEnd();
+      if (!trimmed) return handle;
+      return trimmed.endsWith(handle.trim()) ? prev : `${trimmed} ${handle}`;
+    });
+    setShowInput(true);
+    setTimeout(() => inputRef.current?.focus?.(), 80);
+  };
+
+  // ── Comment muted state — set of userIds chat-muted in current room ─────────
+  const mutedChatUserIds = React.useMemo(() => {
+    const ids = (room?.mutedUsers || []).map((m) =>
+      String(m.user?._id || m.user || ""),
+    );
+    return new Set(ids.filter(Boolean));
+  }, [room?.mutedUsers]);
+
+  const handleChatMuteChanged = (targetUserId, muted) => {
+    setRoom((prev) => {
+      if (!prev) return prev;
+      const list = (prev.mutedUsers || []).filter(
+        (m) => String(m.user?._id || m.user) !== String(targetUserId),
+      );
+      if (muted) {
+        list.push({ user: targetUserId, mutedAt: new Date().toISOString() });
+      }
+      return { ...prev, mutedUsers: list };
+    });
+  };
+
+  const handlePinComment = async (commentItem) => {
+    if (!commentItem) return;
+    try {
+      await axios.post(
+        `${BASE_URL}/live-rooms/${roomId}/pin-comment`,
+        {
+          messageId: commentItem.clientMessageId || commentItem.id || "",
+          message: commentItem.message || "",
+          username: commentItem.user?.username || "",
+          avatar:
+            commentItem.user?.profileImage || commentItem.user?.avatar || "",
+          userId: commentItem.user?._id || commentItem.user?.id || null,
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+    } catch (e) {
+      Alert.alert("خطأ", e?.response?.data?.message || "تعذّر تثبيت التعليق");
+    }
+  };
+
+  const handleUnpinComment = async () => {
+    try {
+      await axios.post(
+        `${BASE_URL}/live-rooms/${roomId}/unpin-comment`,
+        {},
+        { headers: { Authorization: `Bearer ${userToken}` } },
+      );
+    } catch (e) {
+      Alert.alert("خطأ", e?.response?.data?.message || "تعذّر إلغاء التثبيت");
+    }
+  };
+
   const handleSendMessage = () => {
     const msg = inputText.trim();
     if (!msg) return;
+    // Block locally if we're chat-muted (server will also reject).
+    if (mutedChatUserIds.has(String(userInfo?._id))) {
+      Alert.alert("ممنوع من الدردشة", "تم كتم دردشتك في هذه الغرفة");
+      return;
+    }
     SoundService.play("message");
     const senderUser = freshUser
       ? {
@@ -3460,6 +3579,27 @@ const LiveRoomScreen = ({ route, navigation }) => {
           inline={true}
           bottomPadding={insets.bottom + ms(72)}
           vipLevelStyles={vipLevelCommentStyles}
+          onAvatarPress={handleAvatarPressInComments}
+          onLongPressComment={handleLongPressComment}
+          pinnedComment={room?.pinnedComment}
+          canModeratePin={
+            room?.host?._id === userInfo?._id ||
+            (room?.moderators || []).some(
+              (m) => (m.user?._id || m.user) === userInfo?._id,
+            )
+          }
+          onUnpinPress={handleUnpinComment}
+          onPinnedPress={(pinned) => {
+            if (!pinned?.userId) return;
+            setUserSheet({
+              user: {
+                _id: pinned.userId,
+                username: pinned.username,
+                profileImage: pinned.avatar,
+              },
+              comment: null,
+            });
+          }}
         />
       </View>
 
@@ -3547,6 +3687,45 @@ const LiveRoomScreen = ({ route, navigation }) => {
         currentUserId={userInfo?._id}
         fetchRoomData={fetchRoomData}
         socketRef={socketRef}
+      />
+
+      <UserActionSheet
+        visible={!!userSheet}
+        onClose={() => setUserSheet(null)}
+        targetUser={userSheet?.user || null}
+        comment={userSheet?.comment || null}
+        currentUserId={userInfo?._id}
+        userToken={userToken}
+        apiBaseUrl={BASE_URL}
+        roomId={roomId}
+        isHost={room?.host?._id === userInfo?._id}
+        isModerator={(room?.moderators || []).some(
+          (m) => (m.user?._id || m.user) === userInfo?._id,
+        )}
+        isMuted={mutedChatUserIds.has(
+          String(userSheet?.user?._id || userSheet?.user?.id || ""),
+        )}
+        isThisCommentPinned={
+          !!(
+            userSheet?.comment &&
+            room?.pinnedComment?.messageId &&
+            (userSheet.comment.clientMessageId ||
+              userSheet.comment.id) === room.pinnedComment.messageId
+          )
+        }
+        onMention={handleMentionUser}
+        onPinComment={handlePinComment}
+        onUnpinComment={handleUnpinComment}
+        onChatMuteChanged={handleChatMuteChanged}
+        onKicked={() => {
+          fetchRoomData();
+        }}
+        onBanned={() => {
+          fetchRoomData();
+        }}
+        onOpenProfile={(uid) => {
+          if (uid) navigation.navigate("UserProfile", { userId: uid });
+        }}
       />
 
       <GiftPanel

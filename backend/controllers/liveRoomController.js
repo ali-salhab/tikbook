@@ -1186,6 +1186,219 @@ exports.getAgoraToken = async (req, res) => {
   }
 };
 
+// Toggle chat mute for a user (host or moderator).
+// Muted users remain in the room but cannot post comments.
+// Body: { userId, mute: true|false } or { userId } to toggle.
+exports.toggleChatMute = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { userId, mute } = req.body;
+    const requesterId = req.user.id;
+
+    if (!userId) return res.status(400).json({ message: "userId is required" });
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId.toString();
+    const isMod = (liveRoom.moderators || []).some(
+      (m) => (m.user || m).toString() === requesterId.toString(),
+    );
+    if (!isHost && !isMod) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    if (liveRoom.host.toString() === userId.toString()) {
+      return res.status(400).json({ message: "Cannot mute the host" });
+    }
+
+    const alreadyMuted = (liveRoom.mutedUsers || []).some(
+      (m) => (m.user || m).toString() === userId.toString(),
+    );
+    const shouldMute = typeof mute === "boolean" ? mute : !alreadyMuted;
+
+    if (shouldMute) {
+      if (!alreadyMuted) {
+        liveRoom.mutedUsers.push({
+          user: userId,
+          mutedBy: requesterId,
+          mutedAt: new Date(),
+        });
+      }
+    } else {
+      liveRoom.mutedUsers = (liveRoom.mutedUsers || []).filter(
+        (m) => (m.user || m).toString() !== userId.toString(),
+      );
+    }
+
+    await liveRoom.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`liveroom:${roomId}`).emit("liveroom:chat_mute_changed", {
+        roomId,
+        userId: userId.toString(),
+        muted: shouldMute,
+        timestamp: new Date(),
+      });
+    }
+
+    res.json({ success: true, muted: shouldMute });
+  } catch (error) {
+    console.error("Error toggling chat mute:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Pin a comment to the top of the chat (host or moderator).
+// Body: { messageId, message, username, avatar, userId? }
+exports.pinComment = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { messageId, message, username, avatar, userId } = req.body;
+    const requesterId = req.user.id;
+
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ message: "Message text is required" });
+    }
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId.toString();
+    const isMod = (liveRoom.moderators || []).some(
+      (m) => (m.user || m).toString() === requesterId.toString(),
+    );
+    if (!isHost && !isMod) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    liveRoom.pinnedComment = {
+      messageId: String(messageId || ""),
+      message: String(message).trim().slice(0, 500),
+      username: String(username || ""),
+      avatar: String(avatar || ""),
+      userId: userId || null,
+      pinnedBy: requesterId,
+      pinnedAt: new Date(),
+    };
+    await liveRoom.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`liveroom:${roomId}`).emit("liveroom:comment_pinned", {
+        roomId,
+        pinnedComment: liveRoom.pinnedComment,
+        timestamp: new Date(),
+      });
+    }
+
+    res.json({ success: true, data: liveRoom.pinnedComment });
+  } catch (error) {
+    console.error("Error pinning comment:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Unpin the currently pinned comment (host or moderator).
+exports.unpinComment = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const requesterId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    const isHost = liveRoom.host.toString() === requesterId.toString();
+    const isMod = (liveRoom.moderators || []).some(
+      (m) => (m.user || m).toString() === requesterId.toString(),
+    );
+    if (!isHost && !isMod) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    liveRoom.pinnedComment = {
+      messageId: "",
+      message: "",
+      username: "",
+      avatar: "",
+      userId: null,
+      pinnedBy: null,
+      pinnedAt: null,
+    };
+    await liveRoom.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`liveroom:${roomId}`).emit("liveroom:comment_unpinned", {
+        roomId,
+        timestamp: new Date(),
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error unpinning comment:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Update the room cover image (host only). Accepts an uploaded image
+// (multipart field "coverImage") or a JSON body { coverImage: <url> }.
+exports.updateRoomCover = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const hostId = req.user.id;
+
+    const liveRoom = await LiveRoom.findOne({ roomId });
+    if (!liveRoom) return res.status(404).json({ message: "Room not found" });
+
+    if (liveRoom.host.toString() !== hostId.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Only the host can change the cover" });
+    }
+
+    let coverImage = req.body.coverImage || liveRoom.coverImage || "";
+
+    if (req.file) {
+      try {
+        const secureUrl = await uploadToCloudinary(
+          req.file.path,
+          "live-covers",
+          "image",
+        );
+        coverImage = secureUrl;
+        if (fs.existsSync(req.file.path)) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.error("Failed to upload room cover:", err);
+        return res.status(500).json({ message: "فشل رفع صورة الغرفة" });
+      }
+    }
+
+    liveRoom.coverImage = coverImage;
+    await liveRoom.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`liveroom:${roomId}`).emit("liveroom:cover_updated", {
+        roomId,
+        coverImage,
+        timestamp: new Date(),
+      });
+    }
+
+    res.json({ success: true, coverImage });
+  } catch (error) {
+    console.error("Error updating room cover:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Update room settings (host only) — PATCH /api/live-rooms/:roomId/settings
 exports.updateRoomSettings = async (req, res) => {
   try {

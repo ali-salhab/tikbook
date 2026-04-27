@@ -23,6 +23,10 @@ const {
   getAgoraToken,
   updateRoomSettings,
   forceMute,
+  toggleChatMute,
+  pinComment,
+  unpinComment,
+  updateRoomCover,
 } = require("../controllers/liveRoomController");
 const { protect } = require("../middleware/authMiddleware");
 const { imageUpload } = require("../middleware/uploadMiddleware");
@@ -57,6 +61,19 @@ router.post("/:roomId/ban", protect, banUser);
 router.post("/:roomId/unban", protect, unbanUser);
 router.post("/:roomId/assign-moderator", protect, assignModerator);
 router.post("/:roomId/remove-moderator", protect, removeModerator);
+
+// Chat moderation (host/moderator)
+router.post("/:roomId/chat-mute", protect, toggleChatMute);
+router.post("/:roomId/pin-comment", protect, pinComment);
+router.post("/:roomId/unpin-comment", protect, unpinComment);
+
+// Cover image update (host only) — accepts multipart "coverImage" or JSON URL
+router.patch(
+  "/:roomId/cover",
+  protect,
+  imageUpload.single("coverImage"),
+  updateRoomCover,
+);
 
 // Music control (host only)
 router.post("/:roomId/music", protect, controlMusic);

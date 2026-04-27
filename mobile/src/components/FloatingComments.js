@@ -7,7 +7,10 @@ import {
   FlatList,
   Image,
   Dimensions,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
 import { ms, fs } from "../utils/responsive";
 import ProfileBadgeFrame from "./ProfileBadgeFrame";
@@ -38,7 +41,7 @@ const getLevelColor = (level) => {
 };
 
 // ─── Single animated comment row ─────────────────────────────────────────
-const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
+const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onLongPress }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const [imgError, setImgError] = useState(false);
@@ -230,13 +233,32 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
     );
   };
 
+  const canPress = !isSystem && !!item.user;
+  const handleAvatarPress = () => {
+    if (canPress && onAvatarPress) onAvatarPress(item);
+  };
+  const handleLongPress = () => {
+    if (canPress && onLongPress) onLongPress(item);
+  };
+
   return (
+    <TouchableWithoutFeedback
+      onLongPress={handleLongPress}
+      delayLongPress={400}
+    >
     <Animated.View style={[
       styles.row,
       { opacity, transform: [{ translateY: slideY }] },
     ]}>
       {/* ── Avatar first in JSX → renders on the visual RIGHT in RTL ── */}
-      <View style={styles.avatarWrap}>
+      <TouchableOpacity
+        style={styles.avatarWrap}
+        onPress={handleAvatarPress}
+        onLongPress={handleLongPress}
+        delayLongPress={400}
+        disabled={!canPress}
+        activeOpacity={0.75}
+      >
         {hasActiveBadge ? (
           <ProfileBadgeFrame
             profileImage={!imgError ? imageUri : null}
@@ -254,7 +276,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
             <Text style={styles.avatarInitial}>{initials}</Text>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
 
       {/* ── Bubble second in JSX → renders to the LEFT of the avatar in RTL ── */}
       <View style={styles.rightCol}>
@@ -384,6 +406,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles }) => {
         )}
       </View>
     </Animated.View>
+    </TouchableWithoutFeedback>
   );
 });
 
@@ -395,6 +418,12 @@ const FloatingComments = ({
   vipLevelStyles = {},
   inline = false,
   bottomPadding = 0,
+  onAvatarPress,
+  onLongPressComment,
+  pinnedComment = null,
+  canModeratePin = false,
+  onUnpinPress,
+  onPinnedPress,
 }) => {
   const listRef = useRef(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -415,9 +444,11 @@ const FloatingComments = ({
         item={item}
         isNew={(item.clientMessageId || item.id || item._id) === latestId}
         vipLevelStyles={vipLevelStyles}
+        onAvatarPress={onAvatarPress}
+        onLongPress={onLongPressComment}
       />
     ),
-    [latestId, vipLevelStyles, visible.length],
+    [latestId, vipLevelStyles, visible.length, onAvatarPress, onLongPressComment],
   );
 
   const keyExtractor = useCallback(
@@ -454,7 +485,8 @@ const FloatingComments = ({
     listRef.current?.scrollToEnd({ animated: true });
   };
 
-  if (visible.length === 0) return null;
+  const hasPinned = !!(pinnedComment && (pinnedComment.message || pinnedComment.messageId));
+  if (visible.length === 0 && !hasPinned) return null;
 
   return (
     <View
@@ -464,6 +496,37 @@ const FloatingComments = ({
       }
       pointerEvents="box-none"
     >
+      {hasPinned && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => onPinnedPress?.(pinnedComment)}
+          style={styles.pinnedBanner}
+        >
+          <View style={styles.pinnedIconWrap}>
+            <Ionicons name="pin" size={fs(13)} color="#FFD580" />
+          </View>
+          <View style={styles.pinnedTextWrap}>
+            <Text style={styles.pinnedTitle} numberOfLines={1}>
+              {pinnedComment.username
+                ? `📌 ${pinnedComment.username}`
+                : "📌 تعليق مثبّت"}
+            </Text>
+            <Text style={styles.pinnedMsg} numberOfLines={2}>
+              {pinnedComment.message}
+            </Text>
+          </View>
+          {canModeratePin && (
+            <TouchableOpacity
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={() => onUnpinPress?.()}
+              style={styles.pinnedCloseBtn}
+            >
+              <Ionicons name="close" size={fs(14)} color="#FFF" />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+      )}
+
       <FlatList
         ref={listRef}
         data={visible}
@@ -505,6 +568,56 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "transparent",
     paddingHorizontal: ms(8),
+  },
+  pinnedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(8),
+    backgroundColor: "rgba(124,93,250,0.92)",
+    borderRadius: ms(12),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(7),
+    marginBottom: ms(6),
+    marginHorizontal: ms(2),
+    borderWidth: 1,
+    borderColor: "rgba(255,213,128,0.55)",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  pinnedIconWrap: {
+    width: ms(22),
+    height: ms(22),
+    borderRadius: ms(11),
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinnedTextWrap: {
+    flex: 1,
+    flexShrink: 1,
+  },
+  pinnedTitle: {
+    color: "#FFD580",
+    fontSize: fs(11),
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  pinnedMsg: {
+    color: "#FFFFFF",
+    fontSize: fs(12.5),
+    fontWeight: "600",
+    lineHeight: fs(16),
+  },
+  pinnedCloseBtn: {
+    width: ms(22),
+    height: ms(22),
+    borderRadius: ms(11),
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   listContent: {
     flexGrow: 1,

@@ -125,6 +125,41 @@ const liveRoomSchema = new mongoose.Schema(
         },
       },
     ],
+    // Chat-muted users — they remain in the room but cannot post comments
+    mutedUsers: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        mutedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        mutedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    // Pinned comment — single message pinned to the top of the chat
+    pinnedComment: {
+      messageId: { type: String, default: "" },
+      message: { type: String, default: "" },
+      username: { type: String, default: "" },
+      avatar: { type: String, default: "" },
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      pinnedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      pinnedAt: { type: Date, default: null },
+    },
     // Moderators/Supervisors with admin-like permissions
     moderators: [
       {

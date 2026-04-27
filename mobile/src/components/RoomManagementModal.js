@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
+import * as ImagePicker from "expo-image-picker";
 import { BASE_URL } from "../config/api";
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
@@ -36,6 +37,8 @@ const SettingsTab = ({ room, roomId, userToken, onSaved, fetchRoomData }) => {
   const [canSendGifts, setCanSendGifts] = useState(room?.permissions?.canSendGifts ?? true);
   const [requestToSpeak, setRequestToSpeak] = useState(room?.permissions?.requestToSpeak ?? false);
   const [saving, setSaving] = useState(false);
+  const [coverPreview, setCoverPreview] = useState(room?.coverImage || null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   useEffect(() => {
     if (room) {
@@ -46,8 +49,56 @@ const SettingsTab = ({ room, roomId, userToken, onSaved, fetchRoomData }) => {
       setCanChat(room.permissions?.canChat ?? true);
       setCanSendGifts(room.permissions?.canSendGifts ?? true);
       setRequestToSpeak(room.permissions?.requestToSpeak ?? false);
+      setCoverPreview(room.coverImage || null);
     }
   }, [room]);
+
+  const handleChangeCover = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("الصلاحيات", "نحتاج إذن الوصول إلى الصور");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [9, 16],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const localUri = result.assets[0].uri;
+      setCoverPreview(localUri);
+      setUploadingCover(true);
+
+      const filename = localUri.split("/").pop();
+      const match = /\.(\w+)$/.exec(filename || "");
+      const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      const form = new FormData();
+      form.append("coverImage", { uri: localUri, name: filename, type });
+
+      await axios.patch(
+        `${BASE_URL}/live-rooms/${roomId}/cover`,
+        form,
+        {
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      fetchRoomData?.();
+      Alert.alert("تم", "تم تحديث صورة الغرفة");
+    } catch (e) {
+      Alert.alert("خطأ", e?.response?.data?.message || "تعذّر تحديث الصورة");
+      setCoverPreview(room?.coverImage || null);
+    } finally {
+      setUploadingCover(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -106,6 +157,32 @@ const SettingsTab = ({ room, roomId, userToken, onSaved, fetchRoomData }) => {
 
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      <Text style={styles.sectionTitle}>صورة الغرفة</Text>
+      <TouchableOpacity
+        style={styles.coverPicker}
+        onPress={handleChangeCover}
+        disabled={uploadingCover}
+        activeOpacity={0.85}
+      >
+        {coverPreview ? (
+          <Image source={{ uri: coverPreview }} style={styles.coverPreview} />
+        ) : (
+          <View style={[styles.coverPreview, styles.coverEmpty]}>
+            <Ionicons name="image-outline" size={32} color="#666" />
+          </View>
+        )}
+        <View style={styles.coverOverlay}>
+          {uploadingCover ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="camera" size={18} color="#fff" />
+              <Text style={styles.coverOverlayText}>تغيير صورة الغرفة</Text>
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+
       <Text style={styles.sectionTitle}>عنوان الغرفة</Text>
       <TextInput
         style={styles.input}
@@ -524,6 +601,43 @@ export default RoomManagementModal;
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  coverPicker: {
+    width: "100%",
+    height: 150,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 8,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#222",
+  },
+  coverPreview: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  coverEmpty: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1A1A1A",
+  },
+  coverOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  coverOverlayText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   modalRoot: {
     flex: 1,
     justifyContent: "flex-end",
