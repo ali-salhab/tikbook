@@ -32,6 +32,7 @@ import ChatScreen from "../screens/ChatScreen";
 import LiveScreen from "../screens/LiveScreen";
 import LiveStreamsListScreen from "../screens/LiveStreamsListScreen";
 import WalletScreen from "../screens/WalletScreen";
+import WithdrawalsTrackingScreen from "../screens/WithdrawalsTrackingScreen";
 import NewFollowersScreen from "../screens/NewFollowersScreen";
 import ActivityScreen from "../screens/ActivityScreen";
 import SystemNotificationsScreen from "../screens/SystemNotificationsScreen";
@@ -454,6 +455,10 @@ const AppNavigator = () => {
                   component={CreateLiveRoomScreen}
                 />
                 <Stack.Screen name="Wallet" component={WalletScreen} />
+                <Stack.Screen
+                  name="WithdrawalsTracking"
+                  component={WithdrawalsTrackingScreen}
+                />
                 <Stack.Screen
                   name="NewFollowers"
                   component={NewFollowersScreen}

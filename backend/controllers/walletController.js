@@ -13,6 +13,18 @@ const SUPPORTED_PAYMENT_METHODS = new Set(["visa"]);
 const COIN_PRICE_EGP = Number(process.env.COIN_PRICE_EGP || 0.605);
 const STRIPE_CURRENCY = (process.env.STRIPE_CURRENCY || "egp").toLowerCase();
 
+// USD payout rate (1 coin = N USD). Used for displaying & storing withdrawal
+// amounts in USD. Override via env COIN_USD_PAYOUT_RATE (e.g. 0.01).
+const COIN_USD_PAYOUT_RATE = Number(process.env.COIN_USD_PAYOUT_RATE || 0.01);
+
+const coinsToUsd = (coins) =>
+  Number((Number(coins || 0) * COIN_USD_PAYOUT_RATE).toFixed(2));
+
+const usdToCoins = (usd) =>
+  COIN_USD_PAYOUT_RATE > 0
+    ? Math.round(Number(usd || 0) / COIN_USD_PAYOUT_RATE)
+    : 0;
+
 const buildTransactionReference = () =>
   `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
@@ -123,7 +135,13 @@ const findTopUpTransactionByIntent = async (paymentIntent) => {
 const getBalance = async (req, res) => {
   try {
     const wallet = await ensureWallet(req.user._id);
-    res.json(wallet);
+    const walletObj = wallet.toObject ? wallet.toObject() : wallet;
+    res.json({
+      ...walletObj,
+      earningsUsd: coinsToUsd(walletObj.earnings || 0),
+      balanceUsd: coinsToUsd(walletObj.balance || 0),
+      usdPerCoin: COIN_USD_PAYOUT_RATE,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -513,7 +531,7 @@ const getTopUpStatus = async (req, res) => {
 // @access  Private
 const requestWithdrawal = async (req, res) => {
   try {
-    const { fullName, phoneNumber, amount } = req.body;
+    const { fullName, phoneNumber, amount, amountUsd } = req.body;
 
     if (!fullName || !fullName.trim()) {
       return res.status(400).json({ message: "الاسم الكامل مطلوب" });
@@ -521,7 +539,25 @@ const requestWithdrawal = async (req, res) => {
     if (!phoneNumber || !phoneNumber.trim()) {
       return res.status(400).json({ message: "رقم الهاتف مطلوب" });
     }
-    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+
+    // Accept either USD amount or legacy coin amount.
+    let coinAmount;
+    let usdAmount;
+    if (amountUsd != null && !isNaN(Number(amountUsd))) {
+      usdAmount = Number(amountUsd);
+      if (usdAmount <= 0) {
+        return res.status(400).json({ message: "المبلغ غير صحيح" });
+      }
+      coinAmount = usdToCoins(usdAmount);
+    } else {
+      if (!amount || isNaN(amount) || Number(amount) <= 0) {
+        return res.status(400).json({ message: "المبلغ غير صحيح" });
+      }
+      coinAmount = Number(amount);
+      usdAmount = coinsToUsd(coinAmount);
+    }
+
+    if (coinAmount <= 0) {
       return res.status(400).json({ message: "المبلغ غير صحيح" });
     }
 
@@ -531,13 +567,13 @@ const requestWithdrawal = async (req, res) => {
       return res.status(400).json({ message: "لا يوجد محفظة" });
     }
 
-    if (wallet.earnings < Number(amount)) {
+    if (wallet.earnings < coinAmount) {
       return res.status(400).json({ message: "رصيدك غير كافٍ للسحب" });
     }
 
     const existing = await WithdrawalRequest.findOne({
       user: req.user._id,
-      status: "pending",
+      status: { $in: ["pending", "processing"] },
     });
     if (existing) {
       return res.status(400).json({
@@ -549,13 +585,49 @@ const requestWithdrawal = async (req, res) => {
       user: req.user._id,
       fullName: fullName.trim(),
       phoneNumber: phoneNumber.trim(),
-      amount: Number(amount),
+      amount: coinAmount,
+      amountUsd: usdAmount,
+      usdPerCoin: COIN_USD_PAYOUT_RATE,
       earningsAtRequest: wallet.earnings,
+      status: "pending",
+      statusHistory: [
+        {
+          status: "pending",
+          note: "تم إنشاء الطلب",
+          changedAt: new Date(),
+          changedBy: req.user._id,
+        },
+      ],
     });
 
     res.status(201).json({
       message: "تم إرسال طلب السحب بنجاح، سيتم مراجعته من قبل الأدمن",
       request,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    List the current user's withdrawal requests
+// @route   GET /api/wallet/withdrawals/me
+// @access  Private
+const getMyWithdrawals = async (req, res) => {
+  try {
+    const WithdrawalRequest = require("../models/WithdrawalRequest");
+    const list = await WithdrawalRequest.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      usdPerCoin: COIN_USD_PAYOUT_RATE,
+      requests: list.map((r) => ({
+        ...r,
+        // Backfill amountUsd & usdPerCoin for older docs that don't have them.
+        amountUsd:
+          r.amountUsd != null ? r.amountUsd : coinsToUsd(r.amount),
+        usdPerCoin: r.usdPerCoin || COIN_USD_PAYOUT_RATE,
+      })),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -620,5 +692,6 @@ module.exports = {
   handleStripeWebhook,
   getTopUpStatus,
   requestWithdrawal,
+  getMyWithdrawals,
   getPackages,
 };

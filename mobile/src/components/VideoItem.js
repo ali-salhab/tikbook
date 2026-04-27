@@ -67,6 +67,7 @@ const VideoItem = memo(
     handleSave,
     handleComment,
     handleShare,
+    handleFollow,
     formatNumber,
   }) => {
     const videoRef = useRef(null);
@@ -337,17 +338,28 @@ const VideoItem = memo(
     };
 
     const handleProfilePress = () => {
-      if (item.user._id === userInfo._id) {
-        navigation.navigate("Profile");
+      SoundService.play("tap");
+      const targetId = item.user?._id || item.user?.id;
+      if (!targetId) return;
+      if (String(targetId) === String(userInfo?._id)) {
+        navigation.navigate("MainTabs", { screen: "Profile" });
       } else {
-        navigation.navigate("UserProfile", { userId: item.user._id });
+        navigation.navigate("UserProfile", { userId: targetId });
       }
     };
 
     const isAlreadyFollowing =
-      item.user._id !== userInfo?._id &&
-      Array.isArray(item.user.followers) &&
-      item.user.followers.includes(userInfo?._id);
+      item.user?._id !== userInfo?._id &&
+      Array.isArray(item.user?.followers) &&
+      item.user.followers.some(
+        (f) => String(typeof f === "object" ? f?._id : f) === String(userInfo?._id),
+      );
+
+    const handleFollowPress = () => {
+      SoundService.play("tap");
+      if (!item.user?._id || isAlreadyFollowing) return;
+      handleFollow?.(item.user._id);
+    };
 
     const isImage = (url) => {
       if (!url) return false;
@@ -462,13 +474,17 @@ const VideoItem = memo(
         {/* Timeline: time labels + scrub bar — flush to tab bar top edge */}
         {!isImage(item.videoUrl) && (
           <View style={styles.timelineSection} pointerEvents="box-none">
-            {/* Time labels */}
-            <View style={styles.progressMetaRow} pointerEvents="none">
-              <Text style={styles.progressMetaText}>
-                {formatTime(progress * duration)}
-              </Text>
-              <Text style={styles.progressMetaText}>{formatTime(duration)}</Text>
-            </View>
+            {/* Time labels — only visible while scrubbing for a clean look */}
+            {isScrubbing && (
+              <View style={styles.progressMetaRow} pointerEvents="none">
+                <Text style={styles.progressMetaText}>
+                  {formatTime(progress * duration)}
+                </Text>
+                <Text style={styles.progressMetaTextDim}>
+                  {formatTime(duration)}
+                </Text>
+              </View>
+            )}
 
             {/* Scrub track */}
             <GestureDetector gesture={scrubGesture}>
@@ -485,8 +501,8 @@ const VideoItem = memo(
                     styles.timeBubble,
                     {
                       left: `${progress * 100}%`,
-                      bottom: PROGRESS_THUMB_SIZE + 6,
-                      marginLeft: -26,
+                      bottom: PROGRESS_THUMB_SIZE + 10,
+                      marginLeft: -28,
                     },
                   ]}
                   pointerEvents="none"
@@ -498,23 +514,30 @@ const VideoItem = memo(
                 </View>
               )}
 
-              {/* Track bar */}
-              <View style={styles.progressBarBg}>
+              {/* Track bar (thicker while scrubbing) */}
+              <View
+                style={[
+                  styles.progressBarBg,
+                  isScrubbing && styles.progressBarBgActive,
+                ]}
+              >
                 <View
                   style={[
                     styles.progressBarFill,
+                    isScrubbing && styles.progressBarFillActive,
                     { width: `${progress * 100}%` },
                   ]}
                 />
               </View>
 
-              {/* Animated thumb */}
+              {/* Animated thumb — only fully visible while scrubbing */}
               <Animated.View
                 style={[
                   styles.progressThumb,
                   {
                     left: `${progress * 100}%`,
                     marginLeft: -(PROGRESS_THUMB_SIZE / 2),
+                    opacity: isScrubbing ? 1 : 0,
                     transform: [{ scale: scrubThumbScale }],
                   },
                 ]}
@@ -532,27 +555,35 @@ const VideoItem = memo(
             { bottom: overlayBottomOffset + 7, gap: actionGap },
           ]}
         >
-          {/* Profile Image */}
-          <TouchableOpacity
-            style={styles.profileContainer}
-            onPress={handleProfilePress}
-          >
-            <View style={styles.profileImageWrapper}>
-              {item.user.profileImage ? (
-                <Image
-                  source={{ uri: item.user.profileImage }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <Text style={styles.profileEmoji}>👤</Text>
-              )}
-            </View>
-            {item.user._id !== userInfo?._id && !isAlreadyFollowing && (
-              <View style={styles.followButton}>
-                <Ionicons name="add" size={14} color="#FFF" />
+          {/* Profile Image + Follow */}
+          <View style={styles.profileContainer}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleProfilePress}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={styles.profileImageWrapper}>
+                {item.user?.profileImage ? (
+                  <Image
+                    source={{ uri: item.user.profileImage }}
+                    style={styles.profileImage}
+                  />
+                ) : (
+                  <Text style={styles.profileEmoji}>👤</Text>
+                )}
               </View>
+            </TouchableOpacity>
+            {item.user?._id && item.user._id !== userInfo?._id && !isAlreadyFollowing && (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleFollowPress}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.followButton}
+              >
+                <Ionicons name="add" size={14} color="#FFF" />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
 
           {/* Like Button - TikTok Style */}
           <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
@@ -694,16 +725,28 @@ const styles = StyleSheet.create({
   },
   progressBarWrapper: {
     paddingVertical: PROGRESS_WRAPPER_VERTICAL,
+    justifyContent: "center",
   },
   progressBarBg: {
     height: PROGRESS_TRACK_HEIGHT,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.28)",
+    borderRadius: PROGRESS_TRACK_HEIGHT,
+    overflow: "hidden",
+  },
+  progressBarBgActive: {
+    height: PROGRESS_TRACK_HEIGHT + 2,
+    backgroundColor: "rgba(255,255,255,0.4)",
+    borderRadius: PROGRESS_TRACK_HEIGHT + 2,
   },
   progressBarFill: {
     height: PROGRESS_TRACK_HEIGHT,
     backgroundColor: "#FFF",
-    borderRadius: 2,
+    borderRadius: PROGRESS_TRACK_HEIGHT,
+  },
+  progressBarFillActive: {
+    height: PROGRESS_TRACK_HEIGHT + 2,
+    backgroundColor: "#FE2C55",
+    borderRadius: PROGRESS_TRACK_HEIGHT + 2,
   },
   progressThumb: {
     position: "absolute",
@@ -712,6 +755,8 @@ const styles = StyleSheet.create({
     height: PROGRESS_THUMB_SIZE,
     borderRadius: PROGRESS_THUMB_SIZE / 2,
     backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: "#FE2C55",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.6,
@@ -759,23 +804,34 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 14,
-    paddingBottom: 6,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
     zIndex: 200,
   },
   progressMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 2,
+    marginBottom: 6,
+    paddingHorizontal: 14,
   },
   progressMetaText: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 12,
-    fontWeight: "600",
-    textShadowColor: "rgba(0,0,0,0.8)",
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+    textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
+  },
+  progressMetaTextDim: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   bottomSection: {
     position: "absolute",

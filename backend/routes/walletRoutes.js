@@ -10,6 +10,7 @@ const {
   handleStripeWebhook,
   getTopUpStatus,
   requestWithdrawal,
+  getMyWithdrawals,
   getPackages,
 } = require("../controllers/walletController");
 
@@ -19,6 +20,7 @@ const router = express.Router();
 router.post("/stripe/webhook", handleStripeWebhook);
 
 router.get("/packages", protect, getPackages);
+router.get("/withdrawals/me", protect, getMyWithdrawals);
 router.get("/", protect, getBalance);
 router.get("/:userId", protect, async (req, res) => {
   try {

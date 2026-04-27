@@ -326,6 +326,60 @@ const HomeScreen = ({ navigation, route }) => {
     }
   }, []);
 
+  const handleFollow = useCallback(
+    async (targetUserId) => {
+      if (!userToken || !userInfo?._id || !targetUserId) return;
+      if (String(targetUserId) === String(userInfo._id)) return;
+
+      // Optimistic — mark every video by this user as followed by current user
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.user?._id === targetUserId
+            ? {
+                ...v,
+                user: {
+                  ...v.user,
+                  followers: Array.isArray(v.user.followers)
+                    ? [...v.user.followers.filter((f) => String(typeof f === "object" ? f?._id : f) !== String(userInfo._id)), userInfo._id]
+                    : [userInfo._id],
+                },
+              }
+            : v,
+        ),
+      );
+
+      try {
+        await axios.put(
+          `${BASE_URL}/users/${targetUserId}/follow`,
+          {},
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        SoundService.play("notification");
+      } catch (err) {
+        console.log("Follow error:", err?.response?.data || err.message);
+        // Revert
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.user?._id === targetUserId
+              ? {
+                  ...v,
+                  user: {
+                    ...v.user,
+                    followers: Array.isArray(v.user.followers)
+                      ? v.user.followers.filter(
+                          (f) => String(typeof f === "object" ? f?._id : f) !== String(userInfo._id),
+                        )
+                      : [],
+                  },
+                }
+              : v,
+          ),
+        );
+      }
+    },
+    [userToken, userInfo?._id],
+  );
+
   const handleSave = useCallback(async (videoId) => {
     // Optimistic update
     setVideos((prevVideos) =>
@@ -383,10 +437,11 @@ const HomeScreen = ({ navigation, route }) => {
         handleSave={handleSave}
         handleComment={handleComment}
         handleShare={handleShare}
+        handleFollow={handleFollow}
         formatNumber={formatNumber}
       />
     ),
-    [activeVideoIndex, isScreenFocused, pageHeight, tabBarHeight, userInfo, handleLike, handleSave, handleComment, handleShare, formatNumber],
+    [activeVideoIndex, isScreenFocused, pageHeight, tabBarHeight, userInfo, handleLike, handleSave, handleComment, handleShare, handleFollow, formatNumber],
   );
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {

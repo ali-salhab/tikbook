@@ -11,6 +11,7 @@ import {
   Animated,
   Alert,
   Clipboard,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,6 +52,7 @@ const ProfileScreen = ({ navigation }) => {
   const [likedVideos, setLikedVideos] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const [userStatuses, setUserStatuses] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
   const netInfo = useNetInfo();
 
   const fetchProfile = useCallback(async () => {
@@ -170,6 +172,27 @@ const ProfileScreen = ({ navigation }) => {
       fetchLikedVideos();
     }
   }, [activeTab, userInfo, fetchLikedVideos]);
+
+  const handlePullToRefresh = useCallback(async () => {
+    if (!userInfo) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchProfile(),
+        fetchNotificationCount?.(),
+        activeTab === "saved" ? fetchSavedVideos() : Promise.resolve(),
+        activeTab === "liked" ? fetchLikedVideos() : Promise.resolve(),
+      ]);
+    } catch (_) {}
+    setRefreshing(false);
+  }, [
+    userInfo,
+    fetchProfile,
+    fetchNotificationCount,
+    fetchSavedVideos,
+    fetchLikedVideos,
+    activeTab,
+  ]);
 
   const copyUserId = () => {
     if (userInfo?._id) {
@@ -526,7 +549,19 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handlePullToRefresh}
+            tintColor="#FE2C55"
+            colors={["#FE2C55"]}
+            title="تحديث…"
+            titleColor="#FE2C55"
+          />
+        }
+      >
         {/* Profile Info */}
         <View style={styles.profileInfo}>
           {/* Avatar with Badge Frame */}

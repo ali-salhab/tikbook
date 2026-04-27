@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import GradientBackground from "../components/GradientBackground";
 import {
   View,
@@ -13,6 +13,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from "react-native";
 import {
   SafeAreaView,
@@ -42,7 +43,10 @@ const WalletScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState("recharge"); // 'recharge' | 'withdraw'
   const [balance, setBalance] = useState(0);
   const [earnings, setEarnings] = useState(0);
+  const [earningsUsd, setEarningsUsd] = useState(0);
+  const [usdPerCoin, setUsdPerCoin] = useState(0.01);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -50,7 +54,7 @@ const WalletScreen = ({ navigation }) => {
   // Withdrawal form state
   const [withdrawFullName, setWithdrawFullName] = useState("");
   const [withdrawPhone, setWithdrawPhone] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState(""); // USD amount entered
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [myWithdrawals, setMyWithdrawals] = useState([]);
 
@@ -61,6 +65,7 @@ const WalletScreen = ({ navigation }) => {
   useEffect(() => {
     fetchWalletData();
     fetchPackages();
+    fetchMyWithdrawals();
   }, []);
 
   const fetchPackages = async () => {
@@ -83,6 +88,8 @@ const WalletScreen = ({ navigation }) => {
       });
       setBalance(res.data.balance ?? 0);
       setEarnings(res.data.earnings ?? 0);
+      setEarningsUsd(res.data.earningsUsd ?? 0);
+      if (res.data.usdPerCoin) setUsdPerCoin(res.data.usdPerCoin);
       setLoading(false);
     } catch (e) {
       console.error("Error fetching wallet:", e);
@@ -91,8 +98,24 @@ const WalletScreen = ({ navigation }) => {
   };
 
   const fetchMyWithdrawals = async () => {
-    // We'll show the status from submission response
+    try {
+      const res = await axios.get(`${BASE_URL}/wallet/withdrawals/me`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setMyWithdrawals(res.data?.requests || []);
+      if (res.data?.usdPerCoin) setUsdPerCoin(res.data.usdPerCoin);
+    } catch (e) {
+      console.log("Error fetching withdrawals:", e?.message);
+    }
   };
+
+  const handleRefreshWallet = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchWalletData(), fetchMyWithdrawals(), fetchPackages()]);
+    } catch (_) {}
+    setRefreshing(false);
+  }, [userToken]);
 
   const handleSelectPackage = (pkg) => {
     setSelectedPackage(pkg);
@@ -182,12 +205,12 @@ const WalletScreen = ({ navigation }) => {
       Alert.alert("تنبيه", "الرجاء إدخال رقم الهاتف");
       return;
     }
-    const amt = parseFloat(withdrawAmount);
-    if (!withdrawAmount || isNaN(amt) || amt <= 0) {
-      Alert.alert("تنبيه", "الرجاء إدخال مبلغ صحيح");
+    const amtUsd = parseFloat(withdrawAmount);
+    if (!withdrawAmount || isNaN(amtUsd) || amtUsd <= 0) {
+      Alert.alert("تنبيه", "الرجاء إدخال مبلغ صحيح بالدولار");
       return;
     }
-    if (amt > earnings) {
+    if (amtUsd > earningsUsd) {
       Alert.alert("خطأ", "المبلغ أكبر من أرباحك المتاحة");
       return;
     }
@@ -198,7 +221,7 @@ const WalletScreen = ({ navigation }) => {
         {
           fullName: withdrawFullName.trim(),
           phoneNumber: withdrawPhone.trim(),
-          amount: amt,
+          amountUsd: amtUsd,
         },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
@@ -206,9 +229,18 @@ const WalletScreen = ({ navigation }) => {
       setWithdrawFullName("");
       setWithdrawPhone("");
       setWithdrawAmount("");
+      await fetchMyWithdrawals();
+      await fetchWalletData();
       Alert.alert(
         "تم الإرسال ✅",
-        `طلب سحب ${amt} عملة قيد المراجعة من قبل الأدمن\nسيتم التواصل معك عبر الهاتف: ${withdrawPhone}`,
+        `طلب سحب بقيمة $${amtUsd.toFixed(2)} قيد المراجعة من قبل الأدمن\nسيتم التواصل معك عبر الهاتف: ${withdrawPhone}`,
+        [
+          {
+            text: "تتبع الطلب",
+            onPress: () => navigation.navigate("WithdrawalsTracking"),
+          },
+          { text: "حسناً" },
+        ],
       );
     } catch (e) {
       setWithdrawLoading(false);
@@ -450,15 +482,23 @@ const WalletScreen = ({ navigation }) => {
             styles.scrollContent,
             { paddingBottom: Math.max(insets.bottom, 30) },
           ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefreshWallet}
+              tintColor="#FE2C55"
+              colors={["#FE2C55"]}
+            />
+          }
         >
-          {/* Earnings Balance Card */}
+          {/* Earnings Balance Card — USD */}
           <View style={styles.earningsCard}>
             <MaterialCommunityIcons
               name="cash-multiple"
               size={32}
               color="#FE2C55"
             />
-            <View style={{ marginRight: 12 }}>
+            <View style={{ marginRight: 12, flex: 1 }}>
               <Text style={styles.earningsLabel}>أرباحك المتاحة للسحب</Text>
               <View
                 style={{
@@ -467,14 +507,37 @@ const WalletScreen = ({ navigation }) => {
                   gap: 6,
                 }}
               >
-                <Text style={styles.earningsAmount}>{earnings}</Text>
-                <CoinIcon size={18} />
+                <Text style={styles.earningsAmount}>
+                  ${Number(earningsUsd || 0).toFixed(2)}
+                </Text>
               </View>
+              <Text style={styles.earningsSubLabel}>
+                ({earnings} {earnings === 1 ? "عملة" : "عملة"} • سعر التحويل: 1
+                عملة = ${Number(usdPerCoin || 0).toFixed(4)})
+              </Text>
             </View>
           </View>
 
+          <TouchableOpacity
+            style={styles.trackingLinkBtn}
+            onPress={() => navigation.navigate("WithdrawalsTracking")}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="receipt-outline" size={18} color="#FFF" />
+            <Text style={styles.trackingLinkText}>تتبع طلبات السحب</Text>
+            {myWithdrawals.length > 0 && (
+              <View style={styles.trackingBadge}>
+                <Text style={styles.trackingBadgeText}>
+                  {myWithdrawals.length}
+                </Text>
+              </View>
+            )}
+            <Ionicons name="chevron-back" size={18} color="#FFF" />
+          </TouchableOpacity>
+
           <Text style={styles.withdrawNote}>
-            أدخل بياناتك وسيتواصل معك الأدمن لتحويل رصيدك
+            أدخل بياناتك وسيتواصل معك الأدمن لتحويل رصيدك (المعاملات بالدولار
+            الأمريكي)
           </Text>
 
           {/* Form */}
@@ -500,16 +563,28 @@ const WalletScreen = ({ navigation }) => {
               textAlign="right"
             />
 
-            <Text style={styles.inputLabel}>المبلغ المراد سحبه (عملات)</Text>
-            <TextInput
-              style={styles.withdrawInput}
-              placeholder={`الحد الأقصى: ${earnings}`}
-              placeholderTextColor="#999"
-              value={withdrawAmount}
-              onChangeText={setWithdrawAmount}
-              keyboardType="numeric"
-              textAlign="right"
-            />
+            <Text style={styles.inputLabel}>المبلغ المراد سحبه (USD)</Text>
+            <View style={styles.usdInputWrapper}>
+              <Text style={styles.usdPrefix}>$</Text>
+              <TextInput
+                style={[styles.withdrawInput, styles.usdInput]}
+                placeholder={`الحد الأقصى: $${Number(earningsUsd || 0).toFixed(2)}`}
+                placeholderTextColor="#999"
+                value={withdrawAmount}
+                onChangeText={setWithdrawAmount}
+                keyboardType="decimal-pad"
+                textAlign="right"
+              />
+            </View>
+            {!!withdrawAmount && !isNaN(parseFloat(withdrawAmount)) && (
+              <Text style={styles.equivalentText}>
+                ≈{" "}
+                {usdPerCoin > 0
+                  ? Math.round(parseFloat(withdrawAmount) / usdPerCoin)
+                  : 0}{" "}
+                عملة
+              </Text>
+            )}
 
             <TouchableOpacity
               style={[
@@ -869,6 +944,73 @@ const styles = StyleSheet.create({
     fontSize: fs(28),
     fontWeight: "bold",
     color: "#F0EEFF",
+  },
+  earningsSubLabel: {
+    fontSize: fs(11),
+    color: "rgba(220,210,255,0.5)",
+    textAlign: "right",
+    marginTop: ms(4),
+  },
+  trackingLinkBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    backgroundColor: "rgba(124,93,250,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(160,140,255,0.45)",
+    marginHorizontal: ms(16),
+    marginBottom: ms(12),
+    paddingHorizontal: ms(14),
+    paddingVertical: ms(11),
+    borderRadius: ms(10),
+    gap: ms(8),
+  },
+  trackingLinkText: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: fs(14),
+    flex: 1,
+    textAlign: "right",
+  },
+  trackingBadge: {
+    backgroundColor: "#FE2C55",
+    minWidth: ms(22),
+    height: ms(22),
+    borderRadius: ms(11),
+    paddingHorizontal: ms(6),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trackingBadgeText: {
+    color: "#FFF",
+    fontSize: fs(11),
+    fontWeight: "700",
+  },
+  usdInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  usdPrefix: {
+    position: "absolute",
+    left: ms(12),
+    top: 0,
+    bottom: 0,
+    textAlignVertical: "center",
+    color: "#FE2C55",
+    fontWeight: "700",
+    fontSize: fs(16),
+    zIndex: 2,
+    lineHeight: ms(40),
+  },
+  usdInput: {
+    flex: 1,
+    paddingLeft: ms(28),
+  },
+  equivalentText: {
+    fontSize: fs(11),
+    color: "rgba(220,210,255,0.6)",
+    textAlign: "left",
+    marginTop: ms(4),
   },
   withdrawNote: {
     fontSize: fs(13),

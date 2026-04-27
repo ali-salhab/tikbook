@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
   Share,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,6 +34,7 @@ const UserProfileScreen = ({ route, navigation }) => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState("videos");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const netInfo = useNetInfo();
 
   const fetchUserProfile = useCallback(async () => {
@@ -66,6 +68,14 @@ const UserProfileScreen = ({ route, navigation }) => {
       fetchUserProfile();
     }
   }, [userId, netInfo.isConnected]);
+
+  const handlePullToRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchUserProfile();
+    } catch (_) {}
+    setRefreshing(false);
+  }, [fetchUserProfile]);
 
   const buildCloudinaryThumbnail = (url) => {
     if (!url) return null;
@@ -211,7 +221,19 @@ const UserProfileScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handlePullToRefresh}
+            tintColor="#FE2C55"
+            colors={["#FE2C55"]}
+            title="تحديث…"
+            titleColor="#FE2C55"
+          />
+        }
+      >
         {/* Profile Info */}
         <View style={styles.profileInfo}>
           <View style={styles.avatarContainer}>
