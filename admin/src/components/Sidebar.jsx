@@ -17,6 +17,7 @@ import {
   FiSmartphone,
   FiStar,
   FiUpload,
+  FiDollarSign,
 } from "react-icons/fi";
 
 const Sidebar = ({ onLogout }) => {
@@ -79,6 +80,12 @@ const Sidebar = ({ onLogout }) => {
       label: "المدفوعات",
       icon: FiCreditCard,
       path: "/payments",
+    },
+    {
+      id: "withdrawals",
+      label: "طلبات السحب",
+      icon: FiDollarSign,
+      path: "/withdrawals",
     },
     {
       id: "rewards",
