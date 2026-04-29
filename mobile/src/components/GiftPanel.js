@@ -17,6 +17,7 @@ import {
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import giftService from "../services/giftService";
+import { useApp } from "../context/AppContext";
 
 const { width } = Dimensions.get("window");
 
@@ -29,6 +30,8 @@ const GiftPanel = ({
   onRecharge,
 }) => {
   const insets = useSafeAreaInsets();
+  const { theme } = useApp();
+  const styles = makeStyles(theme);
   const [gifts, setGifts] = useState([]);
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -138,14 +141,14 @@ const GiftPanel = ({
       >
         {/* Thumbnail */}
         {imgUri ? (
-          <Image
+            <Image
             source={{ uri: imgUri }}
             style={styles.giftImage}
             resizeMode="contain"
           />
         ) : (
           <View style={styles.giftPlaceholder}>
-            <Ionicons name="gift" size={28} color="#DDD" />
+            <Ionicons name="gift" size={28} color={theme.textMuted} />
           </View>
         )}
 
@@ -203,7 +206,7 @@ const GiftPanel = ({
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={28} color="#000" />
+              <Ionicons name="close" size={28} color={theme.icon} />
             </TouchableOpacity>
             <Text style={styles.title}>إرسال هدية</Text>
             <TouchableOpacity
@@ -249,7 +252,7 @@ const GiftPanel = ({
           <View style={{ flex: 1 }}>
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FF3366" />
+                <ActivityIndicator size="large" color={theme.accent} />
               </View>
             ) : (
               <FlatList
@@ -273,14 +276,14 @@ const GiftPanel = ({
                   style={styles.quantityButton}
                   onPress={() => setQuantity(Math.max(1, quantity - 1))}
                 >
-                  <Ionicons name="remove" size={20} color="#000" />
+                  <Ionicons name="remove" size={20} color={theme.text} />
                 </TouchableOpacity>
                 <Text style={styles.quantityText}>x{quantity}</Text>
                 <TouchableOpacity
                   style={styles.quantityButton}
                   onPress={() => setQuantity(quantity + 1)}
                 >
-                  <Ionicons name="add" size={20} color="#000" />
+                  <Ionicons name="add" size={20} color={theme.text} />
                 </TouchableOpacity>
               </View>
 
@@ -313,17 +316,21 @@ const GiftPanel = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) =>
+  StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: "75%",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
+    borderColor: theme.border,
   },
   header: {
     flexDirection: "row",
@@ -331,46 +338,48 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: theme.border,
   },
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
   },
   balanceContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FFF8DC",
+    backgroundColor: theme.bg3,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.35)",
   },
   balanceText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
   },
   categoriesContainer: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: theme.border,
   },
   categoryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.bg3,
   },
   selectedCategory: {
-    backgroundColor: "#FF3366",
+    backgroundColor: theme.accent,
   },
   categoryText: {
     fontSize: 14,
-    color: "#666",
+    color: theme.textMuted,
     fontWeight: "500",
   },
   selectedCategoryText: {
@@ -389,7 +398,7 @@ const styles = StyleSheet.create({
   giftItem: {
     width: (width - 44) / 4,
     margin: 3,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.card,
     borderRadius: 12,
     paddingTop: 8,
     paddingBottom: 6,
@@ -401,8 +410,8 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   selectedGift: {
-    borderColor: "#FF3366",
-    backgroundColor: "rgba(254,44,85,0.12)",
+    borderColor: theme.accent,
+    backgroundColor: `${theme.accent}22`,
   },
   disabledGift: {
     opacity: 0.5,
@@ -423,7 +432,7 @@ const styles = StyleSheet.create({
   },
   giftName: {
     fontSize: 11,
-    color: "#EEE",
+    color: theme.textSecondary,
     marginTop: 4,
     textAlign: "center",
   },
@@ -475,15 +484,18 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: theme.border,
+    backgroundColor: theme.bg,
   },
   quantityContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.bg3,
     borderRadius: 25,
     paddingHorizontal: 12,
     gap: 12,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   quantityButton: {
     padding: 8,
@@ -491,14 +503,14 @@ const styles = StyleSheet.create({
   quantityText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#000",
+    color: theme.text,
     minWidth: 30,
     textAlign: "center",
   },
   sendButton: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#FF3366",
+    backgroundColor: theme.accent,
     borderRadius: 25,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -506,8 +518,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   sendButtonDisabled: {
-    backgroundColor: "#c4637a",
-    opacity: 0.8,
+    opacity: 0.55,
   },
   sendButtonText: {
     color: "#fff",
