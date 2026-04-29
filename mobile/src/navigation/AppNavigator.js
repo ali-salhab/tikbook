@@ -61,6 +61,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Linking } from "react-native";
 import { brandColors } from "../theme/brand";
+import GlassBlurLayer from "../components/GlassBlurLayer";
 
 // Parse a tikbook://video/:videoId URL and return the videoId, or null.
 // Also supports tikbook://user/:userId and https://tikbook.com/@username links.
@@ -164,12 +165,9 @@ const HomeTabs = () => {
           shadowOpacity: 0,
         },
         tabBarBackground: () => (
-          <LinearGradient
-            colors={theme.id === "dark" ? ["#080614", "#0E0B1E", "#130F24"] : ["#EEE8F8", "#E8E0F5", "#EBF0F8"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ flex: 1, borderTopWidth: 0.5, borderTopColor: theme.id === "dark" ? "rgba(160,140,255,0.12)" : "rgba(100,80,180,0.12)" }}
-          />
+          <View style={{ flex: 1, overflow: "hidden" }}>
+            <GlassBlurLayer dark={theme.id === "dark"} />
+          </View>
         ),
         tabBarActiveTintColor: theme.text,
         tabBarInactiveTintColor: theme.textMuted,
@@ -235,7 +233,7 @@ const HomeTabs = () => {
                   position: "absolute",
                   width: 27,
                   height: 27,
-                  backgroundColor: "#00F2EA",
+                  backgroundColor: brandColors.cyan,
                   borderRadius: 8,
                   left: 0,
                 }}

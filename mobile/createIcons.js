@@ -28,7 +28,7 @@ async function createIcons() {
       width: 2000,
       height: 2000,
       channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 1 },
+      background: { r: 13, g: 6, b: 24, alpha: 1 },
     },
   })
     .composite([

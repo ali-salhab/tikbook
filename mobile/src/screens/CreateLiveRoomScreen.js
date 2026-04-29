@@ -282,7 +282,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
               <Ionicons
                 name={isPrivate ? "lock-closed" : "globe-outline"}
                 size={20}
-                color={isPrivate ? "#FF4444" : "#00F2EA"}
+                color={isPrivate ? "#FF4444" : "#33CCFF"}
               />
             </View>
             <View>

@@ -20,7 +20,7 @@ export const setupAndroidChannel = async () => {
       name: "الإشعارات",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#FF2D92",
+      lightColor: "#FF3366",
       sound: "default",
       enableLights: true,
       enableVibrate: true,

@@ -123,7 +123,7 @@ const CommentItem = ({
           <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               {comment.isLiked ? (
-                <Ionicons name="heart" size={20} color="#FF2D92" />
+                <Ionicons name="heart" size={20} color="#FF3366" />
               ) : (
                 <Ionicons name="heart-outline" size={20} color="#999" />
               )}
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   likeCountActive: {
-    color: "#FF2D92",
+    color: "#FF3366",
     fontWeight: "600",
   },
   toggleRepliesButton: {

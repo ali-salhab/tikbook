@@ -14,8 +14,9 @@ import {
   LANG_STORAGE_KEY,
   THEME_STORAGE_KEY,
 } from "../i18n";
+import { brandColors } from "../theme/brand";
 
-// ── Theme palettes ─────────────────────────────────────────────────────────
+// ── Theme palettes (accent / حلقات الصورة من هوية الشعار في brand.js) ────────
 
 export const themes = {
   dark: {
@@ -29,7 +30,7 @@ export const themes = {
     textSecondary: "#B8B0D8",
     textMuted: "#7A728A",
     placeholder: "#6A6280",
-    accent: "#FF2D92",
+    accent: brandColors.accent,
     icon: "#F0EEFF",
     iconMuted: "#8880AA",
     tabBar: "#0A0818",
@@ -38,31 +39,31 @@ export const themes = {
     inputBorder: "#2A2550",
     buttonBg: "#1A1630",
     buttonBorder: "#2A2550",
-    switch: { false: "#2A2550", true: "#FF2D92" },
-    avatarRing: "#A855F7",
+    switch: { false: "#2A2550", true: brandColors.accent },
+    avatarRing: brandColors.violet,
   },
   light: {
     id: "light",
-    bg: "#FDF2F8",
-    bg2: "#F5F0FF",
-    bg3: "#E4DCF5",
-    card: "#FAF7FF",
-    border: "#D4C8EE",
+    bg: "#FFF5F9",
+    bg2: "#F7F2FF",
+    bg3: "#E8ECFF",
+    card: "#FFFBFF",
+    border: "#DDD0EE",
     text: "#1A1530",
     textSecondary: "#3A3060",
     textMuted: "#7A6898",
     placeholder: "#9A88B8",
-    accent: "#FF2D92",
+    accent: brandColors.accent,
     icon: "#1A1530",
     iconMuted: "#8878A8",
-    tabBar: "#F0EBF8",
-    header: "#F5F0FF",
-    input: "#E4DCF5",
+    tabBar: "#F5F0FA",
+    header: "#F8F4FF",
+    input: "#EEE8FA",
     inputBorder: "#C8BAE8",
-    buttonBg: "#E4DCF5",
+    buttonBg: "#EEE8FA",
     buttonBorder: "#C8BAE8",
-    switch: { false: "#C8BAE8", true: "#FF2D92" },
-    avatarRing: "#A855F7",
+    switch: { false: "#C8BAE8", true: brandColors.accent },
+    avatarRing: brandColors.violet,
   },
 };
 

@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     marginBottom: ms(8),
   },
   required: {
-    color: "#FF2D92",
+    color: "#FF3366",
   },
   hint: {
     fontSize: fs(12),
@@ -544,8 +544,8 @@ const styles = StyleSheet.create({
     borderColor: "#E5E5E5",
   },
   categoryChipActive: {
-    backgroundColor: "#FF2D92",
-    borderColor: "#FF2D92",
+    backgroundColor: "#FF3366",
+    borderColor: "#FF3366",
   },
   categoryText: {
     fontSize: fs(13),
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   submitButton: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     paddingVertical: ms(16),
     borderRadius: ms(8),
     marginHorizontal: ms(16),

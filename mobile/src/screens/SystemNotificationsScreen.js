@@ -31,7 +31,7 @@ const TABS = [
 
 // ─── Per-type display config ─────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  live:            { icon: "radio",            color: "#FF2D92", bg: "#FF2D9222", label: "LIVE" },
+  live:            { icon: "radio",            color: "#FF3366", bg: "#FF336622", label: "LIVE" },
   admin:           { icon: "person-circle",    color: "#6366F1", bg: "#6366F122", label: "إدارة" },
   admin_broadcast: { icon: "megaphone",        color: "#8B5CF6", bg: "#8B5CF622", label: "إعلان عام" },
   system:          { icon: "notifications",    color: "#25F4EE", bg: "#25F4EE22", label: "النظام" },
@@ -41,7 +41,7 @@ const TYPE_CONFIG = {
   follow:          { icon: "person-add",       color: "#3B82F6", bg: "#3B82F622", label: "متابعة" },
   like:            { icon: "heart",            color: "#EF4444", bg: "#EF444422", label: "إعجاب" },
   comment:         { icon: "chatbubble",       color: "#F97316", bg: "#F9731622", label: "تعليق" },
-  video:           { icon: "videocam",         color: "#A855F7", bg: "#A855F722", label: "فيديو" },
+  video:           { icon: "videocam",         color: "#6633FF", bg: "#6633FF22", label: "فيديو" },
   mention:         { icon: "at",               color: "#06B6D4", bg: "#06B6D422", label: "إشارة" },
 };
 

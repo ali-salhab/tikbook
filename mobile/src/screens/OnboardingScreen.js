@@ -130,7 +130,7 @@ const OnboardingScreen = ({ navigation }) => {
       <View style={[styles.slide, { width }]}>
         <Animated.View style={[styles.iconContainer, animatedStyle]}>
           <LinearGradient
-            colors={["#00F2EA33", "#FF2D9233"]} // Transparent Cyan and Red
+            colors={["#33CCFF33", "#FF336633"]} // شفاف: سماوي + وردي (هوية الشعار)
             style={styles.iconCircle}
           >
             {/* Layered Icons for Glitch Effect */}
@@ -147,7 +147,7 @@ const OnboardingScreen = ({ navigation }) => {
             <Ionicons
               name={item.icon}
               size={100}
-              color="#FF2D92"
+              color="#FF3366"
               style={{
                 position: "absolute",
                 transform: [{ translateX: 2 }, { translateY: 2 }],
@@ -196,7 +196,7 @@ const OnboardingScreen = ({ navigation }) => {
             return {
               width: widthAnim,
               opacity: opacityAnim,
-              backgroundColor: colorAnim > 0.5 ? "#FF2D92" : "#888",
+              backgroundColor: colorAnim > 0.5 ? "#FF3366" : "#888",
             };
           });
           return (
@@ -237,7 +237,7 @@ const OnboardingScreen = ({ navigation }) => {
         <Pagination />
 
         <LinearGradient
-          colors={["#FF2D92", "#FF0050"]}
+          colors={["#FF3366", "#6633FF"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.nextButtonGradient}
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     width: ms(300),
     height: ms(300),
     borderRadius: ms(150),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     opacity: 0.1,
     transform: [{ scale: 1.5 }],
   },

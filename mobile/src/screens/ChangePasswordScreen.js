@@ -174,7 +174,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={44}
-                  color="#FF2D92"
+                  color="#FF3366"
                 />
               </View>
 
@@ -205,7 +205,7 @@ const ChangePasswordScreen = ({ navigation }) => {
           {step === STEP_OTP && (
             <View style={s.centerContent}>
               <View style={s.iconCircle}>
-                <Ionicons name="mail-open-outline" size={44} color="#FF2D92" />
+                <Ionicons name="mail-open-outline" size={44} color="#FF3366" />
               </View>
 
               <Text style={s.title}>أدخل رمز التحقق</Text>
@@ -269,7 +269,7 @@ const ChangePasswordScreen = ({ navigation }) => {
           {step === STEP_RESET && (
             <View style={s.centerContent}>
               <View style={s.iconCircle}>
-                <Ionicons name="key-outline" size={44} color="#FF2D92" />
+                <Ionicons name="key-outline" size={44} color="#FF3366" />
               </View>
 
               <Text style={s.title}>كلمة المرور الجديدة</Text>
@@ -494,19 +494,19 @@ const makeStyles = (theme) =>
       textAlign: "center",
     },
     otpBoxFilled: {
-      borderColor: "#FF2D92",
+      borderColor: "#FF3366",
       backgroundColor: "rgba(254,44,85,0.06)",
     },
     btn: {
       width: "100%",
       height: ms(52),
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
       borderRadius: ms(12),
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
       gap: ms(8),
-      shadowColor: "#FF2D92",
+      shadowColor: "#FF3366",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 8,
@@ -524,7 +524,7 @@ const makeStyles = (theme) =>
       marginTop: ms(20),
     },
     resendLabel: { color: theme.textMuted, fontSize: fs(14) },
-    resendLink: { color: "#FF2D92", fontSize: fs(14), fontWeight: "700" },
+    resendLink: { color: "#FF3366", fontSize: fs(14), fontWeight: "700" },
     resendDisabled: { color: theme.textMuted },
     inputWrap: {
       width: "100%",
@@ -566,7 +566,7 @@ const makeStyles = (theme) =>
       height: ms(8),
       borderRadius: ms(4),
     },
-    dotActive: { backgroundColor: "#FF2D92" },
+    dotActive: { backgroundColor: "#FF3366" },
     dotInactive: { backgroundColor: theme.border },
   });
 

@@ -336,7 +336,7 @@ const InboxScreen = ({ navigation }) => {
                 >
                   {count > 1 && (
                     <LinearGradient
-                      colors={isOwn ? ["#25D366", "#00BFFF"] : ["#FF2D92", "#FF9500"]}
+                      colors={isOwn ? ["#25D366", "#00BFFF"] : ["#FF3366", "#FF9500"]}
                       style={[StyleSheet.absoluteFill, { borderRadius: ms(34) }]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -353,7 +353,7 @@ const InboxScreen = ({ navigation }) => {
                         style={[
                           styles.storyCircleImg,
                           {
-                            backgroundColor: item.items?.[0]?.bgColor || "#FF2D92",
+                            backgroundColor: item.items?.[0]?.bgColor || "#FF3366",
                             justifyContent: "center",
                             alignItems: "center",
                           },
@@ -451,7 +451,7 @@ const InboxScreen = ({ navigation }) => {
             {latestActivity ? getSummaryText(latestActivity) : "لا يوجد نشاط"}
           </Text>
         </View>
-        <View style={[styles.notifIconCircle, { backgroundColor: "#FF2D92" }]}>
+        <View style={[styles.notifIconCircle, { backgroundColor: "#FF3366" }]}>
           <Ionicons name="heart" size={24} color="#FFF" />
         </View>
       </TouchableOpacity>
@@ -499,7 +499,7 @@ const InboxScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={styles.promoIcon}>
-            <Ionicons name="mail" size={28} color="#FF2D92" />
+            <Ionicons name="mail" size={28} color="#FF3366" />
           </View>
         </View>
       )}
@@ -549,7 +549,7 @@ const InboxScreen = ({ navigation }) => {
       {/* Loading indicator */}
       {loading && (
         <View style={styles.loadingBar}>
-          <ActivityIndicator size="small" color="#FF2D92" />
+          <ActivityIndicator size="small" color="#FF3366" />
         </View>
       )}
 
@@ -586,7 +586,7 @@ const InboxScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#FF2D92"
+            tintColor="#FF3366"
           />
         }
         contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
@@ -638,7 +638,7 @@ const getStyles = (theme) =>
       paddingBottom: ms(8),
     },
     sectionTitle: { color: theme.text, fontSize: fs(17), fontWeight: "700" },
-    sectionAction: { color: "#FF2D92", fontSize: fs(14), fontWeight: "600" },
+    sectionAction: { color: "#FF3366", fontSize: fs(14), fontWeight: "600" },
 
     // Promo banner
     promoBanner: {
@@ -664,7 +664,7 @@ const getStyles = (theme) =>
     },
     promoBtn: {
       alignSelf: "flex-end",
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
       borderRadius: ms(20),
       paddingHorizontal: ms(14),
       paddingVertical: ms(6),
@@ -734,7 +734,7 @@ const getStyles = (theme) =>
       width: ms(30),
       height: ms(30),
       borderRadius: ms(15),
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
       justifyContent: "center",
       alignItems: "center",
     },
@@ -761,7 +761,7 @@ const getStyles = (theme) =>
       width: ms(20),
       height: ms(20),
       borderRadius: ms(10),
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
       justifyContent: "center",
       alignItems: "center",
       borderWidth: 1.5,
@@ -869,7 +869,7 @@ const getStyles = (theme) =>
     convoLast: { color: theme.textMuted, fontSize: fs(13), textAlign: "right" },
     convoLastBold: { color: theme.textSecondary, fontWeight: "600" },
     unreadBadge: {
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
       borderRadius: ms(10),
       minWidth: ms(20),
       height: ms(20),
@@ -882,7 +882,7 @@ const getStyles = (theme) =>
       width: ms(8),
       height: ms(8),
       borderRadius: ms(4),
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
     },
 
     // Loading
@@ -913,7 +913,7 @@ const getStyles = (theme) =>
     },
     emptyBtn: {
       marginTop: ms(24),
-      backgroundColor: "#FF2D92",
+      backgroundColor: "#FF3366",
       paddingHorizontal: ms(28),
       paddingVertical: ms(12),
       borderRadius: ms(24),

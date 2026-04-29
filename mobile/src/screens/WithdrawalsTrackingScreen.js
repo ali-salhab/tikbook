@@ -48,7 +48,7 @@ const STATUS_META = {
   },
   rejected: {
     label: "مرفوض",
-    color: "#FF2D92",
+    color: "#FF3366",
     bg: "rgba(254,44,85,0.18)",
     icon: "close-circle-outline",
   },
@@ -175,7 +175,7 @@ const WithdrawalsTrackingScreen = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#FF2D92" />
+          <ActivityIndicator size="large" color="#FF3366" />
         </View>
       ) : (
         <ScrollView
@@ -187,8 +187,8 @@ const WithdrawalsTrackingScreen = ({ navigation }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#FF2D92"
-              colors={["#FF2D92"]}
+              tintColor="#FF3366"
+              colors={["#FF3366"]}
             />
           }
         >
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     marginTop: ms(2),
   },
   modalCloseBtn: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     padding: ms(12),
     borderRadius: ms(10),
     alignItems: "center",

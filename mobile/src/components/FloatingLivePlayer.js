@@ -78,7 +78,7 @@ const FloatingLivePlayer = ({ navigationRef }) => {
       >
         {/* Video placeholder with animated pulse */}
         <View style={styles.preview}>
-          <Ionicons name="radio" size={32} color="#FF2D92" />
+          <Ionicons name="radio" size={32} color="#FF3366" />
           <View style={styles.pulseRing} />
         </View>
 
@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1.5,
-    borderColor: "#FF2D92",
-    shadowColor: "#FF2D92",
+    borderColor: "#FF3366",
+    shadowColor: "#FF3366",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
@@ -169,10 +169,10 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
   },
   liveText: {
-    color: "#FF2D92",
+    color: "#FF3366",
     fontSize: 9,
     fontWeight: "900",
   },

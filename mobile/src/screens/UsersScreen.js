@@ -210,7 +210,7 @@ const UsersScreen = ({ navigation, route }) => {
               }
             }}
           >
-            <Text style={{ color: "#FF2D92", fontWeight: "bold" }}>تم</Text>
+            <Text style={{ color: "#FF3366", fontWeight: "bold" }}>تم</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: ms(8),
     left: ms(8),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     paddingHorizontal: ms(6),
     paddingVertical: ms(2),
     borderRadius: ms(4),
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   hashtagIcon: {
     width: ms(48),
     height: ms(48),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     borderRadius: ms(8),
     justifyContent: "center",
     alignItems: "center",

@@ -10,7 +10,7 @@ const BAR_COUNT = 4;
  *   color   – string  – bar colour (default cyan)
  *   size    – 'small' | 'large'
  */
-const SoundWave = React.memo(({ active, color = "#00F2EA", size = "small" }) => {
+const SoundWave = React.memo(({ active, color = "#33CCFF", size = "small" }) => {
   const anims = useRef(
     Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.25)),
   ).current;

@@ -251,7 +251,7 @@ const ActivityScreen = ({ navigation }) => {
     const getNotificationIcon = () => {
       switch (item.type) {
         case "like":
-          return { name: "heart", color: "#FF2D92" };
+          return { name: "heart", color: "#FF3366" };
         case "comment":
           return { name: "chatbubble", color: "#4A90E2" };
         case "follow":
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(14),
     paddingVertical: ms(7),
     borderRadius: ms(20),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     alignSelf: "center",
     minWidth: ms(80),
     alignItems: "center",

@@ -235,7 +235,7 @@ const PostEditScreen = ({ navigation, route }) => {
                 <Ionicons
                   name={option.icon}
                   size={20}
-                  color={privacy === option.value ? "#FF2D92" : "#FFF"}
+                  color={privacy === option.value ? "#FF3366" : "#FFF"}
                 />
                 <Text
                   style={[
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   },
   privacyOptionActive: {
     backgroundColor: "rgba(254,44,85,0.1)",
-    borderColor: "#FF2D92",
+    borderColor: "#FF3366",
   },
   privacyLabel: {
     color: "#FFF",
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   privacyLabelActive: {
-    color: "#FF2D92",
+    color: "#FF3366",
   },
   toggleRow: {
     flexDirection: "row",
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   toggleActive: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
   },
   toggleThumb: {
     width: ms(24),
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
   },
   progressText: {
     color: "#FFF",
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   uploadButton: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

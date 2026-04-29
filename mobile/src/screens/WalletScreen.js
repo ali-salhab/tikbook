@@ -352,7 +352,7 @@ const WalletScreen = ({ navigation }) => {
             <View style={styles.gridContainer}>
               {packagesLoading ? (
                 <ActivityIndicator
-                  color="#FF2D92"
+                  color="#FF3366"
                   size="large"
                   style={{ width: "100%", marginVertical: ms(20) }}
                 />
@@ -405,7 +405,7 @@ const WalletScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.giftPromo}>
-              <Ionicons name="gift" size={24} color="#FF2D92" />
+              <Ionicons name="gift" size={24} color="#FF3366" />
               <Text style={styles.giftText}>
                 اشحن على الأقل بمقدار 1,000 عملة لمرتين أكثر كي تفتح هدايا مميزة{" "}
                 {">"}
@@ -486,8 +486,8 @@ const WalletScreen = ({ navigation }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefreshWallet}
-              tintColor="#FF2D92"
-              colors={["#FF2D92"]}
+              tintColor="#FF3366"
+              colors={["#FF3366"]}
             />
           }
         >
@@ -496,7 +496,7 @@ const WalletScreen = ({ navigation }) => {
             <MaterialCommunityIcons
               name="cash-multiple"
               size={32}
-              color="#FF2D92"
+              color="#FF3366"
             />
             <View style={{ marginRight: 12, flex: 1 }}>
               <Text style={styles.earningsLabel}>أرباحك المتاحة للسحب</Text>
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
   },
   promoText: {
     fontSize: fs(12),
-    color: "#FF2D92",
+    color: "#FF3366",
     textAlign: "right",
     margin: ms(16),
   },
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
     borderColor: "#2A2550",
   },
   selectedPackageCard: {
-    borderColor: "#FF2D92",
+    borderColor: "#FF3366",
     backgroundColor: "rgba(254,44,85,0.1)",
   },
   coinRow: {
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A1630",
   },
   paymentMethodOptionActive: {
-    borderColor: "#FF2D92",
+    borderColor: "#FF3366",
     backgroundColor: "rgba(254,44,85,0.12)",
   },
   paymentMethodName: {
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
     marginBottom: ms(12),
   },
   rechargeButton: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     paddingVertical: ms(14),
     borderRadius: ms(4),
     alignItems: "center",
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   },
   tabBtnActive: {
     borderBottomWidth: 2,
-    borderBottomColor: "#FF2D92",
+    borderBottomColor: "#FF3366",
   },
   tabBtnText: {
     fontSize: fs(14),
@@ -915,7 +915,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   tabBtnTextActive: {
-    color: "#FF2D92",
+    color: "#FF3366",
   },
   // ── Withdraw ──
   earningsCard: {
@@ -972,7 +972,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   trackingBadge: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     minWidth: ms(22),
     height: ms(22),
     borderRadius: ms(11),
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     textAlignVertical: "center",
-    color: "#FF2D92",
+    color: "#FF3366",
     fontWeight: "700",
     fontSize: fs(16),
     zIndex: 2,

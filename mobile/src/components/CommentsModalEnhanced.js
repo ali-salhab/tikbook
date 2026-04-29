@@ -318,7 +318,7 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
                 <Ionicons
                   name={isLiked ? "heart" : "heart-outline"}
                   size={14}
-                  color={isLiked ? "#FF2D92" : "#666"}
+                  color={isLiked ? "#FF3366" : "#666"}
                 />
                 {likesCount > 0 && (
                   <Text
@@ -396,7 +396,7 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
           <View style={{ flex: 1 }}>
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FF2D92" />
+                <ActivityIndicator size="large" color="#FF3366" />
               </View>
             ) : (
               <FlatList
@@ -453,7 +453,7 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
                   style={styles.removeImageButton}
                   onPress={() => setSelectedImage(null)}
                 >
-                  <Ionicons name="close-circle" size={24} color="#FF2D92" />
+                  <Ionicons name="close-circle" size={24} color="#FF3366" />
                 </TouchableOpacity>
               </View>
             )}
@@ -661,7 +661,7 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   likedCount: {
-    color: "#FF2D92",
+    color: "#FF3366",
   },
   footerContainer: {
     paddingHorizontal: 16,
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sendButtonActive: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
   },
 });
 

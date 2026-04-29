@@ -165,7 +165,7 @@ const SettingsScreen = ({ navigation }) => {
         {
           icon: "log-out-outline",
           label: t("logout"),
-          color: "#FF2D92",
+          color: "#FF3366",
           onPress: () => {
             Alert.alert(t("logout"), t("logoutConfirm"), [
               { text: t("cancel"), style: "cancel" },
@@ -305,7 +305,7 @@ const SettingsScreen = ({ navigation }) => {
                   {lang.label}
                 </Text>
                 {language === lang.code && (
-                  <Ionicons name="checkmark" size={20} color="#FF2D92" />
+                  <Ionicons name="checkmark" size={20} color="#FF3366" />
                 )}
               </TouchableOpacity>
             ))}
@@ -357,7 +357,7 @@ const SettingsScreen = ({ navigation }) => {
                   </Text>
                 </View>
                 {themeId === item.id && (
-                  <Ionicons name="checkmark" size={20} color="#FF2D92" />
+                  <Ionicons name="checkmark" size={20} color="#FF3366" />
                 )}
               </TouchableOpacity>
             ))}
@@ -490,7 +490,7 @@ const makeStyles = (theme) =>
       color: theme.textSecondary,
     },
     modalOptionActive: {
-      color: "#FF2D92",
+      color: "#FF3366",
       fontWeight: "700",
     },
   });

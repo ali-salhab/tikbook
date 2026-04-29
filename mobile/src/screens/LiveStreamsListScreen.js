@@ -170,7 +170,7 @@ const LiveStreamsListScreen = ({ navigation }) => {
           style={styles.startButton}
           onPress={() => navigation.navigate("Live", { isBroadcaster: true })}
         >
-          <Ionicons name="videocam" size={24} color="#FF2D92" />
+          <Ionicons name="videocam" size={24} color="#FF3366" />
         </TouchableOpacity>
       </View>
 
@@ -194,7 +194,7 @@ const LiveStreamsListScreen = ({ navigation }) => {
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor="#FFF"
-              colors={["#FF2D92"]}
+              colors={["#FF3366"]}
             />
           }
         />
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: ms(8),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     paddingHorizontal: ms(24),
     paddingVertical: ms(12),
     borderRadius: ms(24),

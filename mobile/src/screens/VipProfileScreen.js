@@ -31,7 +31,7 @@ const { width } = Dimensions.get("window");
 // Gradient map for each VIP level (same as VipStoreScreen)
 const VIP_GRADIENT = {
   1:  ["#3D1A00", "#B8651A"],   2:  ["#1A1A2E", "#3A3A5C"],
-  3:  ["#4A3500", "#F0C040"],   4:  ["#2D0E4E", "#A855F7"],
+  3:  ["#4A3500", "#F0C040"],   4:  ["#2D0E4E", "#6633FF"],
   5:  ["#4A1E00", "#F59E42"],   6:  ["#2D0744", "#C026D3"],
   7:  ["#4A0000", "#EF4444"],   8:  ["#3C0000", "#B91C1C"],
   9:  ["#033526", "#34D399"],   10: ["#0A2540", "#60A5FA"],

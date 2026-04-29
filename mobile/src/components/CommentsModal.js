@@ -148,7 +148,7 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
             <Ionicons
               name={isLiked ? "heart" : "heart-outline"}
               size={20}
-              color={isLiked ? "#FF2D92" : "#888"}
+              color={isLiked ? "#FF3366" : "#888"}
             />
             {likesCount > 0 && (
               <Text style={styles.actionCount}>{likesCount}</Text>
@@ -228,7 +228,7 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
           {/* Comments List */}
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#FF2D92" />
+              <ActivityIndicator size="large" color="#FF3366" />
             </View>
           ) : (
             <FlatList
@@ -308,7 +308,7 @@ const CommentsModal = ({ visible, onClose, videoId, initialComments = [] }) => {
                     <Ionicons
                       name="arrow-up-circle"
                       size={32}
-                      color="#FF2D92"
+                      color="#FF3366"
                     />
                   ) : (
                     <View style={styles.inputAvatar}>

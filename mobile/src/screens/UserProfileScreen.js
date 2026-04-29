@@ -246,10 +246,10 @@ const UserProfileScreen = ({ route, navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handlePullToRefresh}
-            tintColor="#FF2D92"
-            colors={["#FF2D92"]}
+            tintColor="#FF3366"
+            colors={["#FF3366"]}
             title="تحديث…"
-            titleColor="#FF2D92"
+            titleColor="#FF3366"
           />
         }
       >
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   },
   followButton: {
     flex: 1,
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     paddingVertical: ms(10),
     borderRadius: ms(8),
     alignItems: "center",

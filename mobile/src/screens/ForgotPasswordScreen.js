@@ -114,7 +114,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={styles.iconWrap}>
-            <Ionicons name="lock-closed-outline" size={50} color="#FF2D92" />
+            <Ionicons name="lock-closed-outline" size={50} color="#FF3366" />
           </View>
 
           <Text style={styles.title}>نسيت كلمة المرور؟</Text>
@@ -131,7 +131,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color="#FF2D92"
+                  color="#FF3366"
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -186,7 +186,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#FF2D92"
+                  color="#FF3366"
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -211,7 +211,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#FF2D92"
+                  color="#FF3366"
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   btn: {
     width: "100%",
     height: ms(52),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     borderRadius: ms(12),
     justifyContent: "center",
     alignItems: "center",
@@ -352,14 +352,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   otpBoxFilled: {
-    borderColor: "#FF2D92",
+    borderColor: "#FF3366",
     backgroundColor: "rgba(254,44,85,0.06)",
   },
   resendBtn: {
     marginTop: ms(20),
   },
   resendText: {
-    color: "#FF2D92",
+    color: "#FF3366",
     fontSize: fs(14),
     fontWeight: "600",
   },

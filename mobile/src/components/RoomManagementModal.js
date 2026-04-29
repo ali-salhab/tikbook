@@ -149,7 +149,7 @@ const SettingsTab = ({ room, roomId, userToken, onSaved, fetchRoomData }) => {
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: "#333", true: "#FF2D92" }}
+        trackColor={{ false: "#333", true: "#FF3366" }}
         thumbColor="#fff"
       />
     </View>
@@ -376,7 +376,7 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged, s
                 <Ionicons
                   name={mutedSpeakers.has(user._id) ? "mic-off" : "mic"}
                   size={19}
-                  color={mutedSpeakers.has(user._id) ? "#FF2D92" : "#aaa"}
+                  color={mutedSpeakers.has(user._id) ? "#FF3366" : "#aaa"}
                 />
               </TouchableOpacity>
             )}
@@ -388,7 +388,7 @@ const UsersTab = ({ room, roomId, userToken, currentUserId, isHost, onChanged, s
               <Ionicons
                 name={isModerator ? "shield" : "shield-outline"}
                 size={19}
-                color={isModerator ? "#FF2D92" : "#aaa"}
+                color={isModerator ? "#FF3366" : "#aaa"}
               />
             </TouchableOpacity>
             {/* Kick */}
@@ -549,7 +549,7 @@ const RoomManagementModal = ({
               <Ionicons
                 name={tab.icon}
                 size={18}
-                color={activeTab === tab.id ? "#FF2D92" : "#666"}
+                color={activeTab === tab.id ? "#FF3366" : "#666"}
               />
               <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
                 {tab.label}
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: "#FF2D92",
+    borderBottomColor: "#FF3366",
   },
   tabText: {
     color: "#666",
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   tabTextActive: {
-    color: "#FF2D92",
+    color: "#FF3366",
     fontWeight: "bold",
   },
 
@@ -756,8 +756,8 @@ const styles = StyleSheet.create({
     borderColor: "#333",
   },
   seatBtnActive: {
-    backgroundColor: "#FF2D92",
-    borderColor: "#FF2D92",
+    backgroundColor: "#FF3366",
+    borderColor: "#FF3366",
   },
   seatBtnText: {
     color: "#aaa",
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
   saveBtn: {
     marginTop: 24,
     marginBottom: 12,
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",

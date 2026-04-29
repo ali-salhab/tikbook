@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     color: "#7C73A6",
   },
   followButton: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     paddingHorizontal: ms(18),
     paddingVertical: ms(10),
     borderRadius: ms(8),
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     marginBottom: ms(8),
   },
   suggestedFollowBtn: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     borderRadius: ms(6),
     paddingHorizontal: ms(14),
     paddingVertical: ms(5),

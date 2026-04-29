@@ -211,7 +211,7 @@ const HostAvatarFrame = React.memo(({ imageUrl, size, isSpeaking, showOnline }) 
           overflow: "hidden",
           backgroundColor: "#2A1550",
           borderWidth: 2.5,
-          borderColor: isSpeaking ? "#A855F7" : "rgba(120,40,200,0.35)",
+          borderColor: isSpeaking ? "#6633FF" : "rgba(120,40,200,0.35)",
           transform: [{ scale: breatheScale }],
         }}
       >
@@ -2011,7 +2011,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
               style={styles.eyeBtn}
               onPress={() => setShowViewersModal(true)}
             >
-              <Ionicons name="eye" size={18} color="#00F2EA" />
+              <Ionicons name="eye" size={18} color="#33CCFF" />
             </TouchableOpacity>
           )}
           <View style={styles.userChip}>
@@ -2090,7 +2090,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         </View>
         {/* Speaking sound-wave indicator — always reserves space to prevent layout shift */}
         <View style={styles.hostSoundWaveRow}>
-          {isHostSpeaking && <SoundWave active={true} color="#A855F7" size="large" />}
+          {isHostSpeaking && <SoundWave active={true} color="#6633FF" size="large" />}
         </View>
         {/* Host name */}
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
@@ -2924,9 +2924,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
             maximumValue={100}
             value={micVolume}
             onValueChange={applyMicVolume}
-            minimumTrackTintColor="#00F2EA"
+            minimumTrackTintColor="#33CCFF"
             maximumTrackTintColor="rgba(255,255,255,0.2)"
-            thumbTintColor="#00F2EA"
+            thumbTintColor="#33CCFF"
           />
           <Ionicons name="volume-high" size={16} color="#FFF" />
         </View>
@@ -3482,7 +3482,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
               <Text style={styles.summaryLabel}>مدة البث</Text>
             </View>
             <View style={styles.summaryItem}>
-              <Ionicons name="eye-outline" size={26} color="#00F2EA" />
+              <Ionicons name="eye-outline" size={26} color="#33CCFF" />
               <Text style={styles.summaryValue}>
                 {summaryStats?.peakViewers ?? 0}
               </Text>
@@ -3822,7 +3822,7 @@ const styles = StyleSheet.create({
     paddingVertical: ms(2),
     borderRadius: ms(6),
   },
-  coinText: { color: "#00F2EA", fontSize: fs(8) },
+  coinText: { color: "#33CCFF", fontSize: fs(8) },
 
   // ── Cover banner ─────────────────────────────────────────────────────────────
   coverBanner: {
@@ -3938,7 +3938,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: ms(4),
   },
-  hostRoleText: { color: "#00F2EA", fontSize: fs(11) },
+  hostRoleText: { color: "#33CCFF", fontSize: fs(11) },
 
   // ── Seat grid ─────────────────────────────────────────────────────────────────
   seatSizeControl: { display: "none" },
@@ -4000,9 +4000,9 @@ const styles = StyleSheet.create({
   },
   seatActive: { borderColor: "#00CC55", borderWidth: 2.5 },
   seatSpeaking: {
-    borderColor: "#00F2EA",
+    borderColor: "#33CCFF",
     borderWidth: 3,
-    shadowColor: "#00F2EA",
+    shadowColor: "#33CCFF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 10,
@@ -4051,7 +4051,7 @@ const styles = StyleSheet.create({
     marginBottom: -ms(4),
   },
   seatSpeakingLabel: {
-    color: "#00F2EA",
+    color: "#33CCFF",
     fontSize: fs(9),
     fontWeight: "700",
     marginTop: ms(1),
@@ -4158,7 +4158,7 @@ const styles = StyleSheet.create({
     paddingVertical: ms(6),
     borderRadius: ms(14),
   },
-  balanceChipText: { color: "#00F2EA", fontWeight: "bold", fontSize: fs(12) },
+  balanceChipText: { color: "#33CCFF", fontWeight: "bold", fontSize: fs(12) },
   actions: { flexDirection: "row", alignItems: "center", gap: ms(10) },
   actionCircle: {
     width: ms(40),
@@ -4751,7 +4751,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,242,234,0.4)",
   },
-  speakerBadgeText: { color: "#00F2EA", fontSize: fs(10), fontWeight: "700" },
+  speakerBadgeText: { color: "#33CCFF", fontSize: fs(10), fontWeight: "700" },
 });
 
 export default LiveRoomScreen;

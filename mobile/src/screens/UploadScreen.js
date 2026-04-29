@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     width: ms(30),
     height: ms(30),
     borderRadius: ms(4),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
   },
   sideButton: {
     alignItems: "center",

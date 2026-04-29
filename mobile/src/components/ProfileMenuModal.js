@@ -88,7 +88,7 @@ const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
           label: "تسجيل الخروج",
           icon: "log-out-outline",
           iconType: "Ionicons",
-          color: "#FF2D92",
+          color: "#FF3366",
           onPress: () => {
             if (logout) logout();
           },

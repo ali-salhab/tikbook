@@ -124,7 +124,7 @@ const OTPScreen = ({ route, navigation }) => {
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="mail-open-outline" size={50} color="#FF2D92" />
+          <Ionicons name="mail-open-outline" size={50} color="#FF3366" />
         </View>
 
         <Text style={styles.title}>التحقق من البريد</Text>
@@ -243,13 +243,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   otpInputFilled: {
-    borderColor: "#FF2D92",
+    borderColor: "#FF3366",
     backgroundColor: "rgba(255, 45, 146, 0.05)",
   },
   verifyButton: {
     width: "100%",
     height: ms(50),
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     borderRadius: ms(8),
     justifyContent: "center",
     alignItems: "center",
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: fs(14),
   },
   resendLink: {
-    color: "#FF2D92",
+    color: "#FF3366",
     fontSize: fs(14),
     fontWeight: "bold",
   },

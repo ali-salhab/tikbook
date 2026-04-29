@@ -249,7 +249,7 @@ const GiftPanel = ({
           <View style={{ flex: 1 }}>
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FF2D92" />
+                <ActivityIndicator size="large" color="#FF3366" />
               </View>
             ) : (
               <FlatList
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   selectedCategory: {
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
   },
   categoryText: {
     fontSize: 14,
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   selectedGift: {
-    borderColor: "#FF2D92",
+    borderColor: "#FF3366",
     backgroundColor: "rgba(254,44,85,0.12)",
   },
   disabledGift: {
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   sendButton: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#FF2D92",
+    backgroundColor: "#FF3366",
     borderRadius: 25,
     paddingVertical: 12,
     paddingHorizontal: 20,
