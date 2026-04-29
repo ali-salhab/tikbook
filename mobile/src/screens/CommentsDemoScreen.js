@@ -22,6 +22,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { ms, fs } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 import { LinearGradient } from "expo-linear-gradient";
 import CommentSheet from "../components/comments/CommentSheet";
 import { mockComments } from "../components/comments/mockComments";
@@ -171,7 +172,7 @@ const CommentsDemoScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   background: {
     ...StyleSheet.absoluteFillObject,

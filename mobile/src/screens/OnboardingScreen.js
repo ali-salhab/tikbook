@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Dimensions,
   TouchableOpacity,
   Pressable,
 } from "react-native";
@@ -26,9 +25,10 @@ import Animated, {
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import { AuthContext } from "../context/AuthContext";
-import { wp, ms, fs } from "../utils/responsive";
+import { wp, ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 const OnboardingScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);
@@ -274,7 +274,7 @@ const OnboardingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   backgroundGlowTop: {
     position: "absolute",

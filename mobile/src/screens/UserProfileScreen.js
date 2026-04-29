@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
   Image,
   ActivityIndicator,
   Share,
@@ -21,9 +20,9 @@ import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;

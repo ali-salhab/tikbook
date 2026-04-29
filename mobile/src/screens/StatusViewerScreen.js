@@ -13,7 +13,6 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  Dimensions,
   StatusBar,
   TextInput,
   Animated,
@@ -31,9 +30,10 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 // ─── Reaction definitions ─────────────────────────────────────────────────
 const REACTIONS = [
@@ -542,7 +542,7 @@ export default function StatusViewerScreen({ route, navigation }) {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#000",
+          backgroundColor: darkUi.canvas,
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -553,7 +553,7 @@ export default function StatusViewerScreen({ route, navigation }) {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: darkUi.canvas }}>
       <StatusBar hidden />
       <FlatList
         ref={flatRef}
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(10),
     paddingVertical: ms(8),
     gap: ms(6),
-    shadowColor: "#000",
+    shadowColor: darkUi.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 8,

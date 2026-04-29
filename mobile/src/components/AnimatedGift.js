@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { View, StyleSheet, Dimensions, Text, Image } from "react-native";
+import { View, StyleSheet, Text, Image } from "react-native";
 import { Video, Audio } from "expo-av";
 import LottieView from "lottie-react-native";
 import Animated, {
@@ -13,8 +13,9 @@ import Animated, {
   runOnJS,
   cancelAnimation,
 } from "react-native-reanimated";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 // ─── Lottie JSON cache ────────────────────────────────────────────────────────
 const _lottieCache = {};

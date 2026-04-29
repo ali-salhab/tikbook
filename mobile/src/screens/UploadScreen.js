@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
   Platform,
-  Dimensions,
   Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -26,9 +25,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation, useIsFocused } from "@react-navigation/native";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 const MODES = [
   { id: "10m", label: "10 د" },

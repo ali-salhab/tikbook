@@ -27,15 +27,21 @@ const VipBadge = ({ level, size = "small", imageUrl }) => {
   const iconSize = isSmall ? 22 : isMedium ? 32 : 40;
 
   if (imageUrl) {
-    const numFontSize = isSmall ? 9 : isMedium ? 10 : 12;
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 1}}>
+      <View
+        style={{
+          width: iconSize,
+          height: iconSize,
+          borderRadius: Math.max(4, iconSize * 0.2),
+          overflow: "hidden",
+          alignSelf: "center",
+        }}
+      >
         <Image
           source={{ uri: imageUrl }}
           style={{ width: iconSize, height: iconSize }}
-          resizeMode="contain"
+          resizeMode="cover"
         />
-      
       </View>
     );
   }

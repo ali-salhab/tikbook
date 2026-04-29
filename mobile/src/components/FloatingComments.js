@@ -6,16 +6,15 @@ import {
   Animated,
   FlatList,
   Image,
-  Dimensions,
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 import ProfileBadgeFrame from "./ProfileBadgeFrame";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 const MAX_COMMENTS = 40;
 
 const getVipBubbleShapeStyle = (bubbleShape) => {
@@ -150,19 +149,23 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
         </Text>
         {badgeIconUrl ? (
           isBadgeLottie ? (
-            <LottieView
-              source={{ uri: badgeIconUrl }}
-              autoPlay
-              loop
-              style={styles.badgeIcon}
-              resizeMode="contain"
-            />
+            <View style={styles.inlineIconClip}>
+              <LottieView
+                source={{ uri: badgeIconUrl }}
+                autoPlay
+                loop
+                style={styles.badgeIconCover}
+                resizeMode="contain"
+              />
+            </View>
           ) : (
-            <Image
-              source={{ uri: badgeIconUrl }}
-              style={styles.badgeIcon}
-              resizeMode="contain"
-            />
+            <View style={styles.inlineIconClip}>
+              <Image
+                source={{ uri: badgeIconUrl }}
+                style={styles.badgeIconCover}
+                resizeMode="contain"
+              />
+            </View>
           )
         ) : null}
         {userLevel > 0 && levelColor ? (
@@ -174,19 +177,23 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
         ) : null}
         {isVip && vipLevelIconUrl ? (
           isLottieUrl(vipLevelIconUrl) ? (
-            <LottieView
-              source={{ uri: vipLevelIconUrl }}
-              autoPlay
-              loop
-              style={styles.vipIconImg}
-              resizeMode="contain"
-            />
+            <View style={styles.inlineVipIconClip}>
+              <LottieView
+                source={{ uri: vipLevelIconUrl }}
+                autoPlay
+                loop
+                style={styles.vipIconCover}
+                resizeMode="contain"
+              />
+            </View>
           ) : (
-            <Image
-              source={{ uri: vipLevelIconUrl }}
-              style={styles.vipIconImg}
-              resizeMode="contain"
-            />
+            <View style={styles.inlineVipIconClip}>
+              <Image
+                source={{ uri: vipLevelIconUrl }}
+                style={styles.vipIconCover}
+                resizeMode="contain"
+              />
+            </View>
           )
         ) : isVip ? (
           <View
@@ -208,25 +215,25 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
         ) : null}
         {isVip && vipBadgeIcons.length > 0 ? (
           <View style={styles.vipBadgesGroup}>
-            {vipBadgeIcons.slice(0, 2).map((badgeUrl, idx) =>
-              isLottieUrl(badgeUrl) ? (
-                <LottieView
-                  key={`vip-badge-lottie-${idx}`}
-                  source={{ uri: badgeUrl }}
-                  autoPlay
-                  loop
-                  style={styles.vipBadgeSmall}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Image
-                  key={`vip-badge-img-${idx}`}
-                  source={{ uri: badgeUrl }}
-                  style={styles.vipBadgeSmall}
-                  resizeMode="cover"
-                />
-              )
-            )}
+            {vipBadgeIcons.slice(0, 2).map((badgeUrl, idx) => (
+              <View key={`vip-extra-${idx}`} style={styles.vipBadgeSmallClip}>
+                {isLottieUrl(badgeUrl) ? (
+                  <LottieView
+                    source={{ uri: badgeUrl }}
+                    autoPlay
+                    loop
+                    style={styles.vipBadgeSmallCover}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: badgeUrl }}
+                    style={styles.vipBadgeSmallCover}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            ))}
           </View>
         ) : null}
       </View>
@@ -269,6 +276,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
           <Image
             source={{ uri: imageUri }}
             style={styles.avatar}
+            resizeMode="cover"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -283,10 +291,11 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
         {/* Inline header (admin-uploaded badges/icons) is ALWAYS above bubble */}
         {renderInlineHeader()}
         {hasBubbleFrame ? (
-          <View style={{ position: "relative", alignSelf: "flex-start" }}>
+          <View style={styles.bubbleFrameOuter}>
             <View
               style={[
                 styles.bubble,
+                styles.bubbleWithFrameOverlay,
                 {
                   backgroundColor: commentFrameBgColor || "transparent",
                   borderWidth: 0,
@@ -301,7 +310,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
                   <Image
                     source={{ uri: item.giftUrl }}
                     style={styles.giftThumb}
-                    resizeMode="contain"
+                    resizeMode="cover"
                   />
                   <View style={{ flexShrink: 1 }}>
                     <Text
@@ -340,13 +349,13 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
                 loop
                 style={StyleSheet.absoluteFillObject}
                 pointerEvents="none"
-                resizeMode="cover"
+                resizeMode="contain"
               />
             ) : (
               <Image
                 source={{ uri: commentFrameLottieUrl }}
                 style={StyleSheet.absoluteFillObject}
-                resizeMode="stretch"
+                resizeMode="contain"
                 pointerEvents="none"
               />
             )}
@@ -371,11 +380,11 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
           >
             {isGift && item.giftUrl ? (
               <View style={styles.giftMsgRow}>
-                <Image
-                  source={{ uri: item.giftUrl }}
-                  style={styles.giftThumb}
-                  resizeMode="contain"
-                />
+                  <Image
+                    source={{ uri: item.giftUrl }}
+                    style={styles.giftThumb}
+                    resizeMode="cover"
+                  />
                 <View style={{ flexShrink: 1 }}>
                   <Text
                     style={[
@@ -541,6 +550,7 @@ const FloatingComments = ({
         scrollEnabled={true}
         nestedScrollEnabled={true}
         decelerationRate={0.92}
+        removeClippedSubviews={!inline}
       />
 
       {userScrolled && (
@@ -636,14 +646,18 @@ const styles = StyleSheet.create({
     marginBottom: ms(5),
     alignSelf: "flex-start",
     maxWidth: "100%",
+    overflow: "visible",
   },
   avatarWrap: {
     marginRight: ms(7),
     flexShrink: 0,
+    overflow: "visible",
   },
   rightCol: {
     flexShrink: 1,
+    minWidth: 0,
     flexDirection: "column",
+    overflow: "visible",
   },
   avatar: {
     width: ms(36),
@@ -653,6 +667,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(140,100,255,0.7)",
     flexShrink: 0,
+    overflow: "hidden",
   },
   avatarFallback: {
     width: ms(36),
@@ -677,6 +692,15 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     overflow: "hidden",
   },
+  /** Decorative PNG/Lottie borders extend outside the bubble rect — don’t clip them */
+  bubbleWithFrameOverlay: {
+    overflow: "visible",
+  },
+  bubbleFrameOuter: {
+    position: "relative",
+    alignSelf: "flex-start",
+    overflow: "visible",
+  },
   vipBubble: {
     paddingHorizontal: ms(12),
     paddingVertical: ms(7),
@@ -690,10 +714,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   levelChip: {
-    paddingHorizontal: ms(5),
-    paddingVertical: ms(1),
+    paddingHorizontal: ms(7),
+    paddingVertical: ms(2),
     borderRadius: ms(6),
     borderWidth: 1,
+    marginHorizontal: ms(2),
   },
   levelChipText: {
     fontSize: fs(10),
@@ -737,44 +762,72 @@ const styles = StyleSheet.create({
   inlineHeader: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "nowrap",
-    gap: ms(1),
+    flexWrap: "wrap",
+    gap: ms(8),
     marginBottom: ms(3),
     alignSelf: "flex-start",
+    maxWidth: "100%",
     zIndex: 20,
     elevation: 20,
+    overflow: "visible",
   },
-  badgeIcon: {
-    width: ms(25),
-    height: ms(25),
-    borderRadius: ms(4),
+
+
+  inlineIconClip: {
+    width: ms(26),
+    height: ms(26),
+    borderRadius: ms(6),
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  vipIconImg: {
-    width: ms(32),
-    height: ms(32),
-    marginHorizontal: ms(1),
+  badgeIconCover: {
+    width: "100%",
+    height: "100%",
   },
+  inlineVipIconClip: {
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(8),
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vipIconCover: {
+    width: "100%",
+    height: "100%",
+  },
+
+
   inlineUsername: {
     color: "rgba(200,190,255,0.95)",
     fontSize: fs(12),
     fontWeight: "700",
     maxWidth: ms(96),
-    marginRight: ms(2),
+    marginRight: ms(4),
     textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  vipBadgeSmall: {
-    
-    width: ms(33),
-    height: ms(33),
-   
+  vipBadgeSmallClip: {
+    width: ms(38),
+    height: ms(38),
+    borderRadius: ms(8),
+    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vipBadgeSmallCover: {
+    width: "100%",
+    height: "100%",
   },
   vipBadgesGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 0,
-    marginHorizontal: 0,
+    gap: ms(6),
   },
   message: {
     color: "rgba(255,255,255,0.96)",
@@ -795,6 +848,8 @@ const styles = StyleSheet.create({
     width: ms(28),
     height: ms(28),
     flexShrink: 0,
+    borderRadius: ms(6),
+    overflow: "hidden",
   },
   systemMessage: {
     color: "#444338",

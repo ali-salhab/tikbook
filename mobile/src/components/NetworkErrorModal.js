@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 /**
  * Classifies an Axios error into a user-friendly Arabic message + icon.

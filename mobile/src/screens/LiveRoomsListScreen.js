@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Dimensions,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -22,11 +21,11 @@ import { AuthContext } from "../context/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 import { useApp } from "../context/AppContext";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 const LiveRoomsListScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);

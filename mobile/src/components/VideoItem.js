@@ -7,7 +7,6 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
-  Dimensions,
   StyleSheet,
   InteractionManager,
   DeviceEventEmitter,
@@ -23,8 +22,9 @@ import Reanimated, {
   withTiming,
   runOnJS,
 } from "react-native-reanimated";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getWindowDimensions();
 const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.072, 24), 30));
 const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.115, 40), 48));
 const FOLLOW_BUTTON_SIZE = Math.round(

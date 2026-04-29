@@ -4,23 +4,49 @@
  */
 import { Dimensions, PixelRatio } from "react-native";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 // Base design dimensions
 const BASE_WIDTH = 375;
 const BASE_HEIGHT = 812;
 
 /**
+ * Safe window size when modules load before the native runtime is fully ready
+ * (avoids Hermes "Property 'width' doesn't exist" / [runtime not ready]).
+ */
+export function getWindowDimensions() {
+  try {
+    const win = Dimensions.get("window");
+    if (
+      win != null &&
+      typeof win.width === "number" &&
+      typeof win.height === "number" &&
+      !Number.isNaN(win.width) &&
+      !Number.isNaN(win.height)
+    ) {
+      return { width: win.width, height: win.height };
+    }
+  } catch {
+    // runtime not ready
+  }
+  return { width: BASE_WIDTH, height: BASE_HEIGHT };
+}
+
+/**
  * Scale a width-based value proportionally
  * @param {number} size - size on base 375px wide design
  */
-export const wp = (size) => (SCREEN_WIDTH / BASE_WIDTH) * size;
+export const wp = (size) => {
+  const { width } = getWindowDimensions();
+  return (width / BASE_WIDTH) * size;
+};
 
 /**
  * Scale a height-based value proportionally
  * @param {number} size - size on base 812px tall design
  */
-export const hp = (size) => (SCREEN_HEIGHT / BASE_HEIGHT) * size;
+export const hp = (size) => {
+  const { height } = getWindowDimensions();
+  return (height / BASE_HEIGHT) * size;
+};
 
 /**
  * Moderate scale - width-based but with a damping factor to avoid too-large values on big screens
@@ -38,4 +64,11 @@ export const fs = (size) => {
   return Math.round(PixelRatio.roundToNearestPixel(scaled));
 };
 
-export const SCREEN = { width: SCREEN_WIDTH, height: SCREEN_HEIGHT };
+export const SCREEN = {
+  get width() {
+    return getWindowDimensions().width;
+  },
+  get height() {
+    return getWindowDimensions().height;
+  },
+};

@@ -6,13 +6,13 @@ import {
   Modal,
   TouchableOpacity,
   Animated,
-  Dimensions,
   TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { height } = Dimensions.get("window");
+const { height } = getWindowDimensions();
 
 const ProfileMenuModal = ({ visible, onClose, navigation, logout }) => {
   const insets = useSafeAreaInsets();

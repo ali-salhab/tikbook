@@ -2,7 +2,6 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   Animated,
@@ -20,11 +19,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
 import axios from "axios";
-import { wp, ms, fs } from "../utils/responsive";
+import { ms, fs } from "../utils/responsive";
 import BrandMark from "../components/BrandMark";
-import { authScreenGradient } from "../theme/brand";
-
-// Enable RTL logic moved to index.js
+import { authScreenGradient, brandGradient, brandColors } from "../theme/brand";
+import {
+  AUTH,
+  BUTTON_DISABLED_GRADIENT,
+  AuthField,
+  authFieldsAndButtonStyles,
+  authFooterStyles,
+} from "./authShared";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useApp();
@@ -204,10 +208,6 @@ const RegisterScreen = ({ navigation }) => {
     setTimeout(() => handleRegister(), 300);
   };
 
-  const handleOAuthLogin = (provider) => {
-    Alert.alert("قريباً", `سيتم إضافة تسجيل الدخول عبر ${provider} قريباً`);
-  };
-
   return (
     <LinearGradient
       colors={authScreenGradient.colors}
@@ -216,567 +216,509 @@ const RegisterScreen = ({ navigation }) => {
       end={authScreenGradient.end}
       style={styles.gradient}
     >
-    <SafeAreaView style={styles.container}>
-      <Animated.ScrollView
-        style={{ opacity: fadeAnim }}
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={!loading}
-        contentContainerStyle={{
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100%",
-          paddingHorizontal: 20,
-        }}
-      >
-        <Animated.View style={{ alignItems: "center" }}>
-          <View style={styles.logo}>
-            <BrandMark size={100} style={styles.logoImage} />
-          </View>
-        </Animated.View>
+      <SafeAreaView style={styles.container}>
+        <Animated.ScrollView
+          style={{ opacity: fadeAnim }}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={!loading}
+          contentContainerStyle={{
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100%",
+          }}
+        >
+          <Animated.View style={{ alignItems: "center" }}>
+            <View style={styles.logoWrap}>
+              <BrandMark size={104} style={styles.logoImage} resizeMode="contain" />
+            </View>
+          </Animated.View>
 
-        <Text style={styles.title}>{i18n.t("signUpForTikBook")}</Text>
-        <Text style={styles.subtitle}>{i18n.t("createProfile")}</Text>
+          <Text style={[styles.title, { color: AUTH.title }]}>
+            {i18n.t("signUpForTikBook")}
+          </Text>
+          <Text style={[styles.subtitle, { color: AUTH.subtitle }]}>
+            {i18n.t("createProfile")}
+          </Text>
 
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="person-outline"
-            size={20}
-            color={theme.accent}
-            style={styles.inputIcon}
-          />
-          <TextInput
-            style={styles.input}
+          <AuthField
+            styles={styles}
+            theme={theme}
             placeholder={i18n.t("username")}
-            placeholderTextColor="#888"
             value={username}
             onChangeText={setUsername}
+            icon="person-outline"
             editable={!loading}
+            selectTextOnFocus={!loading}
             autoCapitalize="none"
           />
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="mail-outline"
-            size={20}
-            color={theme.accent}
-            style={styles.inputIcon}
-          />
-          <TextInput
-            style={styles.input}
+          <AuthField
+            styles={styles}
+            theme={theme}
             placeholder={i18n.t("email")}
-            placeholderTextColor="#888"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
-            autoCapitalize="none"
+            icon="mail-outline"
             editable={!loading}
+            selectTextOnFocus={!loading}
           />
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="lock-closed-outline"
-            size={20}
-            color={theme.accent}
-            style={styles.inputIcon}
-          />
-          <TextInput
-            style={styles.input}
+          <AuthField
+            styles={styles}
+            theme={theme}
             placeholder={i18n.t("password")}
-            placeholderTextColor="#888"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
+            icon="lock-closed-outline"
             editable={!loading}
+            selectTextOnFocus={!loading}
+            autoCapitalize="none"
+            leftAccessory={
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+                disabled={loading}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={fs(20)}
+                  color={loading ? "rgba(255,255,255,0.35)" : AUTH.icon}
+                />
+              </TouchableOpacity>
+            }
           />
+
           <TouchableOpacity
-            style={styles.eyeIcon}
-            onPress={() => setShowPassword(!showPassword)}
-            disabled={loading}
+            style={styles.buttonTouchable}
+            onPress={handleRegister}
+            disabled={!username || !email || !password || loading}
+            activeOpacity={0.9}
           >
-            <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
-              size={20}
-              color={loading ? "#666" : "#888"}
-            />
+            {!username || !email || !password ? (
+              <LinearGradient
+                colors={BUTTON_DISABLED_GRADIENT}
+                locations={brandGradient.locations}
+                start={brandGradient.start}
+                end={brandGradient.end}
+                style={styles.buttonGradientOuter}
+              >
+                <View style={styles.buttonInner}>
+                  <Text style={styles.buttonTextMuted}>{i18n.t("signUp")}</Text>
+                </View>
+              </LinearGradient>
+            ) : loading ? (
+              <LinearGradient
+                colors={brandGradient.colors}
+                locations={brandGradient.locations}
+                start={brandGradient.start}
+                end={brandGradient.end}
+                style={styles.buttonGradientOuter}
+              >
+                <View style={styles.buttonInner}>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                </View>
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={brandGradient.colors}
+                locations={brandGradient.locations}
+                start={brandGradient.start}
+                end={brandGradient.end}
+                style={styles.buttonGradientOuter}
+              >
+                <View style={styles.buttonInner}>
+                  <Text style={styles.buttonTextGradient}>{i18n.t("signUp")}</Text>
+                </View>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
-        </View>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            (!username || !email || !password || loading) &&
-              styles.buttonDisabled,
-          ]}
-          onPress={handleRegister}
-          disabled={!username || !email || !password || loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.buttonText}>{i18n.t("signUp")}</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{i18n.t("alreadyHaveAccount")}</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Login")}
-            disabled={loading}
-          >
-            <Text style={[styles.link, loading && styles.linkDisabled]}>
-              {i18n.t("logIn")}
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: AUTH.footerMuted }]}>
+              {i18n.t("alreadyHaveAccount")}
             </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.ScrollView>
-
-      {/* Error Modal */}
-      <Modal
-        visible={errorModal.visible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-      >
-        <View style={styles.errorOverlay}>
-          <View style={styles.errorBox}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={{ maxHeight: "100%" }}
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Login")}
+              disabled={loading}
             >
-              <View
+              <Text
                 style={[
-                  styles.iconContainer,
-                  {
-                    backgroundColor:
-                      errorModal.type === "network"
-                        ? "rgba(255, 107, 107, 0.1)"
-                        : errorModal.type === "credentials"
-                          ? "rgba(255, 193, 7, 0.1)"
-                          : errorModal.type === "validation"
-                            ? "rgba(33, 150, 243, 0.1)"
-                            : "rgba(76, 175, 80, 0.1)",
-                  },
+                  styles.link,
+                  { color: AUTH.link },
+                  loading && styles.linkMuted,
                 ]}
               >
-                <Ionicons
-                  name={
-                    errorModal.type === "network"
-                      ? "cloud-offline"
-                      : errorModal.type === "credentials"
-                        ? "person-circle"
-                        : errorModal.type === "validation"
-                          ? "alert-circle"
-                          : "information-circle"
-                  }
-                  size={40}
-                  color={
-                    errorModal.type === "network"
-                      ? "#FF6B6B"
-                      : errorModal.type === "credentials"
-                        ? "#FFC107"
-                        : errorModal.type === "validation"
-                          ? "#2196F3"
-                          : "#4CAF50"
-                  }
-                />
-              </View>
+                {i18n.t("logIn")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.ScrollView>
 
-              <Text style={styles.errorTitle}>{errorModal.title}</Text>
-              <Text style={styles.errorMessage}>{errorModal.message}</Text>
-
-              <View style={styles.errorCodeContainer}>
-                <View style={styles.errorCodeBadge}>
-                  <Ionicons name="bug" size={14} color="#FF6B6B" />
-                  <Text style={styles.errorCodeText}>
-                    {errorModal.errorCode}
-                  </Text>
-                </View>
-                {errorModal.statusCode && (
-                  <View style={styles.errorCodeBadge}>
-                    <Ionicons
-                      name="information-circle"
-                      size={14}
-                      color="#FF6B6B"
-                    />
-                    <Text style={styles.errorCodeText}>
-                      HTTP {errorModal.statusCode}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {errorModal.type === "network" && (
-                <View style={styles.helpBox}>
-                  <Text style={styles.helpTitle}>اقتراحات:</Text>
-                  <Text style={styles.helpText}>
-                    • قد يكون الخادم في طور البدء (التجهيز البارد) — أعد
-                    المحاولة
-                  </Text>
-                  <Text style={styles.helpText}>• تحقق من اتصال الإنترنت</Text>
-                  <Text style={styles.helpText}>
-                    • جرب الاتصال بالواي فاي أو بيانات الهاتف
-                  </Text>
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={styles.technicalToggle}
-                onPress={() => setShowTechnicalDetails(!showTechnicalDetails)}
+        {/* Error Modal */}
+        <Modal
+          visible={errorModal.visible}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+        >
+          <View style={styles.errorOverlay}>
+            <View style={styles.errorBox}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: "100%" }}
               >
-                <Ionicons
-                  name={showTechnicalDetails ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color="#888"
-                />
-                <Text style={styles.technicalToggleText}>
-                  {showTechnicalDetails
-                    ? "إخفاء التفاصيل التقنية"
-                    : "عرض التفاصيل التقنية"}
-                </Text>
-              </TouchableOpacity>
-
-              {showTechnicalDetails && (
-                <View style={styles.technicalDetailsBox}>
-                  <View style={styles.technicalRow}>
-                    <Text style={styles.technicalLabel}>الوقت:</Text>
-                    <Text style={styles.technicalValue}>
-                      {new Date(errorModal.timestamp).toLocaleString("ar-EG")}
-                    </Text>
-                  </View>
-                  <View style={styles.technicalRow}>
-                    <Text style={styles.technicalLabel}>نقطة النهاية:</Text>
-                    <Text style={styles.technicalValue}>
-                      {errorModal.endpoint}
-                    </Text>
-                  </View>
-                  <View style={styles.technicalDivider} />
-                  <Text style={styles.technicalDetailsLabel}>
-                    التفاصيل الكاملة:
-                  </Text>
-                  <ScrollView
-                    style={styles.technicalDetailsScroll}
-                    nestedScrollEnabled
-                  >
-                    <Text style={styles.technicalDetailsContent}>
-                      {errorModal.technicalDetails}
-                    </Text>
-                  </ScrollView>
-                  <TouchableOpacity
-                    style={styles.copyButton}
-                    onPress={copyErrorDetails}
-                  >
-                    <Ionicons name="copy-outline" size={16} color={theme.accent} />
-                    <Text style={styles.copyButtonText}>نسخ التفاصيل</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <View style={styles.errorButtonsContainer}>
-                {errorModal.type === "network" && (
-                  <TouchableOpacity
-                    style={[styles.errorButton, styles.retryButton]}
-                    onPress={retryRegister}
-                  >
-                    <Ionicons name="refresh" size={18} color="#FFF" />
-                    <Text style={styles.errorButtonText}>إعادة المحاولة</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
+                <View
                   style={[
-                    styles.errorButton,
-                    errorModal.type === "network" && styles.dismissButton,
+                    styles.iconContainer,
+                    {
+                      backgroundColor:
+                        errorModal.type === "network"
+                          ? "rgba(255, 107, 107, 0.1)"
+                          : errorModal.type === "credentials"
+                            ? "rgba(255, 193, 7, 0.1)"
+                            : errorModal.type === "validation"
+                              ? "rgba(33, 150, 243, 0.1)"
+                              : "rgba(76, 175, 80, 0.1)",
+                    },
                   ]}
-                  onPress={() =>
-                    setErrorModal({ ...errorModal, visible: false })
-                  }
                 >
-                  <Text style={styles.errorButtonText}>
-                    {errorModal.type === "network" ? "إغلاق" : "فهمت"}
+                  <Ionicons
+                    name={
+                      errorModal.type === "network"
+                        ? "cloud-offline"
+                        : errorModal.type === "credentials"
+                          ? "person-circle"
+                          : errorModal.type === "validation"
+                            ? "alert-circle"
+                            : "information-circle"
+                    }
+                    size={40}
+                    color={
+                      errorModal.type === "network"
+                        ? "#FF6B6B"
+                        : errorModal.type === "credentials"
+                          ? "#FFC107"
+                          : errorModal.type === "validation"
+                            ? "#2196F3"
+                            : "#4CAF50"
+                    }
+                  />
+                </View>
+
+                <Text style={styles.errorTitle}>{errorModal.title}</Text>
+                <Text style={styles.errorMessage}>{errorModal.message}</Text>
+
+                <View style={styles.errorCodeContainer}>
+                  <View style={styles.errorCodeBadge}>
+                    <Ionicons name="bug" size={14} color="#FF6B6B" />
+                    <Text style={styles.errorCodeText}>
+                      {errorModal.errorCode}
+                    </Text>
+                  </View>
+                  {errorModal.statusCode ? (
+                    <View style={styles.errorCodeBadge}>
+                      <Ionicons
+                        name="information-circle"
+                        size={14}
+                        color="#FF6B6B"
+                      />
+                      <Text style={styles.errorCodeText}>
+                        HTTP {errorModal.statusCode}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {errorModal.type === "network" && (
+                  <View style={styles.helpBox}>
+                    <Text style={styles.helpTitle}>اقتراحات:</Text>
+                    <Text style={styles.helpText}>
+                      • قد يكون الخادم في طور البدء (التجهيز البارد) — أعد
+                      المحاولة
+                    </Text>
+                    <Text style={styles.helpText}>• تحقق من اتصال الإنترنت</Text>
+                    <Text style={styles.helpText}>
+                      • جرب الاتصال بالواي فاي أو بيانات الهاتف
+                    </Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.technicalToggle}
+                  onPress={() => setShowTechnicalDetails(!showTechnicalDetails)}
+                >
+                  <Ionicons
+                    name={showTechnicalDetails ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color="#888"
+                  />
+                  <Text style={styles.technicalToggleText}>
+                    {showTechnicalDetails
+                      ? "إخفاء التفاصيل التقنية"
+                      : "عرض التفاصيل التقنية"}
                   </Text>
                 </TouchableOpacity>
-              </View>
-            </ScrollView>
+
+                {showTechnicalDetails && (
+                  <View style={styles.technicalDetailsBox}>
+                    <View style={styles.technicalRow}>
+                      <Text style={styles.technicalLabel}>الوقت:</Text>
+                      <Text style={styles.technicalValue}>
+                        {new Date(errorModal.timestamp).toLocaleString("ar-EG")}
+                      </Text>
+                    </View>
+                    <View style={styles.technicalRow}>
+                      <Text style={styles.technicalLabel}>نقطة النهاية:</Text>
+                      <Text style={styles.technicalValue}>
+                        {errorModal.endpoint}
+                      </Text>
+                    </View>
+                    <View style={styles.technicalDivider} />
+                    <Text style={styles.technicalDetailsLabel}>
+                      التفاصيل الكاملة:
+                    </Text>
+                    <ScrollView
+                      style={styles.technicalDetailsScroll}
+                      nestedScrollEnabled
+                    >
+                      <Text style={styles.technicalDetailsContent}>
+                        {errorModal.technicalDetails}
+                      </Text>
+                    </ScrollView>
+                    <TouchableOpacity
+                      style={styles.copyButton}
+                      onPress={copyErrorDetails}
+                    >
+                      <Ionicons name="copy-outline" size={16} color={AUTH.link} />
+                      <Text style={styles.copyButtonText}>نسخ التفاصيل</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View style={styles.errorButtonsContainer}>
+                  {errorModal.type === "network" && (
+                    <TouchableOpacity
+                      style={[styles.errorButton, styles.retryButton]}
+                      onPress={retryRegister}
+                    >
+                      <Ionicons name="refresh" size={18} color="#FFF" />
+                      <Text style={styles.errorButtonText}>إعادة المحاولة</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[
+                      styles.errorButton,
+                      errorModal.type === "network" && styles.dismissButton,
+                    ]}
+                    onPress={() =>
+                      setErrorModal({ ...errorModal, visible: false })
+                    }
+                  >
+                    <Text style={styles.errorButtonText}>
+                      {errorModal.type === "network" ? "إغلاق" : "فهمت"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
     </LinearGradient>
   );
 };
 
 const makeStyles = (theme) =>
   StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  logo: {
-    width: ms(110),
-    height: ms(110),
-    marginBottom: ms(30),
-    borderRadius: ms(55),
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-    backgroundColor: "rgba(255, 45, 146, 0.12)",
-    borderWidth: 2,
-    borderColor: theme.accent,
-  },
-  logoImage: { width: "100%", height: "100%" },
-  title: {
-    fontSize: fs(28),
-    fontWeight: "bold",
-    marginBottom: ms(8),
-    textAlign: "center",
-    color: "#FFF",
-    paddingHorizontal: ms(20),
-  },
-  subtitle: {
-    fontSize: fs(14),
-    color: "#999",
-    textAlign: "center",
-    marginBottom: ms(32),
-    paddingHorizontal: ms(20),
-    lineHeight: ms(20),
-  },
-  inputContainer: {
-    width: "100%",
-    marginBottom: ms(16),
-    position: "relative",
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  inputIcon: {
-    position: "absolute",
-    left: ms(12),
-    zIndex: 1,
-  },
-  input: {
-    flex: 1,
-    height: ms(52),
-    borderWidth: 1.5,
-    borderColor: "#333",
-    borderRadius: ms(12),
-    paddingHorizontal: ms(50),
-    backgroundColor: "#1a1a1a",
-    fontSize: fs(16),
-    textAlign: "right",
-    color: "#FFF",
-  },
-  eyeIcon: {
-    position: "absolute",
-    right: ms(15),
-    paddingVertical: ms(10),
-    paddingHorizontal: ms(8),
-  },
-  button: {
-    backgroundColor: theme.accent,
-    height: ms(52),
-    borderRadius: ms(12),
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    marginTop: ms(10),
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  buttonDisabled: {
-    backgroundColor: "rgba(255, 45, 146, 0.45)",
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#FFF",
-    fontSize: fs(16),
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: ms(40),
-    marginBottom: ms(30),
-  },
-  footerText: { fontSize: fs(14), color: "#999" },
-  link: {
-    fontSize: fs(14),
-    color: theme.accent,
-    fontWeight: "700",
-    marginLeft: ms(5),
-  },
-  linkDisabled: { opacity: 0.5 },
+    gradient: {
+      flex: 1,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: "transparent",
+      justifyContent: "space-between",
+      paddingHorizontal: ms(20),
+    },
+    ...authFieldsAndButtonStyles(theme),
+    ...authFooterStyles(theme),
 
-  /* Error Modal */
-  errorOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: ms(24),
-  },
-  errorBox: {
-    backgroundColor: "#1a1a1a",
-    borderRadius: ms(20),
-    paddingVertical: ms(30),
-    paddingHorizontal: ms(20),
-    borderWidth: 1,
-    borderColor: "#333",
-    width: "100%",
-    maxHeight: "85%",
-  },
-  iconContainer: {
-    width: ms(80),
-    height: ms(80),
-    borderRadius: ms(40),
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
-    marginBottom: ms(20),
-  },
-  errorTitle: {
-    fontSize: fs(18),
-    fontWeight: "700",
-    color: "#FFF",
-    textAlign: "center",
-    marginBottom: ms(8),
-  },
-  errorMessage: {
-    fontSize: fs(14),
-    color: "#CCC",
-    textAlign: "center",
-    marginBottom: ms(20),
-    lineHeight: ms(20),
-    paddingHorizontal: ms(10),
-  },
-  errorCodeContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: ms(10),
-    marginBottom: ms(20),
-    flexWrap: "wrap",
-  },
-  errorCodeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 107, 107, 0.1)",
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(6),
-    borderRadius: ms(16),
-    gap: ms(6),
-    borderWidth: 1,
-    borderColor: "rgba(255, 107, 107, 0.3)",
-  },
-  errorCodeText: { color: "#FF6B6B", fontSize: fs(12), fontWeight: "600" },
-  helpBox: {
-    backgroundColor: "rgba(255, 193, 7, 0.1)",
-    borderLeftWidth: 4,
-    borderLeftColor: "#FFC107",
-    paddingVertical: ms(12),
-    paddingHorizontal: ms(14),
-    borderRadius: ms(8),
-    marginBottom: ms(24),
-  },
-  helpTitle: {
-    fontSize: fs(13),
-    fontWeight: "700",
-    color: "#FFC107",
-    marginBottom: ms(8),
-  },
-  helpText: {
-    fontSize: fs(12),
-    color: "#CCC",
-    marginBottom: ms(4),
-    lineHeight: ms(16),
-  },
-  technicalToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: ms(12),
-    marginBottom: ms(10),
-    gap: ms(8),
-  },
-  technicalToggleText: { color: "#888", fontSize: fs(13), fontWeight: "600" },
-  technicalDetailsBox: {
-    backgroundColor: "#0a0a0a",
-    borderRadius: ms(12),
-    padding: ms(16),
-    marginBottom: ms(20),
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  technicalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: ms(8),
-  },
-  technicalLabel: { color: "#888", fontSize: fs(12), fontWeight: "600" },
-  technicalValue: {
-    color: "#CCC",
-    fontSize: fs(12),
-    flex: 1,
-    textAlign: "left",
-    marginLeft: ms(10),
-  },
-  technicalDivider: {
-    height: 1,
-    backgroundColor: "#333",
-    marginVertical: ms(12),
-  },
-  technicalDetailsLabel: {
-    color: "#888",
-    fontSize: fs(12),
-    fontWeight: "600",
-    marginBottom: ms(8),
-  },
-  technicalDetailsScroll: { maxHeight: ms(150) },
-  technicalDetailsContent: {
-    color: "#999",
-    fontSize: fs(11),
-    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
-    lineHeight: ms(16),
-  },
-  copyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255, 45, 146, 0.1)",
-    paddingVertical: ms(8),
-    paddingHorizontal: ms(12),
-    borderRadius: ms(8),
-    marginTop: ms(12),
-    gap: ms(6),
-    borderWidth: 1,
-    borderColor: "rgba(255, 45, 146, 0.3)",
-  },
-  copyButtonText: { color: theme.accent, fontSize: fs(12), fontWeight: "600" },
-  errorButtonsContainer: { flexDirection: "row", gap: ms(10) },
-  errorButton: {
-    backgroundColor: theme.accent,
-    height: ms(52),
-    borderRadius: ms(12),
-    justifyContent: "center",
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: ms(8),
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  retryButton: { backgroundColor: "#4CAF50", shadowColor: "#4CAF50" },
-  dismissButton: { backgroundColor: "#666", shadowColor: "#666" },
-  errorButtonText: { color: "#FFF", fontSize: fs(16), fontWeight: "700" },
-});
+    errorOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.85)",
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: ms(24),
+    },
+    errorBox: {
+      backgroundColor: theme.card,
+      borderRadius: ms(20),
+      paddingVertical: ms(30),
+      paddingHorizontal: ms(20),
+      borderWidth: 1,
+      borderColor: theme.border,
+      width: "100%",
+      maxHeight: "85%",
+    },
+    iconContainer: {
+      width: ms(80),
+      height: ms(80),
+      borderRadius: ms(40),
+      justifyContent: "center",
+      alignItems: "center",
+      alignSelf: "center",
+      marginBottom: ms(20),
+    },
+    errorTitle: {
+      fontSize: fs(18),
+      fontWeight: "700",
+      color: theme.text,
+      textAlign: "center",
+      marginBottom: ms(8),
+    },
+    errorMessage: {
+      fontSize: fs(14),
+      color: theme.textSecondary,
+      textAlign: "center",
+      marginBottom: ms(20),
+      lineHeight: ms(20),
+      paddingHorizontal: ms(10),
+    },
+    errorCodeContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: ms(10),
+      marginBottom: ms(20),
+      flexWrap: "wrap",
+    },
+    errorCodeBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(255, 107, 107, 0.1)",
+      paddingHorizontal: ms(12),
+      paddingVertical: ms(6),
+      borderRadius: ms(16),
+      gap: ms(6),
+      borderWidth: 1,
+      borderColor: "rgba(255, 107, 107, 0.3)",
+    },
+    errorCodeText: { color: "#FF6B6B", fontSize: fs(12), fontWeight: "600" },
+    helpBox: {
+      backgroundColor: "rgba(255, 193, 7, 0.1)",
+      borderLeftWidth: 4,
+      borderLeftColor: "#FFC107",
+      paddingVertical: ms(12),
+      paddingHorizontal: ms(14),
+      borderRadius: ms(8),
+      marginBottom: ms(24),
+    },
+    helpTitle: {
+      fontSize: fs(13),
+      fontWeight: "700",
+      color: "#FFC107",
+      marginBottom: ms(8),
+    },
+    helpText: {
+      fontSize: fs(12),
+      color: "#CCC",
+      marginBottom: ms(4),
+      lineHeight: ms(16),
+    },
+    technicalToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: ms(12),
+      marginBottom: ms(10),
+      gap: ms(8),
+    },
+    technicalToggleText: {
+      color: "#888",
+      fontSize: fs(13),
+      fontWeight: "600",
+    },
+    technicalDetailsBox: {
+      backgroundColor: theme.bg2,
+      borderRadius: ms(12),
+      padding: ms(16),
+      marginBottom: ms(20),
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    technicalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: ms(8),
+    },
+    technicalLabel: {
+      color: theme.textMuted,
+      fontSize: fs(12),
+      fontWeight: "600",
+    },
+    technicalValue: {
+      color: theme.textSecondary,
+      fontSize: fs(12),
+      flex: 1,
+      textAlign: "left",
+      marginLeft: ms(10),
+    },
+    technicalDivider: {
+      height: 1,
+      backgroundColor: theme.border,
+      marginVertical: ms(12),
+    },
+    technicalDetailsLabel: {
+      color: theme.textMuted,
+      fontSize: fs(12),
+      fontWeight: "600",
+      marginBottom: ms(8),
+    },
+    technicalDetailsScroll: { maxHeight: ms(150) },
+    technicalDetailsContent: {
+      color: "#999",
+      fontSize: fs(11),
+      fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+      lineHeight: ms(16),
+    },
+    copyButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: `${brandColors.magenta}18`,
+      paddingVertical: ms(8),
+      paddingHorizontal: ms(12),
+      borderRadius: ms(8),
+      marginTop: ms(12),
+      gap: ms(6),
+      borderWidth: 1,
+      borderColor: `${brandColors.magenta}44`,
+    },
+    copyButtonText: {
+      color: AUTH.link,
+      fontSize: fs(12),
+      fontWeight: "600",
+    },
+    errorButtonsContainer: { flexDirection: "row", gap: ms(10) },
+    errorButton: {
+      backgroundColor: theme.accent,
+      height: ms(52),
+      borderRadius: ms(12),
+      justifyContent: "center",
+      alignItems: "center",
+      flex: 1,
+      flexDirection: "row",
+      gap: ms(8),
+      shadowColor: theme.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    retryButton: { backgroundColor: "#4CAF50", shadowColor: "#4CAF50" },
+    dismissButton: { backgroundColor: "#666", shadowColor: "#666" },
+    errorButtonText: { color: "#FFF", fontSize: fs(16), fontWeight: "700" },
+  });
 
 export default RegisterScreen;

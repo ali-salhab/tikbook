@@ -16,6 +16,7 @@ import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import Constants from "expo-constants";
 import { wp, ms, fs } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
 const OTPScreen = ({ route, navigation }) => {
   const { username, email, password, devOtp } = route.params;
@@ -113,7 +114,7 @@ const OTPScreen = ({ route, navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.container, { backgroundColor: "#000" }]}
+      style={[styles.container, { backgroundColor: darkUi.canvas }]}
     >
       <TouchableOpacity
         style={styles.backButton}
@@ -180,7 +181,7 @@ const OTPScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
     padding: ms(20),
   },
   backButton: {

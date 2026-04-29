@@ -60,7 +60,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Linking } from "react-native";
-import { brandColors } from "../theme/brand";
+import { brandColors, darkUi } from "../theme/brand";
 import GlassBlurLayer from "../components/GlassBlurLayer";
 
 // Parse a tikbook://video/:videoId URL and return the videoId, or null.
@@ -110,7 +110,7 @@ const navigateFromDeepLink = (navigationRef, payload) => {
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabIconWithBadge = ({ name, color, size, badgeCount, tabBarBg = "#000" }) => (
+const TabIconWithBadge = ({ name, color, size, badgeCount, tabBarBg = darkUi.bar }) => (
   <View
     style={{
       width: 30,
@@ -148,7 +148,15 @@ const TabIconWithBadge = ({ name, color, size, badgeCount, tabBarBg = "#000" }) 
 const HomeTabs = () => {
   const insets = useSafeAreaInsets();
   const { userInfo, notificationCount } = React.useContext(AuthContext);
-  const { theme, t } = useApp();
+  const { theme } = useApp();
+
+  /** ألوان واضحة فوق خلفية التبويب الزجاجية (textMuted كانت داكنة جداً) */
+  const tabBarActiveTintColor =
+    theme.id === "dark" ? "#FFFFFF" : theme.text;
+  const tabBarInactiveTintColor =
+    theme.id === "dark"
+      ? "rgba(255, 255, 255, 0.78)"
+      : "rgba(45, 36, 72, 0.62)";
 
   return (
     <Tab.Navigator
@@ -169,8 +177,8 @@ const HomeTabs = () => {
             <GlassBlurLayer dark={theme.id === "dark"} />
           </View>
         ),
-        tabBarActiveTintColor: theme.text,
-        tabBarInactiveTintColor: theme.textMuted,
+        tabBarActiveTintColor,
+        tabBarInactiveTintColor,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: "600",
@@ -409,7 +417,7 @@ const AppNavigator = () => {
   // While checking auth state or onboarding status, or if splash animation isn't done
   if (isLoading || showOnboarding === null || !isSplashAnimationFinished) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={{ flex: 1, backgroundColor: darkUi.canvas }}>
         {/* Show SplashScreen and wait for it to signal completion */}
         <SplashScreen onFinish={() => setIsSplashAnimationFinished(true)} />
       </View>

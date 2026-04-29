@@ -9,21 +9,21 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
 import { useUpload } from "../context/UploadContext";
 import axios from "axios";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 const PostEditScreen = ({ navigation, route }) => {
   const initialMedia =
@@ -353,7 +353,7 @@ const PostEditScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   header: {
     flexDirection: "row",

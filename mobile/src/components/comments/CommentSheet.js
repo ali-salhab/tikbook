@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   FlatList,
   Animated,
-  Dimensions,
   PanResponder,
   Keyboard,
   Platform,
@@ -22,8 +21,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CommentItem from "./CommentItem";
 import CommentInput from "./CommentInput";
+import { getWindowDimensions } from "../../utils/responsive";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT } = getWindowDimensions();
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75; // 75% of screen
 
 const CommentSheet = ({ visible, onClose, videoId, initialComments = [] }) => {

@@ -55,7 +55,8 @@ import UserActionSheet from "../components/UserActionSheet";
 import SoundWave from "../components/SoundWave";
 import VipBadge from "../components/VipBadge";
 import SoundService from "../services/soundService";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 import JoinAnimation from "../live/components/JoinAnimation";
 
 const LIVE_NOTIF_ID = "live_room_active";
@@ -91,7 +92,7 @@ const dismissLiveNotification = async () => {
   } catch (_) {}
 };
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 const BASE_SEAT_SIZE = ms(50);
 const HOST_SIZE = ms(110);
 const SOCKET_URL = BASE_URL.replace("/api", "");
@@ -3726,6 +3727,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
         onOpenProfile={(uid) => {
           if (uid) navigation.navigate("UserProfile", { userId: uid });
         }}
+        onOpenVipStore={() => {
+          setUserSheet(null);
+          navigation.navigate("VipStore");
+        }}
       />
 
       <GiftPanel
@@ -3745,7 +3750,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#050010" },
+  container: { flex: 1, backgroundColor: darkUi.canvas },
 
   // ── Header ──────────────────────────────────────────────────────────────────
   header: {
@@ -4090,7 +4095,7 @@ const styles = StyleSheet.create({
     elevation: 30,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.35)",
-    shadowColor: "#000",
+    shadowColor: "rgba(15, 12, 32, 0.45)",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.45,
     shadowRadius: 2,
@@ -4110,7 +4115,7 @@ const styles = StyleSheet.create({
     elevation: 30,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.9)",
-    shadowColor: "#000",
+    shadowColor: "rgba(15, 12, 32, 0.45)",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.45,
     shadowRadius: 2,

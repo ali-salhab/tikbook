@@ -9,7 +9,6 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
   StatusBar,
   TextInput,
 } from "react-native";
@@ -21,9 +20,9 @@ import { useApp } from "../context/AppContext";
 import { BASE_URL } from "../config/api";
 import axios from "axios";
 import { useFocusEffect } from "@react-navigation/native";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 const InboxScreen = ({ navigation }) => {
   const { userToken, userInfo } = useContext(AuthContext);

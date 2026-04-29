@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { ms, fs } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
 const EditProfileScreen = ({ navigation, route }) => {
   const { userInfo, BASE_URL, userToken } = useContext(AuthContext);
@@ -410,7 +411,7 @@ const EditProfileScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   header: {
     flexDirection: "row",
@@ -420,7 +421,7 @@ const styles = StyleSheet.create({
     paddingVertical: ms(12),
     borderBottomWidth: 1,
     borderBottomColor: "#1F1F1F",
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   headerTitle: {
     color: "#FFF",
@@ -437,7 +438,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: ms(24),
     borderBottomWidth: 8,
-    borderBottomColor: "#0A0A0A",
+    borderBottomColor: darkUi.bar,
   },
   photoContainer: {
     position: "relative",
@@ -459,7 +460,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: "#000",
+    borderColor: darkUi.bar,
   },
   changePhotoText: {
     color: "#FFF",
@@ -513,7 +514,7 @@ const styles = StyleSheet.create({
     marginTop: ms(24),
     paddingTop: ms(16),
     borderTopWidth: 8,
-    borderTopColor: "#0A0A0A",
+    borderTopColor: darkUi.bar,
   },
   sectionTitle: {
     color: "#FFF",
@@ -550,7 +551,7 @@ const styles = StyleSheet.create({
   socialInputContainer: {
     paddingVertical: ms(8),
     paddingHorizontal: ms(12),
-    backgroundColor: "#0A0A0A",
+    backgroundColor: darkUi.surfaceMuted,
   },
   socialInput: {
     backgroundColor: "#1F1F1F",

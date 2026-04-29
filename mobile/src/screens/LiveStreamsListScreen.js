@@ -19,8 +19,7 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import { ms, fs } from "../utils/responsive";
-
-const { width } = Dimensions.get("window");
+import { darkUi } from "../theme/brand";
 const ITEM_WIDTH = (width - 48) / 2; // 2 columns with padding
 
 const LiveStreamsListScreen = ({ navigation }) => {
@@ -206,7 +205,7 @@ const LiveStreamsListScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   header: {
     flexDirection: "row",

@@ -25,7 +25,7 @@ const GlassBlurLayer = ({
               brandColors.magentaSoft,
               brandColors.violetSoft,
               brandColors.cyanSoft,
-              "rgba(8, 6, 16, 0.92)",
+              "rgba(20, 16, 34, 0.92)",
             ]
           : [
               "rgba(255, 240, 250, 0.65)",

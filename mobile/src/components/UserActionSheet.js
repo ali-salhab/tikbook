@@ -5,44 +5,26 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Alert,
   ScrollView,
+  Pressable,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
-import ProfileBadgeFrame from "./ProfileBadgeFrame";
-import { ms, fs } from "../utils/responsive";
+import OrnateProfileFrame from "./OrnateProfileFrame";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { brandColors, darkUi } from "../theme/brand";
+
+const { height: WINDOW_H } = getWindowDimensions();
+const SHEET_MAX_H = WINDOW_H * 0.92;
 
 /**
- * UserActionSheet
- *
- * A modal "profile card" that appears when tapping a user's avatar inside
- * the live-room comments. Supports the @mention shortcut, follow toggle,
- * and host/moderator-only actions: chat-mute, kick, ban, pin/unpin
- * comment.
- *
- * Props:
- *  - visible              : boolean
- *  - onClose              : () => void
- *  - targetUser           : the user object pulled from the comment
- *  - currentUserId        : viewer's id (so we hide self-only actions)
- *  - userToken            : auth token
- *  - apiBaseUrl           : BASE_URL from config
- *  - roomId               : current live-room id
- *  - isHost / isModerator : permissions for moderation actions
- *  - isMuted              : whether targetUser is currently chat-muted
- *  - canPinThisComment    : true when a comment object was provided
- *  - isThisCommentPinned  : highlight unpin instead of pin
- *  - onMention(username)  : insert @username into input
- *  - onPinComment(item)
- *  - onUnpinComment()
- *  - onChatMuteChanged(userId, muted)
- *  - onKicked(userId)
- *  - onBanned(userId)
- *  - onOpenProfile(userId)
+ * Bottom sheet modal when tapping an avatar in live-room comments.
+ * Slides up from bottom, dark blur-style surface, stats, badges, follow, mod actions.
  */
 const UserActionSheet = ({
   visible,
@@ -64,7 +46,9 @@ const UserActionSheet = ({
   onKicked,
   onBanned,
   onOpenProfile,
+  onOpenVipStore,
 }) => {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -143,16 +127,11 @@ const UserActionSheet = ({
         );
         setIsFollowing(true);
         setProfile((p) =>
-          p
-            ? { ...p, followers: [...(p.followers || []), currentUserId] }
-            : p,
+          p ? { ...p, followers: [...(p.followers || []), currentUserId] } : p,
         );
       }
     } catch (e) {
-      Alert.alert(
-        "خطأ",
-        e?.response?.data?.message || "تعذّر تنفيذ العملية",
-      );
+      Alert.alert("خطأ", e?.response?.data?.message || "تعذّر تنفيذ العملية");
     } finally {
       setBusy(false);
     }
@@ -264,81 +243,100 @@ const UserActionSheet = ({
     profile?.activeBadge?.image ||
     targetUser?.activeBadge?.imageUrl ||
     targetUser?.activeBadge?.image ||
-    (typeof targetUser?.activeBadge === "string"
-      ? targetUser.activeBadge
-      : null);
+    (typeof targetUser?.activeBadge === "string" ? targetUser.activeBadge : null);
+  /** إطار الإدارة يحتاج رابط http(s) صالحاً */
+  const frameBadgeUrl =
+    typeof badgeUrl === "string" && /^https?:\/\//i.test(badgeUrl.trim()) ? badgeUrl.trim() : null;
+
+  const bottomPad = Math.max(insets.bottom, ms(12));
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <TouchableOpacity
-        activeOpacity={1}
-        style={styles.backdrop}
-        onPress={onClose}
-      >
-        <TouchableOpacity activeOpacity={1} style={styles.cardWrap}>
+      <View style={styles.overlayRoot}>
+        <Pressable style={styles.backdropHit} onPress={onClose} accessibilityRole="button" />
+
+        <View style={[styles.sheetOuter, { maxHeight: SHEET_MAX_H }]}>
+          <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={["#FFE4E1", "#FFD1DC"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.card}
+            colors={[darkUi.elevated, darkUi.surface, darkUi.surfaceMuted]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.sheetTint}
+          />
+          {/* drag handle */}
+          <View style={styles.grabber} />
+
+          {/* Close */}
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.sheetCloseBtn}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            {/* Top row: dots + mention */}
+            <Ionicons name="close" size={fs(26)} color="rgba(255,255,255,0.9)" />
+          </TouchableOpacity>
+
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.sheetScroll, { paddingBottom: bottomPad + ms(12) }]}
+          >
+            {/* Top row — menu + mention */}
             <View style={styles.topRow}>
-              <View style={styles.posChip}>
-                <Text style={styles.posChipText}>1</Text>
-              </View>
               <TouchableOpacity
-                style={styles.mentionBtn}
+                style={styles.iconCircle}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={() =>
+                  Alert.alert("خيارات", "مزيد من الإجراءات قريباً.", [{ text: "حسناً" }])
+                }
+              >
+                <MaterialCommunityIcons name="dots-vertical" size={fs(22)} color="#EEE" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconCircle, styles.iconCircleAccent]}
                 onPress={handleMention}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={styles.mentionText}>@</Text>
+                <Text style={styles.mentionGlyph}>@</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Avatar */}
-            <View style={styles.avatarWrap}>
-              {badgeUrl ? (
-                <ProfileBadgeFrame
-                  profileImage={avatarUrl}
-                  badgeImage={badgeUrl}
-                  size={ms(82)}
-                />
-              ) : avatarUrl ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarInitial}>
-                    {(username || "?")[0].toUpperCase()}
-                  </Text>
-                </View>
-              )}
+            {/* Avatar — ornate gold frame + level orb + VIP ribbon (reference layout) */}
+            <View style={styles.avatarSlot}>
+              <OrnateProfileFrame
+                avatarUrl={avatarUrl || undefined}
+                badgeUrl={frameBadgeUrl || undefined}
+                profileImageUri={avatarUrl || undefined}
+                username={username}
+                level={level}
+                vipLevel={vipLevel}
+                innerSize={ms(88)}
+              />
             </View>
 
-            {/* Username */}
+            {/* Name */}
             <View style={styles.nameRow}>
-              <Text style={styles.username} numberOfLines={1}>
+              <Text style={styles.username} numberOfLines={2}>
                 {username || "—"}
               </Text>
               {profile?.isVerified ? (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={fs(15)}
-                  color="#1DA1F2"
-                  style={{ marginLeft: 4 }}
-                />
+                <Ionicons name="checkmark-circle" size={fs(17)} color="#33CCFF" style={{ marginLeft: ms(6) }} />
               ) : null}
             </View>
 
-            {/* Stats row */}
+            {/* Bio */}
+            {!!profile?.bio && (
+              <Text style={styles.bioText} numberOfLines={3}>
+                {profile.bio}
+              </Text>
+            )}
+
+            {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{posts}</Text>
@@ -354,63 +352,66 @@ const UserActionSheet = ({
               </View>
             </View>
 
-            {/* Badges row (level + VIP) */}
-            <View style={styles.badgeRow}>
-              {level > 0 ? (
-                <View style={[styles.badgePill, { backgroundColor: "#FFE9CC" }]}>
-                  <MaterialCommunityIcons
-                    name="trophy"
-                    size={fs(13)}
-                    color="#D97706"
-                  />
-                  <Text style={[styles.badgePillText, { color: "#92400E" }]}>
-                    مستوى {level}
-                  </Text>
+            {/* Badge cards — spaced matching sheet */}
+            <View style={styles.badgeCardsRow}>
+              <View style={[styles.badgeCard, styles.badgeCardAmber]}>
+                <View style={styles.badgeCardIconWrap}>
+                  <MaterialCommunityIcons name="trophy" size={fs(24)} color="#FBBF24" />
                 </View>
-              ) : null}
-              {vipLevel > 0 ? (
-                <View style={[styles.badgePill, { backgroundColor: "#FCE4EC" }]}>
-                  <Ionicons
-                    name="diamond"
-                    size={fs(13)}
-                    color="#FF1493"
-                  />
-                  <Text style={[styles.badgePillText, { color: "#C2185B" }]}>
-                    VIP{vipLevel}
-                  </Text>
+                <Text style={[styles.badgeCardVal, { color: "#FCD34D" }]}>
+                  {level > 0 ? String(level) : "—"}
+                </Text>
+                <Text style={styles.badgeCardLbl}>المستوى</Text>
+              </View>
+              <View style={[styles.badgeCard, styles.badgeCardRose]}>
+                <View style={styles.badgeCardIconWrap}>
+                  <Ionicons name="diamond" size={fs(22)} color="#FDA4AF" />
                 </View>
-              ) : null}
+                <Text style={[styles.badgeCardVal, { color: "#FFF" }]}>
+                  {vipLevel > 0 ? `VIP${vipLevel}` : "—"}
+                </Text>
+                <Text style={styles.badgeCardLbl}>VIP</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.badgeCard, styles.badgeCardVip]}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (typeof onOpenVipStore === "function") {
+                    onClose?.();
+                    onOpenVipStore();
+                  } else {
+                    Alert.alert("VIP", "تأكد من تحديث التطبيق.");
+                  }
+                }}
+              >
+                <View style={styles.badgeCardIconWrap}>
+                  <Ionicons name="wallet-outline" size={fs(22)} color="#FBBF24" />
+                </View>
+                <Text style={[styles.badgeCardVal, styles.badgeCardVipText]} numberOfLines={1}>
+                  VIP
+                </Text>
+                <Text style={[styles.badgeCardLbl, { marginTop: 2 }]}>شحن VIP</Text>
+              </TouchableOpacity>
             </View>
 
             {loading ? (
-              <ActivityIndicator
-                color="#FF3366"
-                style={{ marginTop: ms(10) }}
-              />
+              <ActivityIndicator color={brandColors.accent} style={{ marginTop: ms(12) }} />
             ) : null}
 
-            {/* Follow button */}
+            {/* Follow */}
             {!isSelf && (
               <TouchableOpacity
-                style={[
-                  styles.followBtn,
-                  isFollowing && styles.followingBtn,
-                ]}
+                style={[styles.followBtn, isFollowing && styles.followingBtn]}
                 onPress={handleFollowToggle}
                 disabled={busy}
               >
-                <Text
-                  style={[
-                    styles.followBtnText,
-                    isFollowing && styles.followingBtnText,
-                  ]}
-                >
+                <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
                   {isFollowing ? "متابَع ✓" : "متابعة"}
                 </Text>
               </TouchableOpacity>
             )}
 
-            {/* Open full profile */}
+            {/* Full profile */}
             <TouchableOpacity
               style={styles.viewProfileBtn}
               onPress={() => {
@@ -418,11 +419,11 @@ const UserActionSheet = ({
                 onClose?.();
               }}
             >
-              <Ionicons name="person-outline" size={fs(14)} color="#666" />
+              <Ionicons name="person-outline" size={fs(16)} color="#EDEAF8" />
               <Text style={styles.viewProfileText}>عرض الملف الشخصي</Text>
             </TouchableOpacity>
 
-            {/* Host/mod actions */}
+            {/* Mod actions */}
             {isModerationAllowed && (
               <ScrollView
                 horizontal
@@ -431,258 +432,302 @@ const UserActionSheet = ({
               >
                 {comment ? (
                   <ActionChip
-                    icon={
-                      isThisCommentPinned ? "pin-off-outline" : "pin-outline"
-                    }
+                    icon={isThisCommentPinned ? "pin-off-outline" : "pin-outline"}
                     label={isThisCommentPinned ? "إلغاء التثبيت" : "تثبيت"}
-                    color="#7C5DFA"
+                    color="#A78BFA"
                     onPress={handlePin}
                   />
                 ) : null}
                 <ActionChip
-                  icon={
-                    isMuted ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
-                  }
-                  label={isMuted ? "إلغاء كتم الدردشة" : "كتم الدردشة"}
-                  color={isMuted ? "#10B981" : "#F59E0B"}
+                  icon={isMuted ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
+                  label={isMuted ? "رفع الكتم من الدردشة" : "كتم الدردشة"}
+                  color={isMuted ? "#34D399" : "#FBBF24"}
                   onPress={handleChatMute}
                   disabled={busy}
                 />
-                <ActionChip
-                  icon="exit-outline"
-                  label="طرد"
-                  color="#FF9800"
-                  onPress={handleKick}
-                  disabled={busy}
-                />
-                <ActionChip
-                  icon="ban-outline"
-                  label="حظر"
-                  color="#F44336"
-                  onPress={handleBan}
-                  disabled={busy}
-                />
+                <ActionChip icon="exit-outline" label="طرد" color="#FB923C" onPress={handleKick} disabled={busy} />
+                <ActionChip icon="ban-outline" label="حظر" color="#F87171" onPress={handleBan} disabled={busy} />
               </ScrollView>
             )}
-          </LinearGradient>
-
-          {/* Close */}
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeBtn}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Ionicons name="close-circle" size={fs(28)} color="#fff" />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
     </Modal>
   );
 };
 
 const ActionChip = ({ icon, label, color, onPress, disabled }) => (
-  <TouchableOpacity
-    style={[styles.actionChip, { borderColor: color }]}
-    onPress={onPress}
-    disabled={disabled}
-  >
+  <TouchableOpacity style={[styles.actionChip, { borderColor: color }]} onPress={onPress} disabled={disabled}>
     <Ionicons name={icon} size={fs(15)} color={color} />
     <Text style={[styles.actionChipText, { color }]}>{label}</Text>
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
-  backdrop: {
+  overlayRoot: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "flex-end",
+    backgroundColor: "transparent",
+  },
+  backdropHit: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: ms(18),
   },
-  cardWrap: {
+  sheetOuter: {
     width: "100%",
-    maxWidth: ms(360),
-  },
-  card: {
-    borderRadius: ms(20),
-    paddingHorizontal: ms(16),
-    paddingTop: ms(14),
-    paddingBottom: ms(18),
-    alignItems: "center",
+    borderTopLeftRadius: ms(22),
+    borderTopRightRadius: ms(22),
     overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: darkUi.surfaceMuted,
+  },
+  sheetTint: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.92,
+  },
+  grabber: {
+    alignSelf: "center",
+    width: ms(40),
+    height: ms(4),
+    borderRadius: ms(2),
+    backgroundColor: "rgba(255,255,255,0.28)",
+    marginTop: ms(10),
+    marginBottom: ms(4),
+  },
+  sheetCloseBtn: {
+    position: "absolute",
+    right: ms(14),
+    top: ms(44),
+    zIndex: 20,
+    padding: ms(8),
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: ms(22),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  sheetScroll: {
+    paddingHorizontal: ms(18),
+    paddingTop: ms(8),
+    maxWidth: 520,
+    alignSelf: "center",
+    width: "100%",
   },
   topRow: {
-    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: ms(8),
+    marginBottom: ms(4),
+    width: "100%",
   },
-  posChip: {
-    width: ms(28),
-    height: ms(28),
-    borderRadius: ms(14),
-    backgroundColor: "#FF1B68",
+  iconCircle: {
+    width: ms(42),
+    height: ms(42),
+    borderRadius: ms(21),
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
   },
-  posChipText: {
-    color: "#FFF",
+  iconCircleAccent: {
+    borderColor: `${brandColors.accent}55`,
+    backgroundColor: "rgba(255,51,102,0.08)",
+  },
+  mentionGlyph: {
+    color: brandColors.accent,
     fontWeight: "900",
-    fontSize: fs(14),
+    fontSize: fs(22),
+    marginBottom: ms(3),
   },
-  mentionBtn: {
-    width: ms(34),
-    height: ms(34),
-    borderRadius: ms(17),
-    borderWidth: 1.5,
-    borderColor: "#FF3366",
+  avatarSlot: {
     alignItems: "center",
-    justifyContent: "center",
-  },
-  mentionText: {
-    color: "#FF3366",
-    fontWeight: "900",
-    fontSize: fs(18),
-  },
-  avatarWrap: {
-    marginVertical: ms(6),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatar: {
-    width: ms(82),
-    height: ms(82),
-    borderRadius: ms(41),
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#FFF",
-  },
-  avatarFallback: {
-    backgroundColor: "rgba(254,44,85,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitial: {
-    color: "#fff",
-    fontSize: fs(32),
-    fontWeight: "800",
+    marginTop: ms(8),
+    marginBottom: ms(22),
+    paddingBottom: ms(6),
+    width: "100%",
+    alignSelf: "center",
+    overflow: "visible",
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: ms(6),
-    paddingHorizontal: ms(8),
-    maxWidth: "100%",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    marginTop: ms(4),
+    paddingHorizontal: ms(4),
+    width: "100%",
   },
   username: {
-    color: "#1F1B36",
+    color: "#F0EEFF",
     fontSize: fs(17),
     fontWeight: "800",
     textAlign: "center",
-    maxWidth: ms(220),
+    maxWidth: "95%",
+    lineHeight: fs(23),
+  },
+  bioText: {
+    marginTop: ms(8),
+    color: "#B8B0D8",
+    fontSize: fs(13),
+    lineHeight: fs(19),
+    textAlign: "center",
+    alignSelf: "center",
+    maxWidth: "95%",
+    paddingHorizontal: ms(8),
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     width: "100%",
-    marginTop: ms(10),
-    paddingHorizontal: ms(6),
+    marginTop: ms(16),
+    paddingHorizontal: ms(4),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+    paddingBottom: ms(14),
   },
   statBox: {
     alignItems: "center",
     flex: 1,
   },
   statValue: {
-    color: "#1F1B36",
+    color: "#FFF",
     fontWeight: "800",
-    fontSize: fs(16),
+    fontSize: fs(17),
   },
   statLabel: {
-    color: "#6B6480",
+    color: "#958BA8",
     fontSize: fs(11),
-    marginTop: 2,
+    marginTop: ms(4),
   },
-  badgeRow: {
+  badgeCardsRow: {
     flexDirection: "row",
-    gap: ms(8),
-    marginTop: ms(10),
-    flexWrap: "wrap",
-    justifyContent: "center",
+    alignItems: "stretch",
+    gap: ms(14),
+    marginTop: ms(18),
+    width: "100%",
+    justifyContent: "space-between",
+    flexWrap: "nowrap",
+    paddingHorizontal: ms(6),
   },
-  badgePill: {
-    flexDirection: "row",
+  badgeCardIconWrap: {
+    width: ms(44),
+    height: ms(44),
     alignItems: "center",
-    gap: ms(4),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: ms(12),
+    justifyContent: "center",
+    marginBottom: ms(4),
   },
-  badgePillText: {
-    fontSize: fs(11),
+  badgeCard: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minHeight: ms(112),
+    minWidth: ms(92),
+    borderRadius: ms(14),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(14),
+    alignItems: "center",
+    justifyContent: "flex-start",
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  badgeCardAmber: {
+    borderColor: "rgba(251,191,36,0.4)",
+    backgroundColor: "rgba(251,191,36,0.08)",
+    gap: ms(6),
+  },
+  badgeCardRose: {
+    borderColor: `${brandColors.accent}44`,
+    backgroundColor: "rgba(255,51,102,0.06)",
+    gap: ms(6),
+  },
+  badgeCardVip: {
+    borderColor: "rgba(251,191,36,0.45)",
+    backgroundColor: "rgba(251,191,36,0.07)",
+    gap: ms(4),
+  },
+  badgeCardVal: {
+    fontSize: fs(17),
+    fontWeight: "900",
+    marginTop: ms(4),
+  },
+  badgeCardVipText: {
+    color: "#FBBF24",
+    fontSize: fs(13),
+    marginTop: ms(6),
     fontWeight: "800",
+  },
+  badgeCardLbl: {
+    color: "#B8B0D8",
+    fontSize: fs(11),
+    fontWeight: "600",
+    textAlign: "center",
   },
   followBtn: {
     width: "100%",
-    backgroundColor: "#FF3366",
-    paddingVertical: ms(11),
-    borderRadius: ms(22),
+    backgroundColor: "#EA580C",
+    paddingVertical: ms(13),
+    borderRadius: ms(14),
     alignItems: "center",
-    marginTop: ms(14),
+    marginTop: ms(18),
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
   followingBtn: {
-    backgroundColor: "rgba(255,255,255,0.65)",
-    borderWidth: 1.2,
-    borderColor: "#FF3366",
+    backgroundColor: "transparent",
+    borderWidth: ms(2),
+    borderColor: `${brandColors.accent}BB`,
+    shadowOpacity: 0,
   },
   followBtnText: {
     color: "#FFF",
     fontWeight: "800",
-    fontSize: fs(15),
+    fontSize: fs(16),
+    letterSpacing: 0.3,
   },
   followingBtnText: {
-    color: "#FF3366",
+    color: brandColors.accent,
   },
   viewProfileBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: ms(6),
-    marginTop: ms(10),
-    paddingVertical: ms(6),
+    marginTop: ms(12),
+    paddingVertical: ms(8),
   },
   viewProfileText: {
-    color: "#666",
-    fontSize: fs(12),
-    fontWeight: "600",
+    color: "#EDEAF8",
+    fontSize: fs(14),
+    fontWeight: "700",
   },
   actionsRow: {
     flexDirection: "row",
-    gap: ms(8),
-    paddingHorizontal: ms(2),
-    paddingTop: ms(14),
-    paddingBottom: ms(2),
+    gap: ms(10),
+    paddingTop: ms(16),
+    paddingBottom: ms(10),
+    paddingHorizontal: ms(4),
+    flexGrow: 1,
   },
   actionChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: ms(5),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(7),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(8),
     borderRadius: ms(14),
-    borderWidth: 1.4,
-    backgroundColor: "rgba(255,255,255,0.7)",
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    maxWidth: 180,
+    flexShrink: 0,
   },
   actionChipText: {
-    fontSize: fs(12),
+    fontSize: fs(11),
     fontWeight: "700",
-  },
-  closeBtn: {
-    position: "absolute",
-    right: ms(-6),
-    top: ms(-12),
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: ms(20),
+    flexShrink: 1,
   },
 });
 

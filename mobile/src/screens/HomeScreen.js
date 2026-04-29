@@ -10,8 +10,6 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  Dimensions,
-  PixelRatio,
   Image,
   TouchableOpacity,
   Animated,
@@ -40,7 +38,8 @@ import NetworkErrorModal, {
 } from "../components/NetworkErrorModal";
 import videoService from "../services/videoService";
 import SoundService from "../services/soundService";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -62,7 +61,7 @@ const HomeScreen = ({ navigation, route }) => {
   // Refs should be defined at the top level
   const flatListRef = useRef(null);
   const [feedHeight, setFeedHeight] = useState(
-    Math.max(Dimensions.get("window").height - tabBarHeight, 1),
+    Math.max(getWindowDimensions().height - tabBarHeight, 1),
   );
   // Track viewed video IDs so each video is only counted once per session
   const viewedIdsRef = useRef(new Set());
@@ -83,7 +82,7 @@ const HomeScreen = ({ navigation, route }) => {
   }, [BASE_URL]);
 
   const pageHeight = Math.max(
-    feedHeight || Dimensions.get("window").height - tabBarHeight,
+    feedHeight || getWindowDimensions().height - tabBarHeight,
     1,
   );
 
@@ -599,13 +598,13 @@ const HomeScreen = ({ navigation, route }) => {
 };
 
 // Responsive icon size based on screen width
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getWindowDimensions();
 const ICON_SIZE = Math.round(Math.min(SCREEN_WIDTH * 0.085, 32));
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   feedList: {
     flex: 1,
@@ -675,7 +674,7 @@ const styles = StyleSheet.create({
   videoContainer: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.ink,
     position: "relative",
   },
   video: {
@@ -737,7 +736,7 @@ const styles = StyleSheet.create({
     height: ms(14),
     borderRadius: ms(7),
     backgroundColor: "#FFF",
-    shadowColor: "#000",
+    shadowColor: darkUi.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.6,
     shadowRadius: 3,

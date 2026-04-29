@@ -6,12 +6,13 @@ import {
   StyleSheet,
   PanResponder,
   Animated,
-  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLive } from "../context/LiveContext";
+import { darkUi } from "../theme/brand";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 const FloatingLivePlayer = ({ navigationRef }) => {
   const {
@@ -119,11 +120,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: darkUi.ink,
     zIndex: 10001,
   },
   card: {
-    backgroundColor: "#111",
+    backgroundColor: darkUi.surfaceMuted,
     borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1.5,
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
   },
   preview: {
     height: 90,
-    backgroundColor: "#0d0d0d",
+    backgroundColor: darkUi.ink,
     justifyContent: "center",
     alignItems: "center",
   },

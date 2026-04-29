@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, Text, StyleSheet } from "react-native";
+import { Animated, Text, StyleSheet } from "react-native";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 // Emoji sets per type
 const PARTICLE_CHARS = {

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import LottieView from "lottie-react-native";
+import { darkUi } from "../theme/brand";
 
 const LoadingIndicator = () => {
   return (
@@ -20,7 +21,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   lottie: {
     width: 120,

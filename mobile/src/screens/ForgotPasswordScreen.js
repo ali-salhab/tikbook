@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { wp, ms, fs } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const { BASE_URL } = useContext(AuthContext);
@@ -256,7 +257,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.canvas,
   },
   container: {
     flexGrow: 1,

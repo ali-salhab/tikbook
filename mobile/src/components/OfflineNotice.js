@@ -4,11 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { darkUi } from "../theme/brand";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { height } = Dimensions.get("window");
+const { height } = getWindowDimensions();
 
 const OfflineNotice = ({ onRetry, style }) => {
   return (
@@ -32,7 +33,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000", // Dark theme background
+    backgroundColor: darkUi.canvas,
     padding: 20,
     minHeight: height * 0.5,
   },

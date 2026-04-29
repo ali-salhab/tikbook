@@ -15,7 +15,6 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
-  Dimensions,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,9 +23,9 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { vipService } from "../services/vipService";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 // Gradient map for each VIP level (same as VipStoreScreen)
 const VIP_GRADIENT = {

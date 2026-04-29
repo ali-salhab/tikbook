@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  Dimensions,
   ScrollView,
   Image,
   Modal,
@@ -19,12 +18,12 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { vipService } from "../services/vipService";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 import axios from "axios";
 import { BASE_URL } from "../config/api";
 import { useFocusEffect } from "@react-navigation/native";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 const CARD_WIDTH = (width - ms(48)) / 4;
 
 const VIP_GRADIENT = {

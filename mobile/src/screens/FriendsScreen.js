@@ -11,7 +11,6 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   Image,
   Animated,
@@ -31,9 +30,10 @@ import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import NetworkErrorModal from "../components/NetworkErrorModal";
 import videoService from "../services/videoService";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 const FriendsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: darkUi.bar,
   },
   emptyState: {
     flex: 1,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "#000",
+    borderColor: darkUi.bar,
   },
   actionButton: {
     marginBottom: ms(16),

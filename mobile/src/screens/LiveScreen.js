@@ -15,7 +15,6 @@ import {
   Platform,
   FlatList,
   Image,
-  Dimensions,
   KeyboardAvoidingView,
   Modal,
   ActivityIndicator,
@@ -40,9 +39,10 @@ import { Camera } from "expo-camera";
 import { Audio } from "expo-av";
 import io from "socket.io-client";
 import { useLive } from "../context/LiveContext";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = getWindowDimensions();
 
 export default function LiveScreen({ navigation, route }) {
   const { isBroadcaster, channelId } = route.params || {};
@@ -763,10 +763,10 @@ export default function LiveScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
+  container: { flex: 1, backgroundColor: darkUi.canvas },
   videoContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000",
+    backgroundColor: darkUi.ink,
   },
   fullScreenVideo: {
     flex: 1,
@@ -825,7 +825,7 @@ const styles = StyleSheet.create({
   },
   ui: { flex: 1 },
 
-  preLiveContainer: { flex: 1, backgroundColor: "#000" },
+  preLiveContainer: { flex: 1, backgroundColor: darkUi.canvas },
   preLiveOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.6)",

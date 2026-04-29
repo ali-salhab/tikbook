@@ -13,7 +13,6 @@ import {
   ScrollView,
   FlatList,
   TouchableOpacity,
-  Dimensions,
   Image,
   ActivityIndicator,
   RefreshControl,
@@ -24,11 +23,11 @@ import { Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../config/api";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 import { fetchLottieJson, getCachedLottieJson } from "../live/services/lottieCache";
 import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
 const hexToRgb = (hex = "#1e40af") => {

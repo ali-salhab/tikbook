@@ -14,18 +14,18 @@ import {
   LANG_STORAGE_KEY,
   THEME_STORAGE_KEY,
 } from "../i18n";
-import { brandColors } from "../theme/brand";
+import { brandColors, darkUi } from "../theme/brand";
 
 // ── Theme palettes (accent / حلقات الصورة من هوية الشعار في brand.js) ────────
 
 export const themes = {
   dark: {
     id: "dark",
-    bg: "#100818",
-    bg2: "#0E0B1E",
-    bg3: "#1A1630",
-    card: "#151228",
-    border: "#2A2550",
+    bg: darkUi.surface,
+    bg2: darkUi.surfaceMuted,
+    bg3: darkUi.elevated,
+    card: darkUi.card,
+    border: "#322A58",
     text: "#F0EEFF",
     textSecondary: "#B8B0D8",
     textMuted: "#7A728A",
@@ -33,12 +33,12 @@ export const themes = {
     accent: brandColors.accent,
     icon: "#F0EEFF",
     iconMuted: "#8880AA",
-    tabBar: "#0A0818",
-    header: "#0E0B1E",
-    input: "#1A1630",
-    inputBorder: "#2A2550",
-    buttonBg: "#1A1630",
-    buttonBorder: "#2A2550",
+    tabBar: darkUi.bar,
+    header: darkUi.surfaceMuted,
+    input: "#221E3C",
+    inputBorder: "#3A3460",
+    buttonBg: "#221E3C",
+    buttonBorder: "#3A3460",
     switch: { false: "#2A2550", true: brandColors.accent },
     avatarRing: brandColors.violet,
   },

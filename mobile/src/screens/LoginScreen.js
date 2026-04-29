@@ -19,9 +19,10 @@ import { useApp } from "../context/AppContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
-import { wp, ms, fs } from "../utils/responsive";
+import { ms, fs } from "../utils/responsive";
 import BrandMark from "../components/BrandMark";
-import { authScreenGradient } from "../theme/brand";
+import { authScreenGradient, brandGradient, brandColors } from "../theme/brand";
+import { AUTH, BUTTON_DISABLED_GRADIENT, AuthField, authFieldsAndButtonStyles, authFooterStyles } from "./authShared";
 
 const LoginScreen = ({ navigation, route }) => {
   const { theme } = useApp();
@@ -210,77 +211,98 @@ const LoginScreen = ({ navigation, route }) => {
         }}
       >
         <Animated.View style={{ alignItems: "center" }}>
-          <View style={styles.logo}>
-            <BrandMark size={100} style={styles.logoImage} />
+          <View style={styles.logoWrap}>
+            <BrandMark size={104} style={styles.logoImage} resizeMode="contain" />
           </View>
         </Animated.View>
 
-        <Text style={styles.title}>{i18n.t("loginToTikBook")}</Text>
-        <Text style={styles.subtitle}>{i18n.t("manageAccount")}</Text>
+        <Text style={[styles.title, { color: AUTH.title }]}>
+          {i18n.t("loginToTikBook")}
+        </Text>
+        <Text style={[styles.subtitle, { color: AUTH.subtitle }]}>
+          {i18n.t("manageAccount")}
+        </Text>
 
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="mail-outline"
-            size={20}
-            color={theme.accent}
-            style={styles.inputIcon}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={i18n.t("email")}
-            placeholderTextColor="#888"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!loading}
-            selectTextOnFocus={!loading}
-          />
-        </View>
+        <AuthField
+          styles={styles}
+          theme={theme}
+          placeholder={i18n.t("email")}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          icon="mail-outline"
+          editable={!loading}
+          selectTextOnFocus={!loading}
+        />
 
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="lock-closed-outline"
-            size={20}
-            color={theme.accent}
-            style={styles.inputIcon}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={i18n.t("password")}
-            placeholderTextColor="#888"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            editable={!loading}
-            selectTextOnFocus={!loading}
-          />
-          <TouchableOpacity
-            style={styles.eyeIcon}
-            onPress={() => setShowPassword(!showPassword)}
-            disabled={loading}
-          >
-            <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
-              size={20}
-              color={loading ? "#666" : "#888"}
-            />
-          </TouchableOpacity>
-        </View>
+        <AuthField
+          styles={styles}
+          theme={theme}
+          placeholder={i18n.t("password")}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          icon="lock-closed-outline"
+          editable={!loading}
+          selectTextOnFocus={!loading}
+          leftAccessory={
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+              disabled={loading}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={fs(20)}
+                color={loading ? "rgba(255,255,255,0.35)" : AUTH.icon}
+              />
+            </TouchableOpacity>
+          }
+        />
 
         <TouchableOpacity
-          style={[
-            styles.button,
-            (!email || !password || loading) && styles.buttonDisabled,
-          ]}
+          style={styles.buttonTouchable}
           onPress={handleLogin}
           disabled={!email || !password || loading}
-          activeOpacity={0.8}
+          activeOpacity={0.9}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
+          {!email || !password ? (
+            <LinearGradient
+              colors={BUTTON_DISABLED_GRADIENT}
+              locations={brandGradient.locations}
+              start={brandGradient.start}
+              end={brandGradient.end}
+              style={styles.buttonGradientOuter}
+            >
+              <View style={styles.buttonInner}>
+                <Text style={styles.buttonTextMuted}>{i18n.t("logIn")}</Text>
+              </View>
+            </LinearGradient>
+          ) : loading ? (
+            <LinearGradient
+              colors={brandGradient.colors}
+              locations={brandGradient.locations}
+              start={brandGradient.start}
+              end={brandGradient.end}
+              style={styles.buttonGradientOuter}
+            >
+              <View style={styles.buttonInner}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              </View>
+            </LinearGradient>
           ) : (
-            <Text style={styles.buttonText}>{i18n.t("logIn")}</Text>
+            <LinearGradient
+              colors={brandGradient.colors}
+              locations={brandGradient.locations}
+              start={brandGradient.start}
+              end={brandGradient.end}
+              style={styles.buttonGradientOuter}
+            >
+              <View style={styles.buttonInner}>
+                <Text style={styles.buttonTextGradient}>{i18n.t("logIn")}</Text>
+              </View>
+            </LinearGradient>
           )}
         </TouchableOpacity>
 
@@ -290,19 +312,27 @@ const LoginScreen = ({ navigation, route }) => {
           disabled={loading}
         >
           <Text
-            style={[styles.forgotText, loading && styles.forgotTextDisabled]}
+            style={[
+              styles.forgotText,
+              { color: AUTH.link },
+              loading && styles.linkMuted,
+            ]}
           >
             نسيت كلمة المرور؟
           </Text>
         </TouchableOpacity>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>{i18n.t("dontHaveAccount")}</Text>
+          <Text style={[styles.footerText, { color: AUTH.footerMuted }]}>
+            {i18n.t("dontHaveAccount")}
+          </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate("Register")}
             disabled={loading}
           >
-            <Text style={[styles.link, loading && styles.linkDisabled]}>
+            <Text
+              style={[styles.link, { color: AUTH.link }, loading && styles.linkMuted]}
+            >
               {i18n.t("signUp")}
             </Text>
           </TouchableOpacity>
@@ -443,7 +473,7 @@ const LoginScreen = ({ navigation, route }) => {
                     style={styles.copyButton}
                     onPress={copyErrorDetails}
                   >
-                    <Ionicons name="copy-outline" size={16} color={theme.accent} />
+                    <Ionicons name="copy-outline" size={16} color={AUTH.link} />
                     <Text style={styles.copyButtonText}>نسخ التفاصيل</Text>
                   </TouchableOpacity>
                 </View>
@@ -499,125 +529,17 @@ const makeStyles = (theme) =>
       justifyContent: "center",
       alignItems: "center",
     },
-    logo: {
-      width: ms(110),
-      height: ms(110),
-      marginBottom: ms(30),
-      borderRadius: ms(55),
-      justifyContent: "center",
-      alignItems: "center",
-      overflow: "hidden",
-      backgroundColor: "rgba(255, 45, 146, 0.12)",
-      borderWidth: 2,
-      borderColor: theme.accent,
-    },
-    logoImage: {
-      width: "100%",
-      height: "100%",
-    },
-    title: {
-      fontSize: fs(28),
-      fontWeight: "bold",
-      marginBottom: ms(8),
-      textAlign: "center",
-      color: theme.text,
-      paddingHorizontal: ms(20),
-    },
-    subtitle: {
-      fontSize: fs(14),
-      color: theme.textSecondary,
-      textAlign: "center",
-      marginBottom: ms(40),
-      paddingHorizontal: ms(20),
-      lineHeight: ms(20),
-    },
-    inputContainer: {
-      width: "100%",
-      marginBottom: ms(16),
-      position: "relative",
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    inputIcon: {
-      position: "absolute",
-      left: ms(12),
-      zIndex: 1,
-    },
-    input: {
-      flex: 1,
-      height: ms(52),
-      borderWidth: 1.5,
-      borderColor: theme.border,
-      borderRadius: ms(12),
-      paddingHorizontal: ms(50),
-      backgroundColor: theme.input,
-      fontSize: fs(16),
-      textAlign: "right",
-      color: theme.text,
-    },
-    eyeIcon: {
-      position: "absolute",
-      right: ms(15),
-      paddingVertical: ms(10),
-      paddingHorizontal: ms(8),
-    },
-    button: {
-      backgroundColor: theme.accent,
-      height: ms(52),
-      borderRadius: ms(12),
-      justifyContent: "center",
-      alignItems: "center",
-      width: "100%",
-      marginTop: ms(28),
-      shadowColor: theme.accent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-    buttonText: {
-      color: "#FFF",
-      fontSize: fs(16),
-      fontWeight: "700",
-      letterSpacing: 0.5,
-    },
-    buttonDisabled: {
-      backgroundColor: "rgba(255, 45, 146, 0.45)",
-      opacity: 0.7,
-    },
+    ...authFieldsAndButtonStyles(theme),
     forgotButton: {
       marginTop: ms(16),
       alignItems: "center",
       paddingVertical: ms(10),
     },
     forgotText: {
-      color: theme.accent,
       fontSize: fs(14),
-      fontWeight: "600",
-    },
-    forgotTextDisabled: {
-      opacity: 0.5,
-    },
-    footer: {
-      flexDirection: "row",
-      justifyContent: "center",
-      marginTop: ms(50),
-      marginBottom: ms(30),
-      paddingHorizontal: ms(20),
-    },
-    footerText: {
-      fontSize: fs(14),
-      color: theme.textSecondary,
-    },
-    link: {
-      fontSize: fs(14),
-      color: theme.accent,
       fontWeight: "700",
-      marginLeft: ms(5),
     },
-    linkDisabled: {
-      opacity: 0.5,
-    },
+    ...authFooterStyles(theme),
 
     /* Error Modal */
     errorOverlay: {
@@ -766,17 +688,17 @@ const makeStyles = (theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(255, 45, 146, 0.1)",
+      backgroundColor: `${brandColors.magenta}18`,
       paddingVertical: ms(8),
       paddingHorizontal: ms(12),
       borderRadius: ms(8),
       marginTop: ms(12),
       gap: ms(6),
       borderWidth: 1,
-      borderColor: "rgba(255, 45, 146, 0.3)",
+      borderColor: `${brandColors.magenta}44`,
     },
     copyButtonText: {
-      color: theme.accent,
+      color: AUTH.link,
       fontSize: fs(12),
       fontWeight: "600",
     },

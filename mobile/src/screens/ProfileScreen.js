@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Dimensions,
   ActivityIndicator,
   Animated,
   Alert,
@@ -30,9 +29,10 @@ import LottieView from "lottie-react-native";
 import videoService from "../services/videoService";
 import * as ImagePicker from "expo-image-picker";
 import { useApp } from "../context/AppContext";
-import { wp, ms, fs } from "../utils/responsive";
+import { wp, ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi, screenBackgroundGradient } from "../theme/brand";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 const ProfileScreen = ({ navigation }) => {
   const { theme } = useApp();
@@ -520,9 +520,9 @@ const ProfileScreen = ({ navigation }) => {
         backgroundColor="transparent"
       />
 
-      {/* Header */}
+      {/* Header: VIP شعار وسط الشاشة بصريًا (جناحان متساويان + طبقة مطلقة) */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <View style={[styles.headerSide, styles.headerSideStart]}>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => setMenuVisible(true)}
@@ -542,7 +542,7 @@ const ProfileScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.headerCenter} pointerEvents="box-none">
+        <View style={styles.headerCenterSlot} pointerEvents="box-none">
           {profile?.vipLevel > 0 &&
             (() => {
               const vl = vipLevels.find(
@@ -571,7 +571,7 @@ const ProfileScreen = ({ navigation }) => {
             })()}
         </View>
 
-        <View style={styles.headerRight}>
+        <View style={[styles.headerSide, styles.headerSideEnd]}>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate("Activity")}
@@ -894,10 +894,26 @@ const ProfileScreen = ({ navigation }) => {
 // ── Static gradient background ────────────────────────────────────────────────
 const StaticBg = ({ theme }) => (
   <LinearGradient
-    colors={theme.id === "dark" ? ["#080614", "#0E0B1E", "#130F24"] : ["#EEE8F8", "#E8E0F5", "#EBF0F8"]}
-    locations={[0, 0.55, 1]}
-    start={{ x: 0.15, y: 0 }}
-    end={{ x: 0.85, y: 1 }}
+    colors={
+      theme.id === "dark"
+        ? screenBackgroundGradient.dark.colors
+        : ["#EEE8F8", "#E8E0F5", "#EBF0F8"]
+    }
+    locations={
+      theme.id === "dark"
+        ? screenBackgroundGradient.dark.locations
+        : [0, 0.55, 1]
+    }
+    start={
+      theme.id === "dark"
+        ? screenBackgroundGradient.dark.start
+        : { x: 0.15, y: 0 }
+    }
+    end={
+      theme.id === "dark"
+        ? screenBackgroundGradient.dark.end
+        : { x: 0.85, y: 1 }
+    }
     style={{ ...StyleSheet.absoluteFillObject, zIndex: 0 }}
     pointerEvents="none"
   />
@@ -911,22 +927,36 @@ const makeStyles = (theme) =>
     },
     header: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: ms(16),
       paddingVertical: ms(10),
+      minHeight: ms(52),
       backgroundColor: "transparent",
+      position: "relative",
     },
-    headerLeft: {
+    /** كل جانب نصف العرض المتبقي لتمركز الشعار مهما كان عدد الأيقونات */
+    headerSide: {
+      flex: 1,
       flexDirection: "row",
+      alignItems: "center",
+      minWidth: 0,
       gap: ms(15),
     },
-    headerRight: {
-      flexDirection: "row",
+    headerSideStart: {
+      justifyContent: "flex-start",
     },
-    headerCenter: {
+    headerSideEnd: {
+      justifyContent: "flex-end",
+    },
+    headerCenterSlot: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
       alignItems: "center",
-      position: "relative",
+      justifyContent: "center",
+      zIndex: 2,
     },
     headerTitle: {
       fontSize: fs(17),
@@ -1028,7 +1058,7 @@ const makeStyles = (theme) =>
       alignItems: "center",
       zIndex: 30,
       elevation: 30,
-      shadowColor: "#000",
+      shadowColor: darkUi.ink,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.4,
       shadowRadius: 4,
@@ -1054,7 +1084,7 @@ const makeStyles = (theme) =>
       position: "absolute",
       bottom: 0,
       right: 0,
-      backgroundColor: "#000",
+      backgroundColor: "rgba(12, 10, 24, 0.88)",
       width: ms(28),
       height: ms(28),
       borderRadius: ms(14),
@@ -1147,7 +1177,7 @@ const makeStyles = (theme) =>
     },
     actionBtn: {
       borderRadius: ms(999),
-      shadowColor: "#000",
+      shadowColor: darkUi.ink,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.15,
       shadowRadius: 3,

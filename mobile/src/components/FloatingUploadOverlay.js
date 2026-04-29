@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   PanResponder,
-  Dimensions,
   Modal,
   Easing,
 } from "react-native";
@@ -14,8 +13,9 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useUpload } from "../context/UploadContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getWindowDimensions();
 const PILL_W = 160;
 const PILL_H = 54;
 

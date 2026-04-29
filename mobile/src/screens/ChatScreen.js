@@ -22,7 +22,6 @@ import {
   ActivityIndicator,
   Modal,
   Share,
-  Dimensions,
   StatusBar,
   InteractionManager,
 } from "react-native";
@@ -40,8 +39,10 @@ import GiftPanel from "../components/GiftPanel";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 import { useApp } from "../context/AppContext";
+
+const { width: CHAT_SCREEN_W, height: CHAT_SCREEN_H } = getWindowDimensions();
 
 // Enable RTL
 // Enable RTL logic moved to index.js
@@ -1261,8 +1262,8 @@ const styles = StyleSheet.create({
     padding: ms(6),
   },
   imageViewerImage: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height * 0.7,
+    width: CHAT_SCREEN_W,
+    height: CHAT_SCREEN_H * 0.7,
   },
   imageViewerActions: {
     position: "absolute",

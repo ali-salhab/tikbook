@@ -8,16 +8,15 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
 import { AuthContext } from "../context/AuthContext";
 import { badgeService } from "../services/badgeService";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 const CARD_W = (width - ms(48)) / 2;
 
 const BadgeShopScreen = ({ navigation }) => {

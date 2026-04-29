@@ -9,7 +9,6 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Dimensions,
   StatusBar,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -20,9 +19,10 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BASE_URL } from "../config/api";
 import { AuthContext } from "../context/AuthContext";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
+import { darkUi } from "../theme/brand";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 const CATEGORIES = [
   {
@@ -139,8 +139,8 @@ const CreateLiveRoomScreen = ({ navigation }) => {
       <LinearGradient
         colors={
           coverImage
-            ? ["rgba(0,0,0,0.5)", "rgba(0,0,0,0.78)", "#000"]
-            : ["#0D0D1A", "#130D26", "#0A0A14"]
+            ? ["rgba(8,6,20,0.55)", "rgba(14,10,28,0.82)", darkUi.ink]
+            : [darkUi.surface, darkUi.elevated, darkUi.surfaceMuted]
         }
         style={StyleSheet.absoluteFill}
       />
@@ -338,7 +338,7 @@ const CreateLiveRoomScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0D0D1A" },
+  root: { flex: 1, backgroundColor: darkUi.canvas },
   scroll: { paddingHorizontal: ms(18) },
 
   /* header */

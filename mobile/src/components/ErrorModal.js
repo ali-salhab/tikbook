@@ -6,12 +6,12 @@ import {
     StyleSheet,
     TouchableOpacity,
     Animated,
-    Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+const { width } = getWindowDimensions();
 
 const ErrorModal = ({ visible, message, onClose, title = "خطأ" }) => {
     const scaleAnim = React.useRef(new Animated.Value(0)).current;

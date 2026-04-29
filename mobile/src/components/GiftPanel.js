@@ -6,20 +6,22 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Dimensions,
   Image,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import {
-  SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import giftService from "../services/giftService";
-import { useApp } from "../context/AppContext";
+import { themes } from "../context/AppContext";
+import { getWindowDimensions } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
+/** ثيم داكن ثابت للوحة الهدايا لتطابق البث والدردشة حتى لو كان الوضع الفاتح مفعّلاً في الإعدادات */
+const giftPanelTheme = themes.dark;
+
+const { width } = getWindowDimensions();
 
 const GiftPanel = ({
   visible,
@@ -30,8 +32,8 @@ const GiftPanel = ({
   onRecharge,
 }) => {
   const insets = useSafeAreaInsets();
-  const { theme } = useApp();
-  const styles = makeStyles(theme);
+  const styles = makeStyles(giftPanelTheme);
+  const t = giftPanelTheme;
   const [gifts, setGifts] = useState([]);
   const [selectedGift, setSelectedGift] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -148,7 +150,7 @@ const GiftPanel = ({
           />
         ) : (
           <View style={styles.giftPlaceholder}>
-            <Ionicons name="gift" size={28} color={theme.textMuted} />
+            <Ionicons name="gift" size={28} color={t.textMuted} />
           </View>
         )}
 
@@ -206,7 +208,7 @@ const GiftPanel = ({
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={28} color={theme.icon} />
+              <Ionicons name="close" size={28} color={t.icon} />
             </TouchableOpacity>
             <Text style={styles.title}>إرسال هدية</Text>
             <TouchableOpacity
@@ -252,7 +254,7 @@ const GiftPanel = ({
           <View style={{ flex: 1 }}>
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.accent} />
+                <ActivityIndicator size="large" color={t.accent} />
               </View>
             ) : (
               <FlatList
@@ -276,14 +278,14 @@ const GiftPanel = ({
                   style={styles.quantityButton}
                   onPress={() => setQuantity(Math.max(1, quantity - 1))}
                 >
-                  <Ionicons name="remove" size={20} color={theme.text} />
+                  <Ionicons name="remove" size={20} color={t.text} />
                 </TouchableOpacity>
                 <Text style={styles.quantityText}>x{quantity}</Text>
                 <TouchableOpacity
                   style={styles.quantityButton}
                   onPress={() => setQuantity(quantity + 1)}
                 >
-                  <Ionicons name="add" size={20} color={theme.text} />
+                  <Ionicons name="add" size={20} color={t.text} />
                 </TouchableOpacity>
               </View>
 
