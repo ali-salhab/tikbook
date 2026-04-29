@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Image,
   Modal,
   ActivityIndicator,
   ScrollView,
@@ -21,6 +20,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
 import { wp, ms, fs } from "../utils/responsive";
+import BrandMark from "../components/BrandMark";
+import { authScreenGradient } from "../theme/brand";
 
 const LoginScreen = ({ navigation, route }) => {
   const { theme } = useApp();
@@ -191,9 +192,10 @@ const LoginScreen = ({ navigation, route }) => {
 
   return (
     <LinearGradient
-      colors={["#0d0d0d", "#1c0a12", "#2a0d1a", "#1c0a12", "#0d0d0d"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      colors={authScreenGradient.colors}
+      locations={authScreenGradient.locations}
+      start={authScreenGradient.start}
+      end={authScreenGradient.end}
       style={styles.gradient}
     >
     <SafeAreaView style={styles.container}>
@@ -209,11 +211,7 @@ const LoginScreen = ({ navigation, route }) => {
       >
         <Animated.View style={{ alignItems: "center" }}>
           <View style={styles.logo}>
-            <Image
-              source={require("../../assets/logo.jpg")}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <BrandMark size={100} style={styles.logoImage} />
           </View>
         </Animated.View>
 
@@ -224,7 +222,7 @@ const LoginScreen = ({ navigation, route }) => {
           <Ionicons
             name="mail-outline"
             size={20}
-            color="#FE2C55"
+            color={theme.accent}
             style={styles.inputIcon}
           />
           <TextInput
@@ -244,7 +242,7 @@ const LoginScreen = ({ navigation, route }) => {
           <Ionicons
             name="lock-closed-outline"
             size={20}
-            color="#FE2C55"
+            color={theme.accent}
             style={styles.inputIcon}
           />
           <TextInput
@@ -445,7 +443,7 @@ const LoginScreen = ({ navigation, route }) => {
                     style={styles.copyButton}
                     onPress={copyErrorDetails}
                   >
-                    <Ionicons name="copy-outline" size={16} color="#FE2C55" />
+                    <Ionicons name="copy-outline" size={16} color={theme.accent} />
                     <Text style={styles.copyButtonText}>نسخ التفاصيل</Text>
                   </TouchableOpacity>
                 </View>
@@ -509,9 +507,9 @@ const makeStyles = (theme) =>
       justifyContent: "center",
       alignItems: "center",
       overflow: "hidden",
-      backgroundColor: "rgba(254, 44, 85, 0.1)",
+      backgroundColor: "rgba(255, 45, 146, 0.12)",
       borderWidth: 2,
-      borderColor: "#FE2C55",
+      borderColor: theme.accent,
     },
     logoImage: {
       width: "100%",
@@ -564,14 +562,14 @@ const makeStyles = (theme) =>
       paddingHorizontal: ms(8),
     },
     button: {
-      backgroundColor: "#FE2C55",
+      backgroundColor: theme.accent,
       height: ms(52),
       borderRadius: ms(12),
       justifyContent: "center",
       alignItems: "center",
       width: "100%",
       marginTop: ms(28),
-      shadowColor: "#FE2C55",
+      shadowColor: theme.accent,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.4,
       shadowRadius: 8,
@@ -584,7 +582,7 @@ const makeStyles = (theme) =>
       letterSpacing: 0.5,
     },
     buttonDisabled: {
-      backgroundColor: "rgba(254, 44, 85, 0.5)",
+      backgroundColor: "rgba(255, 45, 146, 0.45)",
       opacity: 0.7,
     },
     forgotButton: {
@@ -593,7 +591,7 @@ const makeStyles = (theme) =>
       paddingVertical: ms(10),
     },
     forgotText: {
-      color: "#FE2C55",
+      color: theme.accent,
       fontSize: fs(14),
       fontWeight: "600",
     },
@@ -613,7 +611,7 @@ const makeStyles = (theme) =>
     },
     link: {
       fontSize: fs(14),
-      color: "#FE2C55",
+      color: theme.accent,
       fontWeight: "700",
       marginLeft: ms(5),
     },
@@ -768,17 +766,17 @@ const makeStyles = (theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(254, 44, 85, 0.1)",
+      backgroundColor: "rgba(255, 45, 146, 0.1)",
       paddingVertical: ms(8),
       paddingHorizontal: ms(12),
       borderRadius: ms(8),
       marginTop: ms(12),
       gap: ms(6),
       borderWidth: 1,
-      borderColor: "rgba(254, 44, 85, 0.3)",
+      borderColor: "rgba(255, 45, 146, 0.3)",
     },
     copyButtonText: {
-      color: "#FE2C55",
+      color: theme.accent,
       fontSize: fs(12),
       fontWeight: "600",
     },
@@ -787,12 +785,12 @@ const makeStyles = (theme) =>
       gap: ms(10),
     },
     errorButton: {
-      backgroundColor: "#FE2C55",
+      backgroundColor: theme.accent,
       height: ms(52),
       borderRadius: ms(12),
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: "#FE2C55",
+      shadowColor: theme.accent,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,

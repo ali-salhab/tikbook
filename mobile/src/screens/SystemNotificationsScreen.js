@@ -31,7 +31,7 @@ const TABS = [
 
 // ─── Per-type display config ─────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  live:            { icon: "radio",            color: "#FE2C55", bg: "#FE2C5522", label: "LIVE" },
+  live:            { icon: "radio",            color: "#FF2D92", bg: "#FF2D9222", label: "LIVE" },
   admin:           { icon: "person-circle",    color: "#6366F1", bg: "#6366F122", label: "إدارة" },
   admin_broadcast: { icon: "megaphone",        color: "#8B5CF6", bg: "#8B5CF622", label: "إعلان عام" },
   system:          { icon: "notifications",    color: "#25F4EE", bg: "#25F4EE22", label: "النظام" },

@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
+import BrandMark from "../components/BrandMark";
+import { brandGradient } from "../theme/brand";
 
 const SplashScreen = ({ navigation, onFinish }) => {
   useEffect(() => {
-    // Call onFinish after a short delay
     const timer = setTimeout(() => {
       if (onFinish) {
         onFinish();
@@ -16,24 +18,37 @@ const SplashScreen = ({ navigation, onFinish }) => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={brandGradient.colors}
+      locations={brandGradient.locations}
+      start={brandGradient.start}
+      end={brandGradient.end}
+      style={styles.container}
+    >
       <StatusBar style="light" />
+      <BrandMark size={88} style={styles.logo} />
       <LottieView
         source={require("../../assets/lottie-loader.json")}
-        style={{ width: 120, height: 120 }}
+        style={styles.loader}
         autoPlay
         loop
       />
-    </View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
+  },
+  logo: {
+    marginBottom: 16,
+  },
+  loader: {
+    width: 120,
+    height: 120,
   },
 });
 

@@ -141,8 +141,8 @@ const FloatingUploadOverlay = () => {
     }).start(() => resetUpload());
   };
 
-  const borderColor = error ? "#FF4444" : uploadDone ? "#25D366" : "#FE2C55";
-  const shadowColor = error ? "#FF4444" : uploadDone ? "#25D366" : "#FE2C55";
+  const borderColor = error ? "#FF4444" : uploadDone ? "#25D366" : "#FF2D92";
+  const shadowColor = error ? "#FF4444" : uploadDone ? "#25D366" : "#FF2D92";
 
   const progressBarWidth = progressAnim.interpolate({
     inputRange: [0, 100],
@@ -277,7 +277,7 @@ const FloatingUploadOverlay = () => {
                 </>
               ) : (
                 <>
-                  <View style={[styles.iconCircle, { borderColor: "#FE2C55" }]}>
+                  <View style={[styles.iconCircle, { borderColor: "#FF2D92" }]}>
                     <Text style={styles.bigPercent}>
                       {Math.round(uploadProgress)}%
                     </Text>
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   miniBarFill: {
     height: "100%",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: 2,
   },
   modalOverlay: {
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: "rgba(255,255,255,0.04)",
   },
-  bigPercent: { color: "#FE2C55", fontSize: 22, fontWeight: "800" },
+  bigPercent: { color: "#FF2D92", fontSize: 22, fontWeight: "800" },
   modalBigTitle: {
     fontSize: 20,
     fontWeight: "800",
@@ -427,12 +427,12 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: 3,
   },
   closeBtn: {
     marginTop: 24,
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingVertical: 12,
     paddingHorizontal: 36,
     borderRadius: 25,

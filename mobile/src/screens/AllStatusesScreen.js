@@ -172,8 +172,8 @@ export default function AllStatusesScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#FE2C55"]}
-              tintColor="#FE2C55"
+              colors={["#FF2D92"]}
+              tintColor="#FF2D92"
             />
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: ms(6),
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingHorizontal: ms(20),
     paddingVertical: ms(10),
     borderRadius: ms(24),

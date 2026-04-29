@@ -20,7 +20,7 @@ import {
 export const themes = {
   dark: {
     id: "dark",
-    bg: "#080614",
+    bg: "#100818",
     bg2: "#0E0B1E",
     bg3: "#1A1630",
     card: "#151228",
@@ -29,7 +29,7 @@ export const themes = {
     textSecondary: "#B8B0D8",
     textMuted: "#7A728A",
     placeholder: "#6A6280",
-    accent: "#FE2C55",
+    accent: "#FF2D92",
     icon: "#F0EEFF",
     iconMuted: "#8880AA",
     tabBar: "#0A0818",
@@ -38,12 +38,12 @@ export const themes = {
     inputBorder: "#2A2550",
     buttonBg: "#1A1630",
     buttonBorder: "#2A2550",
-    switch: { false: "#2A2550", true: "#FE2C55" },
-    avatarRing: "#7C5DFA",
+    switch: { false: "#2A2550", true: "#FF2D92" },
+    avatarRing: "#A855F7",
   },
   light: {
     id: "light",
-    bg: "#EEE8F8",
+    bg: "#FDF2F8",
     bg2: "#F5F0FF",
     bg3: "#E4DCF5",
     card: "#FAF7FF",
@@ -52,7 +52,7 @@ export const themes = {
     textSecondary: "#3A3060",
     textMuted: "#7A6898",
     placeholder: "#9A88B8",
-    accent: "#FE2C55",
+    accent: "#FF2D92",
     icon: "#1A1530",
     iconMuted: "#8878A8",
     tabBar: "#F0EBF8",
@@ -61,8 +61,8 @@ export const themes = {
     inputBorder: "#C8BAE8",
     buttonBg: "#E4DCF5",
     buttonBorder: "#C8BAE8",
-    switch: { false: "#C8BAE8", true: "#FE2C55" },
-    avatarRing: "#7C5DFA",
+    switch: { false: "#C8BAE8", true: "#FF2D92" },
+    avatarRing: "#A855F7",
   },
 };
 

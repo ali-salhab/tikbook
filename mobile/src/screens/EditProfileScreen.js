@@ -163,9 +163,9 @@ const EditProfileScreen = ({ navigation, route }) => {
           <Text style={styles.headerTitle}>تعديل الملف الشخصي</Text>
           <TouchableOpacity onPress={handleSave} disabled={loading}>
             {loading ? (
-              <ActivityIndicator size="small" color="#FE2C55" />
+              <ActivityIndicator size="small" color="#FF2D92" />
             ) : (
-              <Ionicons name="checkmark" size={28} color="#FE2C55" />
+              <Ionicons name="checkmark" size={28} color="#FF2D92" />
             )}
           </TouchableOpacity>
         </View>
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     width: ms(32),
     height: ms(32),
     borderRadius: ms(16),

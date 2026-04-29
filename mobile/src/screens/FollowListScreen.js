@@ -184,7 +184,7 @@ const FollowListScreen = ({ route, navigation }) => {
             {pending ? (
               <ActivityIndicator
                 size="small"
-                color={item.isFollowing ? "#FE2C55" : "#FFF"}
+                color={item.isFollowing ? "#FF2D92" : "#FFF"}
               />
             ) : (
               <Text
@@ -248,7 +248,7 @@ const FollowListScreen = ({ route, navigation }) => {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#FE2C55" />
+          <ActivityIndicator size="large" color="#FF2D92" />
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
@@ -280,8 +280,8 @@ const FollowListScreen = ({ route, navigation }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#FE2C55"
-              colors={["#FE2C55"]}
+              tintColor="#FF2D92"
+              colors={["#FF2D92"]}
             />
           }
         />
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   followBtn: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingHorizontal: ms(14),
     paddingVertical: ms(7),
     borderRadius: ms(8),
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   followBtnFollowing: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#FE2C55",
+    borderColor: "#FF2D92",
   },
   followBtnText: {
     color: "#FFF",
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   followBtnTextFollowing: {
-    color: "#FE2C55",
+    color: "#FF2D92",
   },
   separator: {
     height: 1,

@@ -47,7 +47,7 @@ const ErrorModal = ({ visible, message, onClose, title = "خطأ" }) => {
                     ]}
                 >
                     <View style={styles.iconContainer}>
-                        <Ionicons name="alert-circle" size={50} color="#FE2C55" />
+                        <Ionicons name="alert-circle" size={50} color="#FF2D92" />
                     </View>
 
                     <Text style={styles.title}>{title}</Text>
@@ -87,12 +87,12 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: "rgba(254, 44, 85, 0.1)",
+        backgroundColor: "rgba(255, 45, 146, 0.1)",
         justifyContent: "center",
         alignItems: "center",
         marginBottom: 20,
         borderWidth: 2,
-        borderColor: "rgba(254, 44, 85, 0.3)",
+        borderColor: "rgba(255, 45, 146, 0.3)",
     },
     title: {
         fontSize: 24,
@@ -111,11 +111,11 @@ const styles = StyleSheet.create({
     button: {
         width: "100%",
         height: 50,
-        backgroundColor: "#FE2C55",
+        backgroundColor: "#FF2D92",
         borderRadius: 10,
         justifyContent: "center",
         alignItems: "center",
-        shadowColor: "#FE2C55",
+        shadowColor: "#FF2D92",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

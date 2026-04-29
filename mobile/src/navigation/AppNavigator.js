@@ -60,6 +60,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Linking } from "react-native";
+import { brandColors } from "../theme/brand";
 
 // Parse a tikbook://video/:videoId URL and return the videoId, or null.
 // Also supports tikbook://user/:userId and https://tikbook.com/@username links.
@@ -124,7 +125,7 @@ const TabIconWithBadge = ({ name, color, size, badgeCount, tabBarBg = "#000" }) 
           position: "absolute",
           right: -4,
           top: -4,
-          backgroundColor: "#FE2C55",
+          backgroundColor: brandColors.accent,
           borderRadius: 9,
           minWidth: 18,
           height: 18,
@@ -244,7 +245,7 @@ const HomeTabs = () => {
                   position: "absolute",
                   width: 27,
                   height: 27,
-                  backgroundColor: "#FE2C55",
+                  backgroundColor: brandColors.accent,
                   borderRadius: 8,
                   right: 0,
                 }}

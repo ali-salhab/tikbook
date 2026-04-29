@@ -3,14 +3,17 @@ const path = require("path");
 const fs = require("fs");
 
 async function createIcons() {
-  const logoPath = path.join(__dirname, "assets", "logo.jpg");
+  const brandMaster = path.join(__dirname, "assets", "brand-master.png");
+  const logoPath = fs.existsSync(brandMaster)
+    ? brandMaster
+    : path.join(__dirname, "assets", "logo.jpg");
 
   if (!fs.existsSync(logoPath)) {
-    console.error("❌ Logo file not found:", logoPath);
+    console.error("❌ No brand source found. Add assets/brand-master.png or assets/logo.jpg:", logoPath);
     return;
   }
 
-  console.log("📱 Creating app icons from logo.jpg...");
+  console.log("📱 Creating app icons from:", path.basename(logoPath), "...");
 
   // App icon (1024x1024 for iOS and Android)
   await sharp(logoPath)

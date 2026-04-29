@@ -16,6 +16,7 @@ import Constants from "expo-constants";
 import SoundService from "./src/services/soundService";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { brandColors } from "./src/theme/brand";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   offlineBanner: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: brandColors.accent,
     paddingVertical: 10,
     paddingTop:
       Platform.OS === "android" ? (Constants.statusBarHeight || 0) + 10 : 40,

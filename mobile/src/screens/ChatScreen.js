@@ -737,7 +737,7 @@ const ChatScreen = ({ route, navigation }) => {
               setShowGiftPanel(true);
             }}
           >
-            <Ionicons name="gift-outline" size={24} color="#FE2C55" />
+            <Ionicons name="gift-outline" size={24} color="#FF2D92" />
           </TouchableOpacity>
           <TextInput
             style={styles.input}
@@ -757,9 +757,9 @@ const ChatScreen = ({ route, navigation }) => {
           />
           <TouchableOpacity onPress={sendMessage} disabled={!text.trim() || isSending}>
             {isSending ? (
-              <ActivityIndicator size={22} color="#FE2C55" />
+              <ActivityIndicator size={22} color="#FF2D92" />
             ) : (
-              <Ionicons name="send" size={24} color={text.trim() ? "#FE2C55" : "#888"} />
+              <Ionicons name="send" size={24} color={text.trim() ? "#FF2D92" : "#888"} />
             )}
           </TouchableOpacity>
         </View>
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   unreadBadge: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: ms(10),
     paddingHorizontal: ms(6),
     paddingVertical: ms(2),
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
     gap: ms(6),
   },
   followChip: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingHorizontal: ms(12),
     paddingVertical: ms(5),
     borderRadius: ms(14),
@@ -1139,7 +1139,7 @@ const styles = StyleSheet.create({
     borderRadius: ms(16),
   },
   myBubble: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderBottomRightRadius: ms(6),
   },
   theirBubble: {

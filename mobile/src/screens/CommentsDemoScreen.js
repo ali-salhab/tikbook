@@ -86,7 +86,7 @@ const CommentsDemoScreen = ({ navigation }) => {
             <Ionicons
               name="chatbubble-ellipses-sharp"
               size={35}
-              color="#FE2C55"
+              color="#FF2D92"
             />
             <Text style={[styles.actionText, styles.activeText]}>
               {totalComments}
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   followBadge: {
     position: "absolute",
     bottom: ms(-8),
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     width: ms(20),
     height: ms(20),
     borderRadius: ms(10),
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   activeText: {
-    color: "#FE2C55",
+    color: "#FF2D92",
     fontWeight: "700",
   },
   bottomInfo: {
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingVertical: ms(14),
     paddingHorizontal: ms(24),
     borderRadius: ms(25),

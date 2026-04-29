@@ -384,7 +384,7 @@ const UserActionSheet = ({
 
             {loading ? (
               <ActivityIndicator
-                color="#FE2C55"
+                color="#FF2D92"
                 style={{ marginTop: ms(10) }}
               />
             ) : null}
@@ -536,12 +536,12 @@ const styles = StyleSheet.create({
     height: ms(34),
     borderRadius: ms(17),
     borderWidth: 1.5,
-    borderColor: "#FE2C55",
+    borderColor: "#FF2D92",
     alignItems: "center",
     justifyContent: "center",
   },
   mentionText: {
-    color: "#FE2C55",
+    color: "#FF2D92",
     fontWeight: "900",
     fontSize: fs(18),
   },
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   },
   followBtn: {
     width: "100%",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingVertical: ms(11),
     borderRadius: ms(22),
     alignItems: "center",
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   followingBtn: {
     backgroundColor: "rgba(255,255,255,0.65)",
     borderWidth: 1.2,
-    borderColor: "#FE2C55",
+    borderColor: "#FF2D92",
   },
   followBtnText: {
     color: "#FFF",
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     fontSize: fs(15),
   },
   followingBtnText: {
-    color: "#FE2C55",
+    color: "#FF2D92",
   },
   viewProfileBtn: {
     flexDirection: "row",

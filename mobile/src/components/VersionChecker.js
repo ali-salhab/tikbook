@@ -233,7 +233,7 @@ export default function VersionChecker({ children }) {
       <Ionicons
         name={forced ? "alert-circle" : "cloud-download"}
         size={64}
-        color={forced ? "#FE2C55" : "#52c41a"}
+        color={forced ? "#FF2D92" : "#52c41a"}
         style={styles.icon}
       />
 
@@ -336,7 +336,7 @@ export default function VersionChecker({ children }) {
 
       {isCheckingVersion && (
         <View style={styles.checkingOverlay} pointerEvents="none">
-          <ActivityIndicator size="small" color="#FE2C55" />
+          <ActivityIndicator size="small" color="#FF2D92" />
           <Text style={styles.checkingText}>Checking for updates…</Text>
         </View>
       )}
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: 999,
   },
   progressText: {
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   updateButton: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     flex: 1,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   updateButtonForced: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     width: "100%",
     paddingVertical: 16,
     paddingHorizontal: 24,

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
-  Image,
   Modal,
   ActivityIndicator,
   ScrollView,
@@ -16,15 +15,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import i18n from "../i18n";
 import axios from "axios";
 import { wp, ms, fs } from "../utils/responsive";
+import BrandMark from "../components/BrandMark";
+import { authScreenGradient } from "../theme/brand";
 
 // Enable RTL logic moved to index.js
 
 const RegisterScreen = ({ navigation }) => {
+  const { theme } = useApp();
+  const styles = makeStyles(theme);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -206,9 +210,10 @@ const RegisterScreen = ({ navigation }) => {
 
   return (
     <LinearGradient
-      colors={["#0d0d0d", "#1c0a12", "#2a0d1a", "#1c0a12", "#0d0d0d"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      colors={authScreenGradient.colors}
+      locations={authScreenGradient.locations}
+      start={authScreenGradient.start}
+      end={authScreenGradient.end}
       style={styles.gradient}
     >
     <SafeAreaView style={styles.container}>
@@ -225,11 +230,7 @@ const RegisterScreen = ({ navigation }) => {
       >
         <Animated.View style={{ alignItems: "center" }}>
           <View style={styles.logo}>
-            <Image
-              source={require("../../assets/logo.jpg")}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <BrandMark size={100} style={styles.logoImage} />
           </View>
         </Animated.View>
 
@@ -240,7 +241,7 @@ const RegisterScreen = ({ navigation }) => {
           <Ionicons
             name="person-outline"
             size={20}
-            color="#FE2C55"
+            color={theme.accent}
             style={styles.inputIcon}
           />
           <TextInput
@@ -258,7 +259,7 @@ const RegisterScreen = ({ navigation }) => {
           <Ionicons
             name="mail-outline"
             size={20}
-            color="#FE2C55"
+            color={theme.accent}
             style={styles.inputIcon}
           />
           <TextInput
@@ -277,7 +278,7 @@ const RegisterScreen = ({ navigation }) => {
           <Ionicons
             name="lock-closed-outline"
             size={20}
-            color="#FE2C55"
+            color={theme.accent}
             style={styles.inputIcon}
           />
           <TextInput
@@ -467,7 +468,7 @@ const RegisterScreen = ({ navigation }) => {
                     style={styles.copyButton}
                     onPress={copyErrorDetails}
                   >
-                    <Ionicons name="copy-outline" size={16} color="#FE2C55" />
+                    <Ionicons name="copy-outline" size={16} color={theme.accent} />
                     <Text style={styles.copyButtonText}>نسخ التفاصيل</Text>
                   </TouchableOpacity>
                 </View>
@@ -506,7 +507,8 @@ const RegisterScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (theme) =>
+  StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -522,9 +524,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
-    backgroundColor: "rgba(254, 44, 85, 0.1)",
+    backgroundColor: "rgba(255, 45, 146, 0.12)",
     borderWidth: 2,
-    borderColor: "#FE2C55",
+    borderColor: theme.accent,
   },
   logoImage: { width: "100%", height: "100%" },
   title: {
@@ -574,21 +576,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(8),
   },
   button: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: theme.accent,
     height: ms(52),
     borderRadius: ms(12),
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
     marginTop: ms(10),
-    shadowColor: "#FE2C55",
+    shadowColor: theme.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 5,
   },
   buttonDisabled: {
-    backgroundColor: "rgba(254, 44, 85, 0.5)",
+    backgroundColor: "rgba(255, 45, 146, 0.45)",
     opacity: 0.7,
   },
   buttonText: {
@@ -606,7 +608,7 @@ const styles = StyleSheet.create({
   footerText: { fontSize: fs(14), color: "#999" },
   link: {
     fontSize: fs(14),
-    color: "#FE2C55",
+    color: theme.accent,
     fontWeight: "700",
     marginLeft: ms(5),
   },
@@ -746,19 +748,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(254, 44, 85, 0.1)",
+    backgroundColor: "rgba(255, 45, 146, 0.1)",
     paddingVertical: ms(8),
     paddingHorizontal: ms(12),
     borderRadius: ms(8),
     marginTop: ms(12),
     gap: ms(6),
     borderWidth: 1,
-    borderColor: "rgba(254, 44, 85, 0.3)",
+    borderColor: "rgba(255, 45, 146, 0.3)",
   },
-  copyButtonText: { color: "#FE2C55", fontSize: fs(12), fontWeight: "600" },
+  copyButtonText: { color: theme.accent, fontSize: fs(12), fontWeight: "600" },
   errorButtonsContainer: { flexDirection: "row", gap: ms(10) },
   errorButton: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: theme.accent,
     height: ms(52),
     borderRadius: ms(12),
     justifyContent: "center",
@@ -766,7 +768,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: ms(8),
-    shadowColor: "#FE2C55",
+    shadowColor: theme.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

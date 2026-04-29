@@ -96,7 +96,7 @@ const ReplyItem = ({ reply, onLike }) => {
           <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               {reply.isLiked ? (
-                <Ionicons name="heart" size={18} color="#FE2C55" />
+                <Ionicons name="heart" size={18} color="#FF2D92" />
               ) : (
                 <Ionicons name="heart-outline" size={18} color="#999" />
               )}
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   likeCountActive: {
-    color: "#FE2C55",
+    color: "#FF2D92",
     fontWeight: "600",
   },
 });

@@ -160,7 +160,7 @@ const CommentInput = ({ onSend, replyingTo, onCancelReply }) => {
           <Ionicons
             name="send"
             size={20}
-            color={text.trim().length > 0 ? "#FE2C55" : "#666"}
+            color={text.trim().length > 0 ? "#FF2D92" : "#666"}
           />
         </TouchableOpacity>
       </View>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   replyUsername: {
-    color: "#FE2C55",
+    color: "#FF2D92",
     fontWeight: "600",
   },
   cancelReplyButton: {

@@ -239,7 +239,7 @@ const FriendsScreen = ({ navigation }) => {
 
           <TouchableOpacity style={styles.actionButton}>
             {item.isLiked ? (
-              <Ionicons name="heart" size={ICON_SIZE} color="#FE2C55" />
+              <Ionicons name="heart" size={ICON_SIZE} color="#FF2D92" />
             ) : (
               <Ionicons name="heart-outline" size={ICON_SIZE} color="#FFF" />
             )}
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: ms(-2),
     left: ms(-4),
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: ms(8),
     width: ms(14),
     height: ms(14),
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: ms(-8),
     alignSelf: "center",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: ms(10),
     width: ms(20),
     height: ms(20),

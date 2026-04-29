@@ -719,7 +719,7 @@ export default function LiveScreen({ navigation, route }) {
           <View style={styles.summaryCard}>
             {/* Header */}
             <View style={styles.summaryHeader}>
-              <Ionicons name="radio" size={28} color="#FE2C55" />
+              <Ionicons name="radio" size={28} color="#FF2D92" />
               <Text style={styles.summaryTitle}>ملخص البث المباشر</Text>
             </View>
 
@@ -807,11 +807,11 @@ const styles = StyleSheet.create({
     width: ms(36),
     height: ms(36),
     borderRadius: ms(18),
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     justifyContent: "center",
     alignItems: "center",
     marginVertical: ms(4),
-    shadowColor: "#FE2C55",
+    shadowColor: "#FF2D92",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 6,
@@ -844,7 +844,7 @@ const styles = StyleSheet.create({
     height: ms(80),
     borderRadius: ms(40),
     borderWidth: 2,
-    borderColor: "#FE2C55",
+    borderColor: "#FF2D92",
     marginBottom: ms(10),
   },
   preLiveName: {
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
   },
   preLiveBottom: { gap: ms(20) },
   goLiveBtn: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: ms(30),
     paddingVertical: ms(15),
     alignItems: "center",
@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
   hostName: { color: "#fff", fontSize: fs(12), fontWeight: "700" },
   hostId: { color: "#eee", fontSize: fs(10) },
   followBtn: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingHorizontal: ms(12),
     paddingVertical: ms(6),
     borderRadius: ms(14),
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,20,147,0.9)",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#FE2C55",
+    shadowColor: "#FF2D92",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
@@ -1006,7 +1006,7 @@ const styles = StyleSheet.create({
     paddingVertical: ms(10),
   },
   sendBtn: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     width: ms(32),
     height: ms(32),
     borderRadius: ms(16),
@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
   },
   giftPrice: { fontSize: fs(11), color: "#00D4FF", fontWeight: "700" },
   errorText: {
-    color: "#FE2C55",
+    color: "#FF2D92",
     fontSize: fs(14),
     textAlign: "center",
     marginBottom: ms(10),
@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
   // ── End Live button ────────────────────────────────────────────────────
   endLiveBtn: {
     marginTop: ms(8),
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingHorizontal: ms(14),
     paddingVertical: ms(6),
     borderRadius: ms(16),
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
     marginTop: ms(6),
   },
   summaryCloseBtn: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     borderRadius: ms(30),
     paddingVertical: ms(14),
     alignItems: "center",

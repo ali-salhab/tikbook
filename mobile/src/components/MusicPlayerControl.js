@@ -191,7 +191,7 @@ const MusicPlayerControl = ({
               <Ionicons
                 name="musical-notes"
                 size={48}
-                color={isPlaying ? "#FE2C55" : "#666"}
+                color={isPlaying ? "#FF2D92" : "#666"}
               />
             </View>
             <Text style={styles.trackName} numberOfLines={2}>
@@ -257,9 +257,9 @@ const MusicPlayerControl = ({
               value={volume}
               onValueChange={handleVolumeChange}
               onSlidingComplete={handleVolumeChangeComplete}
-              minimumTrackTintColor="#FE2C55"
+              minimumTrackTintColor="#FF2D92"
               maximumTrackTintColor="#ddd"
-              thumbTintColor="#FE2C55"
+              thumbTintColor="#FF2D92"
               disabled={!isHost}
             />
             <Ionicons name="volume-high" size={20} color="#666" />
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
   },
   timeText: {
     fontSize: 12,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     justifyContent: "center",
     alignItems: "center",
   },

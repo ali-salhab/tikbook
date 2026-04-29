@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { View, Image, Animated, StyleSheet, Easing } from "react-native";
+import { View, Animated, StyleSheet, Easing } from "react-native";
+import BrandMark from "./BrandMark";
 
 const AnimatedLogo = ({ size = 100, style }) => {
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -85,11 +86,7 @@ const AnimatedLogo = ({ size = 100, style }) => {
           },
         ]}
       >
-        <Image
-          source={require("../../assets/logo.jpg")}
-          style={[styles.logo, { width: size, height: size }]}
-          resizeMode="contain"
-        />
+        <BrandMark size={size} />
       </Animated.View>
     </View>
   );
@@ -103,9 +100,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     justifyContent: "center",
     alignItems: "center",
-  },
-  logo: {
-    borderRadius: 20,
   },
 });
 

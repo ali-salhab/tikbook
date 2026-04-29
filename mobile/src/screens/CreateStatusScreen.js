@@ -21,7 +21,7 @@ import { useUpload } from "../context/UploadContext";
 import { BASE_URL } from "../config/api";
 
 const BG_COLORS = [
-  "#FE2C55",
+  "#FF2D92",
   "#25D366",
   "#1DA1F2",
   "#FF8C00",
@@ -226,13 +226,13 @@ const CreateStatusScreen = ({ navigation }) => {
         {/* Media picker buttons */}
         <View style={styles.mediaRow}>
           <TouchableOpacity style={styles.mediaBtn} onPress={pickImage}>
-            <Ionicons name="image-outline" size={22} color="#FE2C55" />
+            <Ionicons name="image-outline" size={22} color="#FF2D92" />
             <Text style={styles.mediaBtnText}>
               {selectedImage ? "تغيير الصورة" : "إضافة صورة"}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.mediaBtn} onPress={pickVideo}>
-            <Ionicons name="videocam-outline" size={22} color="#FE2C55" />
+            <Ionicons name="videocam-outline" size={22} color="#FF2D92" />
             <Text style={styles.mediaBtnText}>
               {selectedVideo ? "تغيير الفيديو" : "إضافة فيديو"}
             </Text>
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: fs(17), fontWeight: "700", color: "#000" },
   postBtn: {
-    backgroundColor: "#FE2C55",
+    backgroundColor: "#FF2D92",
     paddingHorizontal: ms(18),
     paddingVertical: ms(7),
     borderRadius: ms(20),
@@ -341,12 +341,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     borderRadius: ms(12),
     borderWidth: 1,
-    borderColor: "#FE2C55",
+    borderColor: "#FF2D92",
     borderStyle: "dashed",
     justifyContent: "center",
   },
   mediaBtnText: {
-    color: "#FE2C55",
+    color: "#FF2D92",
     fontSize: fs(14),
     fontWeight: "600",
   },

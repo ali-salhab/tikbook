@@ -588,7 +588,7 @@ const ProfileScreen = ({ navigation }) => {
                     position: "absolute",
                     right: -6,
                     top: -4,
-                    backgroundColor: "#FE2C55",
+                    backgroundColor: "#FF2D92",
                     borderRadius: 10,
                     minWidth: 20,
                     height: 20,
@@ -617,10 +617,10 @@ const ProfileScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handlePullToRefresh}
-            tintColor="#FE2C55"
-            colors={["#FE2C55"]}
+            tintColor="#FF2D92"
+            colors={["#FF2D92"]}
             title="تحديث…"
-            titleColor="#FE2C55"
+            titleColor="#FF2D92"
           />
         }
       >
@@ -640,8 +640,8 @@ const ProfileScreen = ({ navigation }) => {
                   {userStatuses.length >= 2 ? (
                     <LinearGradient
                       colors={[
-                        userStatuses[0]?.bgColor || "#FE2C55",
-                        userStatuses[0]?.bgColor || "#FE2C55",
+                        userStatuses[0]?.bgColor || "#FF2D92",
+                        userStatuses[0]?.bgColor || "#FF2D92",
                         userStatuses[1]?.bgColor || "#0A84FF",
                         userStatuses[1]?.bgColor || "#0A84FF",
                       ]}
@@ -651,7 +651,7 @@ const ProfileScreen = ({ navigation }) => {
                       style={styles.statusRingGradient}
                     />
                   ) : (
-                    <View style={[styles.statusRingGradient, { backgroundColor: userStatuses[0]?.bgColor || "#FE2C55" }]} />
+                    <View style={[styles.statusRingGradient, { backgroundColor: userStatuses[0]?.bgColor || "#FF2D92" }]} />
                   )}
                   <View style={styles.statusRingInner} />
                 </View>
