@@ -1038,13 +1038,18 @@ exports.assignModerator = async (req, res) => {
 
     // Send notification
     try {
-      const user = await User.findById(userId);
-      if (user) {
-        await sendNotificationToUser(user, {
-          title: "تم تعيينك كمسؤول",
-          body: `تم تعيينك كمسؤول في غرفة: ${liveRoom.title}`,
-          data: { roomId: liveRoom.roomId, type: "moderator_assigned" },
-        });
+      const modUser = await User.findById(userId);
+      if (modUser) {
+        await sendNotificationToUser(
+          modUser._id,
+          "تم تعيينك كمسؤول",
+          `تم تعيينك كمسؤول في غرفة: ${liveRoom.title}`,
+          {
+            screen: "LiveRoom",
+            roomId: String(liveRoom.roomId),
+            type: "moderator_assigned",
+          },
+        );
       }
     } catch (notifError) {
       console.error("Error sending notification:", notifError);

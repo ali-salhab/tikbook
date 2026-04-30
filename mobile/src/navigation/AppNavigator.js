@@ -362,20 +362,13 @@ const AppNavigator = () => {
   const navigationRef = useNavigationContainerRef();
 
   useEffect(() => {
-    // Setup notification listeners (foreground + background tap)
     const unsubscribe = notificationListener(navigationRef);
-    // Setup Android channel
     setupAndroidChannel();
-    // Handle cold start (app opened from killed state via notification)
-    handleInitialNotification(navigationRef);
 
-    // --- Deep link handling ---
-    // Cold start: app was killed, opened via tikbook:// link
     Linking.getInitialURL().then((url) => {
       const payload = parseDeepLink(url);
       if (payload) navigateFromDeepLink(navigationRef, payload);
     });
-    // Warm start: app is in background/foreground, link tapped
     const linkingSub = Linking.addEventListener("url", ({ url }) => {
       const payload = parseDeepLink(url);
       if (payload) navigateFromDeepLink(navigationRef, payload);
@@ -413,6 +406,23 @@ const AppNavigator = () => {
 
   const [isSplashAnimationFinished, setIsSplashAnimationFinished] =
     useState(false);
+
+  useEffect(() => {
+    if (
+      !userToken ||
+      isLoading ||
+      showOnboarding === null ||
+      !isSplashAnimationFinished
+    )
+      return undefined;
+    const t = setTimeout(() => handleInitialNotification(navigationRef), 450);
+    return () => clearTimeout(t);
+  }, [
+    userToken,
+    isLoading,
+    showOnboarding,
+    isSplashAnimationFinished,
+  ]);
 
   // While checking auth state or onboarding status, or if splash animation isn't done
   if (isLoading || showOnboarding === null || !isSplashAnimationFinished) {

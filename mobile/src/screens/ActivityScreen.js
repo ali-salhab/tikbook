@@ -82,26 +82,120 @@ const ActivityScreen = ({ navigation }) => {
   };
 
   const handleNotificationPress = (notification) => {
+    const embedded = notification.data || {};
+
+    if (embedded.screen === "LiveRoom" && embedded.roomId) {
+      navigation.navigate("LiveRoom", { roomId: String(embedded.roomId) });
+      return;
+    }
+    if (embedded.screen === "MyBadges" || notification.type === "badge_gift") {
+      navigation.navigate(
+        "MyBadges",
+        embedded.badgeId ? { badgeId: String(embedded.badgeId) } : {},
+      );
+      return;
+    }
+    if (
+      embedded.screen === "VerificationRequest" ||
+      notification.type === "verification_rejected"
+    ) {
+      navigation.navigate("VerificationRequest", {});
+      return;
+    }
+    if (notification.type === "verification_approved") {
+      navigation.navigate("MainTabs", {
+        screen: "Profile",
+        params: {},
+      });
+      return;
+    }
+
+    const videoId = notification.video?._id;
+
     if (
       notification.type === "like" ||
       notification.type === "comment" ||
       notification.type === "new_video"
     ) {
-      if (notification.video) {
+      if (videoId) {
         navigation.navigate("MainTabs", {
           screen: "Home",
-          params: { videoId: notification.video._id },
+          params: { videoId },
+        });
+      } else if (notification.fromUser?._id) {
+        navigation.navigate("UserProfile", {
+          userId: notification.fromUser._id,
         });
       }
-    } else if (notification.type === "follow") {
+      return;
+    }
+
+    if (notification.type === "follow") {
       if (notification.fromUser) {
         navigation.navigate("UserProfile", {
           userId: notification.fromUser._id,
         });
       }
-    } else if (notification.type === "live_stream") {
-      navigation.navigate("LiveStreamsListScreen");
+      return;
     }
+
+    if (
+      notification.type === "live_stream" ||
+      notification.type === "live_room_started"
+    ) {
+      navigation.navigate("LiveStreamsList");
+      return;
+    }
+
+    if (
+      notification.type === "vip_assigned" ||
+      notification.type === "vip_removed" ||
+      notification.type === "vip_auto_upgrade"
+    ) {
+      navigation.navigate("VipProfile");
+      return;
+    }
+
+    if (
+      notification.type === "admin" ||
+      notification.type === "admin_broadcast" ||
+      notification.type === "system" ||
+      notification.type === "announcement" ||
+      notification.type === "promo"
+    ) {
+      navigation.navigate("SystemNotifications");
+      return;
+    }
+
+    if (/^interaction/i.test(notification.type || "")) {
+      const uid =
+        embedded.userId ||
+        notification.fromUser?._id ||
+        notification.actorId ||
+        embedded.actorId;
+      if (videoId || embedded.videoId) {
+        navigation.navigate("MainTabs", {
+          screen: "Home",
+          params: {
+            videoId: videoId || embedded.videoId,
+          },
+        });
+        return;
+      }
+      if (uid) {
+        navigation.navigate("UserProfile", { userId: String(uid) });
+        return;
+      }
+    }
+
+    if (notification.fromUser?._id) {
+      navigation.navigate("UserProfile", {
+        userId: notification.fromUser._id,
+      });
+      return;
+    }
+
+    navigation.navigate("SystemNotifications");
   };
 
   const markNotificationsAsRead = async () => {

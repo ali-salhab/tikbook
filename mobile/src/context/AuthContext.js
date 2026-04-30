@@ -140,6 +140,18 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     setIsLoading(true);
+    try {
+      const tok = await AsyncStorage.getItem("userToken");
+      if (tok) {
+        await axios.put(
+          `${BASE_URL}/users/fcm-token`,
+          { token: "" },
+          { headers: { Authorization: `Bearer ${tok}` }, timeout: 5000 },
+        );
+      }
+    } catch (_) {
+      // Ignore — still log out locally
+    }
     setUserToken(null);
     setUserInfo(null);
     setNotificationCount(0);

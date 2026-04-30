@@ -299,6 +299,7 @@ const createVideo = async (req, res) => {
               screen: "Activity",
               type: "new_video",
               videoId: createdVideo._id.toString(),
+              userId: req.user._id.toString(),
             },
           );
         }
@@ -348,7 +349,12 @@ const likeVideo = async (req, res) => {
             video.user._id,
             "إعجاب جديد",
             `أعجب @${req.user.username} بفيديوك`,
-            { screen: "Activity", type: "like", videoId: video._id.toString() },
+            {
+              screen: "Activity",
+              type: "like",
+              videoId: video._id.toString(),
+              userId: req.user._id.toString(),
+            },
           );
         }
       }
@@ -414,7 +420,12 @@ const commentVideo = async (req, res) => {
         video.user._id,
         "تعليق جديد",
         notificationText,
-        { screen: "Activity", type: "comment", videoId: video._id.toString() },
+        {
+          screen: "Activity",
+          type: "comment",
+          videoId: video._id.toString(),
+          userId: req.user._id.toString(),
+        },
       );
     }
 

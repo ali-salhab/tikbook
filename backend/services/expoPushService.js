@@ -16,12 +16,20 @@ const sendExpoPushNotification = async (token, title, body, data = {}) => {
       return null;
     }
 
+    // Expo/Android expect string values in data for reliable tap handling.
+    const dataStrings = Object.fromEntries(
+      Object.entries(data || {}).map(([k, v]) => [
+        k,
+        v == null ? "" : typeof v === "string" ? v : String(v),
+      ]),
+    );
+
     const message = {
       to: token,
       sound: "default",
       title: title,
       body: body,
-      data: data,
+      data: dataStrings,
       priority: "high",
       channelId: "default", // For Android
     };
@@ -80,7 +88,12 @@ const sendMulticastExpoPushNotification = async (
       sound: "default",
       title: title,
       body: body,
-      data: data,
+      data: Object.fromEntries(
+        Object.entries(data || {}).map(([k, v]) => [
+          k,
+          v == null ? "" : typeof v === "string" ? v : String(v),
+        ]),
+      ),
       priority: "high",
       channelId: "default",
     }));

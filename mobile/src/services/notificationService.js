@@ -101,40 +101,173 @@ export const saveTokenToBackend = async (userToken, pushToken, baseUrl) => {
   }
 };
 
-// ─── Resolve navigation target from notification data ────────────────────────
-const resolveNavTarget = (data = {}) => {
-  if (!data) return null;
+// ─── Normalize FCM / Expo payloads (custom fields arrive as strings) ───────────
+const normalizePayload = (raw = {}) => {
+  if (!raw || typeof raw !== "object") return {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v == null || v === "") continue;
+    if (typeof v === "object") continue;
+    out[String(k)] = typeof v === "string" ? v : String(v);
+  }
+  return out;
+};
 
-  if (data.screen === "LiveRoom" && data.roomId) {
-    return { screen: "LiveRoom", params: { roomId: data.roomId } };
-  }
-  if (data.screen === "UserProfile" && data.userId) {
-    return { screen: "UserProfile", params: { userId: data.userId } };
-  }
-  if (data.screen === "Chat" && data.chatId) {
-    return { screen: "Chat", params: { chatId: data.chatId } };
+// Maps push `data` to root Stack / nested targets (see AppNavigator).
+const resolveNavTarget = (raw = {}) => {
+  const data = normalizePayload(raw);
+  const type = data.type || "";
+  const screen = data.screen || "";
+  const videoId = data.videoId || "";
+  const userId = data.userId || "";
+  const roomId = data.roomId || "";
+  const badgeId = data.badgeId || "";
+
+  if (screen === "LiveStreamsListScreen") {
+    return { screen: "LiveStreamsList", params: {} };
   }
 
-  // Social interactions → Activity screen
-  const activityTypes = [
-    "like",
-    "comment",
-    "follow",
-    "new_video",
-    "live_stream",
-  ];
-  if (data.screen === "Activity" || activityTypes.includes(data.type)) {
+  if (
+    screen === "LiveRoom" ||
+    type === "live_room_started" ||
+    type === "moderator_assigned"
+  ) {
+    if (roomId)
+      return { screen: "LiveRoom", params: { roomId: String(roomId) } };
+    return {
+      screen: "MainTabs",
+      params: { screen: "LiveRooms", params: {} },
+    };
+  }
+
+  if (screen === "Chat") {
+    if (data.chatId)
+      return { screen: "Chat", params: { chatId: data.chatId } };
+    if (userId) {
+      return {
+        screen: "Chat",
+        params: { userId, username: "", profileImage: null },
+      };
+    }
+    return null;
+  }
+
+  // Any notify tied to a video → Home feed scrolled to clip
+  if (videoId) {
+    return {
+      screen: "MainTabs",
+      params: {
+        screen: "Home",
+        params: { videoId },
+      },
+    };
+  }
+
+  if (
+    screen === "UserProfile" ||
+    type === "follow" ||
+    (userId &&
+      /^interaction/i.test(type) &&
+      !videoId &&
+      !roomId)
+  ) {
+    if (userId) return { screen: "UserProfile", params: { userId } };
+  }
+
+  if (type === "live_stream") {
+    return { screen: "LiveStreamsList", params: {} };
+  }
+
+  if (screen === "MyBadges" || type === "badge_gift") {
+    return badgeId
+      ? { screen: "MyBadges", params: { badgeId } }
+      : { screen: "MyBadges", params: {} };
+  }
+
+  if (screen === "VerificationRequest" || type === "verification_rejected") {
+    return { screen: "VerificationRequest", params: {} };
+  }
+
+  if (screen === "Profile" || type === "verification_approved") {
+    return {
+      screen: "MainTabs",
+      params: { screen: "Profile", params: {} },
+    };
+  }
+
+  if (
+    type === "vip_assigned" ||
+    type === "vip_removed" ||
+    type === "vip_auto_upgrade"
+  ) {
+    return { screen: "VipProfile", params: {} };
+  }
+
+  if (screen === "Wallet") {
+    return { screen: "Wallet", params: {} };
+  }
+
+  if (
+    screen === "SystemNotifications" ||
+    type === "admin" ||
+    type === "admin_broadcast" ||
+    type === "system" ||
+    type === "announcement" ||
+    type === "promo" ||
+    type === "update"
+  ) {
+    return { screen: "SystemNotifications", params: {} };
+  }
+
+  if (screen === "Activity") {
+    if (userId) return { screen: "UserProfile", params: { userId } };
     return { screen: "Activity", params: {} };
   }
 
-  // Generic passthrough
-  if (data.screen) {
-    const { screen, ...rest } = data;
-    return { screen, params: rest };
+  const listOnlyTypes = [
+    "like",
+    "comment",
+    "follow",
+    "mention",
+    "new_video",
+  ];
+  if (listOnlyTypes.includes(type)) {
+    if (userId && (type === "follow" || type === "mention")) {
+      return { screen: "UserProfile", params: { userId } };
+    }
+    return { screen: "Activity", params: {} };
   }
 
-  return null;
+  if (screen) {
+    const { screen: scr, ...rest } = data;
+    return { screen: scr, params: rest };
+  }
+
+  return { screen: "Activity", params: {} };
 };
+
+const NAV_MAX_ATTEMPTS = 110;
+const NAV_RETRY_MS = 120;
+
+function scheduleNavigateToTarget(navigationRef, target) {
+  let attempts = 0;
+  const run = () => {
+    if (!target?.screen) return;
+    if (navigationRef?.isReady?.()) {
+      try {
+        navigationRef.navigate(target.screen, target.params);
+      } catch (e) {
+        console.warn("Push navigation failed:", e?.message || e);
+      }
+      return;
+    }
+    if (attempts < NAV_MAX_ATTEMPTS) {
+      attempts += 1;
+      setTimeout(run, NAV_RETRY_MS);
+    }
+  };
+  run();
+}
 
 // ─── Notification listeners (foreground & background tap) ────────────────────
 export const notificationListener = (navigationRef) => {
@@ -152,23 +285,12 @@ export const notificationListener = (navigationRef) => {
       const data = response?.notification?.request?.content?.data || {};
       console.log("👆 Notification tapped:", data);
       const target = resolveNavTarget(data);
-      if (!target) return;
 
-      // Mark as handled so cold-start won't re-navigate
       const notifId = response?.notification?.request?.identifier;
       if (notifId)
         AsyncStorage.setItem("@lastHandledNotifId", notifId).catch(() => {});
 
-      let attempts = 0;
-      const tryNavigate = () => {
-        if (navigationRef?.isReady()) {
-          navigationRef.navigate(target.screen, target.params);
-        } else if (attempts < 50) {
-          attempts++;
-          setTimeout(tryNavigate, 100);
-        }
-      };
-      tryNavigate();
+      scheduleNavigateToTarget(navigationRef, target);
     },
   );
 
@@ -192,21 +314,10 @@ export const handleInitialNotification = async (navigationRef) => {
 
     const data = response?.notification?.request?.content?.data || {};
     const target = resolveNavTarget(data);
-    if (!target) return;
 
-    // Mark as handled so next cold start won't re-navigate
     if (notifId) await AsyncStorage.setItem(STORAGE_KEY, notifId);
 
-    let attempts = 0;
-    const tryNavigate = () => {
-      if (navigationRef?.isReady()) {
-        navigationRef.navigate(target.screen, target.params);
-      } else if (attempts < 50) {
-        attempts++;
-        setTimeout(tryNavigate, 100);
-      }
-    };
-    tryNavigate();
+    scheduleNavigateToTarget(navigationRef, target);
   } catch (e) {
     console.error("handleInitialNotification error:", e);
   }

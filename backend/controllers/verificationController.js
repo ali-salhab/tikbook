@@ -193,7 +193,7 @@ const approveVerificationRequest = async (req, res) => {
         verificationRequest.user,
         "تم قبول طلب التوثيق الخاص بك! حسابك الآن موثق ✓",
         "مبروك! تم توثيق حسابك",
-        { screen: "Profile" },
+        { screen: "Profile", type: "verification_approved" },
       );
     } catch (pushError) {
       console.error("Error sending push notification:", pushError);

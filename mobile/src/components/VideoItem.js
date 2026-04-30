@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, memo, useMemo } from "react";
+import React, { useRef, useState, useEffect, memo, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   InteractionManager,
   DeviceEventEmitter,
+  PanResponder,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,7 +21,6 @@ import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  runOnJS,
 } from "react-native-reanimated";
 import { getWindowDimensions } from "../utils/responsive";
 
@@ -50,9 +50,10 @@ const PROGRESS_TRACK_HEIGHT = 3;
 const PROGRESS_THUMB_SIZE = Math.round(
   Math.min(Math.max(SCREEN_WIDTH * 0.025, 8), 11),
 );
-const PROGRESS_WRAPPER_VERTICAL = 10;
+// Top breathing room above the bar; bottom stays flush with cell bottom (= tab bar top).
+const PROGRESS_WRAPPER_PADDING_TOP = 6;
 const PROGRESS_THUMB_OFFSET =
-  PROGRESS_WRAPPER_VERTICAL -
+  PROGRESS_WRAPPER_PADDING_TOP -
   Math.round((PROGRESS_THUMB_SIZE - PROGRESS_TRACK_HEIGHT) / 2);
 
 const VideoItem = memo(
@@ -87,6 +88,9 @@ const VideoItem = memo(
     const progressRef = useRef(0);   // always up-to-date, readable inside PanResponder
     const progressBarWidth = useRef(0);
     const isSeeking = useRef(false);
+    const isPlayingRef = useRef(false);
+    const wasPlayingBeforeScrub = useRef(false);
+    const lastScrubXRef = useRef(0);
     const [isScrubbing, setIsScrubbing] = useState(false);
     const scrubThumbScale = useRef(new Animated.Value(1)).current;
     const playIconOpacity = useRef(new Animated.Value(0)).current;
@@ -108,8 +112,13 @@ const VideoItem = memo(
     // The video container's bottom edge sits exactly at the top of the bottom nav bar
     // (since itemHeight = SCREEN_HEIGHT - tabBarHeight from the parent).
     // Using fixed pixel offsets keeps the layout identical across all screen sizes.
-    const progressBottomOffset = 0;        // progress bar flush at nav bar top edge
-    const overlayBottomOffset = 44;        // username/description/audio above progress bar
+    // Cell bottom aligns with top of bottom tab bar (see HomeScreen pageHeight).
+    const TIMELINE_MIN_HEIGHT =
+      PROGRESS_WRAPPER_PADDING_TOP +
+      PROGRESS_TRACK_HEIGHT +
+      Math.ceil(PROGRESS_THUMB_SIZE / 2) +
+      4;
+    const overlayBottomOffset = TIMELINE_MIN_HEIGHT + 38;
     const actionGap = Math.max(Math.round(itemHeight * 0.014), 8);
     const zoomScale = useSharedValue(1);
     const zoomBase = useSharedValue(1);
@@ -224,7 +233,7 @@ const VideoItem = memo(
       ]).start();
     };
 
-    // --- Scrub gesture (RNGH Gesture.Pan — works alongside pinch GestureDetector) ---
+    // --- Scrub: PanResponder captures touches before vertical FlatList scroll ---
     const applySeek = (x) => {
       const barW = progressBarWidth.current;
       if (!barW) return;
@@ -233,53 +242,101 @@ const VideoItem = memo(
       setProgress(newP);
     };
 
-    const commitSeek = (x) => {
-      const barW = progressBarWidth.current;
-      const newP = barW
-        ? Math.max(0, Math.min(x / barW, 1))
-        : progressRef.current;
-      progressRef.current = newP;
-      setProgress(newP);
-      isSeeking.current = false;
-      setIsScrubbing(false);
-      Animated.spring(scrubThumbScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 80,
-      }).start();
-      const dur = durationRef.current;
-      if (videoRef.current && dur > 0) {
-        videoRef.current
-          .setPositionAsync(Math.floor(newP * dur))
-          .catch(() => {});
-      }
-    };
+    const commitSeek = useCallback(
+      (x) => {
+        const barW = progressBarWidth.current;
+        const newP = barW
+          ? Math.max(0, Math.min(x / barW, 1))
+          : progressRef.current;
+        progressRef.current = newP;
+        setProgress(newP);
+        setIsScrubbing(false);
+        Animated.spring(scrubThumbScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 6,
+          tension: 80,
+        }).start();
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const scrubGesture = useMemo(() =>
-      Gesture.Pan()
-        .runOnJS(true)
-        .minDistance(0)
-        .onBegin((evt) => {
+        const run = async () => {
+          let dur = durationRef.current;
+          const video = videoRef.current;
+          if ((!dur || dur <= 0) && video) {
+            try {
+              const st = await video.getStatusAsync();
+              if (st.isLoaded && st.durationMillis) {
+                dur = st.durationMillis;
+                durationRef.current = dur;
+                setDuration(dur);
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+          if (!video || !dur || dur <= 0) {
+            isSeeking.current = false;
+            return;
+          }
+          const targetMs = Math.min(
+            Math.max(0, Math.floor(newP * dur)),
+            Math.max(0, dur - 24),
+          );
           isSeeking.current = true;
-          setIsScrubbing(true);
-          Animated.spring(scrubThumbScale, {
-            toValue: 1.8,
-            useNativeDriver: true,
-            friction: 6,
-            tension: 80,
-          }).start();
-          applySeek(evt.x);
-        })
-        .onUpdate((evt) => {
-          applySeek(evt.x);
-        })
-        .onFinalize((evt) => {
-          commitSeek(evt.x);
+          try {
+            await video.setPositionAsync(targetMs);
+            if (wasPlayingBeforeScrub.current && isActive) {
+              await video.playAsync();
+            }
+          } catch {
+            /* ignore */
+          } finally {
+            isSeeking.current = false;
+          }
+        };
+        run();
+      },
+      [isActive, scrubThumbScale],
+    );
+
+    const progressPanResponder = useMemo(
+      () =>
+        PanResponder.create({
+          onStartShouldSetPanResponder: () => true,
+          onStartShouldSetPanResponderCapture: () => true,
+          onMoveShouldSetPanResponder: () => true,
+          onMoveShouldSetPanResponderCapture: () => true,
+          onPanResponderGrant: (e) => {
+            wasPlayingBeforeScrub.current = isPlayingRef.current;
+            isSeeking.current = true;
+            setIsScrubbing(true);
+            Animated.spring(scrubThumbScale, {
+              toValue: 1.8,
+              useNativeDriver: true,
+              friction: 6,
+              tension: 80,
+            }).start();
+            const x = e.nativeEvent.locationX;
+            lastScrubXRef.current = x;
+            applySeek(x);
+            const v = videoRef.current;
+            if (v && wasPlayingBeforeScrub.current) {
+              v.pauseAsync().catch(() => {});
+            }
+          },
+          onPanResponderMove: (e) => {
+            const x = e.nativeEvent.locationX;
+            lastScrubXRef.current = x;
+            applySeek(x);
+          },
+          onPanResponderRelease: () => {
+            commitSeek(lastScrubXRef.current);
+          },
+          onPanResponderTerminate: () => {
+            commitSeek(lastScrubXRef.current);
+          },
         }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []);
+      [commitSeek, scrubThumbScale],
+    );
 
     const handleDoubleTap = () => {
       const now = Date.now();
@@ -486,14 +543,15 @@ const VideoItem = memo(
               </View>
             )}
 
-            {/* Scrub track */}
-            <GestureDetector gesture={scrubGesture}>
-              <View
-                style={styles.progressBarWrapper}
-                onLayout={(e) => {
-                  progressBarWidth.current = e.nativeEvent.layout.width;
-                }}
-              >
+            {/* Scrub track — PanResponder wins over vertical FlatList */}
+            <View
+              {...progressPanResponder.panHandlers}
+              collapsable={false}
+              style={styles.progressBarWrapper}
+              onLayout={(e) => {
+                progressBarWidth.current = e.nativeEvent.layout.width;
+              }}
+            >
               {/* Time bubble — only visible while scrubbing */}
               {isScrubbing && (
                 <View
@@ -544,7 +602,6 @@ const VideoItem = memo(
                 pointerEvents="none"
               />
             </View>
-            </GestureDetector>
           </View>
         )}
 
@@ -724,8 +781,10 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
   },
   progressBarWrapper: {
-    paddingVertical: PROGRESS_WRAPPER_VERTICAL,
-    justifyContent: "center",
+    paddingTop: PROGRESS_WRAPPER_PADDING_TOP,
+    paddingBottom: 0,
+    justifyContent: "flex-end",
+    minHeight: 32,
   },
   progressBarBg: {
     height: PROGRESS_TRACK_HEIGHT,
@@ -807,6 +866,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingBottom: 0,
     zIndex: 200,
+    flexDirection: "column",
+    justifyContent: "flex-end",
+    direction: "ltr",
   },
   progressMetaRow: {
     flexDirection: "row",

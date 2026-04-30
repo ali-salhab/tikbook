@@ -77,7 +77,7 @@ const generateToken = async (req, res) => {
               followerId,
               `${user.username} بدأ بث مباشر: ${title || "بث مباشر"}`,
               "بث مباشر جديد",
-              { screen: "LiveStreamsListScreen" },
+              { screen: "LiveStreamsList", type: "live_stream" },
             );
           }
         }

@@ -1,7 +1,15 @@
 const User = require("../models/User");
 const Video = require("../models/Video");
 const Notification = require("../models/Notification");
-const { sendNotificationToUser } = require("./pushNotificationController");
+const {
+  sendNotificationToUser,
+  clearPushTokenFromOtherUsers,
+} = require("./pushNotificationController");
+
+const userListHasUserId = (idArray, userId) => {
+  const target = userId.toString();
+  return (idArray || []).some((id) => id?.toString() === target);
+};
 
 // @desc    Get user profile
 // @route   GET /api/users/:id
@@ -46,7 +54,7 @@ const followUser = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (!userToFollow.followers.includes(req.user._id)) {
+      if (!userListHasUserId(userToFollow.followers, req.user._id)) {
         // Update follow relationships
         await userToFollow.updateOne({ $push: { followers: req.user._id } });
         await currentUser.updateOne({ $push: { following: req.params.id } });
@@ -105,7 +113,7 @@ const unfollowUser = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (userToUnfollow.followers.includes(req.user._id)) {
+      if (userListHasUserId(userToUnfollow.followers, req.user._id)) {
         await userToUnfollow.updateOne({ $pull: { followers: req.user._id } });
         await currentUser.updateOne({ $pull: { following: req.params.id } });
         res.status(200).json({ message: "User unfollowed" });
@@ -264,20 +272,24 @@ const uploadProfileImage = async (req, res) => {
 const updateFcmToken = async (req, res) => {
   const { token } = req.body;
 
-  if (!token) {
-    return res.status(400).json({ message: "Token is required" });
-  }
-
   try {
     const user = await User.findById(req.user._id);
-    if (user) {
-      user.pushToken = token;
-      user.fcmToken = token; // Save to both fields for compatibility
-      await user.save();
-      res.json({ message: "FCM Token updated" });
-    } else {
-      res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    if (!token || !String(token).trim()) {
+      user.pushToken = "";
+      user.fcmToken = "";
+      await user.save();
+      return res.json({ message: "Push token cleared" });
+    }
+
+    await clearPushTokenFromOtherUsers(req.user._id, token);
+    user.pushToken = token;
+    user.fcmToken = token; // Save to both fields for compatibility
+    await user.save();
+    res.json({ message: "FCM Token updated" });
   } catch (error) {
     console.error("Error updating FCM token:", error);
     res.status(500).json({ message: error.message });

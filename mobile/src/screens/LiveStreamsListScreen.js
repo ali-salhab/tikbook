@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Image,
   RefreshControl,
-  Dimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,9 +17,10 @@ import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
-import { ms, fs } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 import { darkUi } from "../theme/brand";
-const ITEM_WIDTH = (width - 48) / 2; // 2 columns with padding
+
+const ITEM_WIDTH = (getWindowDimensions().width - 48) / 2; // 2 columns with padding
 
 const LiveStreamsListScreen = ({ navigation }) => {
   const { userToken } = useContext(AuthContext);
