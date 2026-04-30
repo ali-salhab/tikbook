@@ -13,6 +13,7 @@ import GiftOverlay from "./GiftOverlay";
 import GiftButton from "./GiftButton";
 import GiftSelector from "./GiftSelector";
 import JoinAnimation from "./JoinAnimation";
+import type { JoinEffectPreset } from "./JoinAnimation";
 import { useLiveRoomSocket } from "../hooks/useLiveRoomSocket";
 import {
   getGiftCatalog,
@@ -53,6 +54,8 @@ const LiveRoomScreen = ({
   const [balance, setBalance] = useState(initialBalance);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
+  const [joinOverlayUser, setJoinOverlayUser] = useState<LiveRoomUser | null>(null);
+
   const {
     connected,
     viewerCount,
@@ -67,6 +70,12 @@ const LiveRoomScreen = ({
     currentUser,
     enabled: Boolean(roomId && currentUser?._id),
   });
+
+  useEffect(() => {
+    if (latestJoinUser?._id && latestJoinUser._id !== currentUser._id) {
+      setJoinOverlayUser(latestJoinUser);
+    }
+  }, [latestJoinUser, currentUser._id]);
 
   useEffect(() => {
     let mounted = true;
@@ -151,10 +160,10 @@ const LiveRoomScreen = ({
     [balance, onSendGiftTransaction, sendGiftEvent],
   );
 
-  const joinTierForLatest = useMemo(() => {
-    if (!latestJoinUser) return undefined;
-    return vipTiers.find((t) => Number(t.level) === Number(latestJoinUser.vipLevel || 0));
-  }, [vipTiers, latestJoinUser]);
+  const joinTierForOverlay = useMemo(() => {
+    if (!joinOverlayUser) return undefined;
+    return vipTiers.find((t) => Number(t.level) === Number(joinOverlayUser.vipLevel || 0));
+  }, [vipTiers, joinOverlayUser]);
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right", "bottom"]}>
@@ -182,11 +191,30 @@ const LiveRoomScreen = ({
         </View>
 
         <JoinAnimation
-          user={latestJoinUser}
-          joinAnimationUrl={joinTierForLatest?.joinAnimationLottieUrl}
-          joinSoundUrl={joinTierForLatest?.joinSoundUrl}
-          specialJoinText={joinTierForLatest?.specialJoinText}
-          vipTier={joinTierForLatest}
+          user={joinOverlayUser}
+          joinAnimationUrl={joinTierForOverlay?.joinAnimationLottieUrl}
+          joinSoundUrl={joinTierForOverlay?.joinSoundUrl}
+          specialJoinText={joinTierForOverlay?.specialJoinText}
+          displayDurationMs={
+            typeof joinTierForOverlay?.joinDisplayDurationMs === "number"
+              ? joinTierForOverlay.joinDisplayDurationMs
+              : undefined
+          }
+          joinVideoUrl={joinTierForOverlay?.joinVideoUrl}
+          joinCardFrameImageUrl={joinTierForOverlay?.joinCardFrameImageUrl}
+          layoutStyle={joinTierForOverlay?.joinLayoutStyle === "ticker" ? "ticker" : "card"}
+          effectPreset={(joinTierForOverlay?.joinEffectPreset || "none").toLowerCase() as JoinEffectPreset}
+          vipBadgeIconUrl={joinTierForOverlay?.badgeImageUrl || undefined}
+          vipTier={
+            joinTierForOverlay
+              ? {
+                  ...joinTierForOverlay,
+                  usernameColor:
+                    joinTierForOverlay.usernameColor || joinTierForOverlay.color || "#F9FAFB",
+                }
+              : null
+          }
+          onDone={() => setJoinOverlayUser(null)}
         />
         <GiftOverlay giftEvents={giftEvents} />
 

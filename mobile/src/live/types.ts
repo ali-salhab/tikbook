@@ -13,6 +13,8 @@ export interface LiveRoomUser {
   usernameColor?: string;
   joinAnimationLottieUrl?: string;
   joinSoundUrl?: string;
+  isVerified?: boolean;
+  activeBadge?: { imageUrl?: string; name?: string; _id?: string } | null;
 }
 
 export interface LiveChatMessage {
@@ -68,4 +70,10 @@ export interface VipTierConfig {
   joinAnimationLottieUrl?: string;
   joinSoundUrl?: string;
   specialJoinText?: string;
+  joinDisplayDurationMs?: number;
+  joinVideoUrl?: string;
+  joinCardFrameImageUrl?: string;
+  joinLayoutStyle?: "card" | "ticker";
+  joinEffectPreset?: "none" | "glow" | "pulse" | "aurora" | "ring";
+  joinConfigPendingReview?: boolean;
 }

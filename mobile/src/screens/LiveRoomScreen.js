@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import {
   View,
   Text,
@@ -248,6 +248,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const [room, setRoom] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [freshUser, setFreshUser] = useState(null); // live-fetched profile with activeBadge
+  const socketJoinUser = useMemo(() => {
+    if (!userInfo?._id) return null;
+    if (freshUser && String(freshUser._id) === String(userInfo._id)) {
+      return { ...userInfo, ...freshUser };
+    }
+    return userInfo;
+  }, [userInfo, freshUser]);
+  const socketJoinUserRef = useRef(socketJoinUser);
+  useEffect(() => {
+    socketJoinUserRef.current = socketJoinUser;
+  }, [socketJoinUser]);
   const [loading, setLoading] = useState(true);
   const [joinedAgora, setJoinedAgora] = useState(false);
 
@@ -369,16 +380,28 @@ const LiveRoomScreen = ({ route, navigation }) => {
       if (socketRef.current && !socketRef.current.connected) {
         socketRef.current.connect();
         socketRef.current.once("connect", () => {
+          const u = socketJoinUserRef.current;
+          if (!u?._id) return;
           socketRef.current.emit("liveroom:join", {
             roomId,
-            userId: userInfo._id,
-            user: userInfo,
+            userId: u._id,
+            user: u,
           });
         });
       }
     });
     return unsubscribe;
   }, [navigation]);
+
+  // Re-announce presence with populated badge/profile after freshUser loads — others see join banner assets.
+  useEffect(() => {
+    if (!roomId || !socketJoinUser?._id || !socketRef.current?.connected) return;
+    socketRef.current.emit("liveroom:join", {
+      roomId,
+      userId: socketJoinUser._id,
+      user: socketJoinUser,
+    });
+  }, [socketJoinUser, roomId]);
 
   // Warn user if they try to navigate away (back gesture / hardware back) while still in an active room
   useEffect(() => {
@@ -566,6 +589,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
         return acc;
       }, {})
 
+      // Build level map early so live-engagement can merge join config per tier
+      const levelDataMap = {};
+      levels.forEach((level) => {
+        const n = Number(level?.level);
+        if (n > 0) levelDataMap[n] = { ...level };
+      })
+
       // Also fetch live engagement VIP levels for Lottie frame and join animation URLs
       try {
         const leRes = await axios.get(`${BASE_URL}/live-engagement/vip-levels`);
@@ -605,6 +635,34 @@ const LiveRoomScreen = ({ route, navigation }) => {
           if (leLevel?.joinAnimationLottieUrl) {
             joinUrls[lvl] = leLevel.joinAnimationLottieUrl;
           }
+
+          const m = levelDataMap[lvl];
+          if (m) {
+            if (typeof leLevel.joinDisplayDurationMs === "number") {
+              m.joinDisplayDurationMs = leLevel.joinDisplayDurationMs;
+            }
+            if (leLevel.joinVideoUrl) m.joinVideoUrl = leLevel.joinVideoUrl;
+            if (leLevel.joinCardFrameImageUrl) {
+              m.joinCardFrameImageUrl = leLevel.joinCardFrameImageUrl;
+            }
+            if (leLevel.joinLayoutStyle === "card" || leLevel.joinLayoutStyle === "ticker") {
+              m.joinLayoutStyle = leLevel.joinLayoutStyle;
+            }
+            const fx = String(leLevel.joinEffectPreset || "").toLowerCase();
+            if (["none", "glow", "pulse", "aurora", "ring"].includes(fx)) {
+              m.joinEffectPreset = fx;
+            }
+            if (leLevel.joinSoundUrl) m.joinSoundUrl = leLevel.joinSoundUrl;
+            if (typeof leLevel.specialJoinText === "string" && leLevel.specialJoinText.trim()) {
+              m.specialJoinText = leLevel.specialJoinText.trim();
+            }
+            if (typeof leLevel.joinAnimationLottieUrl === "string" && leLevel.joinAnimationLottieUrl) {
+              m.joinAnimationLottieUrl = leLevel.joinAnimationLottieUrl;
+            }
+            if (leLevel.joinConfigPendingReview === true) {
+              m.joinConfigPendingReview = true;
+            }
+          }
         });
         setVipJoinAnimationUrls(joinUrls);
       } catch (_) {
@@ -613,12 +671,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       setVipLevelCommentStyles(commentStyles);
 
-      // Build full level map for join animations / sound / specialJoinText
-      const levelDataMap = {};
-      levels.forEach((level) => {
-        const n = Number(level?.level);
-        if (n > 0) levelDataMap[n] = level;
-      });
       setVipLevelData(levelDataMap);
     } catch (_) {
       setVipLevelCommentStyles({});
@@ -1020,10 +1072,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
     // Re-join the socket room after any automatic reconnection (e.g. app backgrounded,
     // network blip) so the server keeps routing messages to this socket.
     socket.io.on("reconnect", () => {
+      const u = socketJoinUserRef.current || userInfo;
       socket.emit("liveroom:join", {
         roomId,
-        userId: userInfo._id,
-        user: userInfo,
+        userId: u._id,
+        user: u,
       });
       if (localAgoraUidRef.current) {
         socket.emit("liveroom:agora_uid", {
@@ -1040,10 +1093,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
     socket.on("liveroom:user_joined", ({ user }) => {
       fetchRoomData();
-      // Show join banner for every user (VIP or not) except ourselves
+      // Show join banner for every user (VIP or not) except ourselves — sound handled inside JoinAnimation
       if (user && user._id !== userInfo?._id) {
         setJoinAnimationUser(user);
-        SoundService.play("join");
       }
       // Re-broadcast our own Agora UID so the newly joined user can populate their UID map
       if (localAgoraUidRef.current) {
@@ -1438,7 +1490,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
       fetchRoomData();
     });
 
-    const joinPayload = { roomId, userId: userInfo._id, user: userInfo };
+    const joinUser = socketJoinUserRef.current || userInfo;
+    const joinPayload = { roomId, userId: joinUser._id, user: joinUser };
     socket.emit("liveroom:join", joinPayload);
     if (localAgoraUidRef.current) {
       socket.emit("liveroom:agora_uid", {
@@ -3639,7 +3692,30 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 joinAnimationUrl={vipJoinAnimationUrls[vipLvl] || null}
                 joinSoundUrl={lvlData?.joinSoundUrl || null}
                 specialJoinText={lvlData?.specialJoinText || null}
-                vipTier={lvlData ? { color: lvlData.color } : null}
+                displayDurationMs={
+                  typeof lvlData?.joinDisplayDurationMs === "number"
+                    ? lvlData.joinDisplayDurationMs
+                    : undefined
+                }
+                joinVideoUrl={lvlData?.joinVideoUrl || null}
+                joinCardFrameImageUrl={lvlData?.joinCardFrameImageUrl || null}
+                layoutStyle={lvlData?.joinLayoutStyle === "ticker" ? "ticker" : "card"}
+                effectPreset={(lvlData?.joinEffectPreset || "none").toLowerCase()}
+                vipTier={
+                  lvlData
+                    ? {
+                        color: lvlData.color,
+                        usernameColor: lvlData.usernameColor || lvlData.color,
+                      }
+                    : null
+                }
+                vipBadgeIconUrl={
+                  vipLvl > 0
+                    ? vipLevelCommentStyles[vipLvl]?.imageUrl ||
+                      vipLevelCommentStyles[vipLvl]?.badgeImageUrl ||
+                      null
+                    : null
+                }
                 onDone={() => setJoinAnimationUser(null)}
               />
             </View>

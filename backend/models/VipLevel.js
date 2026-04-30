@@ -31,6 +31,26 @@ const vipLevelSchema = new mongoose.Schema(
     profileFrameLottieUrl: { type: String, default: "" },
     joinAnimationLottieUrl: { type: String, default: "" },
     joinSoundUrl: { type: String, default: "" },
+    /** Visibility time for the in-room join card (mobile), ms — admin sets minimum 2000 */
+    joinDisplayDurationMs: { type: Number, default: 5000, min: 2000, max: 30000 },
+    /** Optional short loop/fullscreen-safe clip layered on join card */
+    joinVideoUrl: { type: String, default: "" },
+    /** PNG/WebP overlay around the join card (transparent frame) */
+    joinCardFrameImageUrl: { type: String, default: "" },
+    /** `card`: default banner · `ticker`: slim marquee-style strip */
+    joinLayoutStyle: {
+      type: String,
+      enum: ["card", "ticker"],
+      default: "card",
+    },
+    /** Decorative motion around join card · `none`: border/glow only from theme */
+    joinEffectPreset: {
+      type: String,
+      enum: ["none", "glow", "pulse", "aurora", "ring"],
+      default: "none",
+    },
+    /** If true, product hint for ops: finalize config elsewhere before trusting live */
+    joinConfigPendingReview: { type: Boolean, default: false },
     specialJoinText: { type: String, default: "" },
     // Benefits list shown on the VIP profile page
     benefits: [

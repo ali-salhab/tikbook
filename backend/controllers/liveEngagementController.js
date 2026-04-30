@@ -252,6 +252,13 @@ exports.getVipLevels = async (_req, res) => {
         profileFrameLottieUrl: levelDoc.profileFrameLottieUrl || "",
         joinAnimationLottieUrl: levelDoc.joinAnimationLottieUrl || "",
         joinSoundUrl: levelDoc.joinSoundUrl || "",
+        joinDisplayDurationMs:
+          typeof levelDoc.joinDisplayDurationMs === "number" ? levelDoc.joinDisplayDurationMs : 5000,
+        joinVideoUrl: levelDoc.joinVideoUrl || "",
+        joinCardFrameImageUrl: levelDoc.joinCardFrameImageUrl || "",
+        joinLayoutStyle: levelDoc.joinLayoutStyle || "card",
+        joinEffectPreset: levelDoc.joinEffectPreset || "none",
+        joinConfigPendingReview: levelDoc.joinConfigPendingReview === true,
         specialJoinText: levelDoc.specialJoinText || "",
         features: levelDoc.features || SHARED_VIP_FEATURES,
       };

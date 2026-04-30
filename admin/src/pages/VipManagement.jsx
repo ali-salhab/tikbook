@@ -51,6 +51,12 @@ const defaultForm = {
   joinAnimationLottieUrl: "", joinAnimationLottieFile: null,
   joinSoundUrl: "", joinSoundFile: null,
   specialJoinText: "",
+  joinDisplayDurationMs: 5000,
+  joinVideoUrl: "", joinVideoFile: null,
+  joinCardFrameImageUrl: "", joinCardFrameImageFile: null,
+  joinLayoutStyle: "card",
+  joinEffectPreset: "none",
+  joinConfigPendingReview: false,
   benefits: [],
   features: {
     animatedCommentFrame: true,
@@ -127,6 +133,8 @@ const VipManagement = ({ onLogout }) => {
   const [profileFramePreview, setProfileFramePreview] = useState(null);
   const [joinAnimationLottieName, setJoinAnimationLottieName] = useState("");
   const [joinSoundName, setJoinSoundName] = useState("");
+  const [joinVideoName, setJoinVideoName] = useState("");
+  const [joinCardFrameName, setJoinCardFrameName] = useState("");
   const [uploading, setUploading] = useState(false);
   // Benefits sub-form
   const [showBenefitForm, setShowBenefitForm] = useState(false);
@@ -147,6 +155,8 @@ const VipManagement = ({ onLogout }) => {
   const profileFrameLottieRef = useRef(null);
   const joinAnimationLottieRef = useRef(null);
   const joinSoundRef = useRef(null);
+  const joinVideoRef = useRef(null);
+  const joinCardFrameRef = useRef(null);
   const benefitImgRef = useRef(null);
   const benefitLottieRef = useRef(null);
 
@@ -323,6 +333,8 @@ const VipManagement = ({ onLogout }) => {
     setProfileFramePreview(null);
     setJoinAnimationLottieName("");
     setJoinSoundName("");
+    setJoinVideoName("");
+    setJoinCardFrameName("");
     setShowBenefitForm(false);
     setError("");
     setActiveModalTab("basic");
@@ -349,6 +361,14 @@ const VipManagement = ({ onLogout }) => {
       joinAnimationLottieUrl: lvl.joinAnimationLottieUrl || "", joinAnimationLottieFile: null,
       joinSoundUrl: lvl.joinSoundUrl || "", joinSoundFile: null,
       specialJoinText: lvl.specialJoinText || "",
+      joinDisplayDurationMs: typeof lvl.joinDisplayDurationMs === "number" ? lvl.joinDisplayDurationMs : 5000,
+      joinVideoUrl: lvl.joinVideoUrl || "", joinVideoFile: null,
+      joinCardFrameImageUrl: lvl.joinCardFrameImageUrl || "", joinCardFrameImageFile: null,
+      joinLayoutStyle: lvl.joinLayoutStyle === "ticker" ? "ticker" : "card",
+      joinEffectPreset: ["none", "glow", "pulse", "aurora", "ring"].includes(String(lvl.joinEffectPreset || "").toLowerCase())
+        ? String(lvl.joinEffectPreset).toLowerCase()
+        : "none",
+      joinConfigPendingReview: lvl.joinConfigPendingReview === true,
     benefits: Array.isArray(lvl.benefits) ? (() => {
         // Deduplicate: for singleton types (frame, chat) keep only the last occurrence
         const singletonTypes = ["frame", "chat"];
@@ -389,6 +409,8 @@ const VipManagement = ({ onLogout }) => {
     setProfileFramePreview(isImageUrl(lvl.profileFrameLottieUrl) ? lvl.profileFrameLottieUrl : null);
     setJoinAnimationLottieName(lvl.joinAnimationLottieUrl ? "(ملف محفوظ)" : "");
     setJoinSoundName(lvl.joinSoundUrl ? "(ملف محفوظ)" : "");
+    setJoinVideoName(lvl.joinVideoUrl ? "(فيديو محفوظ)" : "");
+    setJoinCardFrameName(lvl.joinCardFrameImageUrl ? "(إطار محفوظ)" : "");
     setShowBenefitForm(false);
     setError("");
     setActiveModalTab("basic");
@@ -425,6 +447,10 @@ const VipManagement = ({ onLogout }) => {
       if (form.joinAnimationLottieFile) finalJoinAnimationLottieUrl = await uploadLottieToCloudinary(form.joinAnimationLottieFile);
       let finalJoinSoundUrl = form.joinSoundUrl;
       if (form.joinSoundFile) finalJoinSoundUrl = await uploadSoundToCloudinary(form.joinSoundFile);
+      let finalJoinVideoUrl = form.joinVideoUrl;
+      if (form.joinVideoFile) finalJoinVideoUrl = await uploadToCloudinary(form.joinVideoFile);
+      let finalJoinCardFrameUrl = form.joinCardFrameImageUrl;
+      if (form.joinCardFrameImageFile) finalJoinCardFrameUrl = await uploadToCloudinary(form.joinCardFrameImageFile);
       setUploading(false);
       const payload = {
         ...form,
@@ -443,6 +469,17 @@ const VipManagement = ({ onLogout }) => {
         profileFrameLottieUrl: finalProfileFrameLottieUrl,
         joinAnimationLottieUrl: finalJoinAnimationLottieUrl,
         joinSoundUrl: finalJoinSoundUrl,
+        joinDisplayDurationMs: Math.min(
+          30000,
+          Math.max(2000, Number(form.joinDisplayDurationMs) || 5000),
+        ),
+        joinVideoUrl: finalJoinVideoUrl || "",
+        joinCardFrameImageUrl: finalJoinCardFrameUrl || "",
+        joinLayoutStyle: form.joinLayoutStyle === "ticker" ? "ticker" : "card",
+        joinEffectPreset: ["none", "glow", "pulse", "aurora", "ring"].includes(String(form.joinEffectPreset || "").toLowerCase())
+          ? String(form.joinEffectPreset).toLowerCase()
+          : "none",
+        joinConfigPendingReview: !!form.joinConfigPendingReview,
         features: {
           animatedCommentFrame: !!form.features?.animatedCommentFrame,
           coloredUsername: !!form.features?.coloredUsername,
@@ -456,6 +493,8 @@ const VipManagement = ({ onLogout }) => {
       delete payload.profileFrameLottieFile;
       delete payload.joinAnimationLottieFile;
       delete payload.joinSoundFile;
+      delete payload.joinVideoFile;
+      delete payload.joinCardFrameImageFile;
       if (editingLevel) {
         await api.put(`/vip/admin/levels/${editingLevel.level}`, payload, authHeader);
       } else {
@@ -473,6 +512,8 @@ const VipManagement = ({ onLogout }) => {
       setProfileFramePreview(null);
       setJoinAnimationLottieName("");
       setJoinSoundName("");
+      setJoinVideoName("");
+      setJoinCardFrameName("");
       alert(editingLevel ? "تم تحديث المستوى بنجاح ✅" : "تم إضافة المستوى بنجاح ✅");
     } catch (e) {
       setUploading(false);
@@ -963,6 +1004,115 @@ const VipManagement = ({ onLogout }) => {
                 <input style={styles.input} value={form.specialJoinText}
                   onChange={(e) => setForm({ ...form, specialJoinText: e.target.value })}
                   placeholder="مثال: لقد انضم الملك إلى الغرفة 👑" />
+              </div>
+
+              {/* ── Join card behaviour (live room) ── */}
+              <div style={{ ...styles.twoCol, marginTop: 8 }}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>مدة ظهور كارت الانضمام (ثانية)</label>
+                  <input style={styles.input} type="number" min={2} max={30} step={0.5}
+                    value={(Number(form.joinDisplayDurationMs) || 5000) / 1000}
+                    onChange={(e) => setForm({
+                      ...form,
+                      joinDisplayDurationMs: Math.min(30000, Math.max(2000, (Number(e.target.value) || 5) * 1000)),
+                    })} />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>شكل الظهور</label>
+                  <select style={styles.input} value={form.joinLayoutStyle}
+                    onChange={(e) => setForm({ ...form, joinLayoutStyle: e.target.value })}>
+                    <option value="card">بطاقة علوية (Card)</option>
+                    <option value="ticker">شريط زمني / ماركيز (Ticker)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>مؤثر حول الكارت</label>
+                  <select style={styles.input} value={form.joinEffectPreset}
+                    onChange={(e) => setForm({ ...form, joinEffectPreset: e.target.value })}>
+                    <option value="none">بدون</option>
+                    <option value="glow">توهج</option>
+                    <option value="pulse">نبض</option>
+                    <option value="aurora">أورورا</option>
+                    <option value="ring">حلقة</option>
+                  </select>
+                </div>
+                <div style={{ ...styles.formGroup, display: "flex", alignItems: "center", paddingTop: 24 }}>
+                  <label style={{ ...styles.label, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                    <input type="checkbox" checked={!!form.joinConfigPendingReview}
+                      onChange={(e) => setForm({ ...form, joinConfigPendingReview: e.target.checked })} />
+                    قيد المراجعة (لم يعتمد للعرض النهائي)
+                  </label>
+                </div>
+              </div>
+              <div style={styles.twoCol}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>فيديو داخل كارت الانضمام (MP4 · اختياري)</label>
+                  <input ref={joinVideoRef} type="file" accept="video/*,.mp4,.webm,.mov" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, joinVideoFile: file, joinVideoUrl: "" });
+                      setJoinVideoName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => joinVideoRef.current?.click()}>
+                    {joinVideoName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>🎬</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{joinVideoName}</div>
+                          {form.joinVideoUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setJoinVideoName("");
+                            setForm({ ...form, joinVideoFile: null, joinVideoUrl: "" });
+                          }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>📹</div>
+                        <div style={{ fontSize: 12 }}>لفيديو قصير بجانب الصورة</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>إطار شفاف حول الكارت (PNG/WebP)</label>
+                  <input ref={joinCardFrameRef} type="file" accept="image/png,image/webp,.png,.webp" style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      setForm({ ...form, joinCardFrameImageFile: file, joinCardFrameImageUrl: "" });
+                      setJoinCardFrameName(file.name);
+                    }} />
+                  <div style={styles.uploadZone} onClick={() => joinCardFrameRef.current?.click()}>
+                    {joinCardFrameName ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <span style={{ fontSize: 22 }}>🖼</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#6366f1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{joinCardFrameName}</div>
+                          {form.joinCardFrameImageUrl && <div style={{ fontSize: 10, color: "#64748b" }}>محفوظ ✓</div>}
+                        </div>
+                        <button style={{ ...styles.removeImgBtn, position: "static" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setJoinCardFrameName("");
+                            setForm({ ...form, joinCardFrameImageFile: null, joinCardFrameImageUrl: "" });
+                          }}>
+                          <FiX size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>✴️</div>
+                        <div style={{ fontSize: 12 }}>طبقة PNG فوق الكارت</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* ── Sort order + Active (basic tab footer) ── */}
