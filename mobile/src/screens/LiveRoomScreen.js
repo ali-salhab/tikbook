@@ -61,8 +61,8 @@ import JoinAnimation from "../live/components/JoinAnimation";
 
 const LIVE_NOTIF_ID = "live_room_active";
 
-// Show a persistent local notification so the user can return to the live room
-const showLiveNotification = async (roomId, roomTitle) => {
+// Sticky local notification ONLY when hosts leave via "خروج فقط" (room stays open).
+const showLiveReturnNotification = async (roomId, roomTitle) => {
   try {
     await Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -74,13 +74,15 @@ const showLiveNotification = async (roomId, roomTitle) => {
     await Notifications.scheduleNotificationAsync({
       identifier: LIVE_NOTIF_ID,
       content: {
-        title: "🔴 أنت في بث مباشر",
-        body: roomTitle ? `الغرفة: ${roomTitle} — انقر للعودة` : "انقر للعودة إلى الغرفة",
+        title: "🎙️ غرفتك الصوتية ما زالت مفتوحة",
+        body: roomTitle
+          ? `خرجت والغرفة لا تزال تعمل.\nالغرفة: ${roomTitle}\nاضغط للعودة`
+          : "خرجت والغرفة لا تزال تعمل — اضغط للعودة",
         data: { screen: "LiveRoom", roomId },
         sticky: true,
         autoDismiss: false,
       },
-      trigger: null, // show immediately
+      trigger: null,
     });
   } catch (_) {}
 };
@@ -332,6 +334,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const inputRef = useRef(null);
   const baseWindowHeightRef = useRef(Dimensions.get("window").height);
   const isHostRef = useRef(false);
+  /** When host leaves via "خروج فقط", keep sticky return notification (cleanup must not dismiss it). */
+  const skipDismissLiveNotifOnUnmountRef = useRef(false);
   const liveMessageKeysRef = useRef(new Set());
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────────
@@ -395,6 +399,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
               text: "خروج فقط",
               onPress: async () => {
                 await leaveRoomBackend();
+                const titleSnap =
+                  room?.title || room?.name || "";
+                skipDismissLiveNotifOnUnmountRef.current = true;
+                await showLiveReturnNotification(roomId, titleSnap || null);
                 navigation.dispatch(e.data.action);
               },
             },
@@ -708,7 +716,10 @@ const LiveRoomScreen = ({ route, navigation }) => {
   };
 
   const cleanup = async () => {
-    await dismissLiveNotification();
+    if (!skipDismissLiveNotifOnUnmountRef.current) {
+      await dismissLiveNotification();
+    }
+    skipDismissLiveNotifOnUnmountRef.current = false;
     if (sound) {
       try {
         await sound.unloadAsync();
@@ -1103,9 +1114,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
           isMutedRef.current = false;
         };
         doPromote();
-        // Notify so user can return from home screen
-        showLiveNotification(roomId, room?.title || room?.name || null);
-        // Re-broadcast our Agora UID now that we're a broadcaster so others can map us
         if (localAgoraUidRef.current) {
           socketRef.current?.emit("liveroom:agora_uid", {
             roomId,
@@ -1465,6 +1473,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         const rData = res.data.data;
         setRoom(rData);
         SoundService.play("join");
+        await dismissLiveNotification();
         const isHost = rData.host._id === userInfo._id;
         isHostRef.current = isHost;
         const isSpeaker = rData.speakers?.some(
@@ -1475,10 +1484,6 @@ const LiveRoomScreen = ({ route, navigation }) => {
           isHost || isSpeaker,
         );
         setupSocket();
-        // Show persistent notification so user can return if they navigate away
-        if (isHost || isSpeaker) {
-          showLiveNotification(roomId, rData.title || rData.name || null);
-        }
       }
     } catch (err) {
       console.error("Join room error:", err);
@@ -2095,9 +2100,17 @@ const LiveRoomScreen = ({ route, navigation }) => {
         </View>
         {/* Host name */}
         <Text style={styles.hostName}>{host?.username || "Host"}</Text>
-                              {Number(host?.vipLevel) > 0 && <VipBadge level={host.vipLevel} size="large" imageUrl={hostVipStyle?.imageUrl || hostVipStyle?.badgeImageUrl || undefined} />}
-
-     
+        {Number(host?.vipLevel) > 0 && (
+          <View style={styles.hostBadgeRow}>
+            <VipBadge
+              level={host.vipLevel}
+              size="large"
+              imageUrl={
+                hostVipStyle?.imageUrl || hostVipStyle?.badgeImageUrl || undefined
+              }
+            />
+          </View>
+        )}
       </View>
     );
   };
@@ -3886,6 +3899,7 @@ const styles = StyleSheet.create({
     paddingTop: ms(4),
     paddingBottom: ms(1),
     minHeight: ms(160),
+    overflow: "visible",
   },
   roomTitleRow: {
     flexDirection: "row",

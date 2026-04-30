@@ -19,7 +19,11 @@ const getUserProfile = async (req, res) => {
     const user = await User.findById(req.params.id)
       .select("-password")
       .populate("activeBadge")
-      .populate("activeBackground");
+      .populate("activeBackground")
+      .populate({
+        path: "ownedBadges.badge",
+        select: "name imageUrl type rarity description",
+      });
 
     if (user) {
       // Get user's videos

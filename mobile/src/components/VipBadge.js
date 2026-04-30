@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, Platform } from "react-native";
 
 const VIP_COLORS = {
   1:  "#8B4513",
@@ -19,40 +19,70 @@ const VIP_COLORS = {
   15: "#FFD700",
 };
 
+// CDN badge art is usually a wide strip ("VIP12"). A square + resizeMode cover
+// crops the first letter; contain + enough width fixes "IP1" instead of "VIP1".
+const imageDims = (sizeKey) => {
+  if (sizeKey === "small") return { w: 42, h: 22 };
+  if (sizeKey === "medium") return { w: 76, h: 34 };
+  return { w: 112, h: 42 }; // large — live room host row
+};
+
 const VipBadge = ({ level, size = "small", imageUrl }) => {
   if (!level || level <= 0) return null;
   const color = VIP_COLORS[level] || "#FFD700";
-  const isSmall = size === "small";
-  const isMedium = size === "medium";
-  const iconSize = isSmall ? 22 : isMedium ? 32 : 40;
+  const sizeKey =
+    size === "large" || size === "medium" || size === "small" ? size : "small";
 
   if (imageUrl) {
+    const { w, h } = imageDims(sizeKey);
     return (
       <View
         style={{
-          width: iconSize,
-          height: iconSize,
-          borderRadius: Math.max(4, iconSize * 0.2),
-          overflow: "hidden",
+          width: w,
+          height: h,
           alignSelf: "center",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Image
           source={{ uri: imageUrl }}
-          style={{ width: iconSize, height: iconSize }}
-          resizeMode="cover"
+          style={{ width: w, height: h }}
+          resizeMode="contain"
         />
       </View>
     );
   }
 
-  const fontSize = isSmall ? 9 : isMedium ? 11 : 13;
-  const paddingH = isSmall ? 4 : isMedium ? 7 : 9;
-  const paddingV = isSmall ? 1 : isMedium ? 3 : 4;
+  const isSmall = sizeKey === "small";
+  const isMedium = sizeKey === "medium";
+  const fontSize = isSmall ? 9 : isMedium ? 11 : 14;
+  const paddingH = isSmall ? 5 : isMedium ? 8 : 12;
+  const paddingV = isSmall ? 2 : isMedium ? 3 : 4;
 
   return (
-    <View style={[styles.badge, { backgroundColor: color, paddingHorizontal: paddingH, paddingVertical: paddingV, borderRadius: isSmall ? 3 : 5 }]}>
-      <Text style={[styles.text, { fontSize }]}>VIP{level}</Text>
+    <View
+      style={[
+        styles.badge,
+        {
+          backgroundColor: color,
+          paddingHorizontal: paddingH,
+          paddingVertical: paddingV,
+          borderRadius: isSmall ? 3 : isMedium ? 5 : 6,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.text,
+          {
+            fontSize,
+            ...(Platform.OS === "android" ? { includeFontPadding: false } : {}),
+          },
+        ]}
+      >
+        VIP{level}
+      </Text>
     </View>
   );
 };
@@ -66,7 +96,7 @@ const styles = StyleSheet.create({
   text: {
     color: "#FFF",
     fontWeight: "bold",
-    letterSpacing: 0.3,
+    letterSpacing: 0,
   },
 });
 

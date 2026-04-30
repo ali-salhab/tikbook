@@ -79,17 +79,22 @@ exports.createLiveRoom = async (req, res) => {
       })
       .populate("listeners.user", "username profileImage vipLevel isVerified");
 
-    // Send notifications to all followers
+    // Notify followers only (never the host — they already created the room).
     try {
       const host = await User.findById(req.user.id).select(
-        "followers username",
+        "followers username _id",
       );
-      if (host && host.followers && host.followers.length > 0) {
-        const notificationPromises = host.followers.map(async (followerId) => {
+      const hostIdStr = String(host?._id || req.user.id);
+      const followerIds = (host?.followers || []).filter(
+        (fid) => String(fid) !== hostIdStr,
+      );
+      if (host && followerIds.length > 0) {
+        const notificationPromises = followerIds.map(async (followerId) => {
           // Create notification in database
           const notification = new Notification({
             user: followerId,
             type: "live_room_started",
+            fromUser: host._id,
             message: `${host.username} بدأ غرفة صوتية! انضم الآن 🎙️`,
             data: {
               screen: "LiveRoom",
@@ -106,6 +111,7 @@ exports.createLiveRoom = async (req, res) => {
             {
               screen: "LiveRoom",
               roomId: roomId,
+              type: "live_room_started",
             },
           );
         });
@@ -261,14 +267,22 @@ exports.joinLiveRoom = async (req, res) => {
     // If the host is re-joining their own active room, notify followers they are live again
     if (liveRoom.host.toString() === userId.toString()) {
       try {
-        const host = await User.findById(userId).select("followers username");
-        if (host?.followers?.length > 0) {
-          const notifPromises = host.followers.map((followerId) =>
+        const host = await User.findById(userId).select("followers username _id");
+        const hostIdStr = String(host?._id || userId);
+        const followerIds = (host?.followers || []).filter(
+          (fid) => String(fid) !== hostIdStr,
+        );
+        if (host && followerIds.length > 0) {
+          const notifPromises = followerIds.map((followerId) =>
             sendNotificationToUser(
               followerId,
               "صاحبك لايف الآن 🎙️",
               `${host.username} عاد إلى الغرفة الصوتية! انضم الآن`,
-              { screen: "LiveRoom", roomId },
+              {
+                screen: "LiveRoom",
+                roomId: String(liveRoom.roomId),
+                type: "live_room_started",
+              },
             ).catch(() => {}),
           );
           await Promise.allSettled(notifPromises);

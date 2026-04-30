@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import GradientBackground from "../components/GradientBackground";
 import {
   View,
@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Dimensions,
+  Image,
+  ActivityIndicator,
   RefreshControl,
   ScrollView,
 } from "react-native";
@@ -19,7 +20,8 @@ import { ms, fs } from "../utils/responsive";
 
 const UsersScreen = ({ navigation, route }) => {
   const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { userToken, BASE_URL, userInfo } = useContext(AuthContext);
   const selectMode = route?.params?.selectMode;
@@ -27,6 +29,26 @@ const UsersScreen = ({ navigation, route }) => {
   const [selected, setSelected] = useState([]);
   const [activeStreams, setActiveStreams] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const searchDebounceRef = useRef(null);
+
+  const buildCloudinaryThumb = (url) => {
+    if (!url || typeof url !== "string") return null;
+    if (!url.includes("cloudinary.com")) return url;
+    return url
+      .replace("/upload/", "/upload/c_fill,g_center,w_200,h_260,so_1/")
+      .replace(/\.(mp4|mov|m4v|avi|mkv|webm)$/i, ".jpg");
+  };
+
+  const videoSearchThumb = (video) => {
+    if (video.thumbnailUrl || video.thumbnail || video.coverUrl) {
+      return video.thumbnailUrl || video.thumbnail || video.coverUrl;
+    }
+    const u = video.videoUrl;
+    if (typeof u === "string" && u.match(/\.(jpe?g|png|gif|webp)$/i)) {
+      return u;
+    }
+    return buildCloudinaryThumb(u);
+  };
 
   const trendingHashtags = [
     { id: "1", tag: "#fyp", views: "12.5B" },
@@ -41,9 +63,8 @@ const UsersScreen = ({ navigation, route }) => {
       try {
         const res = await axios.get(`${BASE_URL}/users`);
         // Filter out current user
-        const otherUsers = res.data.filter((user) => user._id !== userInfo._id);
+        const otherUsers = res.data.filter((user) => user._id !== userInfo?._id);
         setUsers(otherUsers);
-        setFilteredUsers(otherUsers);
       } catch (e) {
         console.log("Error fetching users:", e.message);
       }
@@ -62,17 +83,72 @@ const UsersScreen = ({ navigation, route }) => {
 
     fetchUsers();
     fetchActiveStreams();
-  }, []);
+  }, [BASE_URL, userInfo?._id, userToken]);
+
+  useEffect(() => {
+    const p = route.params?.search;
+    if (p != null && String(p).trim() !== "") {
+      setSearchQuery(String(p).trim());
+    }
+  }, [route.params?.search]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
+    if (!q) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const headers = userToken
+          ? { Authorization: `Bearer ${userToken}` }
+          : {};
+        const res = await axios.get(`${BASE_URL}/search`, {
+          headers,
+          params: { q, limit: 24 },
+        });
+        setSearchResults(res.data);
+      } catch (e) {
+        console.log("Search error:", e.message);
+        const lower = q.toLowerCase();
+        const fallbackUsers = users.filter(
+          (user) =>
+            user.username?.toLowerCase().includes(lower) ||
+            user.email?.toLowerCase().includes(lower),
+        );
+        setSearchResults({
+          users: fallbackUsers,
+          videos: [],
+          liveRooms: [],
+        });
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = null;
+      }
+    };
+  }, [searchQuery, BASE_URL, userToken, users]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
       const resUsers = await axios.get(`${BASE_URL}/users`);
       const otherUsers = resUsers.data.filter(
-        (user) => user._id !== userInfo._id,
+        (user) => user._id !== userInfo?._id,
       );
       setUsers(otherUsers);
-      setFilteredUsers(otherUsers);
 
       const resStreams = await axios.get(`${BASE_URL}/live/active`, {
         headers: { Authorization: `Bearer ${userToken}` },
@@ -84,19 +160,6 @@ const UsersScreen = ({ navigation, route }) => {
       setRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredUsers(users);
-    } else {
-      const filtered = users.filter(
-        (user) =>
-          user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email?.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-      setFilteredUsers(filtered);
-    }
-  }, [searchQuery, users]);
 
   const renderStream = ({ item }) => (
     <TouchableOpacity
@@ -120,6 +183,65 @@ const UsersScreen = ({ navigation, route }) => {
       <Text style={styles.streamUser}>@{item.user.username}</Text>
     </TouchableOpacity>
   );
+
+  const renderSearchVideoRow = (item) => {
+    const thumb = videoSearchThumb(item);
+    const uname =
+      typeof item.user === "object" && item.user?.username
+        ? item.user.username
+        : "?";
+    return (
+      <TouchableOpacity
+        key={String(item._id)}
+        style={styles.searchVideoRow}
+        onPress={() => navigation.navigate("Home", { videoId: item._id })}
+      >
+        <View style={styles.searchVideoThumbWrap}>
+          {thumb ? (
+            <Image source={{ uri: thumb }} style={styles.searchVideoThumb} />
+          ) : (
+            <View style={[styles.searchVideoThumb, styles.searchVideoThumbPh]}>
+              <Ionicons name="videocam" size={28} color="#666" />
+            </View>
+          )}
+        </View>
+        <View style={styles.searchVideoMeta}>
+          <Text style={styles.searchVideoTitle} numberOfLines={2}>
+            {item.description?.trim() || "فيديو"}
+          </Text>
+          <Text style={styles.searchVideoUser}>@{uname}</Text>
+        </View>
+        <Ionicons name="chevron-back" size={20} color="#666" />
+      </TouchableOpacity>
+    );
+  };
+
+  const renderLiveRoomSearchRow = (item) => {
+    const host =
+      typeof item.host === "object" && item.host?.username
+        ? item.host.username
+        : "مستخدم";
+    return (
+      <TouchableOpacity
+        key={String(item._id)}
+        style={styles.searchLiveRow}
+        onPress={() =>
+          navigation.navigate("LiveRoom", { roomId: item.roomId })
+        }
+      >
+        <View style={styles.liveRoomBadge}>
+          <Text style={styles.liveRoomBadgeText}>LIVE</Text>
+        </View>
+        <View style={styles.searchLiveMeta}>
+          <Text style={styles.searchLiveTitle} numberOfLines={2}>
+            {item.title || "غرفة مباشرة"}
+          </Text>
+          <Text style={styles.searchLiveHost}>المضيف @{host}</Text>
+        </View>
+        <Ionicons name="chevron-back" size={20} color="#666" />
+      </TouchableOpacity>
+    );
+  };
 
   const renderHashtag = ({ item }) => (
     <TouchableOpacity style={styles.hashtagItem}>
@@ -150,7 +272,14 @@ const UsersScreen = ({ navigation, route }) => {
       }}
     >
       <View style={styles.userAvatar}>
-        <Ionicons name="person-circle" size={48} color="#888" />
+        {item.profileImage ? (
+          <Image
+            source={{ uri: item.profileImage }}
+            style={styles.userAvatarImg}
+          />
+        ) : (
+          <Ionicons name="person-circle" size={48} color="#888" />
+        )}
       </View>
       <View style={styles.userInfo}>
         <Text style={styles.username}>@{item.username}</Text>
@@ -235,18 +364,54 @@ const UsersScreen = ({ navigation, route }) => {
 
       {/* Users Section (shown when searching) */}
       {searchQuery.trim() !== "" ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>المستخدمون</Text>
-          <FlatList
-            data={filteredUsers}
-            renderItem={renderUser}
-            keyExtractor={(item) => item._id}
+        searchLoading ? (
+          <View style={styles.searchLoadingWrap}>
+            <ActivityIndicator size="large" color="#FF3366" />
+            <Text style={styles.searchLoadingText}>جاري البحث…</Text>
+          </View>
+        ) : (
+          <ScrollView
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>لا توجد نتائج</Text>
-            }
-          />
-        </View>
+            contentContainerStyle={styles.searchScrollContent}
+          >
+            {(() => {
+              const vidList = searchResults?.videos || [];
+              const userList = searchResults?.users || [];
+              const roomList = searchResults?.liveRooms || [];
+              const empty =
+                !vidList.length && !userList.length && !roomList.length;
+              return (
+                <>
+                  {vidList.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionTitle}>فيديوهات</Text>
+                      {vidList.map((v) => renderSearchVideoRow(v))}
+                    </View>
+                  )}
+                  {userList.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionTitle}>الأشخاص</Text>
+                      {userList.map((u) => (
+                        <View key={String(u._id)}>{renderUser({ item: u })}</View>
+                      ))}
+                    </View>
+                  )}
+                  {roomList.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={styles.sectionTitle}>غرف وبث مباشر</Text>
+                      {roomList.map((r) => renderLiveRoomSearchRow(r))}
+                    </View>
+                  )}
+                  {empty && !searchLoading && (
+                    <Text style={styles.emptyText}>
+                      لا توجد نتائج لهذا البحث
+                    </Text>
+                  )}
+                </>
+              );
+            })()}
+          </ScrollView>
+        )
       ) : (
         <ScrollView
           refreshControl={
@@ -441,10 +606,115 @@ const styles = StyleSheet.create({
     padding: ms(8),
   },
   emptyText: {
+  emptyText: {
     color: "#888",
     textAlign: "center",
     marginTop: ms(40),
     fontSize: fs(16),
+  },
+  searchLoadingWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: ms(48),
+  },
+  searchLoadingText: {
+    color: "#AAA",
+    fontSize: fs(15),
+    marginTop: ms(12),
+  },
+  searchScrollContent: {
+    paddingBottom: ms(120),
+  },
+  searchVideoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: ms(10),
+    borderBottomWidth: 1,
+    borderBottomColor: "#1F1F1F",
+  },
+  searchVideoThumbWrap: {
+    marginRight: ms(12),
+  },
+  searchVideoThumb: {
+    width: ms(72),
+    height: ms(96),
+    borderRadius: ms(8),
+    backgroundColor: "#151228",
+  },
+  searchVideoThumbPh: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchVideoMeta: {
+    flex: 1,
+  },
+  searchVideoTitle: {
+    color: "#FFF",
+    fontSize: fs(15),
+    fontWeight: "600",
+    textAlign: "right",
+    marginBottom: ms(4),
+  },
+  searchVideoUser: {
+    color: "#888",
+    fontSize: fs(13),
+    textAlign: "right",
+  },
+  searchLiveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: ms(12),
+    borderBottomWidth: 1,
+    borderBottomColor: "#1F1F1F",
+  },
+  searchLiveMeta: {
+    flex: 1,
+  },
+  searchLiveTitle: {
+    color: "#FFF",
+    fontSize: fs(16),
+    fontWeight: "600",
+    textAlign: "right",
+  },
+  searchLiveHost: {
+    color: "#888",
+    fontSize: fs(13),
+    marginTop: ms(4),
+    textAlign: "right",
+  },
+  liveRoomBadge: {
+    backgroundColor: "#FF3366",
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(4),
+    borderRadius: ms(4),
+    marginRight: ms(10),
+  },
+  liveRoomBadgeText: {
+    color: "#FFF",
+    fontSize: fs(10),
+    fontWeight: "bold",
+  },
+  userAvatarImg: {
+    width: ms(48),
+    height: ms(48),
+    borderRadius: ms(24),
+    backgroundColor: "#222",
+  },
+  selectBadge: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
+    backgroundColor: "#39F",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  selectBadgeEmpty: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
+    borderWidth: 2,
+    borderColor: "#555",
   },
 });
 

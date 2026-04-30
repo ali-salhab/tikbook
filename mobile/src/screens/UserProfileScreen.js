@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useState, useCallback } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import GradientBackground from "../components/GradientBackground";
 import {
   View,
@@ -6,9 +12,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
-  ActivityIndicator,
-  Share,
   RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -19,7 +22,7 @@ import LottieView from "lottie-react-native";
 import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
-import ProfileBadgeFrame from "../components/ProfileBadgeFrame";
+import LevelBadgeIcon from "../components/LevelBadgeIcon";
 import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
 const { width } = getWindowDimensions();
@@ -28,6 +31,7 @@ const UserProfileScreen = ({ route, navigation }) => {
   const { userId } = route.params;
   const { userInfo, userToken, BASE_URL } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
+  const [vipLevels, setVipLevels] = useState([]);
   const [videos, setVideos] = useState([]);
   const [likedVideos, setLikedVideos] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -63,10 +67,38 @@ const UserProfileScreen = ({ route, navigation }) => {
   }, [userId, userToken, BASE_URL, userInfo]);
 
   useEffect(() => {
+    let active = true;
+    fetch(`${BASE_URL}/vip/levels`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (active && d?.levels) setVipLevels(d.levels);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [BASE_URL]);
+
+  const ownedDisplayBadges = useMemo(() => {
+    const raw = profile?.ownedBadges;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((ob) => ob?.badge)
+      .filter((b) => b && typeof b.imageUrl === "string" && b.imageUrl.startsWith("http"));
+  }, [profile?.ownedBadges]);
+
+  const vipLevelMeta = useMemo(() => {
+    const vl = vipLevels.find(
+      (l) => Number(l.level) === Number(profile?.vipLevel),
+    );
+    return vl || null;
+  }, [vipLevels, profile?.vipLevel]);
+
+  useEffect(() => {
     if (netInfo.isConnected !== false) {
       fetchUserProfile();
     }
-  }, [userId, netInfo.isConnected]);
+  }, [userId, netInfo.isConnected, fetchUserProfile]);
 
   const handlePullToRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -233,7 +265,9 @@ const UserProfileScreen = ({ route, navigation }) => {
         >
           <Ionicons name="chevron-back" size={28} color="#F0EEFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>@{profile.username}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          @{profile.username}
+        </Text>
         <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
           <Ionicons name="share-social-outline" size={24} color="#F0EEFF" />
         </TouchableOpacity>
@@ -255,11 +289,74 @@ const UserProfileScreen = ({ route, navigation }) => {
         {/* Profile Info */}
         <View style={styles.profileInfo}>
           <View style={styles.avatarContainer}>
-            <ProfileBadgeFrame
-              profileImage={profile.profileImage}
-              badgeImage={profile.activeBadge?.imageUrl}
-              size={100}
-            />
+            <View style={styles.avatarWrapper}>
+              <View style={styles.avatarCircle}>
+                {profile.profileImage ? (
+                  <Image
+                    source={{ uri: profile.profileImage }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Ionicons name="person" size={48} color="#bbb" />
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {(() => {
+              const activeBadgeUrl =
+                profile?.activeBadge?.imageUrl ||
+                profile?.activeBadge?.image ||
+                (typeof profile?.activeBadge === "string"
+                  ? profile.activeBadge
+                  : null);
+              const vl = vipLevels.find(
+                (l) => Number(l.level) === Number(profile?.vipLevel),
+              );
+              const frameBenefit = vl?.benefits?.find((b) => b.type === "frame");
+              const vipFrameUrl =
+                frameBenefit?.imageUrl ||
+                frameBenefit?.lottieUrl ||
+                vl?.profileFrameLottieUrl ||
+                vl?.badgeImageUrl ||
+                null;
+              const badgeUrlOk =
+                typeof activeBadgeUrl === "string" &&
+                activeBadgeUrl.startsWith("http")
+                  ? activeBadgeUrl
+                  : null;
+              const vipOk =
+                typeof vipFrameUrl === "string" && vipFrameUrl.startsWith("http")
+                  ? vipFrameUrl
+                  : null;
+              const frameUrl = badgeUrlOk || vipOk;
+              if (!frameUrl) return null;
+              const isLottie =
+                /\.json($|\?)/i.test(frameUrl) ||
+                (frameUrl.includes("/raw/upload/") &&
+                  !/\.(png|jpe?g|webp|gif)($|\?)/i.test(frameUrl));
+              return (
+                <View pointerEvents="none" style={styles.badgeFrameOverlay}>
+                  {isLottie ? (
+                    <LottieView
+                      source={{ uri: frameUrl }}
+                      autoPlay
+                      loop
+                      style={styles.badgeFrameInner}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: frameUrl }}
+                      style={styles.badgeFrameInner}
+                      resizeMode="contain"
+                    />
+                  )}
+                </View>
+              );
+            })()}
           </View>
 
           <View style={styles.nameRow}>
@@ -274,8 +371,34 @@ const UserProfileScreen = ({ route, navigation }) => {
                 style={{ marginLeft: ms(2) }}
               />
             )}
+            {Number(profile.vipLevel) > 0 && (
+              <View style={{ marginLeft: ms(6) }}>
+                <LevelBadgeIcon
+                  level={Number(profile.vipLevel)}
+                  size="small"
+                  imageUrl={
+                    vipLevelMeta?.badgeImageUrl ||
+                    vipLevelMeta?.imageUrl ||
+                    undefined
+                  }
+                  lottieUrl={
+                    !vipLevelMeta?.badgeImageUrl && !vipLevelMeta?.imageUrl
+                      ? vipLevelMeta?.badgeLottieUrl
+                      : undefined
+                  }
+                  color={vipLevelMeta?.color || "#FFD700"}
+                />
+              </View>
+            )}
           </View>
+
           <Text style={styles.username}>@{profile.username}</Text>
+
+          {Number(profile.level) > 0 && (
+            <Text style={styles.levelHint}>
+              مستوى النشاط {Number(profile.level)}
+            </Text>
+          )}
 
           {/* Stats — tappable */}
           <View style={styles.statsContainer}>
@@ -306,6 +429,26 @@ const UserProfileScreen = ({ route, navigation }) => {
               <Text style={styles.statLabel}>متابَعة</Text>
             </TouchableOpacity>
           </View>
+
+          {ownedDisplayBadges.length > 0 && (
+            <View style={styles.badgesSection}>
+              <Text style={styles.badgesSectionTitle}>الشارات</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.badgesRow}
+              >
+                {ownedDisplayBadges.map((b) => (
+                    <Image
+                      key={String(b._id || b.name)}
+                      source={{ uri: b.imageUrl }}
+                      style={styles.badgeThumb}
+                      resizeMode="contain"
+                    />
+                  ))}
+              </ScrollView>
+            </View>
+          )}
 
           {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
@@ -398,11 +541,16 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: ms(4),
+    minWidth: ms(44),
+    alignItems: "center",
   },
   headerTitle: {
+    flex: 1,
     fontSize: fs(17),
     fontWeight: "bold",
     color: "#F0EEFF",
+    textAlign: "center",
+    marginHorizontal: ms(8),
   },
   profileInfo: {
     alignItems: "center",
@@ -411,7 +559,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
   },
   avatarContainer: {
+    position: "relative",
+    width: ms(170),
+    height: ms(170),
     marginBottom: ms(12),
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarWrapper: {
+    width: ms(100),
+    height: ms(100),
+    overflow: "visible",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarCircle: {
+    width: ms(100),
+    height: ms(100),
+    borderRadius: ms(50),
+    overflow: "hidden",
+    backgroundColor: "#151228",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#151228",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeFrameOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: ms(170),
+    height: ms(170),
+    pointerEvents: "none",
+    zIndex: 10,
+    elevation: 10,
+    backgroundColor: "transparent",
+  },
+  badgeFrameInner: {
+    width: "100%",
+    height: "100%",
   },
   nameRow: {
     flexDirection: "row",
@@ -428,7 +622,12 @@ const styles = StyleSheet.create({
   username: {
     fontSize: fs(14),
     color: "#B8B0D8",
-    marginBottom: ms(16),
+    marginBottom: ms(8),
+  },
+  levelHint: {
+    fontSize: fs(13),
+    color: "#9B92B8",
+    marginBottom: ms(12),
   },
   statsContainer: {
     flexDirection: "row",
@@ -460,6 +659,31 @@ const styles = StyleSheet.create({
     marginBottom: ms(20),
     textAlign: "center",
     lineHeight: ms(20),
+  },
+  badgesSection: {
+    width: "100%",
+    marginBottom: ms(16),
+    paddingHorizontal: ms(4),
+  },
+  badgesSectionTitle: {
+    fontSize: fs(14),
+    fontWeight: "600",
+    color: "#F0EEFF",
+    marginBottom: ms(8),
+    alignSelf: "flex-start",
+  },
+  badgesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: ms(4),
+    paddingLeft: ms(4),
+  },
+  badgeThumb: {
+    width: ms(48),
+    height: ms(48),
+    borderRadius: ms(12),
+    backgroundColor: "#151228",
+    marginRight: ms(10),
   },
   actionButtons: {
     flexDirection: "row",
