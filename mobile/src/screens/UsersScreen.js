@@ -606,7 +606,6 @@ const styles = StyleSheet.create({
     padding: ms(8),
   },
   emptyText: {
-  emptyText: {
     color: "#888",
     textAlign: "center",
     marginTop: ms(40),
