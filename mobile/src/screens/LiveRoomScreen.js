@@ -94,6 +94,33 @@ const dismissLiveNotification = async () => {
   } catch (_) {}
 };
 
+/** Pinned payloads may stringify userId or send { _id } */
+const normalizePinnedCommentUserId = (raw) => {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "object" && raw._id != null) return String(raw._id);
+  return String(raw);
+};
+
+/** Robust id compare across string / ObjectId / populated refs */
+const liveRoomSameId = (a, b) =>
+  a != null && b != null && String(a) === String(b);
+
+const moderatorEntryMatchesCurrentUser = (m, userId) => {
+  if (userId == null) return false;
+  const modId = m?.user?._id ?? m?.user?.id ?? m?.user;
+  return liveRoomSameId(modId, userId);
+};
+
+/** Listener/speaker user may be a string id or { _id|id } */
+const normalizeRoomParticipantUser = (raw) => {
+  if (raw == null) return null;
+  if (typeof raw === "string")
+    return { _id: raw, id: raw, username: "", profileImage: null, avatar: null };
+  const id = raw._id ?? raw.id;
+  if (id == null) return null;
+  return { ...raw, _id: id, id };
+};
+
 const { width, height } = getWindowDimensions();
 const BASE_SEAT_SIZE = ms(50);
 const HOST_SIZE = ms(110);
@@ -328,6 +355,24 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const liveStartRef = useRef(Date.now());
   const peakViewersRef = useRef(0);
   const giftsReceivedRef = useRef(0);
+  const currentUserId = userInfo?._id ?? userInfo?.id ?? null;
+  const isRoomHostMe = useMemo(
+    () =>
+      !!currentUserId &&
+      liveRoomSameId(
+        room?.host?._id ?? room?.host?.id ?? room?.host,
+        currentUserId,
+      ),
+    [room?.host, currentUserId],
+  );
+  const isRoomModeratorMe = useMemo(
+    () =>
+      !!currentUserId &&
+      (room?.moderators || []).some((m) =>
+        moderatorEntryMatchesCurrentUser(m, currentUserId),
+      ),
+    [room?.moderators, currentUserId],
+  );
 
   // ── Animations ───────────────────────────────────────────────────────────────
   const glowAnim = useRef(new Animated.Value(1)).current;
@@ -1430,7 +1475,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
     // Host approved MY seat request
     socket.on("liveroom:seat_request_approved", ({ userId, approvedBy }) => {
-      if (userId !== userInfo._id) return;
+      const me = userInfo?._id ?? userInfo?.id;
+      if (!liveRoomSameId(userId, me)) return;
       Alert.alert(
         "\u2705 تمت الموافقة",
         `وافق ${approvedBy?.username || "المضيف"} على طلبك. أنت الآن على المقعد!`,
@@ -1441,17 +1487,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
     // Host rejected MY seat request
     socket.on("liveroom:seat_request_rejected", ({ userId }) => {
-      if (userId !== userInfo._id) return;
+      const me = userInfo?._id ?? userInfo?.id;
+      if (!liveRoomSameId(userId, me)) return;
       Alert.alert("\u274C رُفض الطلب", "رفض المضيف طلب الجلوس.", [{ text: "حسناً" }]);
     });
 
     // Host invited this user to a seat
     socket.on("liveroom:seat_invite_received", ({ userId, invitedBy }) => {
-      // Defensive: ignore self-invite (prevents the user seeing their own invite
-      // dialog if a buggy client somehow emits an invite targeting themselves).
-      if (invitedBy?._id && String(invitedBy._id) === String(userId)) return;
-      if (userId === userInfo._id) {
-        Alert.alert(
+      const me = userInfo?._id ?? userInfo?.id;
+      const inviterId = invitedBy?._id ?? invitedBy?.id;
+      // Defensive: ignore forged self-invite (inviter shown as invitee).
+      if (inviterId != null && liveRoomSameId(inviterId, userId)) return;
+      if (!liveRoomSameId(userId, me)) return;
+      Alert.alert(
           "💺 دعوة للمقعد",
           `${invitedBy?.username || "صاحب الغرفة"} دعاك للجلوس على المقعد!`,
           [
@@ -1460,14 +1508,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
               text: "قبول",
               onPress: async () => {
                 try {
+                  const selfId = userInfo?._id ?? userInfo?.id;
                   await axios.post(
-                    `${BASE_URL}/live-rooms/${roomId}/make-speaker/${userId}`,
+                    `${BASE_URL}/live-rooms/${roomId}/make-speaker/${selfId}`,
                     {},
                     { headers: { Authorization: `Bearer ${userToken}` } },
                   );
                   socketRef.current?.emit("liveroom:make_speaker", {
                     roomId,
-                    userId,
+                    userId: selfId,
                     user: userInfo,
                   });
                   fetchRoomData();
@@ -1478,12 +1527,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
             },
           ],
         );
-      }
     });
 
     // Hand raise was rejected by host/mod
     socket.on("liveroom:hand_rejected", ({ userId }) => {
-      if (userId === userInfo._id) {
+      const me = userInfo?._id ?? userInfo?.id;
+      if (liveRoomSameId(userId, me)) {
         setIsHandRaised(false);
         Alert.alert("ℹ️", "تم رفض طلب الجلوس");
       }
@@ -1715,12 +1764,14 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
   // ── Comment-row interactions ─────────────────────────────────────────────────
   const handleAvatarPressInComments = (commentItem) => {
-    if (!commentItem?.user) return;
+    const u = commentItem?.user;
+    if (!u || !(u._id || u.id)) return;
     setUserSheet({ user: commentItem.user, comment: commentItem });
   };
 
   const handleLongPressComment = (commentItem) => {
-    if (!commentItem?.user) return;
+    const u = commentItem?.user;
+    if (!u || !(u._id || u.id)) return;
     const isHost = room?.host?._id === userInfo?._id || isHostRef.current;
     const isMod = (room?.moderators || []).some(
       (m) => (m.user?._id || m.user) === userInfo?._id,
@@ -1774,6 +1825,15 @@ const LiveRoomScreen = ({ route, navigation }) => {
           avatar:
             commentItem.user?.profileImage || commentItem.user?.avatar || "",
           userId: commentItem.user?._id || commentItem.user?.id || null,
+          vipLevel:
+            commentItem.user?.vipLevel != null
+              ? Number(commentItem.user.vipLevel)
+              : 0,
+          level:
+            commentItem.user?.level != null
+              ? Number(commentItem.user.level)
+              : 0,
+          activeBadge: commentItem.user?.activeBadge ?? null,
         },
         { headers: { Authorization: `Bearer ${userToken}` } },
       );
@@ -3199,27 +3259,30 @@ const LiveRoomScreen = ({ route, navigation }) => {
   // ─── VIEWERS MODAL (eye icon) ─────────────────────────────────────────────────
 
   const viewersModal = (() => {
-    const isHost = room?.host?._id === userInfo?._id;
-    const isMod = room?.moderators?.some(
-      (m) => (m.user?._id || m.user) === userInfo?._id,
-    );
-    const canManage = isHost || isMod;
+    const canManage = isRoomHostMe || isRoomModeratorMe;
+    const hostCanonicalId = room?.host?._id ?? room?.host?.id ?? room?.host;
 
-    // Combine all participants: listeners + speakers (excluding host AND the
-    // current user — a host/mod must not be able to invite themselves).
-    const currentUserId = userInfo?._id;
     const allViewers = [
-      ...(room?.listeners || []).map((l) => l.user).filter(Boolean),
+      ...(room?.listeners || [])
+        .map((l) => normalizeRoomParticipantUser(l.user))
+        .filter(Boolean),
       ...(room?.speakers || [])
-        .map((s) => s.user)
-        .filter((u) => u && u._id !== room?.host?._id),
+        .map((s) => normalizeRoomParticipantUser(s.user))
+        .filter(
+          (u) =>
+            u &&
+            hostCanonicalId != null &&
+            !liveRoomSameId(u._id, hostCanonicalId),
+        ),
     ];
     const seen = new Set();
     const uniqueViewers = allViewers.filter((u) => {
-      if (!u?._id) return false;
-      if (seen.has(u._id)) return false;
-      if (currentUserId && String(u._id) === String(currentUserId)) return false;
-      seen.add(u._id);
+      const uid = u?._id ?? u?.id;
+      if (!uid) return false;
+      const sk = String(uid);
+      if (seen.has(sk)) return false;
+      if (currentUserId && liveRoomSameId(uid, currentUserId)) return false;
+      seen.add(sk);
       return true;
     });
 
@@ -3247,10 +3310,13 @@ const LiveRoomScreen = ({ route, navigation }) => {
               </Text>
             )}
             {uniqueViewers.map((u) => {
-              const coinsFromUser = userCoinsInRoom[u._id] || 0;
-              const isSpeaker = room?.speakers?.some((s) => s.user?._id === u._id);
+              const rowId = String(u._id ?? u.id ?? "");
+              const coinsFromUser = userCoinsInRoom[rowId] || userCoinsInRoom[u._id] || 0;
+              const isSpeaker = room?.speakers?.some((s) =>
+                liveRoomSameId(s.user?._id ?? s.user?.id ?? s.user, u._id ?? u.id),
+              );
               return (
-                <View key={u._id} style={styles.viewerRow}>
+                <View key={rowId || "?"} style={styles.viewerRow}>
                   {u.profileImage ? (
                     <Image source={{ uri: u.profileImage }} style={styles.viewerAvatar} />
                   ) : (
@@ -3270,21 +3336,38 @@ const LiveRoomScreen = ({ route, navigation }) => {
                     )}
                   </View>
                   {/* Invite to seat (host/mod only, user not already a speaker) */}
-                  {canManage && !isSpeaker && String(u._id) !== String(userInfo?._id) && (
+                  {canManage &&
+                    !isSpeaker &&
+                    currentUserId &&
+                    !liveRoomSameId(u._id ?? u.id, currentUserId) && (
                     <TouchableOpacity
                       style={styles.inviteBtn}
                       onPress={() => {
-                        // Hard-guard: never allow self-invite.
-                        if (String(u._id) === String(userInfo?._id)) {
+                        const targetId = u._id ?? u.id;
+                        if (!targetId) return;
+                        if (!socketRef.current?.connected) {
+                          Alert.alert(
+                            "خطأ",
+                            "لا يوجد اتصال حيّ بالغرفة. انتظر الاتصال أو أعد فتح الغرفة.",
+                          );
+                          return;
+                        }
+                        if (liveRoomSameId(targetId, currentUserId)) {
                           Alert.alert("خطأ", "لا يمكن دعوة نفسك للمقعد");
                           return;
                         }
-                        socketRef.current?.emit("liveroom:invite_to_seat", {
+                        socketRef.current.emit("liveroom:invite_to_seat", {
                           roomId,
-                          userId: u._id,
-                          invitedBy: { _id: userInfo._id, username: userInfo.username },
+                          userId: targetId,
+                          invitedBy: {
+                            _id: currentUserId,
+                            username: userInfo?.username ?? "",
+                          },
                         });
-                        Alert.alert("✅", `تم إرسال دعوة المقعد إلى ${u.username}`);
+                        Alert.alert(
+                          "✅",
+                          `تم إرسال دعوة الجلوس على المقعد إلى ${u.username || "المستخدم"}`,
+                        );
                       }}
                     >
                       <Text style={styles.inviteBtnText}>دعوة 💺</Text>
@@ -3657,14 +3740,29 @@ const LiveRoomScreen = ({ route, navigation }) => {
           }
           onUnpinPress={handleUnpinComment}
           onPinnedPress={(pinned) => {
-            if (!pinned?.userId) return;
+            const idStr = normalizePinnedCommentUserId(pinned?.userId);
+            if (!idStr) return;
+            const avatar = pinned?.avatar || pinned?.profileImage || "";
+            const user = {
+              _id: idStr,
+              id: idStr,
+              username: pinned?.username || "",
+              profileImage: avatar,
+              avatar,
+              vipLevel: Number(pinned?.vipLevel) || 0,
+              level: Number(pinned?.level) || 0,
+              activeBadge: pinned?.activeBadge ?? null,
+            };
+            const mid = pinned?.messageId || "";
             setUserSheet({
-              user: {
-                _id: pinned.userId,
-                username: pinned.username,
-                profileImage: pinned.avatar,
+              user,
+              comment: {
+                clientMessageId: mid,
+                id: mid,
+                _id: mid,
+                message: pinned?.message || "",
+                user,
               },
-              comment: null,
             });
           }}
         />

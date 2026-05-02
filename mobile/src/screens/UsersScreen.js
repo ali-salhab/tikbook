@@ -194,7 +194,12 @@ const UsersScreen = ({ navigation, route }) => {
       <TouchableOpacity
         key={String(item._id)}
         style={styles.searchVideoRow}
-        onPress={() => navigation.navigate("Home", { videoId: item._id })}
+        onPress={() =>
+          navigation.navigate("MainTabs", {
+            screen: "Home",
+            params: { videoId: item._id },
+          })
+        }
       >
         <View style={styles.searchVideoThumbWrap}>
           {thumb ? (

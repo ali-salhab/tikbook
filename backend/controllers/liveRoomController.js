@@ -1274,7 +1274,16 @@ exports.toggleChatMute = async (req, res) => {
 exports.pinComment = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const { messageId, message, username, avatar, userId } = req.body;
+    const {
+      messageId,
+      message,
+      username,
+      avatar,
+      userId,
+      vipLevel,
+      level,
+      activeBadge,
+    } = req.body;
     const requesterId = req.user.id;
 
     if (!message || !String(message).trim()) {
@@ -1297,6 +1306,14 @@ exports.pinComment = async (req, res) => {
       message: String(message).trim().slice(0, 500),
       username: String(username || ""),
       avatar: String(avatar || ""),
+      vipLevel: Number.isFinite(Number(vipLevel))
+        ? Math.max(0, Math.min(99, Number(vipLevel)))
+        : 0,
+      level: Number.isFinite(Number(level))
+        ? Math.max(0, Math.min(999, Number(level)))
+        : 0,
+      activeBadge:
+        activeBadge === undefined || activeBadge === null ? null : activeBadge,
       userId: userId || null,
       pinnedBy: requesterId,
       pinnedAt: new Date(),
@@ -1341,6 +1358,9 @@ exports.unpinComment = async (req, res) => {
       message: "",
       username: "",
       avatar: "",
+      vipLevel: 0,
+      level: 0,
+      activeBadge: null,
       userId: null,
       pinnedBy: null,
       pinnedAt: null,

@@ -76,7 +76,7 @@ const LiveRoomsListScreen = ({ navigation }) => {
 
       // Fix: handle Android hardware back button (tab screens have no back stack)
       const onBack = () => {
-        navigation.navigate("Home");
+        navigation.navigate("MainTabs", { screen: "Home" });
         return true; // prevent default GO_BACK
       };
       const sub = BackHandler.addEventListener("hardwareBackPress", onBack);

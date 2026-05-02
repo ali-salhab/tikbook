@@ -148,6 +148,9 @@ const liveRoomSchema = new mongoose.Schema(
       message: { type: String, default: "" },
       username: { type: String, default: "" },
       avatar: { type: String, default: "" },
+      vipLevel: { type: Number, default: 0 },
+      level: { type: Number, default: 0 },
+      activeBadge: { type: mongoose.Schema.Types.Mixed, default: null },
       userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

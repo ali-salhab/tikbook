@@ -9,10 +9,14 @@ import GradientBackground from "../components/GradientBackground";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  Share,
+  Alert,
+  Clipboard,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,12 +26,14 @@ import LottieView from "lottie-react-native";
 import axios from "axios";
 import { useNetInfo } from "@react-native-community/netinfo";
 import OfflineNotice from "../components/OfflineNotice";
-import LevelBadgeIcon from "../components/LevelBadgeIcon";
+import VipBadge from "../components/VipBadge";
+import { useApp } from "../context/AppContext";
 import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
 const { width } = getWindowDimensions();
 
 const UserProfileScreen = ({ route, navigation }) => {
+  const { theme } = useApp();
   const { userId } = route.params;
   const { userInfo, userToken, BASE_URL } = useContext(AuthContext);
   const [profile, setProfile] = useState(null);
@@ -156,6 +162,22 @@ const UserProfileScreen = ({ route, navigation }) => {
     }
   };
 
+  const resolvedProfileMongoId =
+    profile?._id != null && profile._id !== ""
+      ? String(profile._id)
+      : profile?.id != null && profile.id !== ""
+        ? String(profile.id)
+        : "";
+
+  const copyProfileUserId = () => {
+    if (resolvedProfileMongoId) {
+      Clipboard.setString(resolvedProfileMongoId);
+      Alert.alert("✅ تم النسخ", "تم نسخ معرف المستخدم إلى الحافظة", [
+        { text: "حسناً" },
+      ]);
+    }
+  };
+
   const handleShare = async () => {
     if (!profile?._id) return;
     const handle = profile.username || "user";
@@ -215,7 +237,10 @@ const UserProfileScreen = ({ route, navigation }) => {
               key={video._id}
               style={styles.gridItem}
               onPress={() =>
-                navigation.navigate("Home", { videoId: video._id })
+                navigation.navigate("MainTabs", {
+                  screen: "Home",
+                  params: { videoId: video._id },
+                })
               }
             >
               {thumbnail ? (
@@ -265,9 +290,23 @@ const UserProfileScreen = ({ route, navigation }) => {
         >
           <Ionicons name="chevron-back" size={28} color="#F0EEFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          @{profile.username}
-        </Text>
+        <View style={styles.headerCenter}>
+          {Number(profile.vipLevel) > 0 ? (
+            <VipBadge
+              level={profile.vipLevel}
+              size="medium"
+              imageUrl={
+                vipLevelMeta?.badgeImageUrl ||
+                vipLevelMeta?.imageUrl ||
+                undefined
+              }
+            />
+          ) : (
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              @{profile.username}
+            </Text>
+          )}
+        </View>
         <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
           <Ionicons name="share-social-outline" size={24} color="#F0EEFF" />
         </TouchableOpacity>
@@ -371,28 +410,31 @@ const UserProfileScreen = ({ route, navigation }) => {
                 style={{ marginLeft: ms(2) }}
               />
             )}
-            {Number(profile.vipLevel) > 0 && (
-              <View style={{ marginLeft: ms(6) }}>
-                <LevelBadgeIcon
-                  level={Number(profile.vipLevel)}
-                  size="small"
-                  imageUrl={
-                    vipLevelMeta?.badgeImageUrl ||
-                    vipLevelMeta?.imageUrl ||
-                    undefined
-                  }
-                  lottieUrl={
-                    !vipLevelMeta?.badgeImageUrl && !vipLevelMeta?.imageUrl
-                      ? vipLevelMeta?.badgeLottieUrl
-                      : undefined
-                  }
-                  color={vipLevelMeta?.color || "#FFD700"}
-                />
-              </View>
-            )}
+          
           </View>
 
           <Text style={styles.username}>@{profile.username}</Text>
+
+          {!!resolvedProfileMongoId && (
+            <TouchableOpacity
+              style={styles.userIdContainer}
+              onPress={copyProfileUserId}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.userIdLabel, { color: theme.textMuted }]}>
+                ID:{" "}
+              </Text>
+              <Text style={[styles.userIdText, { color: theme.textSecondary }]}>
+                {resolvedProfileMongoId.slice(-8).toUpperCase()}
+              </Text>
+              <Ionicons
+                name="copy-outline"
+                size={12}
+                color="#888"
+                style={{ marginLeft: 4 }}
+              />
+            </TouchableOpacity>
+          )}
 
           {Number(profile.level) > 0 && (
             <Text style={styles.levelHint}>
@@ -544,13 +586,20 @@ const styles = StyleSheet.create({
     minWidth: ms(44),
     alignItems: "center",
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    minHeight: ms(44),
+    marginHorizontal: ms(8),
+  },
   headerTitle: {
     flex: 1,
     fontSize: fs(17),
     fontWeight: "bold",
     color: "#F0EEFF",
     textAlign: "center",
-    marginHorizontal: ms(8),
   },
   profileInfo: {
     alignItems: "center",
@@ -623,6 +672,25 @@ const styles = StyleSheet.create({
     fontSize: fs(14),
     color: "#B8B0D8",
     marginBottom: ms(8),
+  },
+  userIdContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    paddingVertical: ms(2),
+    paddingHorizontal: 0,
+    marginBottom: ms(10),
+    alignSelf: "center",
+  },
+  userIdLabel: {
+    fontSize: fs(12),
+    fontWeight: "600",
+  },
+  userIdText: {
+    fontSize: fs(12),
+    fontFamily: "monospace",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   levelHint: {
     fontSize: fs(13),

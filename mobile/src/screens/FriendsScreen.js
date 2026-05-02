@@ -1,7 +1,6 @@
 import React, {
   useState,
   useRef,
-  useEffect,
   useContext,
   useCallback,
 } from "react";
@@ -12,32 +11,32 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Image,
-  Animated,
   RefreshControl,
   Share,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Video } from "expo-av";
-import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
-import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNetInfo } from "@react-native-community/netinfo";
 import CommentsModal from "../components/CommentsModalEnhanced";
 import OfflineNotice from "../components/OfflineNotice";
 import LoadingIndicator from "../components/LoadingIndicator";
 import NetworkErrorModal from "../components/NetworkErrorModal";
+import VideoItem from "../components/VideoItem";
 import videoService from "../services/videoService";
+import SoundService from "../services/soundService";
 import { ms, fs, getWindowDimensions } from "../utils/responsive";
-import { darkUi } from "../theme/brand";
-
-const { width, height } = getWindowDimensions();
 
 const FriendsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { userToken, userInfo, BASE_URL } = useContext(AuthContext);
+  const tabBarHeight = useBottomTabBarHeight();
+  const isScreenFocused = useIsFocused();
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [friendsVideos, setFriendsVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -47,32 +46,87 @@ const FriendsScreen = ({ navigation }) => {
   const [networkError, setNetworkError] = useState(null);
   const netInfo = useNetInfo();
 
-  // MUST declare useRef before any conditional returns (Rules of Hooks)
-  const videoRefs = useRef([]);
-  const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (viewableItems && viewableItems.length > 0) {
-      setActiveVideoIndex(viewableItems[0].index);
+  const flatListRef = useRef(null);
+  const [feedHeight, setFeedHeight] = useState(
+    Math.max(getWindowDimensions().height - tabBarHeight, 1),
+  );
+
+  const pageHeight = Math.max(
+    feedHeight || getWindowDimensions().height - tabBarHeight,
+    1,
+  );
+
+  const handleFeedLayout = useCallback((event) => {
+    const nextHeight = Math.round(event.nativeEvent.layout.height);
+    if (nextHeight > 0) {
+      setFeedHeight((current) =>
+        current === nextHeight ? current : nextHeight,
+      );
     }
-  }).current;
+  }, []);
 
-  const formatNumber = (num) => {
-    // Handle if it's an array (likes or comments array)
+  const handleMomentumScrollEnd = useCallback(
+    (event) => {
+      if (!flatListRef.current || friendsVideos.length === 0) return;
+
+      const rawOffset = event.nativeEvent.contentOffset.y;
+      const nextIndex = Math.max(
+        0,
+        Math.min(friendsVideos.length - 1, Math.round(rawOffset / pageHeight)),
+      );
+      const snappedOffset = nextIndex * pageHeight;
+
+      if (Math.abs(rawOffset - snappedOffset) > 1) {
+        flatListRef.current.scrollToOffset({
+          offset: snappedOffset,
+          animated: false,
+        });
+      }
+    },
+    [pageHeight, friendsVideos.length],
+  );
+
+  const formatNumber = useCallback((num) => {
     const count = Array.isArray(num) ? num.length : num;
-
-    if (!count || count === 0) return "0";
     if (count >= 1000000) return (count / 1000000).toFixed(1) + "م";
     if (count >= 1000) return (count / 1000).toFixed(1) + "ألف";
-    return count.toString();
-  };
+    return (count ?? 0).toString();
+  }, []);
 
-  const fetchFriendsVideos = async () => {
+  const fetchFriendsVideos = useCallback(async () => {
     if (netInfo.isConnected === false) return;
+    if (!userToken) {
+      setFriendsVideos([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
-      // Fetch videos from followed users
       const res = await axios.get(`${BASE_URL}/videos/following`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
-      setFriendsVideos(res.data || []);
+
+      const currentUserId = userInfo?._id?.toString();
+      const raw = Array.isArray(res.data) ? res.data : [];
+
+      const mapped = raw.map((video) => ({
+        ...video,
+        isLiked:
+          typeof video.isLiked === "boolean"
+            ? video.isLiked
+            : Array.isArray(video.likes) && currentUserId
+              ? video.likes.some((id) => id?.toString?.() === currentUserId)
+              : false,
+        videoUrl: video.videoUrl?.startsWith("http")
+          ? video.videoUrl
+          : `${BASE_URL.replace("/api", "")}/${(video.videoUrl || "").replace(
+              /\\/g,
+              "/",
+            )}`,
+      }));
+
+      setFriendsVideos(mapped);
+      setNetworkError(null);
     } catch (e) {
       console.log("❌ Error fetching friends videos:", e.message);
       setFriendsVideos([]);
@@ -81,61 +135,244 @@ const FriendsScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [
+    BASE_URL,
+    netInfo.isConnected,
+    userToken,
+    userInfo?._id,
+  ]);
 
-  const handleComment = (video) => {
+  const handleComment = useCallback((video) => {
     setSelectedVideo(video);
     setCommentsVisible(true);
-  };
+  }, []);
 
-  const handleShare = async (video) => {
+  const handleShare = useCallback(async (video) => {
     try {
-      await Share.share({
-        message: `شاهد هذا الفيديو الرائع من @${video.user.username}: ${video.description}`,
-      });
+      const deepLink = `tikbook://video/${video._id}`;
+      const playStoreUrl =
+        "https://play.google.com/store/apps/details?id=com.tikbook.com";
+      const shareMessage =
+        `🎵 شاهد هذا الفيديو الرائع من @${video.user.username} على تطبيق TikBook!` +
+        (video.description ? `\n\n${video.description}` : "") +
+        `\n\n▶️ افتح في التطبيق:\n${deepLink}` +
+        `\n\n📲 إذا لم يكن التطبيق مثبتاً لديك:\n${playStoreUrl}`;
+
+      await Share.share(
+        {
+          message: shareMessage,
+          url: deepLink,
+          title: `فيديو من @${video.user.username} - TikBook`,
+        },
+        {
+          dialogTitle: "مشاركة الفيديو",
+          subject: `شاهد هذا الفيديو على TikBook`,
+        },
+      );
     } catch (error) {
       console.log(error);
     }
-  };
+  }, []);
 
-  const handleSave = async (videoId) => {
-    // Optimistic update
-    setFriendsVideos((prevVideos) =>
-      prevVideos.map((video) => {
-        if (video._id === videoId) {
-          return {
-            ...video,
-            isSaved: !video.isSaved,
-          };
-        }
-        return video;
-      }),
+  const handleSave = useCallback(async (videoId) => {
+    setFriendsVideos((prev) =>
+      prev.map((video) =>
+        video._id === videoId
+          ? { ...video, isSaved: !video.isSaved }
+          : video,
+      ),
     );
 
-    // Send to backend
     try {
       await videoService.saveVideo(videoId);
-    } catch (error) {
-      console.log("Error saving video:", error);
-      // Revert on error
-      setFriendsVideos((prevVideos) =>
-        prevVideos.map((video) => {
-          if (video._id === videoId) {
-            return {
-              ...video,
-              isSaved: !video.isSaved,
-            };
-          }
-          return video;
-        }),
+    } catch {
+      setFriendsVideos((prev) =>
+        prev.map((video) =>
+          video._id === videoId
+            ? { ...video, isSaved: !video.isSaved }
+            : video,
+        ),
       );
     }
-  };
+  }, []);
 
-  const closeComments = () => {
+  const handleLike = useCallback(
+    async (videoId) => {
+      const currentUserId = userInfo?._id;
+      if (!userToken || !currentUserId) return;
+
+      setFriendsVideos((prev) =>
+        prev.map((video) => {
+          if (video._id !== videoId) return video;
+          const currentLikes = Array.isArray(video.likes)
+            ? video.likes
+            : [];
+          const newIsLiked = !video.isLiked;
+          const newLikes = newIsLiked
+            ? [...currentLikes, currentUserId]
+            : currentLikes.filter(
+                (id) => id?.toString?.() !== currentUserId.toString(),
+              );
+          return { ...video, isLiked: newIsLiked, likes: newLikes };
+        }),
+      );
+
+      try {
+        const res = await axios.put(
+          `${BASE_URL}/videos/${videoId}/like`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${userToken}` },
+          },
+        );
+
+        if (Array.isArray(res.data?.likes)) {
+          const syncedLikes = res.data.likes;
+          const syncedIsLiked = syncedLikes.some(
+            (id) => id?.toString?.() === currentUserId.toString(),
+          );
+
+          setFriendsVideos((prev) =>
+            prev.map((video) =>
+              video._id === videoId
+                ? {
+                    ...video,
+                    likes: syncedLikes,
+                    isLiked: syncedIsLiked,
+                  }
+                : video,
+            ),
+          );
+        }
+      } catch (error) {
+        console.log("Error liking video:", error);
+        setFriendsVideos((prev) =>
+          prev.map((video) => {
+            if (video._id !== videoId) return video;
+            const currentLikes = Array.isArray(video.likes)
+              ? video.likes
+              : [];
+            const revertedIsLiked = !video.isLiked;
+            const revertedLikes = revertedIsLiked
+              ? [...currentLikes, currentUserId]
+              : currentLikes.filter(
+                  (id) => id?.toString?.() !== currentUserId.toString(),
+                );
+            return { ...video, isLiked: revertedIsLiked, likes: revertedLikes };
+          }),
+        );
+      }
+    },
+    [userInfo, userToken, BASE_URL],
+  );
+
+  const handleFollow = useCallback(
+    async (targetUserId) => {
+      if (!userToken || !userInfo?._id || !targetUserId) return;
+      if (String(targetUserId) === String(userInfo._id)) return;
+
+      setFriendsVideos((prev) =>
+        prev.map((v) =>
+          v.user?._id === targetUserId
+            ? {
+                ...v,
+                user: {
+                  ...v.user,
+                  followers: Array.isArray(v.user.followers)
+                    ? [
+                        ...v.user.followers.filter(
+                          (f) =>
+                            String(
+                              typeof f === "object" ? f?._id : f,
+                            ) !== String(userInfo._id),
+                        ),
+                        userInfo._id,
+                      ]
+                    : [userInfo._id],
+                },
+              }
+            : v,
+        ),
+      );
+
+      try {
+        await axios.put(
+          `${BASE_URL}/users/${targetUserId}/follow`,
+          {},
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        );
+        SoundService.play("notification");
+      } catch (err) {
+        console.log("Follow error:", err?.response?.data || err.message);
+        setFriendsVideos((prev) =>
+          prev.map((v) =>
+            v.user?._id === targetUserId
+              ? {
+                  ...v,
+                  user: {
+                    ...v.user,
+                    followers: Array.isArray(v.user.followers)
+                      ? v.user.followers.filter(
+                          (f) =>
+                            String(
+                              typeof f === "object" ? f?._id : f,
+                            ) !== String(userInfo._id),
+                        )
+                      : [],
+                  },
+                }
+              : v,
+          ),
+        );
+      }
+    },
+    [userToken, userInfo, BASE_URL],
+  );
+
+  const closeComments = useCallback(() => {
     setCommentsVisible(false);
     setSelectedVideo(null);
-  };
+  }, []);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      const index = viewableItems[0].index;
+      setActiveVideoIndex(index);
+    }
+  }).current;
+
+  const renderItem = useCallback(
+    ({ item, index }) => (
+      <VideoItem
+        item={item}
+        isActive={index === activeVideoIndex && isScreenFocused}
+        tabBarHeight={tabBarHeight}
+        viewportHeight={pageHeight}
+        userInfo={userInfo}
+        navigation={navigation}
+        handleLike={handleLike}
+        handleSave={handleSave}
+        handleComment={handleComment}
+        handleShare={handleShare}
+        handleFollow={handleFollow}
+        formatNumber={formatNumber}
+      />
+    ),
+    [
+      activeVideoIndex,
+      isScreenFocused,
+      pageHeight,
+      tabBarHeight,
+      userInfo,
+      navigation,
+      handleLike,
+      handleSave,
+      handleComment,
+      handleShare,
+      handleFollow,
+      formatNumber,
+    ],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -144,26 +381,18 @@ const FriendsScreen = ({ navigation }) => {
       } else {
         setLoading(false);
       }
-
-      // Cleanup: pause all videos when screen loses focus
       return () => {
-        console.log("🔇 FriendsScreen unfocused - pausing videos");
-        videoRefs.current.forEach((video) => {
-          if (video) {
-            video.pauseAsync().catch(() => {});
-            video.setIsMutedAsync(true).catch(() => {});
-          }
-        });
+        console.log("🔇 FriendsScreen unfocused");
       };
-    }, [netInfo.isConnected]),
+    }, [fetchFriendsVideos, netInfo.isConnected]),
   );
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     if (netInfo.isConnected !== false) {
       setRefreshing(true);
       fetchFriendsVideos();
     }
-  };
+  }, [fetchFriendsVideos, netInfo.isConnected]);
 
   if (netInfo.isConnected === false && friendsVideos.length === 0) {
     return <OfflineNotice onRetry={onRefresh} />;
@@ -172,115 +401,6 @@ const FriendsScreen = ({ navigation }) => {
   if (loading && friendsVideos.length === 0) {
     return <LoadingIndicator />;
   }
-
-  const renderItem = ({ item, index }) => {
-    const isActive = index === activeVideoIndex;
-    const username = item.user?.username || "user";
-    const profileImage = item.user?.profileImage;
-    const ICON_SIZE = 35;
-
-    return (
-      <View style={[styles.videoContainer, { height }]}>
-        <Video
-          ref={(ref) => (videoRefs.current[index] = ref)}
-          source={{ uri: item.videoUrl }}
-          style={styles.video}
-          resizeMode="cover"
-          shouldPlay={isActive}
-          isLooping
-          isMuted={false}
-        />
-
-        {/* Bottom info — identical structure to HomeScreen */}
-        <View style={[styles.bottomSection, { bottom: insets.bottom + 80 }]}>
-          <View style={styles.userInfo}>
-            <Text style={styles.username}>@{username}</Text>
-            <Text style={styles.description}>{item.description}</Text>
-            <View style={styles.musicRow}>
-              <Ionicons name="musical-notes" size={15} color="#FFF" />
-              <Text style={styles.musicText}>الصوت الأصلي - {username}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Right side actions — identical structure to HomeScreen */}
-        <View style={[styles.rightActions, { bottom: insets.bottom + 80 }]}>
-          <TouchableOpacity
-            style={styles.profileContainer}
-            onPress={() =>
-              navigation.navigate("UserProfile", { userId: item.user._id })
-            }
-          >
-            <View style={styles.profileImageWrapper}>
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.profileImage,
-                    {
-                      backgroundColor: "#666",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    },
-                  ]}
-                >
-                  <Ionicons name="person" size={22} color="#FFF" />
-                </View>
-              )}
-            </View>
-            <View style={styles.followButton}>
-              <Ionicons name="add" size={14} color="#FFF" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            {item.isLiked ? (
-              <Ionicons name="heart" size={ICON_SIZE} color="#FF3366" />
-            ) : (
-              <Ionicons name="heart-outline" size={ICON_SIZE} color="#FFF" />
-            )}
-            <Text style={styles.actionText}>
-              {formatNumber(item.likes?.length || 0)}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleComment(item)}
-          >
-            <Ionicons
-              name="chatbubble-ellipses-sharp"
-              size={ICON_SIZE}
-              color="#FFF"
-            />
-            <Text style={styles.actionText}>{formatNumber(item.comments)}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleSave(item._id)}
-          >
-            <Ionicons
-              name={item.isSaved ? "bookmark" : "bookmark-outline"}
-              size={ICON_SIZE}
-              color="#FFF"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleShare(item)}
-          >
-            <Ionicons name="arrow-redo-sharp" size={ICON_SIZE} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -291,7 +411,6 @@ const FriendsScreen = ({ navigation }) => {
         translucent
       />
 
-      {/* Top Navigation Bar - same style as HomeScreen */}
       <View style={[styles.topBar, { top: insets.top + 10 }]}>
         <TouchableOpacity
           style={styles.iconButton}
@@ -334,40 +453,52 @@ const FriendsScreen = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
+          style={styles.feedList}
           data={friendsVideos}
           renderItem={renderItem}
           keyExtractor={(item) => item._id}
-          pagingEnabled
-          showsVerticalScrollIndicator={false}
-          snapToInterval={height}
+          extraData={`${activeVideoIndex}-${isScreenFocused ? 1 : 0}-${pageHeight}`}
+          onLayout={handleFeedLayout}
+          snapToInterval={pageHeight}
           snapToAlignment="start"
-          decelerationRate="fast"
+          disableIntervalMomentum
+          showsVerticalScrollIndicator={false}
+          decelerationRate={Platform.OS === "android" ? 0.985 : "fast"}
           scrollEventThrottle={16}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          getItemLayout={(_, index) => ({
+            length: pageHeight,
+            offset: pageHeight * index,
+            index,
+          })}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={{
             itemVisiblePercentThreshold: 80,
           }}
+          windowSize={3}
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          updateCellsBatchingPeriod={100}
+          removeClippedSubviews={true}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor="#FFF"
+              progressViewOffset={insets.top + 60}
             />
           }
         />
       )}
 
-      {/* Comments Modal */}
-      {selectedVideo && (
-        <CommentsModal
-          visible={commentsVisible}
-          onClose={closeComments}
-          videoId={selectedVideo._id}
-          initialComments={selectedVideo.comments}
-        />
-      )}
+      <CommentsModal
+        visible={commentsVisible}
+        onClose={closeComments}
+        videoId={selectedVideo?._id}
+        initialComments={selectedVideo?.comments || []}
+      />
 
-      {/* Network / Server Error Modal */}
       <NetworkErrorModal
         visible={!!networkError}
         error={networkError}
@@ -383,7 +514,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
-  // ── Top Bar (same design as HomeScreen) ──────────────────────────────────
+  feedList: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
   topBar: {
     position: "absolute",
     left: 0,
@@ -438,38 +572,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#B8B0D8",
     borderRadius: ms(2),
   },
-  // ── old header (kept for compat) ──────────────────────────────────────────
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: ms(20),
-    paddingBottom: ms(10),
-  },
-  headerTitle: {
-    color: "#FFF",
-    fontSize: fs(18),
-    fontWeight: "bold",
-  },
-  addFriendButton: {},
-  plusBadge: {
-    position: "absolute",
-    top: ms(-2),
-    left: ms(-4),
-    backgroundColor: "#FF3366",
-    borderRadius: ms(8),
-    width: ms(14),
-    height: ms(14),
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: darkUi.bar,
-  },
   emptyState: {
     flex: 1,
     justifyContent: "center",
@@ -488,100 +590,6 @@ const styles = StyleSheet.create({
     fontSize: fs(14),
     marginTop: ms(10),
     textAlign: "center",
-  },
-  videoContainer: {
-    width: width,
-    backgroundColor: "transparent",
-    position: "relative",
-  },
-  video: {
-    width: "100%",
-    height: "100%",
-    position: "absolute",
-  },
-  // ── Bottom info (mirrors HomeScreen) ──────────────────────────────────────
-  bottomSection: {
-    position: "absolute",
-    left: ms(16),
-    right: ms(90),
-    zIndex: 100,
-  },
-  userInfo: {
-    marginBottom: ms(12),
-  },
-  username: {
-    color: "#FFF",
-    fontSize: fs(16),
-    fontWeight: "bold",
-    marginBottom: ms(8),
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  description: {
-    color: "#FFF",
-    fontSize: fs(14),
-    lineHeight: ms(20),
-    marginBottom: ms(10),
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  musicRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(6),
-  },
-  musicText: {
-    color: "#FFF",
-    fontSize: fs(13),
-    flex: 1,
-  },
-  // ── Right actions (mirrors HomeScreen) ───────────────────────────────────
-  rightActions: {
-    position: "absolute",
-    right: ms(10),
-    alignItems: "center",
-    zIndex: 100,
-  },
-  profileContainer: {
-    marginBottom: ms(20),
-    alignItems: "center",
-  },
-  profileImageWrapper: {
-    width: ms(48),
-    height: ms(48),
-    borderRadius: ms(24),
-    borderWidth: 2,
-    borderColor: "#FFF",
-    overflow: "hidden",
-  },
-  profileImage: {
-    width: "100%",
-    height: "100%",
-  },
-  followButton: {
-    position: "absolute",
-    bottom: ms(-8),
-    alignSelf: "center",
-    backgroundColor: "#FF3366",
-    borderRadius: ms(10),
-    width: ms(20),
-    height: ms(20),
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: darkUi.bar,
-  },
-  actionButton: {
-    marginBottom: ms(16),
-    alignItems: "center",
-  },
-  actionText: {
-    color: "#FFF",
-    fontSize: fs(12),
-    marginTop: ms(4),
-    fontWeight: "600",
   },
 });
 

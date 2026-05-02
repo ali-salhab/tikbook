@@ -369,40 +369,41 @@ io.on("connection", (socket) => {
   // a buggy/forged client from triggering the accept-seat dialog for itself
   // and bypassing the host-approval flow.
   socket.on("liveroom:invite_to_seat", async ({ roomId, userId, invitedBy }) => {
-    if (!roomId || !userId || !invitedBy?._id) return;
-    if (String(invitedBy._id) === String(userId)) {
+    const inviterId = invitedBy?._id ?? invitedBy?.id;
+    if (!roomId || !userId || !inviterId) return;
+    if (String(inviterId) === String(userId)) {
       return;
     }
-    // Persist the pending invite so makeSpeaker can authorize the self-accept.
     try {
       const LiveRoom = require("./models/LiveRoom");
       const liveRoom = await LiveRoom.findOne({ roomId });
-      if (liveRoom) {
-        const isHost = String(liveRoom.host) === String(invitedBy._id);
-        const isMod = (liveRoom.moderators || []).some(
-          (m) => String(m.user) === String(invitedBy._id),
-        );
-        if (isHost || isMod) {
-          const already = (liveRoom.pendingInvites || []).some(
-            (p) => String(p.user) === String(userId),
-          );
-          if (!already) {
-            liveRoom.pendingInvites.push({ user: userId, invitedBy: invitedBy._id });
-            await liveRoom.save();
-          }
-        } else {
-          // inviter is not authorized — drop silently
-          return;
-        }
+      if (!liveRoom) return;
+
+      const isHost = String(liveRoom.host) === String(inviterId);
+      const isMod = (liveRoom.moderators || []).some(
+        (m) => String(m.user?._id || m.user) === String(inviterId),
+      );
+      if (!isHost && !isMod) return;
+
+      const already = (liveRoom.pendingInvites || []).some(
+        (p) => String(p.user) === String(userId),
+      );
+      if (!already) {
+        liveRoom.pendingInvites.push({
+          user: userId,
+          invitedBy: inviterId,
+        });
+        await liveRoom.save();
       }
+
+      io.to(`liveroom:${roomId}`).emit("liveroom:seat_invite_received", {
+        userId,
+        invitedBy: { ...invitedBy, _id: inviterId },
+        timestamp: new Date(),
+      });
     } catch (err) {
       console.error("Failed to persist seat invite:", err.message);
     }
-    io.to(`liveroom:${roomId}`).emit("liveroom:seat_invite_received", {
-      userId,
-      invitedBy,
-      timestamp: new Date(),
-    });
   });
 
   // Viewer requests a seat (taps empty seat)

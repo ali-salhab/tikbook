@@ -20,8 +20,6 @@ import type { LiveRoomUser, VipTierConfig } from "../types";
 export type JoinLayoutStyle = "card" | "ticker";
 export type JoinEffectPreset = "none" | "glow" | "pulse" | "aurora" | "ring";
 
-type BadgeLike = { imageUrl?: string; name?: string } | null | undefined;
-
 type Props = {
   user: LiveRoomUser | null;
   joinAnimationUrl?: string | null;
@@ -78,16 +76,17 @@ const JoinAnimation = ({
     joinVideoUrl.length > 4 &&
     (joinVideoUrl.startsWith("http") || joinVideoUrl.startsWith("file"));
 
-  const activeBadge = user?.activeBadge as BadgeLike;
-  const badgeImgUrl =
-    activeBadge &&
-    typeof activeBadge === "object" &&
-    typeof activeBadge.imageUrl === "string" &&
-    activeBadge.imageUrl.trim()
-      ? activeBadge.imageUrl.trim()
-      : typeof activeBadge === "object" && typeof (activeBadge as { image?: string }).image === "string"
-        ? String((activeBadge as { image?: string }).image).trim()
-        : "";
+  const resolveActiveBadgeImageUrl = (badge: unknown): string => {
+    if (badge == null || badge === "") return "";
+    if (typeof badge === "string") return badge.trim();
+    if (typeof badge !== "object") return "";
+    const o = badge as { imageUrl?: unknown; image?: unknown };
+    if (typeof o.imageUrl === "string" && o.imageUrl.trim()) return o.imageUrl.trim();
+    if (typeof o.image === "string" && o.image.trim()) return o.image.trim();
+    return "";
+  };
+
+  const badgeImgUrl = resolveActiveBadgeImageUrl(user?.activeBadge);
 
   const joinTitle = useMemo(() => {
     if (!user) return "";

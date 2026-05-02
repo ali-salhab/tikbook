@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import LottieView from "lottie-react-native";
@@ -40,7 +41,14 @@ const getLevelColor = (level) => {
 };
 
 // ─── Single animated comment row ─────────────────────────────────────────
-const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onLongPress }) => {
+const normalizePinnedUserId = (raw) => {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "object" && raw._id != null) return String(raw._id);
+  return String(raw);
+};
+
+const CommentRow = React.memo(
+  ({ item, isNew, vipLevelStyles, onAvatarPress, onLongPress, onPressBubble, rowStyle }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const [imgError, setImgError] = useState(false);
@@ -77,6 +85,13 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameLottieUrl || null : null;
   // When a PNG/Lottie frame image is set it becomes the visual border — suppress the styled border
   const hasBubbleFrame = !!commentFrameLottieUrl;
+  /** Same rule as overlay: JSON / Cloudinary ambiguous → Lottie ; else raster (PNG…) */
+  const commentFrameUsesLottie =
+    hasBubbleFrame &&
+    (/\.json($|\?)/i.test(commentFrameLottieUrl) ||
+      (commentFrameLottieUrl.includes("/raw/upload/") &&
+        !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl)));
+  const isRasterCommentFrame = hasBubbleFrame && !commentFrameUsesLottie;
   const commentFrameBgColor =
     isVip && typeof vipStyleEntry === "object" ? vipStyleEntry?.commentFrameBgColor || null : null;
   const commentBubbleBgColor =
@@ -202,9 +217,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
               {
                 borderColor: vipColor || "#FFD700",
                 borderWidth: 1,
-                backgroundColor: vipColor
-                  ? `${vipColor}22`
-                  : "rgba(249,218,40,0.15)",
+                backgroundColor: "transparent",
               },
             ]}
           >
@@ -213,9 +226,8 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
             </Text>
           </View>
         ) : null}
-        {isVip && vipBadgeIcons.length > 0 ? (
-          <View style={styles.vipBadgesGroup}>
-            {vipBadgeIcons.slice(0, 2).map((badgeUrl, idx) => (
+        {isVip && vipBadgeIcons.length > 0
+          ? vipBadgeIcons.slice(0, 2).map((badgeUrl, idx) => (
               <View key={`vip-extra-${idx}`} style={styles.vipBadgeSmallClip}>
                 {isLottieUrl(badgeUrl) ? (
                   <LottieView
@@ -233,20 +245,147 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
                   />
                 )}
               </View>
-            ))}
-          </View>
-        ) : null}
+            ))
+          : null}
       </View>
     );
   };
 
-  const canPress = !isSystem && !!item.user;
+  const canPress =
+    !isSystem && !!(item.user?._id || item.user?.id);
   const handleAvatarPress = () => {
     if (canPress && onAvatarPress) onAvatarPress(item);
   };
   const handleLongPress = () => {
     if (canPress && onLongPress) onLongPress(item);
   };
+
+  const bubbleBlock = (
+    <>
+      {renderInlineHeader()}
+      {hasBubbleFrame ? (
+        <View style={styles.bubbleFrameOuter}>
+          <View
+            style={[
+              styles.bubble,
+              styles.bubbleWithFrameOverlay,
+              {
+                backgroundColor: commentFrameBgColor || "transparent",
+                borderWidth: 0,
+                borderRadius: 0,
+                paddingHorizontal: isRasterCommentFrame ? ms(32) : ms(18),
+                paddingVertical: isRasterCommentFrame ? ms(18) : ms(10),
+                maxWidth: width * 0.68,
+              },
+            ]}
+          >
+            {isGift && item.giftUrl ? (
+              <View style={styles.giftMsgRow}>
+                <Image
+                  source={{ uri: item.giftUrl }}
+                  style={styles.giftThumb}
+                  resizeMode="cover"
+                />
+                <View style={{ flexShrink: 1 }}>
+                  <Text
+                    style={[
+                      styles.message,
+                      commentTextColor ? { color: commentTextColor } : null,
+                    ]}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {messageText}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.message,
+                  commentTextColor ? { color: commentTextColor } : null,
+                  isSystem && styles.systemMessage,
+                ]}
+                numberOfLines={isSystem ? 3 : 2}
+                ellipsizeMode="tail"
+              >
+                {messageText}
+              </Text>
+            )}
+          </View>
+          {commentFrameUsesLottie ? (
+            <LottieView
+              source={{ uri: commentFrameLottieUrl }}
+              autoPlay
+              loop
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+              resizeMode="cover"
+            />
+          ) : (
+            <Image
+              source={{ uri: commentFrameLottieUrl }}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="stretch"
+              pointerEvents="none"
+            />
+          )}
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.bubble,
+            (isVip || isGift) && styles.vipBubble,
+            (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
+            (isVip || isGift) && vipColor
+              ? { borderColor: vipColor, borderWidth: vipBorderWidth }
+              : null,
+            (isVip || isGift)
+              ? {
+                  backgroundColor:
+                    commentBubbleBgColor ||
+                    (vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)"),
+                }
+              : null,
+          ]}
+        >
+          {isGift && item.giftUrl ? (
+            <View style={styles.giftMsgRow}>
+              <Image
+                source={{ uri: item.giftUrl }}
+                style={styles.giftThumb}
+                resizeMode="cover"
+              />
+              <View style={{ flexShrink: 1 }}>
+                <Text
+                  style={[
+                    styles.message,
+                    commentTextColor ? { color: commentTextColor } : null,
+                  ]}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {messageText}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text
+              style={[
+                styles.message,
+                commentTextColor ? { color: commentTextColor } : null,
+                isSystem && styles.systemMessage,
+              ]}
+              numberOfLines={isSystem ? 3 : 3}
+              ellipsizeMode="tail"
+            >
+              {messageText}
+            </Text>
+          )}
+        </View>
+      )}
+    </>
+  );
 
   return (
     <TouchableWithoutFeedback
@@ -255,6 +394,7 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
     >
     <Animated.View style={[
       styles.row,
+      rowStyle,
       { opacity, transform: [{ translateY: slideY }] },
     ]}>
       {/* ── Avatar first in JSX → renders on the visual RIGHT in RTL ── */}
@@ -287,133 +427,16 @@ const CommentRow = React.memo(({ item, isNew, vipLevelStyles, onAvatarPress, onL
       </TouchableOpacity>
 
       {/* ── Bubble second in JSX → renders to the LEFT of the avatar in RTL ── */}
-      <View style={styles.rightCol}>
-        {/* Inline header (admin-uploaded badges/icons) is ALWAYS above bubble */}
-        {renderInlineHeader()}
-        {hasBubbleFrame ? (
-          <View style={styles.bubbleFrameOuter}>
-            <View
-              style={[
-                styles.bubble,
-                styles.bubbleWithFrameOverlay,
-                {
-                  backgroundColor: commentFrameBgColor || "transparent",
-                  borderWidth: 0,
-                  borderRadius: 0,
-                  paddingHorizontal: ms(18),
-                  paddingVertical: ms(10),
-                },
-              ]}
-            >
-              {isGift && item.giftUrl ? (
-                <View style={styles.giftMsgRow}>
-                  <Image
-                    source={{ uri: item.giftUrl }}
-                    style={styles.giftThumb}
-                    resizeMode="cover"
-                  />
-                  <View style={{ flexShrink: 1 }}>
-                    <Text
-                      style={[
-                        styles.message,
-                        commentTextColor ? { color: commentTextColor } : null,
-                      ]}
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
-                    >
-                      {messageText}
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                <Text
-                  style={[
-                    styles.message,
-                    commentTextColor ? { color: commentTextColor } : null,
-                    isSystem && styles.systemMessage,
-                  ]}
-                  numberOfLines={isSystem ? 3 : 2}
-                  ellipsizeMode="tail"
-                >
-                  {messageText}
-                </Text>
-              )}
-            </View>
-            {/* Frame image rendered ON TOP so its border decorations are never covered by bg color */}
-            {(/\.json($|\?)/i.test(commentFrameLottieUrl) ||
-            (commentFrameLottieUrl.includes("/raw/upload/") &&
-              !/\.(png|jpe?g|webp|gif)($|\?)/i.test(commentFrameLottieUrl))) ? (
-              <LottieView
-                source={{ uri: commentFrameLottieUrl }}
-                autoPlay
-                loop
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-                resizeMode="contain"
-              />
-            ) : (
-              <Image
-                source={{ uri: commentFrameLottieUrl }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="contain"
-                pointerEvents="none"
-              />
-            )}
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.bubble,
-              (isVip || isGift) && styles.vipBubble,
-              (isVip || isGift) && getVipBubbleShapeStyle(bubbleShape),
-              (isVip || isGift) && vipColor
-                ? { borderColor: vipColor, borderWidth: vipBorderWidth }
-                : null,
-              (isVip || isGift)
-                ? {
-                    backgroundColor:
-                      commentBubbleBgColor ||
-                      (vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)"),
-                  }
-                : null,
-            ]}
-          >
-            {isGift && item.giftUrl ? (
-              <View style={styles.giftMsgRow}>
-                  <Image
-                    source={{ uri: item.giftUrl }}
-                    style={styles.giftThumb}
-                    resizeMode="cover"
-                  />
-                <View style={{ flexShrink: 1 }}>
-                  <Text
-                    style={[
-                      styles.message,
-                      commentTextColor ? { color: commentTextColor } : null,
-                    ]}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {messageText}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <Text
-                style={[
-                  styles.message,
-                  commentTextColor ? { color: commentTextColor } : null,
-                  isSystem && styles.systemMessage,
-                ]}
-                numberOfLines={isSystem ? 3 : 3}
-                ellipsizeMode="tail"
-              >
-                {messageText}
-              </Text>
-            )}
-          </View>
-        )}
-      </View>
+      {onPressBubble ? (
+        <Pressable
+          onPress={onPressBubble}
+          style={({ pressed }) => [styles.rightCol, pressed && styles.rightColPressed]}
+        >
+          {bubbleBlock}
+        </Pressable>
+      ) : (
+        <View style={styles.rightCol}>{bubbleBlock}</View>
+      )}
     </Animated.View>
     </TouchableWithoutFeedback>
   );
@@ -494,6 +517,41 @@ const FloatingComments = ({
     listRef.current?.scrollToEnd({ animated: true });
   };
 
+  const pinnedSyntheticItem = useMemo(() => {
+    if (!(pinnedComment && (pinnedComment.message || pinnedComment.messageId))) return null;
+    const uid = normalizePinnedUserId(pinnedComment.userId);
+    const avatar =
+      pinnedComment.avatar ||
+      pinnedComment.profileImage ||
+      pinnedComment.avatarUrl ||
+      "";
+    const vipLevelPin = Number(pinnedComment.vipLevel) || 0;
+    const levelPin = Number(pinnedComment.level) || 0;
+    const user = {
+      ...(uid ? { _id: uid, id: uid } : {}),
+      username: pinnedComment.username || "",
+      profileImage: avatar,
+      avatar,
+      vipLevel: vipLevelPin,
+      level: levelPin,
+      activeBadge:
+        pinnedComment.activeBadge != null
+          ? pinnedComment.activeBadge
+          : pinnedComment.active_badge ?? null,
+    };
+    const mid =
+      pinnedComment.messageId ||
+      pinnedComment.clientMessageId ||
+      "";
+    return {
+      user,
+      message: pinnedComment.message || "",
+      clientMessageId: mid,
+      id: mid,
+      _id: mid,
+    };
+  }, [pinnedComment]);
+
   const hasPinned = !!(pinnedComment && (pinnedComment.message || pinnedComment.messageId));
   if (visible.length === 0 && !hasPinned) return null;
 
@@ -505,36 +563,39 @@ const FloatingComments = ({
       }
       pointerEvents="box-none"
     >
-      {hasPinned && (
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => onPinnedPress?.(pinnedComment)}
-          style={styles.pinnedBanner}
-        >
+      {hasPinned && pinnedSyntheticItem ? (
+        <View style={styles.pinnedRowShell}>
           <View style={styles.pinnedIconWrap}>
             <Ionicons name="pin" size={fs(13)} color="#FFD580" />
           </View>
-          <View style={styles.pinnedTextWrap}>
-            <Text style={styles.pinnedTitle} numberOfLines={1}>
-              {pinnedComment.username
-                ? `📌 ${pinnedComment.username}`
-                : "📌 تعليق مثبّت"}
-            </Text>
-            <Text style={styles.pinnedMsg} numberOfLines={2}>
-              {pinnedComment.message}
-            </Text>
+          <View style={styles.pinnedCommentRowWrap} pointerEvents="box-none">
+            <CommentRow
+              item={pinnedSyntheticItem}
+              isNew={false}
+              vipLevelStyles={vipLevelStyles}
+              onAvatarPress={onAvatarPress}
+              onLongPress={onLongPressComment}
+              rowStyle={styles.pinnedCommentRow}
+              onPressBubble={
+                normalizePinnedUserId(pinnedComment?.userId) && onPinnedPress
+                  ? () => onPinnedPress(pinnedComment)
+                  : undefined
+              }
+            />
           </View>
-          {canModeratePin && (
+          {canModeratePin ? (
             <TouchableOpacity
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={() => onUnpinPress?.()}
-              style={styles.pinnedCloseBtn}
+              style={[styles.pinnedCloseBtn, styles.pinnedCloseBtnPinnedRow]}
+              accessibilityRole="button"
+              accessibilityLabel="إلغاء التثبيت"
             >
               <Ionicons name="close" size={fs(14)} color="#FFF" />
             </TouchableOpacity>
-          )}
-        </TouchableOpacity>
-      )}
+          ) : null}
+        </View>
+      ) : null}
 
       <FlatList
         ref={listRef}
@@ -579,10 +640,10 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     paddingHorizontal: ms(8),
   },
-  pinnedBanner: {
+  pinnedRowShell: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: ms(8),
+    alignItems: "flex-start",
+    gap: ms(6),
     backgroundColor: "rgba(124,93,250,0.92)",
     borderRadius: ms(12),
     paddingHorizontal: ms(10),
@@ -596,30 +657,27 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
+    overflow: "visible",
+    maxWidth: "100%",
+  },
+  pinnedCommentRowWrap: {
+    flex: 1,
+    minWidth: 0,
+    overflow: "visible",
+  },
+  pinnedCommentRow: {
+    marginBottom: 0,
+    alignSelf: "stretch",
   },
   pinnedIconWrap: {
     width: ms(22),
     height: ms(22),
+    marginTop: ms(10),
     borderRadius: ms(11),
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-  },
-  pinnedTextWrap: {
-    flex: 1,
-    flexShrink: 1,
-  },
-  pinnedTitle: {
-    color: "#FFD580",
-    fontSize: fs(11),
-    fontWeight: "800",
-    marginBottom: 2,
-  },
-  pinnedMsg: {
-    color: "#FFFFFF",
-    fontSize: fs(12.5),
-    fontWeight: "600",
-    lineHeight: fs(16),
+    flexShrink: 0,
   },
   pinnedCloseBtn: {
     width: ms(22),
@@ -628,6 +686,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  pinnedCloseBtnPinnedRow: {
+    marginTop: ms(10),
+    alignSelf: "flex-start",
   },
   listContent: {
     flexGrow: 1,
@@ -659,6 +721,9 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     overflow: "visible",
   },
+  rightColPressed: {
+    opacity: 0.9,
+  },
   avatar: {
     width: ms(36),
     height: ms(36),
@@ -684,11 +749,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bubble: {
-    backgroundColor: "rgba(0,0,0,0.50)",
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: ms(18),
-    maxWidth: width * 0.66,
+    backgroundColor: "rgba(0,0,0,0.52)",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(7),
+    borderRadius: ms(16),
+    maxWidth: width * 0.68,
     flexShrink: 1,
     overflow: "hidden",
   },
@@ -714,11 +779,12 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   levelChip: {
-    paddingHorizontal: ms(7),
-    paddingVertical: ms(2),
-    borderRadius: ms(6),
+    paddingHorizontal: ms(6),
+    paddingVertical: ms(1),
+    borderRadius: ms(5),
     borderWidth: 1,
-    marginHorizontal: ms(2),
+    marginHorizontal: 0,
+    backgroundColor: "transparent",
   },
   levelChipText: {
     fontSize: fs(10),
@@ -734,11 +800,12 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   vipChip: {
-    paddingHorizontal: ms(2),
-    paddingVertical: ms(2),
-    borderRadius: ms(8),
+    paddingHorizontal: ms(3),
+    paddingVertical: ms(1),
+    borderRadius: ms(7),
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "transparent",
   },
   vipIcon: {
     width: ms(15),
@@ -761,12 +828,13 @@ const styles = StyleSheet.create({
   },
   inlineHeader: {
     flexDirection: "row",
+    direction: "rtl",
     alignItems: "center",
-    flexWrap: "wrap",
-    gap: ms(8),
-    marginBottom: ms(3),
+    flexWrap: "nowrap",
+    gap: ms(3),
+    marginBottom: ms(2),
     alignSelf: "flex-start",
-    maxWidth: "100%",
+    maxWidth: width * 0.72,
     zIndex: 20,
     elevation: 20,
     overflow: "visible",
@@ -776,9 +844,9 @@ const styles = StyleSheet.create({
   inlineIconClip: {
     width: ms(26),
     height: ms(26),
-    borderRadius: ms(6),
+    borderRadius: ms(5),
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -787,11 +855,11 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   inlineVipIconClip: {
-    width: ms(34),
-    height: ms(34),
-    borderRadius: ms(8),
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(6),
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -805,29 +873,26 @@ const styles = StyleSheet.create({
     color: "rgba(200,190,255,0.95)",
     fontSize: fs(12),
     fontWeight: "700",
-    maxWidth: ms(96),
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: width * 0.36,
     marginRight: ms(4),
     textShadowColor: "rgba(0,0,0,0.85)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   vipBadgeSmallClip: {
-    width: ms(38),
-    height: ms(38),
-    borderRadius: ms(8),
+    width: ms(28),
+    height: ms(28),
+    borderRadius: ms(6),
     overflow: "hidden",
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
   vipBadgeSmallCover: {
     width: "100%",
     height: "100%",
-  },
-  vipBadgesGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(6),
   },
   message: {
     color: "rgba(255,255,255,0.96)",

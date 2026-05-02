@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, memo, useMemo, useCallback } from "react";
+import React, { useRef, useState, useEffect, memo, useMemo, useCallback, useContext } from "react";
 import {
   View,
   Text,
@@ -11,29 +11,34 @@ import {
   InteractionManager,
   DeviceEventEmitter,
   PanResponder,
+  Alert,
+  Platform,
 } from "react-native";
 import { Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
-import LottieView from "lottie-react-native";
 import SoundService from "../services/soundService";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { AuthContext } from "../context/AuthContext";
+import {
+  Gesture,
+  GestureDetector,
+  TouchableOpacity as TouchableOpacityGH,
+} from "react-native-gesture-handler";
 import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { getWindowDimensions } from "../utils/responsive";
+import { ms, fs, getWindowDimensions } from "../utils/responsive";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getWindowDimensions();
-const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.072, 24), 30));
-const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.115, 40), 48));
+/** Rail on screen start (= visual left under RTL mirror) — tight spacing vs icons */
+const ACTION_RAIL_EDGE_INSET = Math.round(ms(8));
+const ICON_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.08, 26), 32));
+const PROFILE_SIZE = Math.round(Math.min(Math.max(SCREEN_WIDTH * 0.118, 42), 48));
 const FOLLOW_BUTTON_SIZE = Math.round(
   Math.min(Math.max(PROFILE_SIZE * 0.38, 16), 20),
 );
-const ACTION_RAIL_RIGHT = Math.round(
-  Math.min(Math.max(SCREEN_WIDTH * 0.03, 8), 12),
-);
-const ACTION_GAP = Math.round(Math.min(Math.max(SCREEN_HEIGHT * 0.008, 5), 8));
+const ACTION_RAIL_VERTICAL_GAP = Math.round(ms(6));
 const MUSIC_DISC_OUTER_SIZE = Math.round(
   Math.min(Math.max(SCREEN_WIDTH * 0.14, 50), 58),
 );
@@ -44,8 +49,12 @@ const MUSIC_DISC_CENTER_SIZE = Math.round(
 const MUSIC_DISC_ICON_SIZE = Math.round(
   Math.min(Math.max(MUSIC_DISC_INNER_SIZE * 0.22, 10), 14),
 );
+/* Tap-exclusion stripe alongside the rail — keep slim */
+const ACTION_RAIL_CLEARANCE_SLACK = 20;
 const ACTION_RAIL_WIDTH =
-  Math.max(PROFILE_SIZE, MUSIC_DISC_OUTER_SIZE, ICON_SIZE) + 14;
+  Math.max(PROFILE_SIZE, MUSIC_DISC_OUTER_SIZE, ICON_SIZE) +
+  14 +
+  ACTION_RAIL_CLEARANCE_SLACK;
 const PROGRESS_TRACK_HEIGHT = 3;
 const PROGRESS_THUMB_SIZE = Math.round(
   Math.min(Math.max(SCREEN_WIDTH * 0.025, 8), 11),
@@ -55,6 +64,103 @@ const PROGRESS_WRAPPER_PADDING_TOP = 6;
 const PROGRESS_THUMB_OFFSET =
   PROGRESS_WRAPPER_PADDING_TOP -
   Math.round((PROGRESS_THUMB_SIZE - PROGRESS_TRACK_HEIGHT) / 2);
+
+const burstStyles = StyleSheet.create({
+  root: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 56,
+  },
+  particleWrap: {
+    position: "absolute",
+  },
+});
+
+const FLYING_HEART_COUNT = 10;
+
+const HEART_MIN = Math.round(ms(22));
+const HEART_MAX = HEART_MIN + Math.round(ms(12));
+
+/** Small Ionicons hearts that drift upward/fade — replaces Lottie on like / double-tap */
+const LikeHeartBurst = memo(({ burstId, centerY }) => {
+  const particles = useRef(
+    Array.from({ length: FLYING_HEART_COUNT }, () => ({
+      translateY: new Animated.Value(0),
+      translateX: new Animated.Value(0),
+      opacity: new Animated.Value(0),
+      scale: new Animated.Value(0.4),
+    })),
+  ).current;
+
+  useEffect(() => {
+    if (!burstId) return;
+    particles.forEach((p, i) => {
+      const drift = (Math.random() - 0.5) * Math.round(ms(112));
+      const rise = -(Math.round(ms(100)) + Math.random() * Math.round(ms(92)));
+      const duration = 720 + Math.random() * 260;
+      const heartSize = HEART_MIN + ((i % 4) / 3) * (HEART_MAX - HEART_MIN);
+
+      p.translateY.setValue(0);
+      p.translateX.setValue(0);
+      p.opacity.setValue(1);
+      p.scale.setValue(0.55 + Math.random() * 0.45);
+
+      Animated.parallel([
+        Animated.timing(p.translateY, {
+          toValue: rise,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(p.translateX, {
+          toValue: drift,
+          duration,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.delay(280),
+          Animated.timing(p.opacity, {
+            toValue: 0,
+            duration: 460,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    });
+  }, [burstId]);
+
+  if (!burstId) return null;
+
+  return (
+    <View style={burstStyles.root} pointerEvents="none">
+      {particles.map((p, i) => {
+        const sz = HEART_MIN + ((i % 4) / 3) * (HEART_MAX - HEART_MIN);
+        return (
+        <Animated.View
+          key={`h-${burstId}-${i}`}
+          style={[
+            burstStyles.particleWrap,
+            {
+              left: SCREEN_WIDTH / 2 - sz / 2,
+              top: centerY - sz / 2,
+              opacity: p.opacity,
+              transform: [
+                { translateX: p.translateX },
+                { translateY: p.translateY },
+                { scale: p.scale },
+              ],
+            },
+          ]}
+        >
+          <Ionicons name="heart" size={sz} color="#FF3366" />
+        </Animated.View>
+        );
+      })}
+    </View>
+  );
+});
+
+LikeHeartBurst.displayName = "LikeHeartBurst";
 
 const VideoItem = memo(
   ({
@@ -71,6 +177,15 @@ const VideoItem = memo(
     handleFollow,
     formatNumber,
   }) => {
+    const { userToken } = useContext(AuthContext);
+    const creatorUserId = useMemo(() => {
+      const u = item?.user;
+      if (!u || typeof u !== "object") return null;
+      const raw = u._id ?? u.id;
+      if (raw == null || raw === "") return null;
+      return String(raw);
+    }, [item?.user]);
+
     const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMutedByModal, setIsMutedByModal] = useState(false);
@@ -96,14 +211,7 @@ const VideoItem = memo(
     const playIconOpacity = useRef(new Animated.Value(0)).current;
     const playIconScale = useRef(new Animated.Value(0.6)).current;
 
-    // Per-item animation refs (previously shared in HomeScreen — caused all items to share the same animation)
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const heartOpacity = useRef(new Animated.Value(0)).current;
-    const heartScale = useRef(new Animated.Value(0)).current;
-    const lastTap = useRef(0);
-    const likeButtonLottieRef = useRef(null);
-    const heartOverlayLottieRef = useRef(null);
-    const [isAnimatingLike, setIsAnimatingLike] = useState(false);
+    const [likeBurstId, setLikeBurstId] = useState(0);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const rotationRef = useRef(null);
     const itemHeight = Math.max(viewportHeight || SCREEN_HEIGHT, 1);
@@ -119,7 +227,7 @@ const VideoItem = memo(
       Math.ceil(PROGRESS_THUMB_SIZE / 2) +
       4;
     const overlayBottomOffset = TIMELINE_MIN_HEIGHT + 38;
-    const actionGap = Math.max(Math.round(itemHeight * 0.014), 8);
+    const actionGap = ACTION_RAIL_VERTICAL_GAP;
     const zoomScale = useSharedValue(1);
     const zoomBase = useSharedValue(1);
 
@@ -338,14 +446,28 @@ const VideoItem = memo(
       [commitSeek, scrubThumbScale],
     );
 
+    const triggerLikeBurst = useCallback(() => {
+      setLikeBurstId((n) => n + 1);
+    }, []);
+
+    const onLikePress = (fromDoubleTap = false) => {
+      SoundService.play("like");
+      const isLiked = !!item.isLiked;
+      if (fromDoubleTap) {
+        triggerLikeBurst();
+      } else if (!isLiked) {
+        triggerLikeBurst();
+      }
+      handleLike(item._id);
+    };
+
     const handleDoubleTap = () => {
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300;
 
       if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-        // Double tap — like
-        onLikePress();
-        animateHeart();
+        // Double tap — like (+ flying hearts)
+        onLikePress(true);
       } else {
         // Single tap — play/pause
         togglePlayback();
@@ -353,60 +475,34 @@ const VideoItem = memo(
       lastTap.current = now;
     };
 
-    const animateHeart = () => {
-      heartOpacity.setValue(1);
-      heartOverlayLottieRef.current?.reset();
-      heartOverlayLottieRef.current?.play();
-      setTimeout(() => {
-        Animated.timing(heartOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }).start();
-      }, 700);
-    };
-
-    const animateLike = () => {
-      Animated.sequence([
-        Animated.spring(scaleAnim, {
-          toValue: 1.5,
-          friction: 3,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 3,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    };
-
-    const onLikePress = () => {
-      SoundService.play("like");
-      animateLike();
-      if (!item.isLiked) {
-        setIsAnimatingLike(true);
-      } else {
-        likeButtonLottieRef.current?.reset();
-      }
-      handleLike(item._id);
-    };
-
     const handleProfilePress = () => {
       SoundService.play("tap");
-      const targetId = item.user?._id || item.user?.id;
-      if (!targetId) return;
-      if (String(targetId) === String(userInfo?._id)) {
+      if (!userToken) {
+        Alert.alert(
+          "تسجيل الدخول",
+          "سجّل الدخول لعرض الملف الشخصي لهذا المستخدم.",
+        );
+        return;
+      }
+      if (!creatorUserId) {
+        Alert.alert("تعذّر الفتح", "لا يمكن تحديد صاحب هذا الفيديو.");
+        return;
+      }
+      if (String(creatorUserId) === String(userInfo?._id)) {
         navigation.navigate("MainTabs", { screen: "Profile" });
+        return;
+      }
+      const rootish = navigation.getParent?.();
+      if (rootish?.navigate) {
+        rootish.navigate("UserProfile", { userId: creatorUserId });
       } else {
-        navigation.navigate("UserProfile", { userId: targetId });
+        navigation.navigate("UserProfile", { userId: creatorUserId });
       }
     };
 
     const isAlreadyFollowing =
-      item.user?._id !== userInfo?._id &&
+      !!creatorUserId &&
+      creatorUserId !== String(userInfo?._id) &&
       Array.isArray(item.user?.followers) &&
       item.user.followers.some(
         (f) => String(typeof f === "object" ? f?._id : f) === String(userInfo?._id),
@@ -414,8 +510,16 @@ const VideoItem = memo(
 
     const handleFollowPress = () => {
       SoundService.play("tap");
-      if (!item.user?._id || isAlreadyFollowing) return;
-      handleFollow?.(item.user._id);
+      if (!userToken) {
+        Alert.alert(
+          "تسجيل الدخول",
+          "سجّل الدخول لمتابعة هذا المستخدم.",
+        );
+        return;
+      }
+      if (!creatorUserId || String(creatorUserId) === String(userInfo?._id)) return;
+      if (isAlreadyFollowing) return;
+      handleFollow?.(creatorUserId);
     };
 
     const isImage = (url) => {
@@ -429,62 +533,63 @@ const VideoItem = memo(
 
     return (
       <View style={[styles.videoContainer, { height: itemHeight }]}>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={handleDoubleTap}
-          style={styles.videoTouchable}
-        >
-          <GestureDetector gesture={pinchGesture}>
-            <Reanimated.View style={[styles.mediaContainer, mediaZoomStyle]}>
-              {isImage(item.videoUrl) ? (
-                <Image
-                  source={{ uri: item.videoUrl }}
-                  style={styles.video}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Video
-                  ref={videoRef}
-                  source={{ uri: item.videoUrl }}
-                  style={styles.video}
-                  resizeMode="cover"
-                  shouldPlay={isActive}
-                  isLooping
-                  isMuted={isMutedByModal}
-                  useNativeControls={false}
-                  onPlaybackStatusUpdate={(status) => {
-                    if (status.isLoaded) {
-                      setIsPlaying(status.isPlaying);
-                      setIsBuffering(status.isBuffering || false);
-                      if (status.durationMillis && status.durationMillis > 0) {
-                        durationRef.current = status.durationMillis;
-                        setDuration(status.durationMillis);
-                        if (!isSeeking.current) {
-                          const newP = status.positionMillis / status.durationMillis;
-                          progressRef.current = newP;
-                          setProgress(newP);
-                        }
+        {/* Pinch-zoom on full-frame media — action rail overlays on top */}
+        <GestureDetector gesture={pinchGesture}>
+          <Reanimated.View
+            style={[styles.mediaLayer, mediaZoomStyle]}
+          >
+            {isImage(item.videoUrl) ? (
+              <Image
+                source={{ uri: item.videoUrl }}
+                style={styles.video}
+                resizeMode="cover"
+              />
+            ) : (
+              <Video
+                ref={videoRef}
+                source={{ uri: item.videoUrl }}
+                style={styles.video}
+                resizeMode="cover"
+                shouldPlay={isActive}
+                isLooping
+                isMuted={isMutedByModal}
+                useNativeControls={false}
+                onPlaybackStatusUpdate={(status) => {
+                  if (status.isLoaded) {
+                    setIsPlaying(status.isPlaying);
+                    setIsBuffering(status.isBuffering || false);
+                    if (status.durationMillis && status.durationMillis > 0) {
+                      durationRef.current = status.durationMillis;
+                      setDuration(status.durationMillis);
+                      if (!isSeeking.current) {
+                        const newP = status.positionMillis / status.durationMillis;
+                        progressRef.current = newP;
+                        setProgress(newP);
                       }
                     }
-                  }}
-                />
-              )}
-            </Reanimated.View>
-          </GestureDetector>
+                  }
+                }}
+              />
+            )}
+          </Reanimated.View>
+        </GestureDetector>
 
-          {/* Double-tap heart animation */}
-          <Animated.View
-            style={[styles.heartOverlay, { opacity: heartOpacity }]}
-            pointerEvents="none"
-          >
-            <LottieView
-              ref={heartOverlayLottieRef}
-              source={require("../../assets/lottie-heart.json")}
-              style={{ width: 220, height: 220 }}
-              loop={false}
-              autoPlay={false}
-            />
-          </Animated.View>
+        {/* Tap zone: excludes left-side action rail */}
+        <TouchableOpacityGH
+          activeOpacity={1}
+          onPress={handleDoubleTap}
+          style={[
+            styles.videoTapCatch,
+            {
+              left: ACTION_RAIL_EDGE_INSET + ACTION_RAIL_WIDTH,
+              right: 0,
+            },
+          ]}
+        >
+          <View style={styles.videoTapCatchInner} />
+        </TouchableOpacityGH>
+
+        <LikeHeartBurst burstId={likeBurstId} centerY={itemHeight / 2} />
 
           {/* Play / Pause flash overlay */}
           <Animated.View
@@ -505,17 +610,25 @@ const VideoItem = memo(
               />
             </View>
           </Animated.View>
-        </TouchableOpacity>
 
-        {/* Bottom Info */}
-        <View style={[styles.bottomSection, { bottom: overlayBottomOffset }]}>
+        {/* Caption — rail مساحته على الشمال؛ النص باليمين (مناسب لعربية) */}
+        <View
+          style={[
+            styles.bottomSection,
+            {
+              bottom: overlayBottomOffset,
+              left: ACTION_RAIL_EDGE_INSET + ACTION_RAIL_WIDTH + Math.round(ms(8)),
+              right: Math.round(ms(12)),
+            },
+          ]}
+        >
           <View style={styles.userInfo}>
-            <Text style={styles.username}>@{item.user.username}</Text>
+            <Text style={styles.username}>@{item.user?.username || "—"}</Text>
             <Text style={styles.description}>{item.description}</Text>
             <View style={styles.musicRow}>
-              <Ionicons name="musical-notes" size={15} color="#FFF" />
+              <Ionicons name="musical-notes" size={Math.round(ms(15))} color="#FFF" />
               <Text style={styles.musicText}>
-                الصوت الأصلي - {item.user.username}
+                الصوت الأصلي - {item.user?.username || ""}
               </Text>
             </View>
           </View>
@@ -605,16 +718,17 @@ const VideoItem = memo(
           </View>
         )}
 
-        {/* Side Actions */}
+        {/* عمود الإعجاب/التعليق — يسار الشاشة (تحت RTL يظهر بمحاذاة البداية) */}
         <View
+          collapsable={false}
           style={[
             styles.rightActions,
-            { bottom: overlayBottomOffset + 7, gap: actionGap },
+            { left: ACTION_RAIL_EDGE_INSET, bottom: overlayBottomOffset + 7, gap: actionGap },
           ]}
         >
           {/* Profile Image + Follow */}
           <View style={styles.profileContainer}>
-            <TouchableOpacity
+            <TouchableOpacityGH
               activeOpacity={0.85}
               onPress={handleProfilePress}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -629,32 +743,32 @@ const VideoItem = memo(
                   <Text style={styles.profileEmoji}>👤</Text>
                 )}
               </View>
-            </TouchableOpacity>
-            {item.user?._id && item.user._id !== userInfo?._id && !isAlreadyFollowing && (
-              <TouchableOpacity
+            </TouchableOpacityGH>
+            {creatorUserId &&
+              String(creatorUserId) !== String(userInfo?._id) &&
+              !isAlreadyFollowing && (
+              <TouchableOpacityGH
                 activeOpacity={0.8}
                 onPress={handleFollowPress}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.followButton}
               >
                 <Ionicons name="add" size={14} color="#FFF" />
-              </TouchableOpacity>
+              </TouchableOpacityGH>
             )}
           </View>
 
-          {/* Like Button - TikTok Style */}
-          <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
-            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              <LottieView
-                ref={likeButtonLottieRef}
-                source={require("../../assets/lottie-heart.json")}
-                style={styles.likeButtonLottie}
-                loop={false}
-                autoPlay={isAnimatingLike}
-                progress={isAnimatingLike ? undefined : (item.isLiked ? 1 : 0)}
-                onAnimationFinish={() => setIsAnimatingLike(false)}
-              />
-            </Animated.View>
+          {/* Like — icon at fixed size (no scale-in clip); hitSlop preserves comfortable tap */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onLikePress(false)}
+            hitSlop={{ top: 14, bottom: 10, left: 14, right: 14 }}
+          >
+            <Ionicons
+              name={item.isLiked ? "heart" : "heart-outline"}
+              size={ICON_SIZE}
+              color={item.isLiked ? "#FF3366" : "#FFF"}
+            />
             <Text style={[styles.actionText, item.isLiked && styles.likedText]}>
               {formatNumber(item.likes || 0)}
             </Text>
@@ -705,10 +819,10 @@ const VideoItem = memo(
           </TouchableOpacity>
 
           {/* Rotating Music Disc */}
-          <TouchableOpacity style={styles.musicDiscContainer} onPress={handleProfilePress}>
+          <TouchableOpacityGH style={styles.musicDiscContainer} onPress={handleProfilePress}>
             <Animated.View style={[styles.musicDiscOuter, { transform: [{ rotate: spin }] }]}>
               <View style={styles.musicDiscInner}>
-                {item.user.profileImage ? (
+                {item.user?.profileImage ? (
                   <Image
                     source={{ uri: item.user.profileImage }}
                     style={styles.musicDiscImage}
@@ -725,7 +839,7 @@ const VideoItem = memo(
               </View>
               <View style={styles.musicDiscCenter} />
             </Animated.View>
-          </TouchableOpacity>
+          </TouchableOpacityGH>
         </View>
       </View>
     );
@@ -740,26 +854,32 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT,
     position: "relative",
     overflow: "hidden",
+    direction: "ltr",
   },
-  mediaContainer: {
-    width: "100%",
+  mediaLayer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: "100%",
+    overflow: "hidden",
+    zIndex: 2,
+  },
+  videoTapCatch: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    zIndex: 40,
+    /* left / right set inline — reserve side rail */
+  },
+  videoTapCatchInner: {
+    flex: 1,
   },
   video: {
+    flex: 1,
     width: "100%",
     height: "100%",
-  },
-  videoTouchable: {
-    width: "100%",
-    height: "100%",
-  },
-  heartOverlay: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    marginTop: -60,
-    marginLeft: -60,
-    zIndex: 1000,
   },
   playPauseOverlay: {
     position: "absolute",
@@ -769,7 +889,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 999,
+    zIndex: 54,
   },
   playPauseCircle: {
     width: 80,
@@ -897,27 +1017,32 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     position: "absolute",
-    left: 16,
-    right: ACTION_RAIL_RIGHT + ACTION_RAIL_WIDTH,
     zIndex: 100,
+    pointerEvents: "box-none",
+    direction: "rtl",
   },
   userInfo: {
-    marginBottom: 12,
+    marginBottom: Math.round(ms(12)),
+    alignSelf: "stretch",
   },
   username: {
     color: "#FFF",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: Math.round(ms(8)),
+    textAlign: "right",
+    writingDirection: "rtl",
     textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   description: {
     color: "#FFF",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 10,
+    fontSize: fs(14),
+    lineHeight: Math.round(ms(20)),
+    marginBottom: Math.round(ms(10)),
+    textAlign: "right",
+    writingDirection: "rtl",
     textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -925,28 +1050,36 @@ const styles = StyleSheet.create({
   musicRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "flex-end",
+    gap: Math.round(ms(6)),
+    alignSelf: "stretch",
   },
   musicText: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: fs(13),
     fontWeight: "500",
+    flex: 1,
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   rightActions: {
     position: "absolute",
-    right: ACTION_RAIL_RIGHT,
-    gap: ACTION_GAP,
-    zIndex: 100,
+    zIndex: 950,
+    elevation: Platform.OS === "android" ? 40 : 0,
+    alignItems: "center",
   },
   profileContainer: {
+    position: "relative",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Math.round(ms(10)),
+    zIndex: 2,
+    elevation: Platform.OS === "android" ? 50 : 0,
   },
   profileImageWrapper: {
     width: PROFILE_SIZE,
     height: PROFILE_SIZE,
     borderRadius: PROFILE_SIZE / 2,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "#FFF",
     overflow: "hidden",
     backgroundColor: "#FF3366",
@@ -969,15 +1102,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF3366",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 30,
+    elevation: Platform.OS === "android" ? 32 : 0,
   },
   actionButton: {
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: Math.round(ms(7)),
   },
   actionText: {
     color: "#FFF",
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: fs(12),
+    marginTop: Math.round(ms(4)),
     fontWeight: "600",
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.8)",
@@ -997,15 +1132,6 @@ const styles = StyleSheet.create({
     opacity: 0.3,
     borderRadius: 20,
     transform: [{ scale: 1.3 }],
-  },
-  likedText: {
-    color: "#FF3366",
-    fontWeight: "bold",
-  },
-  likeButtonLottie: {
-    width: 220,
-    height: 220,
-    margin: -((220 - ICON_SIZE) / 2),
   },
   musicDiscContainer: {
     alignItems: "center",
