@@ -6,6 +6,7 @@ import {
   Animated,
   FlatList,
   Image,
+  ImageBackground,
   TouchableOpacity,
   TouchableWithoutFeedback,
   Pressable,
@@ -264,20 +265,83 @@ const CommentRow = React.memo(
     <>
       {renderInlineHeader()}
       {hasBubbleFrame ? (
-        <View style={styles.bubbleFrameOuter}>
-          <View
+        commentFrameUsesLottie ? (
+          <View style={styles.bubbleFrameOuter}>
+            <View
+              style={[
+                styles.bubble,
+                styles.bubbleWithFrameOverlay,
+                {
+                  backgroundColor: commentFrameBgColor || "transparent",
+                  borderWidth: 0,
+                  borderRadius: 0,
+                  paddingHorizontal: ms(18),
+                  paddingVertical: ms(10),
+                  maxWidth: width * 0.68,
+                },
+              ]}
+            >
+              {isGift && item.giftUrl ? (
+                <View style={styles.giftMsgRow}>
+                  <Image
+                    source={{ uri: item.giftUrl }}
+                    style={styles.giftThumb}
+                    resizeMode="cover"
+                  />
+                  <View style={{ flexShrink: 1 }}>
+                    <Text
+                      style={[
+                        styles.message,
+                        commentTextColor ? { color: commentTextColor } : null,
+                      ]}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {messageText}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <Text
+                  style={[
+                    styles.message,
+                    commentTextColor ? { color: commentTextColor } : null,
+                    isSystem && styles.systemMessage,
+                  ]}
+                  numberOfLines={isSystem ? 3 : 2}
+                  ellipsizeMode="tail"
+                >
+                  {messageText}
+                </Text>
+              )}
+            </View>
+            <LottieView
+              source={{ uri: commentFrameLottieUrl }}
+              autoPlay
+              loop
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+              resizeMode="cover"
+            />
+          </View>
+        ) : (
+          <ImageBackground
+            source={{ uri: commentFrameLottieUrl }}
             style={[
               styles.bubble,
               styles.bubbleWithFrameOverlay,
+              styles.bubbleRasterFrameWrap,
               {
                 backgroundColor: commentFrameBgColor || "transparent",
                 borderWidth: 0,
                 borderRadius: 0,
-                paddingHorizontal: isRasterCommentFrame ? ms(32) : ms(18),
-                paddingVertical: isRasterCommentFrame ? ms(18) : ms(10),
-                maxWidth: width * 0.68,
+                paddingHorizontal: isRasterCommentFrame ? ms(32) : ms(22),
+                paddingVertical: isRasterCommentFrame ? ms(18) : ms(12),
+                maxWidth: width * 0.72,
               },
             ]}
+            resizeMode="stretch"
+            imageStyle={styles.bubbleRasterFrameImage}
           >
             {isGift && item.giftUrl ? (
               <View style={styles.giftMsgRow}>
@@ -312,25 +376,8 @@ const CommentRow = React.memo(
                 {messageText}
               </Text>
             )}
-          </View>
-          {commentFrameUsesLottie ? (
-            <LottieView
-              source={{ uri: commentFrameLottieUrl }}
-              autoPlay
-              loop
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-              resizeMode="cover"
-            />
-          ) : (
-            <Image
-              source={{ uri: commentFrameLottieUrl }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="stretch"
-              pointerEvents="none"
-            />
-          )}
-        </View>
+          </ImageBackground>
+        )
       ) : (
         <View
           style={[

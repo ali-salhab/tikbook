@@ -626,7 +626,6 @@ const VideoItem = memo(
             <Text style={styles.username}>@{item.user?.username || "—"}</Text>
             <Text style={styles.description}>{item.description}</Text>
             <View style={styles.musicRow}>
-              <Ionicons name="musical-notes" size={Math.round(ms(15))} color="#FFF" />
               <Text style={styles.musicText}>
                 الصوت الأصلي - {item.user?.username || ""}
               </Text>
@@ -1019,10 +1018,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     zIndex: 100,
     pointerEvents: "box-none",
-    direction: "rtl",
+    direction: "ltr",
   },
   userInfo: {
-    marginBottom: Math.round(ms(12)),
+    marginBottom: Math.round(ms(1)),
     alignSelf: "stretch",
   },
   username: {
