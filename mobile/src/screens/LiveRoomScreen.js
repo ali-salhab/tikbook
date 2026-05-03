@@ -1884,6 +1884,31 @@ const LiveRoomScreen = ({ route, navigation }) => {
     return st?.profileFrameLottieUrl || st?.badgeImageUrl || null;
   }, [userSheet?.user?.vipLevel, vipLevelCommentStyles]);
 
+  /**
+   * نفس حساب الإطار في HostSection (بيانات host من الغرفة، ليس المرسل المحدّث من الملف الشخصي).
+   * يُطبَّق على تعليقات المضيف لتفادي اختلاف الإطاء عن منطقة المقاعد.
+   */
+  const hostRoomUserId = room?.host?._id ?? room?.host?.id ?? null;
+  const hostCommentAvatarFrameUrl = useMemo(() => {
+    const host = room?.host;
+    if (!host) return null;
+    const hostVipLevel = Number(host.vipLevel || 0);
+    const hostVipStyle = hostVipLevel > 0 ? vipLevelCommentStyles?.[hostVipLevel] : null;
+    const raw =
+      host.activeBadge?.imageUrl ||
+      host.activeBadge?.image ||
+      (typeof host.activeBadge === "string" ? host.activeBadge : null) ||
+      null;
+    const pickHttp = (u) =>
+      typeof u === "string" && /^https?:\/\//i.test(u.trim()) ? u.trim() : "";
+    const url =
+      pickHttp(raw) ||
+      pickHttp(hostVipStyle?.profileFrameLottieUrl) ||
+      pickHttp(hostVipStyle?.badgeImageUrl) ||
+      "";
+    return url ? url : null;
+  }, [room?.host, vipLevelCommentStyles]);
+
   // ── Comment muted state — set of userIds chat-muted in current room ─────────
   const mutedChatUserIds = React.useMemo(() => {
     const ids = (room?.mutedUsers || []).map((m) =>
@@ -3821,6 +3846,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
           inline={true}
           bottomPadding={insets.bottom + ms(72)}
           vipLevelStyles={vipLevelCommentStyles}
+          hostRoomUserId={hostRoomUserId}
+          hostCommentAvatarFrameUrl={hostCommentAvatarFrameUrl}
           onAvatarPress={handleAvatarPressInComments}
           onLongPressComment={handleLongPressComment}
           pinnedComment={room?.pinnedComment}

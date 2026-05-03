@@ -58,6 +58,8 @@ const CommentRow = React.memo(
     onPressBubble,
     rowStyle,
     compactPinned = false,
+    hostRoomUserId = null,
+    hostCommentAvatarFrameUrl = null,
   }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
@@ -134,40 +136,50 @@ const CommentRow = React.memo(
 
   const levelColor = getLevelColor(userLevel);
 
-  const activeBadgeUrl =
+  const uid = item.user?._id ?? item.user?.id ?? null;
+  const isHostSender =
+    hostRoomUserId != null &&
+    uid != null &&
+    String(hostRoomUserId) === String(uid);
+
+  const pickHttp = (u) =>
+    typeof u === "string" && /^https?:\/\//i.test(u.trim()) ? u.trim() : "";
+
+  const activeBadgeRaw =
     item.user?.activeBadge?.imageUrl ||
     item.user?.activeBadge?.image ||
     (typeof item.user?.activeBadge === "string" ? item.user.activeBadge : null) ||
     null;
+  const activeBadgeUrl = pickHttp(activeBadgeRaw);
   /**
-   * إطار صورة التعليق فقط — مختلف عن إطار البروفايل الكبير فوق المقاعد (profileFrameLottieUrl).
-   * أولوية: شارة المستوى / لوتي الشارة / أيقونة المستوى — لا نستخدم إطار الملف الشخصي الضخم هنا.
+   * رسائل مدير الغرفة تُحمَّل غالباً بـ activeBadge من الملف الشخصي بينما كائن host في الغرفة
+   * لا يحتوي نفس الشارة — فيظهر الإطار الضخم فوق المقاعد وإطار أصغر في التعليق.
+   * نطبّق لإطار الصورة في التعليق نفس منطق HostSection مستنداً إلى room.host.
    */
-  const vipCommentAvatarFrameUrl =
+  const vipProfileOrBadgeFrameUrl =
     isVip && typeof vipStyleEntry === "object"
-      ? [
-          vipStyleEntry?.badgeImageUrl,
-          vipStyleEntry?.badgeLottieUrl,
-          vipStyleEntry?.levelIconUrl,
-          vipStyleEntry?.imageUrl,
-        ]
-          .find((u) => typeof u === "string" && /^https?:\/\//i.test(u.trim()))
-          ?.trim() || null
-      : null;
+      ? pickHttp(vipStyleEntry?.profileFrameLottieUrl) ||
+        pickHttp(vipStyleEntry?.badgeImageUrl) ||
+        pickHttp(vipStyleEntry?.badgeLottieUrl) ||
+        pickHttp(vipStyleEntry?.levelIconUrl) ||
+        pickHttp(vipStyleEntry?.imageUrl) ||
+        ""
+      : "";
   const resolvedBadgeUrl =
-    (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
-    (typeof vipCommentAvatarFrameUrl === "string" && vipCommentAvatarFrameUrl ? vipCommentAvatarFrameUrl : null);
+    isHostSender && hostCommentAvatarFrameUrl
+      ? hostCommentAvatarFrameUrl
+      : activeBadgeUrl || vipProfileOrBadgeFrameUrl || null;
   const hasActiveBadge = !!resolvedBadgeUrl;
   // Personal badge icon shown inline in header — supports PNG/WebP and Lottie JSON
   const isBadgeLottie =
-    typeof activeBadgeUrl === "string" &&
-    activeBadgeUrl.startsWith("http") &&
-    (/\.json($|\?)/i.test(activeBadgeUrl) ||
-      (activeBadgeUrl.includes("/raw/upload/") &&
-        !/\.(png|jpe?g|webp|gif)($|\?)/i.test(activeBadgeUrl)));
+    typeof activeBadgeRaw === "string" &&
+    activeBadgeRaw.startsWith("http") &&
+    (/\.json($|\?)/i.test(activeBadgeRaw) ||
+      (activeBadgeRaw.includes("/raw/upload/") &&
+        !/\.(png|jpe?g|webp|gif)($|\?)/i.test(activeBadgeRaw)));
   const badgeIconUrl =
-    typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http")
-      ? activeBadgeUrl
+    typeof activeBadgeRaw === "string" && activeBadgeRaw.startsWith("http")
+      ? activeBadgeRaw
       : null;
 
   // Unified inline header (username + admin-uploaded badges/icons) — always
@@ -560,6 +572,8 @@ const FloatingComments = ({
   vipLevelStyles = {},
   inline = false,
   bottomPadding = 0,
+  hostRoomUserId = null,
+  hostCommentAvatarFrameUrl = null,
   onAvatarPress,
   onLongPressComment,
   pinnedComment = null,
@@ -586,11 +600,21 @@ const FloatingComments = ({
         item={item}
         isNew={(item.clientMessageId || item.id || item._id) === latestId}
         vipLevelStyles={vipLevelStyles}
+        hostRoomUserId={hostRoomUserId}
+        hostCommentAvatarFrameUrl={hostCommentAvatarFrameUrl}
         onAvatarPress={onAvatarPress}
         onLongPress={onLongPressComment}
       />
     ),
-    [latestId, vipLevelStyles, visible.length, onAvatarPress, onLongPressComment],
+    [
+      latestId,
+      vipLevelStyles,
+      hostRoomUserId,
+      hostCommentAvatarFrameUrl,
+      visible.length,
+      onAvatarPress,
+      onLongPressComment,
+    ],
   );
 
   const keyExtractor = useCallback(
@@ -683,6 +707,8 @@ const FloatingComments = ({
               item={pinnedSyntheticItem}
               isNew={false}
               vipLevelStyles={vipLevelStyles}
+              hostRoomUserId={hostRoomUserId}
+              hostCommentAvatarFrameUrl={hostCommentAvatarFrameUrl}
               onAvatarPress={onAvatarPress}
               onLongPress={onLongPressComment}
               compactPinned
