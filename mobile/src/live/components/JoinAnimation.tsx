@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import SoundService from "../../services/soundService";
+import ProfileBadgeFrame from "../../components/ProfileBadgeFrame";
 import VipBadge from "../../components/VipBadge";
 import type { LiveRoomUser, VipTierConfig } from "../types";
 
@@ -30,6 +31,8 @@ type Props = {
   displayDurationMs?: number;
   joinVideoUrl?: string | null;
   joinCardFrameImageUrl?: string | null;
+  /** إطار حول الصورة (PNG/Lottie) — يُفضَّل عن بطاقة PNG كاملة؛ يُدمَج من الغرفة مع إطار البروفايل من VIP */
+  avatarFrameUrl?: string | null;
   layoutStyle?: JoinLayoutStyle | null;
   effectPreset?: JoinEffectPreset | null;
   vipBadgeIconUrl?: string | null;
@@ -50,6 +53,7 @@ const JoinAnimation = ({
   displayDurationMs,
   joinVideoUrl,
   joinCardFrameImageUrl,
+  avatarFrameUrl,
   layoutStyle = "card",
   effectPreset = "none",
   vipBadgeIconUrl,
@@ -71,10 +75,28 @@ const JoinAnimation = ({
   const layout = layoutStyle === "ticker" ? "ticker" : "card";
   const effect = effectPreset || "none";
   const dwellMs = clampDur(displayDurationMs);
+  const joinVideoTrimmed =
+    typeof joinVideoUrl === "string" ? joinVideoUrl.trim() : "";
   const showVideo =
-    typeof joinVideoUrl === "string" &&
-    joinVideoUrl.length > 4 &&
-    (joinVideoUrl.startsWith("http") || joinVideoUrl.startsWith("file"));
+    joinVideoTrimmed.length > 4 &&
+    (joinVideoTrimmed.startsWith("http://") ||
+      joinVideoTrimmed.startsWith("https://") ||
+      joinVideoTrimmed.startsWith("file:") ||
+      joinVideoTrimmed.startsWith("file://"));
+
+  /** إطار الصورة: خاص بالانضمام أو إطار VIP من الأنماط */
+  const rawFrame =
+    (typeof avatarFrameUrl === "string" && avatarFrameUrl.trim()) ||
+    (typeof joinCardFrameImageUrl === "string" && joinCardFrameImageUrl.trim()) ||
+    "";
+  const effectiveAvatarFrame =
+    rawFrame &&
+    (rawFrame.startsWith("http://") ||
+      rawFrame.startsWith("https://") ||
+      rawFrame.startsWith("file:") ||
+      rawFrame.startsWith("file://"))
+      ? rawFrame
+      : "";
 
   const resolveActiveBadgeImageUrl = (badge: unknown): string => {
     if (badge == null || badge === "") return "";
@@ -271,55 +293,85 @@ const JoinAnimation = ({
       </Animated.View>
     </View>
   ) : (
-    <View style={styles.row}>
-      {/* Optional join clip */}
-      {showVideo ? (
-        <View style={styles.videoBox}>
-          <Video
-            source={{ uri: joinVideoUrl }}
-            style={styles.video}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay
-            isLooping
-            isMuted
-          />
+    <View style={styles.joinCardRoot}>
+      {/* صف يثبت الصورة على يمين الكارد حتى في وضع RTL للتطبيق */}
+      <View style={styles.avatarHeroRow} pointerEvents="none">
+        <View style={styles.avatarHeroSlot}>
+          {effectiveAvatarFrame ? (
+            <View style={styles.avatarFramedWrap}>
+              <ProfileBadgeFrame
+                profileImage={profileUri || undefined}
+                badgeImage={effectiveAvatarFrame}
+                size={50}
+                showSparks={false}
+              />
+              {user?.isVerified ? (
+                <View style={styles.verifiedDotHero}>
+                  <Ionicons name="checkmark" size={10} color="#fff" />
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.avatarHeroPlainWrap}>
+              {profileUri ? (
+                <Image source={{ uri: profileUri }} style={styles.avatarHeroImg} />
+              ) : (
+                <View style={[styles.avatarHeroImg, styles.avatarPlaceholder]} />
+              )}
+              {user?.isVerified ? (
+                <View style={styles.verifiedDotHero}>
+                  <Ionicons name="checkmark" size={10} color="#fff" />
+                </View>
+              ) : null}
+            </View>
+          )}
         </View>
-      ) : null}
-
-      {/* Avatar cluster */}
-      <View style={styles.avatarCluster}>
-        {profileUri ? (
-          <Image source={{ uri: profileUri }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]} />
-        )}
-        {user?.isVerified ? (
-          <View style={styles.verifiedDot}>
-            <Ionicons name="checkmark" size={11} color="#fff" />
-          </View>
-        ) : null}
       </View>
 
-      {/* Award / medal badge */}
-      {badgeImgUrl ? <Image source={{ uri: badgeImgUrl }} style={styles.rewardBadgeImg} /> : null}
-
-      <View style={styles.textWrap}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.label, { color: nameColor }]} numberOfLines={1}>
-            {joinTitle}
-          </Text>
-          {Number(user?.vipLevel) > 0 ? (
-            <VipBadge
-              level={Number(user?.vipLevel)}
-              size="small"
-              imageUrl={vipBadgeIconUrl || undefined}
-            />
+      <View style={styles.cardPanel}>
+        <View style={styles.cardPanelRow}>
+          <View style={styles.textWrap}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.label, { color: nameColor }]} numberOfLines={1}>
+                {joinTitle}
+              </Text>
+              {Number(user?.vipLevel) > 0 ? (
+                <VipBadge
+                  level={Number(user?.vipLevel)}
+                  size="small"
+                  imageUrl={vipBadgeIconUrl || undefined}
+                />
+              ) : null}
+            </View>
+            <Text style={styles.subLabel}>انضم للغرفة</Text>
+            {badgeImgUrl ? (
+              <Image source={{ uri: badgeImgUrl }} style={styles.rewardBadgeInline} resizeMode="contain" />
+            ) : null}
+          </View>
+          {showVideo ? (
+            <View style={styles.videoBox} collapsable={false}>
+              <Video
+                source={{ uri: joinVideoTrimmed }}
+                style={styles.video}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+                isLooping
+                isMuted
+                useNativeControls={false}
+              />
+            </View>
           ) : null}
         </View>
-        <Text style={styles.subLabel}>انضم للغرفة</Text>
       </View>
     </View>
   );
+
+  /** Video داخل Animated مع opacity يختفي على أندرويد — الإبقاء على الإزاحة فقط */
+  const containerAnimStyle = {
+    top: insets.top + 10,
+    transform: [{ translateY }],
+    ...(Platform.OS === "android" ? {} : { opacity }),
+  };
 
   return (
     <Animated.View
@@ -327,12 +379,9 @@ const JoinAnimation = ({
       style={[
         styles.container,
         layout === "ticker" ? styles.containerTicker : null,
-        {
-          opacity,
-          top: insets.top + 10,
-          transform: [{ translateY }],
-        },
+        containerAnimStyle,
       ]}
+      needsOffscreenAlphaCompositing={Platform.OS === "ios"}
     >
       <View style={styles.shell}>
         {effect === "ring" && layout !== "ticker" ? (
@@ -352,21 +401,10 @@ const JoinAnimation = ({
           />
         ) : null}
 
-        {/* PNG overlay frame */}
-        {joinCardFrameImageUrl &&
-        joinCardFrameImageUrl.startsWith("http") &&
-        layout !== "ticker" ? (
-          <Image
-            source={{ uri: joinCardFrameImageUrl }}
-            style={styles.pngFrame}
-            resizeMode="contain"
-          />
-        ) : null}
-
         {(effect === "glow" || effect === "aurora") && layout !== "ticker" ? (
           <Animated.View
             style={[
-              styles.card,
+              styles.cardJoinShell,
               {
                 borderColor: tint,
                 borderWidth: 1.5,
@@ -383,7 +421,7 @@ const JoinAnimation = ({
         ) : (
           <Animated.View
             style={[
-              layout === "ticker" ? styles.cardTicker : styles.card,
+              layout === "ticker" ? styles.cardTicker : styles.cardJoinShell,
               layout !== "ticker" && vipTier?.color && effect === "none"
                 ? { borderColor: vipTier.color }
                 : null,
@@ -428,23 +466,83 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     opacity: 0.5,
   },
-  pngFrame: {
-    position: "absolute",
-    left: -18,
-    right: -18,
-    top: -26,
-    bottom: -26,
-    zIndex: 3,
-    width: undefined,
-    height: undefined,
+  /** غلاف شفاف — لا overflow:hidden حتى تُرى الصورة خارج اللوحة */
+  cardJoinShell: {
+    alignSelf: "stretch",
+    borderRadius: 16,
+    backgroundColor: "transparent",
+    overflow: "visible",
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
-  card: {
+  joinCardRoot: {
+    position: "relative",
+    overflow: "visible",
+    alignItems: "stretch",
+    width: "100%",
+    paddingTop: 4,
+    /** يمنع انعكاس اتجاه RTL على موضع الصورة */
+    direction: "ltr",
+  },
+  /** صف بعرض الكارد: الصورة دائماً على يمين الحافة (بصرياً) */
+  avatarHeroRow: {
+    position: "absolute",
+    top: -40,
+    left: 0,
+    right: 0,
+    zIndex: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "flex-end",
+    paddingRight: 8,
+    paddingLeft: 8,
+    direction: "ltr",
+  },
+  avatarHeroSlot: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarFramedWrap: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarHeroPlainWrap: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarHeroImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.38)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  verifiedDotHero: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#0ea5e9",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(8,12,27,0.95)",
+  },
+  cardPanel: {
+    marginTop: 38,
+    width: "100%",
     borderRadius: 14,
-    backgroundColor: "rgba(8, 12, 27, 0.88)",
+    backgroundColor: "rgba(8, 12, 27, 0.92)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.26)",
+    borderColor: "rgba(255,255,255,0.24)",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingTop: 20,
     overflow: "hidden",
   },
   cardTicker: {
@@ -461,42 +559,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+  /** اتجاه ثابت: النص يبدأ من اليسار البصري والفيديو قرب الصورة على اليمين */
+  cardPanelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+    direction: "ltr",
+  },
   videoBox: {
-    width: 56,
-    height: 56,
+    width: 58,
+    height: 58,
     borderRadius: 10,
     overflow: "hidden",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   video: {
     width: "100%",
     height: "100%",
   },
-  avatarCluster: {
-    position: "relative",
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
   avatarPlaceholder: {
     backgroundColor: "rgba(255,255,255,0.15)",
-  },
-  verifiedDot: {
-    position: "absolute",
-    right: -2,
-    bottom: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "#0ea5e9",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(8,12,27,0.95)",
   },
   verifiedIc: {
     marginHorizontal: 2,
@@ -508,10 +591,11 @@ const styles = StyleSheet.create({
     marginRight: 6,
     resizeMode: "contain",
   },
-  rewardBadgeImg: {
-    width: 30,
-    height: 30,
-    borderRadius: 6,
+  rewardBadgeInline: {
+    width: 22,
+    height: 22,
+    marginTop: 6,
+    alignSelf: "flex-end",
   },
   textWrap: {
     flex: 1,

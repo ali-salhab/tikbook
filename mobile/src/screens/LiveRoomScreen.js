@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
+import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -393,6 +393,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
   /** When host leaves via "خروج فقط", keep sticky return notification (cleanup must not dismiss it). */
   const skipDismissLiveNotifOnUnmountRef = useRef(false);
   const liveMessageKeysRef = useRef(new Set());
+  /** بعد ترقية VIP نعيد جلب أنماط الإطارات لتطابق لوحة الأدمن فوراً */
+  const prevSyncedVipLevelRef = useRef(undefined);
 
   // ─── LIFECYCLE ───────────────────────────────────────────────────────────────
 
@@ -419,6 +421,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       loadVipLevelCommentStyles();
+      fetchFreshCurrentUser();
 
       // If the socket disconnected while the screen was blurred (app backgrounded,
       // OS killed the connection, etc.) and didn't auto-reconnect, reconnect now.
@@ -437,6 +440,20 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    const merged =
+      freshUser && userInfo?._id && String(freshUser._id) === String(userInfo._id)
+        ? Number(freshUser.vipLevel ?? 0)
+        : Number(userInfo?.vipLevel ?? 0);
+    if (
+      prevSyncedVipLevelRef.current !== undefined &&
+      prevSyncedVipLevelRef.current !== merged
+    ) {
+      loadVipLevelCommentStyles();
+    }
+    prevSyncedVipLevelRef.current = merged;
+  }, [freshUser?.vipLevel, userInfo?.vipLevel, freshUser?._id, userInfo?._id]);
 
   // Re-announce presence with populated badge/profile after freshUser loads — others see join banner assets.
   useEffect(() => {
@@ -564,7 +581,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
   const loadVipLevelCommentStyles = async () => {
     try {
       // Fetch base VIP styles (color, shape, border) from existing endpoint
-      const res = await axios.get(`${BASE_URL}/vip/levels`);
+      const res = await axios.get(`${BASE_URL}/vip/levels`, {
+        params: { _t: Date.now() },
+      });
       const levels = Array.isArray(res.data?.levels) ? res.data.levels : [];
       const commentStyles = levels.reduce((acc, level) => {
         const levelNumber = Number(level?.level);
@@ -643,25 +662,54 @@ const LiveRoomScreen = ({ route, navigation }) => {
 
       // Also fetch live engagement VIP levels for Lottie frame and join animation URLs
       try {
-        const leRes = await axios.get(`${BASE_URL}/live-engagement/vip-levels`);
+        const leRes = await axios.get(`${BASE_URL}/live-engagement/vip-levels`, {
+          params: { _t: Date.now() },
+        });
         const leLevels = Array.isArray(leRes.data?.levels)
           ? leRes.data.levels
           : [];
         const joinUrls = {};
+        const leStringOrNull = (v) =>
+          typeof v === "string" && v.trim().length > 0 ? v.trim() : null;
+
         leLevels.forEach((leLevel) => {
           const lvl = Number(leLevel?.level);
           if (lvl <= 0) return;
-          if (leLevel?.commentFrameLottieUrl) {
-            if (commentStyles[lvl]) {
-              commentStyles[lvl].commentFrameLottieUrl =
-                leLevel.commentFrameLottieUrl;
+
+          if (!levelDataMap[lvl]) {
+            levelDataMap[lvl] = { level: lvl };
+          }
+          const m = levelDataMap[lvl];
+
+          const cs = commentStyles[lvl];
+          /**
+           * GET /live-engagement/vip-levels هو المرجع نفسه للأدمن (يشمل commentFrame ||
+           * إطار VipFrame الافتراضي من السيرفر). يجب أن يطابق دائماً ولا نترك قيمة قديمة
+           * من /vip/levels عندما يكون الحقل فارغاً أو بعد ترقية الإعداد.
+           */
+          if (cs) {
+            cs.commentFrameLottieUrl = leStringOrNull(leLevel?.commentFrameLottieUrl);
+            if (typeof leLevel?.commentTextColor === "string") {
+              cs.commentTextColor = leLevel.commentTextColor.trim();
             }
-          }
-          if (leLevel?.commentTextColor && commentStyles[lvl]) {
-            commentStyles[lvl].commentTextColor = leLevel.commentTextColor;
-          }
-          if (leLevel?.profileFrameLottieUrl && commentStyles[lvl]) {
-            commentStyles[lvl].profileFrameLottieUrl = leLevel.profileFrameLottieUrl;
+            const bwLe = Number(leLevel?.commentBorderWidth);
+            if (Number.isFinite(bwLe)) {
+              cs.borderWidth = Math.max(0, Math.min(8, bwLe));
+            }
+            const shapeLe =
+              typeof leLevel?.commentBubbleShape === "string"
+                ? leLevel.commentBubbleShape.trim().toLowerCase()
+                : "";
+            if (["classic", "rounded", "square", "pill"].includes(shapeLe)) {
+              cs.bubbleShape = shapeLe;
+            }
+            cs.profileFrameLottieUrl = leStringOrNull(leLevel?.profileFrameLottieUrl);
+            if (typeof leLevel?.usernameColor === "string" && leLevel.usernameColor.trim()) {
+              cs.usernameColor = leLevel.usernameColor.trim();
+            }
+            if (typeof leLevel?.color === "string" && leLevel.color.trim()) {
+              cs.color = leLevel.color.trim();
+            }
           }
           if (leLevel?.badgeImageUrl && commentStyles[lvl]) {
             commentStyles[lvl].badgeImageUrl = leLevel.badgeImageUrl;
@@ -681,32 +729,35 @@ const LiveRoomScreen = ({ route, navigation }) => {
             joinUrls[lvl] = leLevel.joinAnimationLottieUrl;
           }
 
-          const m = levelDataMap[lvl];
-          if (m) {
-            if (typeof leLevel.joinDisplayDurationMs === "number") {
-              m.joinDisplayDurationMs = leLevel.joinDisplayDurationMs;
-            }
-            if (leLevel.joinVideoUrl) m.joinVideoUrl = leLevel.joinVideoUrl;
-            if (leLevel.joinCardFrameImageUrl) {
-              m.joinCardFrameImageUrl = leLevel.joinCardFrameImageUrl;
-            }
-            if (leLevel.joinLayoutStyle === "card" || leLevel.joinLayoutStyle === "ticker") {
-              m.joinLayoutStyle = leLevel.joinLayoutStyle;
-            }
-            const fx = String(leLevel.joinEffectPreset || "").toLowerCase();
-            if (["none", "glow", "pulse", "aurora", "ring"].includes(fx)) {
-              m.joinEffectPreset = fx;
-            }
-            if (leLevel.joinSoundUrl) m.joinSoundUrl = leLevel.joinSoundUrl;
-            if (typeof leLevel.specialJoinText === "string" && leLevel.specialJoinText.trim()) {
-              m.specialJoinText = leLevel.specialJoinText.trim();
-            }
-            if (typeof leLevel.joinAnimationLottieUrl === "string" && leLevel.joinAnimationLottieUrl) {
-              m.joinAnimationLottieUrl = leLevel.joinAnimationLottieUrl;
-            }
-            if (leLevel.joinConfigPendingReview === true) {
-              m.joinConfigPendingReview = true;
-            }
+          if (typeof leLevel.joinDisplayDurationMs === "number") {
+            m.joinDisplayDurationMs = leLevel.joinDisplayDurationMs;
+          }
+          const joinVid =
+            leLevel.joinVideoUrl ||
+            leLevel.join_video_url ||
+            leLevel.joinVideoURL;
+          if (joinVid && String(joinVid).trim()) {
+            m.joinVideoUrl = String(joinVid).trim();
+          }
+          if (leLevel.joinCardFrameImageUrl) {
+            m.joinCardFrameImageUrl = leLevel.joinCardFrameImageUrl;
+          }
+          if (leLevel.joinLayoutStyle === "card" || leLevel.joinLayoutStyle === "ticker") {
+            m.joinLayoutStyle = leLevel.joinLayoutStyle;
+          }
+          const fx = String(leLevel.joinEffectPreset || "").toLowerCase();
+          if (["none", "glow", "pulse", "aurora", "ring"].includes(fx)) {
+            m.joinEffectPreset = fx;
+          }
+          if (leLevel.joinSoundUrl) m.joinSoundUrl = leLevel.joinSoundUrl;
+          if (typeof leLevel.specialJoinText === "string" && leLevel.specialJoinText.trim()) {
+            m.specialJoinText = leLevel.specialJoinText.trim();
+          }
+          if (typeof leLevel.joinAnimationLottieUrl === "string" && leLevel.joinAnimationLottieUrl) {
+            m.joinAnimationLottieUrl = leLevel.joinAnimationLottieUrl;
+          }
+          if (leLevel.joinConfigPendingReview === true) {
+            m.joinConfigPendingReview = true;
           }
         });
         setVipJoinAnimationUrls(joinUrls);
@@ -1139,7 +1190,8 @@ const LiveRoomScreen = ({ route, navigation }) => {
     socket.on("liveroom:user_joined", ({ user }) => {
       fetchRoomData();
       // Show join banner for every user (VIP or not) except ourselves — sound handled inside JoinAnimation
-      if (user && user._id !== userInfo?._id) {
+      const me = userInfo?._id ?? userInfo?.id;
+      if (user && me != null && !liveRoomSameId(user._id ?? user.id, me)) {
         setJoinAnimationUser(user);
       }
       // Re-broadcast our own Agora UID so the newly joined user can populate their UID map
@@ -1791,6 +1843,46 @@ const LiveRoomScreen = ({ route, navigation }) => {
     setShowInput(true);
     setTimeout(() => inputRef.current?.focus?.(), 80);
   };
+
+  const userSheetTargetId = userSheet?.user?._id ?? userSheet?.user?.id ?? null;
+  const userSheetIsSpeaker = useMemo(
+    () =>
+      userSheetTargetId != null &&
+      (room?.speakers || []).some((s) =>
+        liveRoomSameId(s.user?._id ?? s.user?.id ?? s.user, userSheetTargetId),
+      ),
+    [room?.speakers, userSheetTargetId],
+  );
+
+  const handleInviteToSeatFromSheet = useCallback(() => {
+    if (!userSheetTargetId) return;
+    if (!socketRef.current?.connected) {
+      Alert.alert("تنبيه", "لا يوجد اتصال حيّ بالغرفة.");
+      return;
+    }
+    if (userSheetIsSpeaker) {
+      Alert.alert("تنبيه", "هذا المستخدم على مقعد المتحدثين بالفعل.");
+      return;
+    }
+    const invId = userInfo?._id ?? userInfo?.id;
+    socketRef.current.emit("liveroom:invite_to_seat", {
+      roomId,
+      userId: userSheetTargetId,
+      invitedBy: {
+        _id: invId,
+        username: userInfo?.username ?? "",
+      },
+    });
+    Alert.alert("تم", "أُرسلت دعوة الجلوس على المقعد.");
+    setUserSheet(null);
+  }, [roomId, userInfo, userSheetTargetId, userSheetIsSpeaker]);
+
+  const userSheetVipTierFrameUrl = useMemo(() => {
+    const lvl = Number(userSheet?.user?.vipLevel ?? 0);
+    if (lvl <= 0) return null;
+    const st = vipLevelCommentStyles[lvl];
+    return st?.profileFrameLottieUrl || st?.badgeImageUrl || null;
+  }, [userSheet?.user?.vipLevel, vipLevelCommentStyles]);
 
   // ── Comment muted state — set of userIds chat-muted in current room ─────────
   const mutedChatUserIds = React.useMemo(() => {
@@ -3797,6 +3889,12 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 }
                 joinVideoUrl={lvlData?.joinVideoUrl || null}
                 joinCardFrameImageUrl={lvlData?.joinCardFrameImageUrl || null}
+                avatarFrameUrl={
+                  lvlData?.joinCardFrameImageUrl ||
+                  vipLevelCommentStyles[vipLvl]?.profileFrameLottieUrl ||
+                  vipLevelCommentStyles[vipLvl]?.badgeImageUrl ||
+                  null
+                }
                 layoutStyle={lvlData?.joinLayoutStyle === "ticker" ? "ticker" : "card"}
                 effectPreset={(lvlData?.joinEffectPreset || "none").toLowerCase()}
                 vipTier={
@@ -3882,14 +3980,22 @@ const LiveRoomScreen = ({ route, navigation }) => {
         onClose={() => setUserSheet(null)}
         targetUser={userSheet?.user || null}
         comment={userSheet?.comment || null}
-        currentUserId={userInfo?._id}
+        currentUserId={userInfo?._id ?? userInfo?.id}
         userToken={userToken}
         apiBaseUrl={BASE_URL}
         roomId={roomId}
-        isHost={room?.host?._id === userInfo?._id}
-        isModerator={(room?.moderators || []).some(
-          (m) => (m.user?._id || m.user) === userInfo?._id,
-        )}
+        vipTierFrameUrl={userSheetVipTierFrameUrl}
+        onInviteToSeat={
+          (isRoomHostMe || isRoomModeratorMe) &&
+          userSheetTargetId &&
+          currentUserId &&
+          !liveRoomSameId(userSheetTargetId, currentUserId) &&
+          !userSheetIsSpeaker
+            ? handleInviteToSeatFromSheet
+            : undefined
+        }
+        isHost={isRoomHostMe}
+        isModerator={isRoomModeratorMe}
         isMuted={mutedChatUserIds.has(
           String(userSheet?.user?._id || userSheet?.user?.id || ""),
         )}

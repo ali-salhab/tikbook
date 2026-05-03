@@ -49,7 +49,16 @@ const normalizePinnedUserId = (raw) => {
 };
 
 const CommentRow = React.memo(
-  ({ item, isNew, vipLevelStyles, onAvatarPress, onLongPress, onPressBubble, rowStyle }) => {
+  ({
+    item,
+    isNew,
+    vipLevelStyles,
+    onAvatarPress,
+    onLongPress,
+    onPressBubble,
+    rowStyle,
+    compactPinned = false,
+  }) => {
   const slideY = useRef(new Animated.Value(isNew ? 22 : 0)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const [imgError, setImgError] = useState(false);
@@ -130,14 +139,24 @@ const CommentRow = React.memo(
     item.user?.activeBadge?.image ||
     (typeof item.user?.activeBadge === "string" ? item.user.activeBadge : null) ||
     null;
-  // VIP profile frame from admin panel — used when user has no personal badge
-  const vipProfileFrameUrl =
+  /**
+   * إطار صورة التعليق فقط — مختلف عن إطار البروفايل الكبير فوق المقاعد (profileFrameLottieUrl).
+   * أولوية: شارة المستوى / لوتي الشارة / أيقونة المستوى — لا نستخدم إطار الملف الشخصي الضخم هنا.
+   */
+  const vipCommentAvatarFrameUrl =
     isVip && typeof vipStyleEntry === "object"
-      ? vipStyleEntry?.profileFrameLottieUrl || vipStyleEntry?.badgeImageUrl || null
+      ? [
+          vipStyleEntry?.badgeImageUrl,
+          vipStyleEntry?.badgeLottieUrl,
+          vipStyleEntry?.levelIconUrl,
+          vipStyleEntry?.imageUrl,
+        ]
+          .find((u) => typeof u === "string" && /^https?:\/\//i.test(u.trim()))
+          ?.trim() || null
       : null;
   const resolvedBadgeUrl =
     (typeof activeBadgeUrl === "string" && activeBadgeUrl.startsWith("http") ? activeBadgeUrl : null) ||
-    (typeof vipProfileFrameUrl === "string" && vipProfileFrameUrl.startsWith("http") ? vipProfileFrameUrl : null);
+    (typeof vipCommentAvatarFrameUrl === "string" && vipCommentAvatarFrameUrl ? vipCommentAvatarFrameUrl : null);
   const hasActiveBadge = !!resolvedBadgeUrl;
   // Personal badge icon shown inline in header — supports PNG/WebP and Lottie JSON
   const isBadgeLottie =
@@ -155,17 +174,22 @@ const CommentRow = React.memo(
   // rendered ABOVE the comment bubble/frame so admin assets are never hidden.
   const renderInlineHeader = () => {
     if (isSystem) return null;
+    const pin = compactPinned;
     return (
-      <View style={styles.inlineHeader}>
+      <View style={[styles.inlineHeader, pin && styles.inlineHeaderPinned]}>
         <Text
-          style={[styles.inlineUsername, isVip && { color: vipColor || "#FFD700" }]}
+          style={[
+            styles.inlineUsername,
+            pin && styles.inlineUsernamePinned,
+            isVip && { color: vipColor || "#FFD700" },
+          ]}
           numberOfLines={1}
         >
           {item.user?.username || ""}
         </Text>
         {badgeIconUrl ? (
           isBadgeLottie ? (
-            <View style={styles.inlineIconClip}>
+            <View style={[styles.inlineIconClip, pin && styles.inlineIconClipPinned]}>
               <LottieView
                 source={{ uri: badgeIconUrl }}
                 autoPlay
@@ -175,7 +199,7 @@ const CommentRow = React.memo(
               />
             </View>
           ) : (
-            <View style={styles.inlineIconClip}>
+            <View style={[styles.inlineIconClip, pin && styles.inlineIconClipPinned]}>
               <Image
                 source={{ uri: badgeIconUrl }}
                 style={styles.badgeIconCover}
@@ -185,15 +209,15 @@ const CommentRow = React.memo(
           )
         ) : null}
         {userLevel > 0 && levelColor ? (
-          <View style={[styles.levelChip, { borderColor: levelColor }]}>
-            <Text style={[styles.levelChipText, { color: levelColor }]}>
+          <View style={[styles.levelChip, pin && styles.levelChipPinned, { borderColor: levelColor }]}>
+            <Text style={[styles.levelChipText, pin && styles.levelChipTextPinned, { color: levelColor }]}>
               {userLevel}
             </Text>
           </View>
         ) : null}
         {isVip && vipLevelIconUrl ? (
           isLottieUrl(vipLevelIconUrl) ? (
-            <View style={styles.inlineVipIconClip}>
+            <View style={[styles.inlineVipIconClip, pin && styles.inlineVipIconClipPinned]}>
               <LottieView
                 source={{ uri: vipLevelIconUrl }}
                 autoPlay
@@ -203,7 +227,7 @@ const CommentRow = React.memo(
               />
             </View>
           ) : (
-            <View style={styles.inlineVipIconClip}>
+            <View style={[styles.inlineVipIconClip, pin && styles.inlineVipIconClipPinned]}>
               <Image
                 source={{ uri: vipLevelIconUrl }}
                 style={styles.vipIconCover}
@@ -215,6 +239,7 @@ const CommentRow = React.memo(
           <View
             style={[
               styles.vipChip,
+              pin && styles.vipChipPinned,
               {
                 borderColor: vipColor || "#FFD700",
                 borderWidth: 1,
@@ -222,14 +247,14 @@ const CommentRow = React.memo(
               },
             ]}
           >
-            <Text style={[styles.vipChipText, { color: vipColor || "#FFD700" }]}>
+            <Text style={[styles.vipChipText, pin && styles.vipChipTextPinned, { color: vipColor || "#FFD700" }]}>
               VIP{vipLevel}
             </Text>
           </View>
         ) : null}
         {isVip && vipBadgeIcons.length > 0
-          ? vipBadgeIcons.slice(0, 2).map((badgeUrl, idx) => (
-              <View key={`vip-extra-${idx}`} style={styles.vipBadgeSmallClip}>
+          ? vipBadgeIcons.slice(0, pin ? 1 : 2).map((badgeUrl, idx) => (
+              <View key={`vip-extra-${idx}`} style={[styles.vipBadgeSmallClip, pin && styles.vipBadgeSmallClipPinned]}>
                 {isLottieUrl(badgeUrl) ? (
                   <LottieView
                     source={{ uri: badgeUrl }}
@@ -261,6 +286,7 @@ const CommentRow = React.memo(
     if (canPress && onLongPress) onLongPress(item);
   };
 
+  const pinB = compactPinned;
   const bubbleBlock = (
     <>
       {renderInlineHeader()}
@@ -270,14 +296,15 @@ const CommentRow = React.memo(
             <View
               style={[
                 styles.bubble,
+                pinB && styles.bubblePinnedCompact,
                 styles.bubbleWithFrameOverlay,
                 {
                   backgroundColor: commentFrameBgColor || "transparent",
                   borderWidth: 0,
                   borderRadius: 0,
-                  paddingHorizontal: ms(18),
-                  paddingVertical: ms(10),
-                  maxWidth: width * 0.68,
+                  paddingHorizontal: pinB ? ms(10) : ms(18),
+                  paddingVertical: pinB ? ms(6) : ms(10),
+                  maxWidth: pinB ? width * 0.52 : width * 0.68,
                 },
               ]}
             >
@@ -292,6 +319,7 @@ const CommentRow = React.memo(
                     <Text
                       style={[
                         styles.message,
+                        pinB && styles.messagePinned,
                         commentTextColor ? { color: commentTextColor } : null,
                       ]}
                       numberOfLines={2}
@@ -305,6 +333,7 @@ const CommentRow = React.memo(
                 <Text
                   style={[
                     styles.message,
+                    pinB && styles.messagePinned,
                     commentTextColor ? { color: commentTextColor } : null,
                     isSystem && styles.systemMessage,
                   ]}
@@ -316,6 +345,7 @@ const CommentRow = React.memo(
               )}
             </View>
             <LottieView
+              key={`comment-frame-lottie-${vipLevel}-${commentFrameLottieUrl}`}
               source={{ uri: commentFrameLottieUrl }}
               autoPlay
               loop
@@ -326,18 +356,28 @@ const CommentRow = React.memo(
           </View>
         ) : (
           <ImageBackground
+            key={`comment-frame-raster-${vipLevel}-${commentFrameLottieUrl}`}
             source={{ uri: commentFrameLottieUrl }}
             style={[
               styles.bubble,
+              pinB && styles.bubblePinnedCompact,
               styles.bubbleWithFrameOverlay,
               styles.bubbleRasterFrameWrap,
               {
                 backgroundColor: commentFrameBgColor || "transparent",
                 borderWidth: 0,
                 borderRadius: 0,
-                paddingHorizontal: isRasterCommentFrame ? ms(32) : ms(22),
-                paddingVertical: isRasterCommentFrame ? ms(18) : ms(12),
-                maxWidth: width * 0.72,
+                paddingHorizontal: pinB
+                  ? ms(8)
+                  : isRasterCommentFrame
+                    ? ms(14)
+                    : ms(16),
+                paddingVertical: pinB
+                  ? ms(5)
+                  : isRasterCommentFrame
+                    ? ms(8)
+                    : ms(10),
+                maxWidth: pinB ? width * 0.48 : width * 0.52,
               },
             ]}
             resizeMode="stretch"
@@ -354,6 +394,7 @@ const CommentRow = React.memo(
                   <Text
                     style={[
                       styles.message,
+                      pinB && styles.messagePinned,
                       commentTextColor ? { color: commentTextColor } : null,
                     ]}
                     numberOfLines={2}
@@ -367,6 +408,7 @@ const CommentRow = React.memo(
               <Text
                 style={[
                   styles.message,
+                  pinB && styles.messagePinned,
                   commentTextColor ? { color: commentTextColor } : null,
                   isSystem && styles.systemMessage,
                 ]}
@@ -394,6 +436,7 @@ const CommentRow = React.memo(
                     (vipColor ? `${vipColor}22` : "rgba(100,0,180,0.45)"),
                 }
               : null,
+            pinB && styles.bubblePinnedCompact,
           ]}
         >
           {isGift && item.giftUrl ? (
@@ -407,6 +450,7 @@ const CommentRow = React.memo(
                 <Text
                   style={[
                     styles.message,
+                    pinB && styles.messagePinned,
                     commentTextColor ? { color: commentTextColor } : null,
                   ]}
                   numberOfLines={2}
@@ -420,6 +464,7 @@ const CommentRow = React.memo(
             <Text
               style={[
                 styles.message,
+                pinB && styles.messagePinned,
                 commentTextColor ? { color: commentTextColor } : null,
                 isSystem && styles.systemMessage,
               ]}
@@ -446,7 +491,7 @@ const CommentRow = React.memo(
     ]}>
       {/* ── Avatar first in JSX → renders on the visual RIGHT in RTL ── */}
       <TouchableOpacity
-        style={styles.avatarWrap}
+        style={[styles.avatarWrap, pinB && styles.avatarWrapPinned]}
         onPress={handleAvatarPress}
         onLongPress={handleLongPress}
         delayLongPress={400}
@@ -457,15 +502,33 @@ const CommentRow = React.memo(
           <ProfileBadgeFrame
             profileImage={!imgError ? imageUri : null}
             badgeImage={resolvedBadgeUrl}
-            size={ms(40)}
+            size={pinB ? ms(30) : ms(40)}
+            showSparks={false}
           />
         ) : imageUri && !imgError ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.avatar}
-            resizeMode="cover"
-            onError={() => setImgError(true)}
-          />
+          pinB ? (
+            <View style={styles.avatarPinnedRing}>
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.avatarPinnedInner}
+                resizeMode="cover"
+                onError={() => setImgError(true)}
+              />
+            </View>
+          ) : (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.avatar}
+              resizeMode="cover"
+              onError={() => setImgError(true)}
+            />
+          )
+        ) : pinB ? (
+          <View style={styles.avatarPinnedRing}>
+            <View style={styles.avatarFallbackCompact}>
+              <Text style={styles.avatarInitialCompact}>{initials}</Text>
+            </View>
+          </View>
         ) : (
           <View style={styles.avatarFallback}>
             <Text style={styles.avatarInitial}>{initials}</Text>
@@ -613,7 +676,7 @@ const FloatingComments = ({
       {hasPinned && pinnedSyntheticItem ? (
         <View style={styles.pinnedRowShell}>
           <View style={styles.pinnedIconWrap}>
-            <Ionicons name="pin" size={fs(13)} color="#FFD580" />
+            <Ionicons name="pin" size={fs(11)} color="#FFD580" />
           </View>
           <View style={styles.pinnedCommentRowWrap} pointerEvents="box-none">
             <CommentRow
@@ -622,6 +685,7 @@ const FloatingComments = ({
               vipLevelStyles={vipLevelStyles}
               onAvatarPress={onAvatarPress}
               onLongPress={onLongPressComment}
+              compactPinned
               rowStyle={styles.pinnedCommentRow}
               onPressBubble={
                 normalizePinnedUserId(pinnedComment?.userId) && onPinnedPress
@@ -638,7 +702,7 @@ const FloatingComments = ({
               accessibilityRole="button"
               accessibilityLabel="إلغاء التثبيت"
             >
-              <Ionicons name="close" size={fs(14)} color="#FFF" />
+              <Ionicons name="close" size={fs(12)} color="#FFF" />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -690,20 +754,20 @@ const styles = StyleSheet.create({
   pinnedRowShell: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: ms(6),
-    backgroundColor: "rgba(124,93,250,0.92)",
-    borderRadius: ms(12),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(7),
-    marginBottom: ms(6),
-    marginHorizontal: ms(2),
-    borderWidth: 1,
-    borderColor: "rgba(255,213,128,0.55)",
+    gap: ms(4),
+    backgroundColor: "rgba(124,93,250,0.9)",
+    borderRadius: ms(10),
+    paddingHorizontal: ms(6),
+    paddingVertical: ms(5),
+    marginBottom: ms(4),
+    marginHorizontal: ms(1),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,213,128,0.5)",
     shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
     overflow: "visible",
     maxWidth: "100%",
   },
@@ -717,10 +781,10 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
   },
   pinnedIconWrap: {
-    width: ms(22),
-    height: ms(22),
-    marginTop: ms(10),
-    borderRadius: ms(11),
+    width: ms(18),
+    height: ms(18),
+    marginTop: ms(6),
+    borderRadius: ms(9),
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
@@ -735,8 +799,92 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   pinnedCloseBtnPinnedRow: {
-    marginTop: ms(10),
+    marginTop: ms(6),
     alignSelf: "flex-start",
+  },
+  avatarWrapPinned: {
+    marginRight: ms(5),
+  },
+  avatarPinnedRing: {
+    width: ms(44),
+    height: ms(44),
+    borderRadius: ms(22),
+    padding: ms(2),
+    backgroundColor: "rgba(255,213,128,0.22)",
+    borderWidth: ms(1.5),
+    borderColor: "rgba(255,213,128,0.65)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarPinnedInner: {
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    backgroundColor: "#ddd",
+    overflow: "hidden",
+  },
+  avatarFallbackCompact: {
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    backgroundColor: "rgba(100,60,200,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitialCompact: {
+    color: "#FFF",
+    fontSize: fs(11),
+    fontWeight: "700",
+  },
+  bubblePinnedCompact: {
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(5),
+    maxWidth: width * 0.58,
+    borderRadius: ms(12),
+  },
+  messagePinned: {
+    fontSize: fs(11),
+    lineHeight: fs(15),
+  },
+  inlineHeaderPinned: {
+    gap: ms(2),
+    marginBottom: ms(1),
+    maxWidth: width * 0.56,
+  },
+  inlineUsernamePinned: {
+    fontSize: fs(11),
+    maxWidth: width * 0.34,
+  },
+  inlineIconClipPinned: {
+    width: ms(20),
+    height: ms(20),
+    borderRadius: ms(4),
+  },
+  inlineVipIconClipPinned: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(5),
+  },
+  levelChipPinned: {
+    paddingHorizontal: ms(4),
+    paddingVertical: 0,
+    borderRadius: ms(4),
+  },
+  levelChipTextPinned: {
+    fontSize: fs(10),
+  },
+  vipChipPinned: {
+    paddingHorizontal: ms(2),
+    paddingVertical: 0,
+    borderRadius: ms(5),
+  },
+  vipChipTextPinned: {
+    fontSize: fs(10),
+  },
+  vipBadgeSmallClipPinned: {
+    width: ms(22),
+    height: ms(22),
+    borderRadius: ms(5),
   },
   listContent: {
     flexGrow: 1,
@@ -766,6 +914,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
     flexDirection: "column",
+    /** Without this, bubbles stretch to full chat column width */
+    alignItems: "flex-start",
     overflow: "visible",
   },
   rightColPressed: {
@@ -808,6 +958,15 @@ const styles = StyleSheet.create({
   bubbleWithFrameOverlay: {
     overflow: "visible",
   },
+  /** PNG frame: stretched image is the same rect as the bubble via ImageBackground */
+  bubbleRasterFrameWrap: {
+    alignSelf: "flex-start",
+    flexShrink: 0,
+    overflow: "hidden",
+  },
+  bubbleRasterFrameImage: {
+    resizeMode: "stretch",
+  },
   bubbleFrameOuter: {
     position: "relative",
     alignSelf: "flex-start",
@@ -834,7 +993,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   levelChipText: {
-    fontSize: fs(10),
+    fontSize: fs(11),
     fontWeight: "900",
   },
   username: {
@@ -862,7 +1021,7 @@ const styles = StyleSheet.create({
   },
   vipChipText: {
     color: "#FFF",
-    fontSize: fs(11),
+    fontSize: fs(12),
     fontWeight: "800",
     letterSpacing: 0.2,
   },
@@ -889,9 +1048,9 @@ const styles = StyleSheet.create({
 
 
   inlineIconClip: {
-    width: ms(26),
-    height: ms(26),
-    borderRadius: ms(5),
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(6),
     overflow: "hidden",
     backgroundColor: "transparent",
     alignItems: "center",
@@ -902,9 +1061,9 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   inlineVipIconClip: {
-    width: ms(30),
-    height: ms(30),
-    borderRadius: ms(6),
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(7),
     overflow: "hidden",
     backgroundColor: "transparent",
     alignItems: "center",
@@ -918,7 +1077,7 @@ const styles = StyleSheet.create({
 
   inlineUsername: {
     color: "rgba(200,190,255,0.95)",
-    fontSize: fs(12),
+    fontSize: fs(13),
     fontWeight: "700",
     flexShrink: 1,
     minWidth: 0,
@@ -929,9 +1088,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   vipBadgeSmallClip: {
-    width: ms(28),
-    height: ms(28),
-    borderRadius: ms(6),
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(7),
     overflow: "hidden",
     backgroundColor: "transparent",
     alignItems: "center",

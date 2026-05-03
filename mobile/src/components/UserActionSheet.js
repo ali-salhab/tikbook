@@ -47,6 +47,10 @@ const UserActionSheet = ({
   onBanned,
   onOpenProfile,
   onOpenVipStore,
+  /** إطار الملف الشخصي من مستوى VIP (لوحة الإدارة) عند عدم وجود شارة شخصية */
+  vipTierFrameUrl,
+  /** مضيف/مشرف: دعوة المستخدم إلى مقعد المتحدثين (يربطه الأب بالـ socket) */
+  onInviteToSeat,
 }) => {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
@@ -55,7 +59,10 @@ const UserActionSheet = ({
   const [busy, setBusy] = useState(false);
 
   const userId = targetUser?._id || targetUser?.id || null;
-  const isSelf = userId && userId === currentUserId;
+  const isSelf =
+    userId != null &&
+    currentUserId != null &&
+    String(userId) === String(currentUserId);
   const isModerationAllowed = (isHost || isModerator) && !isSelf;
 
   useEffect(() => {
@@ -247,8 +254,13 @@ const UserActionSheet = ({
   /** إطار الإدارة يحتاج رابط http(s) صالحاً */
   const frameBadgeUrl =
     typeof badgeUrl === "string" && /^https?:\/\//i.test(badgeUrl.trim()) ? badgeUrl.trim() : null;
+  const tierFrameStr =
+    typeof vipTierFrameUrl === "string" ? vipTierFrameUrl.trim() : "";
+  /** شارة المستخدم أو إطار VIP من الإعدادات — يظهر الإطار حول الصورة */
+  const ornamentBadgeUrl =
+    frameBadgeUrl || (tierFrameStr.length > 4 ? tierFrameStr : null);
 
-  const bottomPad = Math.max(insets.bottom, ms(12));
+  const bottomPad = Math.max(insets.bottom, ms(8));
 
   return (
     <Modal
@@ -278,45 +290,35 @@ const UserActionSheet = ({
             style={styles.sheetCloseBtn}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="close" size={fs(26)} color="rgba(255,255,255,0.9)" />
+            <Ionicons name="close" size={fs(22)} color="rgba(255,255,255,0.85)" />
           </TouchableOpacity>
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.sheetScroll, { paddingBottom: bottomPad + ms(12) }]}
+            contentContainerStyle={[styles.sheetScroll, { paddingBottom: bottomPad + ms(2) }]}
           >
-            {/* Top row — menu + mention */}
-            <View style={styles.topRow}>
-              <TouchableOpacity
-                style={styles.iconCircle}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                onPress={() =>
-                  Alert.alert("خيارات", "مزيد من الإجراءات قريباً.", [{ text: "حسناً" }])
-                }
-              >
-                <MaterialCommunityIcons name="dots-vertical" size={fs(22)} color="#EEE" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.iconCircle, styles.iconCircleAccent]}
-                onPress={handleMention}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.mentionGlyph}>@</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.sheetKicker}>عضو في الغرفة</Text>
 
-            {/* Avatar — ornate gold frame + level orb + VIP ribbon (reference layout) */}
-            <View style={styles.avatarSlot}>
-              <OrnateProfileFrame
-                avatarUrl={avatarUrl || undefined}
-                badgeUrl={frameBadgeUrl || undefined}
-                profileImageUri={avatarUrl || undefined}
-                username={username}
-                level={level}
-                vipLevel={vipLevel}
-                innerSize={ms(88)}
+            {/* Avatar — إطار كامل من الشارة أو إطار VIP */}
+            <View style={styles.heroCard}>
+              <LinearGradient
+                colors={["rgba(255,255,255,0.09)", "rgba(255,255,255,0.02)"]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={StyleSheet.absoluteFill}
               />
+              <View style={styles.avatarSlot}>
+                <OrnateProfileFrame
+                  avatarUrl={avatarUrl || undefined}
+                  badgeUrl={ornamentBadgeUrl || undefined}
+                  profileImageUri={avatarUrl || undefined}
+                  username={username}
+                  level={level}
+                  vipLevel={vipLevel}
+                  innerSize={ms(76)}
+                />
+              </View>
             </View>
 
             {/* Name */}
@@ -325,7 +327,7 @@ const UserActionSheet = ({
                 {username || "—"}
               </Text>
               {profile?.isVerified ? (
-                <Ionicons name="checkmark-circle" size={fs(17)} color="#33CCFF" style={{ marginLeft: ms(6) }} />
+                <Ionicons name="checkmark-circle" size={fs(12)} color="rgba(160,150,220,0.95)" style={{ marginLeft: ms(3) }} />
               ) : null}
             </View>
 
@@ -356,18 +358,18 @@ const UserActionSheet = ({
             <View style={styles.badgeCardsRow}>
               <View style={[styles.badgeCard, styles.badgeCardAmber]}>
                 <View style={styles.badgeCardIconWrap}>
-                  <MaterialCommunityIcons name="trophy" size={fs(24)} color="#FBBF24" />
+                  <MaterialCommunityIcons name="trophy" size={fs(18)} color="rgba(200,175,120,0.95)" />
                 </View>
-                <Text style={[styles.badgeCardVal, { color: "#FCD34D" }]}>
+                <Text style={[styles.badgeCardVal, { color: "rgba(220,200,150,0.98)" }]}>
                   {level > 0 ? String(level) : "—"}
                 </Text>
                 <Text style={styles.badgeCardLbl}>المستوى</Text>
               </View>
               <View style={[styles.badgeCard, styles.badgeCardRose]}>
                 <View style={styles.badgeCardIconWrap}>
-                  <Ionicons name="diamond" size={fs(22)} color="#FDA4AF" />
+                  <Ionicons name="diamond" size={fs(17)} color="rgba(180,165,220,0.95)" />
                 </View>
-                <Text style={[styles.badgeCardVal, { color: "#FFF" }]}>
+                <Text style={[styles.badgeCardVal, { color: "rgba(235,230,250,0.98)" }]}>
                   {vipLevel > 0 ? `VIP${vipLevel}` : "—"}
                 </Text>
                 <Text style={styles.badgeCardLbl}>VIP</Text>
@@ -385,7 +387,7 @@ const UserActionSheet = ({
                 }}
               >
                 <View style={styles.badgeCardIconWrap}>
-                  <Ionicons name="wallet-outline" size={fs(22)} color="#FBBF24" />
+                  <Ionicons name="wallet-outline" size={fs(17)} color="rgba(200,175,120,0.95)" />
                 </View>
                 <Text style={[styles.badgeCardVal, styles.badgeCardVipText]} numberOfLines={1}>
                   VIP
@@ -395,8 +397,40 @@ const UserActionSheet = ({
             </View>
 
             {loading ? (
-              <ActivityIndicator color={brandColors.accent} style={{ marginTop: ms(12) }} />
+              <ActivityIndicator color={brandColors.accent} style={{ marginTop: ms(8) }} />
             ) : null}
+
+            {/* إجراءات سريعة — ذكر + دعوة مقعد (للمشرفين عند توفر الدالة) */}
+            {!isSelf && (
+              <View style={styles.quickRow}>
+                <TouchableOpacity
+                  style={styles.quickBtnMention}
+                  onPress={handleMention}
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.quickBtnIconWrap}>
+                    <Ionicons name="at" size={fs(13)} color="rgba(170,155,220,0.95)" />
+                  </View>
+                  <Text style={styles.quickBtnMentionText} numberOfLines={1}>
+                    ذكر في التعليق
+                  </Text>
+                </TouchableOpacity>
+                {onInviteToSeat ? (
+                  <TouchableOpacity
+                    style={styles.quickBtnInvite}
+                    onPress={onInviteToSeat}
+                    activeOpacity={0.88}
+                  >
+                    <View style={styles.quickBtnIconWrapInvite}>
+                      <Ionicons name="mic" size={fs(13)} color="rgba(120,175,150,0.95)" />
+                    </View>
+                    <Text style={styles.quickBtnInviteText} numberOfLines={1}>
+                      دعوة للمقعد
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
 
             {/* Follow */}
             {!isSelf && (
@@ -419,35 +453,36 @@ const UserActionSheet = ({
                 onClose?.();
               }}
             >
-              <Ionicons name="person-outline" size={fs(16)} color="#EDEAF8" />
+              <Ionicons name="person-outline" size={fs(14)} color="rgba(210,200,235,0.9)" />
               <Text style={styles.viewProfileText}>عرض الملف الشخصي</Text>
             </TouchableOpacity>
 
-            {/* Mod actions */}
+            {/* إدارة الغرفة — شبكة أوضح للمضيف/المشرف */}
             {isModerationAllowed && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.actionsRow}
-              >
-                {comment ? (
-                  <ActionChip
-                    icon={isThisCommentPinned ? "pin-off-outline" : "pin-outline"}
-                    label={isThisCommentPinned ? "إلغاء التثبيت" : "تثبيت"}
-                    color="#A78BFA"
-                    onPress={handlePin}
+              <View style={styles.modSection}>
+                <Text style={styles.modSectionTitle}>إدارة الغرفة</Text>
+                <View style={styles.modGrid}>
+                  {comment ? (
+                    <ModActionButton
+                      icon={isThisCommentPinned ? "pin-off-outline" : "pin-outline"}
+                      label={isThisCommentPinned ? "إلغاء تثبيت" : "تثبيت"}
+                      color="#9D8BC9"
+                      onPress={handlePin}
+                    />
+                  ) : (
+                    <View style={styles.modCellSpacer} />
+                  )}
+                  <ModActionButton
+                    icon={isMuted ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
+                    label={isMuted ? "رفع الكتم" : "كتم"}
+                    color={isMuted ? "#8FB8A8" : "#C9A87A"}
+                    onPress={handleChatMute}
+                    disabled={busy}
                   />
-                ) : null}
-                <ActionChip
-                  icon={isMuted ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
-                  label={isMuted ? "رفع الكتم من الدردشة" : "كتم الدردشة"}
-                  color={isMuted ? "#34D399" : "#FBBF24"}
-                  onPress={handleChatMute}
-                  disabled={busy}
-                />
-                <ActionChip icon="exit-outline" label="طرد" color="#FB923C" onPress={handleKick} disabled={busy} />
-                <ActionChip icon="ban-outline" label="حظر" color="#F87171" onPress={handleBan} disabled={busy} />
-              </ScrollView>
+                  <ModActionButton icon="exit-outline" label="طرد" color="#C49A6C" onPress={handleKick} disabled={busy} />
+                  <ModActionButton icon="ban-outline" label="حظر" color="#B87A8A" onPress={handleBan} disabled={busy} />
+                </View>
+              </View>
             )}
           </ScrollView>
         </View>
@@ -456,10 +491,17 @@ const UserActionSheet = ({
   );
 };
 
-const ActionChip = ({ icon, label, color, onPress, disabled }) => (
-  <TouchableOpacity style={[styles.actionChip, { borderColor: color }]} onPress={onPress} disabled={disabled}>
+const ModActionButton = ({ icon, label, color, onPress, disabled }) => (
+  <TouchableOpacity
+    style={[styles.modActionBtn, { borderColor: `${color}55` }]}
+    onPress={onPress}
+    disabled={disabled}
+    activeOpacity={0.88}
+  >
     <Ionicons name={icon} size={fs(15)} color={color} />
-    <Text style={[styles.actionChipText, { color }]}>{label}</Text>
+    <Text style={[styles.modActionLabel, { color }]} numberOfLines={2}>
+      {label}
+    </Text>
   </TouchableOpacity>
 );
 
@@ -475,8 +517,8 @@ const styles = StyleSheet.create({
   },
   sheetOuter: {
     width: "100%",
-    borderTopLeftRadius: ms(22),
-    borderTopRightRadius: ms(22),
+    borderTopLeftRadius: ms(18),
+    borderTopRightRadius: ms(18),
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.08)",
@@ -488,246 +530,324 @@ const styles = StyleSheet.create({
   },
   grabber: {
     alignSelf: "center",
-    width: ms(40),
-    height: ms(4),
+    width: ms(36),
+    height: ms(3),
     borderRadius: ms(2),
-    backgroundColor: "rgba(255,255,255,0.28)",
-    marginTop: ms(10),
-    marginBottom: ms(4),
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginTop: ms(6),
+    marginBottom: ms(2),
   },
   sheetCloseBtn: {
     position: "absolute",
-    right: ms(14),
-    top: ms(44),
+    right: ms(10),
+    top: ms(36),
     zIndex: 20,
-    padding: ms(8),
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: ms(22),
+    padding: ms(5),
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: ms(18),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   sheetScroll: {
-    paddingHorizontal: ms(18),
-    paddingTop: ms(8),
+    paddingHorizontal: ms(14),
+    paddingTop: ms(0),
     maxWidth: 520,
     alignSelf: "center",
     width: "100%",
   },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  sheetKicker: {
+    textAlign: "center",
+    color: "rgba(255,255,255,0.38)",
+    fontSize: fs(10),
+    fontWeight: "600",
+    marginBottom: 0,
+    letterSpacing: 0.2,
+  },
+  heroCard: {
+    marginTop: ms(2),
     marginBottom: ms(4),
-    width: "100%",
-  },
-  iconCircle: {
-    width: ms(42),
-    height: ms(42),
-    borderRadius: ms(21),
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: ms(16),
+    paddingVertical: ms(10),
+    paddingHorizontal: ms(8),
+    overflow: "visible",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  iconCircleAccent: {
-    borderColor: `${brandColors.accent}55`,
-    backgroundColor: "rgba(255,51,102,0.08)",
-  },
-  mentionGlyph: {
-    color: brandColors.accent,
-    fontWeight: "900",
-    fontSize: fs(22),
-    marginBottom: ms(3),
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(12,10,22,0.5)",
+    position: "relative",
   },
   avatarSlot: {
     alignItems: "center",
-    marginTop: ms(8),
-    marginBottom: ms(22),
-    paddingBottom: ms(6),
+    justifyContent: "center",
+    marginTop: ms(2),
+    marginBottom: ms(2),
+    paddingBottom: ms(2),
     width: "100%",
     alignSelf: "center",
     overflow: "visible",
+  },
+  quickRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: ms(6),
+    marginTop: ms(8),
+    marginBottom: ms(2),
+    width: "100%",
+    justifyContent: "center",
+  },
+  quickBtnMention: {
+    flexGrow: 1,
+    flexBasis: ms(120),
+    maxWidth: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(5),
+    paddingVertical: ms(7),
+    paddingHorizontal: ms(8),
+    borderRadius: ms(10),
+    backgroundColor: "rgba(102,51,255,0.1)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(167,139,250,0.28)",
+  },
+  quickBtnInvite: {
+    flexGrow: 1,
+    flexBasis: ms(120),
+    maxWidth: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(5),
+    paddingVertical: ms(7),
+    paddingHorizontal: ms(8),
+    borderRadius: ms(10),
+    backgroundColor: "rgba(45,90,75,0.2)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(100,180,150,0.3)",
+  },
+  quickBtnIconWrap: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(7),
+    backgroundColor: "rgba(102,51,255,0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickBtnIconWrapInvite: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(7),
+    backgroundColor: "rgba(60,120,95,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickBtnMentionText: {
+    color: "rgba(230,225,255,0.95)",
+    fontWeight: "700",
+    fontSize: fs(11),
+    flexShrink: 1,
+  },
+  quickBtnInviteText: {
+    color: "rgba(200,230,215,0.95)",
+    fontWeight: "700",
+    fontSize: fs(11),
+    flexShrink: 1,
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     flexWrap: "wrap",
-    marginTop: ms(4),
-    paddingHorizontal: ms(4),
+    marginTop: ms(2),
+    paddingHorizontal: ms(2),
     width: "100%",
   },
   username: {
-    color: "#F0EEFF",
-    fontSize: fs(17),
-    fontWeight: "800",
+    color: "#EDEAF8",
+    fontSize: fs(15),
+    fontWeight: "700",
     textAlign: "center",
     maxWidth: "95%",
-    lineHeight: fs(23),
+    lineHeight: fs(20),
   },
   bioText: {
-    marginTop: ms(8),
-    color: "#B8B0D8",
-    fontSize: fs(13),
-    lineHeight: fs(19),
+    marginTop: ms(4),
+    color: "rgba(180,172,210,0.92)",
+    fontSize: fs(11),
+    lineHeight: fs(16),
     textAlign: "center",
     alignSelf: "center",
     maxWidth: "95%",
-    paddingHorizontal: ms(8),
+    paddingHorizontal: ms(4),
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     width: "100%",
-    marginTop: ms(16),
-    paddingHorizontal: ms(4),
+    marginTop: ms(8),
+    paddingHorizontal: ms(2),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(255,255,255,0.06)",
-    paddingBottom: ms(14),
+    paddingBottom: ms(8),
   },
   statBox: {
     alignItems: "center",
     flex: 1,
   },
   statValue: {
-    color: "#FFF",
-    fontWeight: "800",
-    fontSize: fs(17),
+    color: "#F4F2FA",
+    fontWeight: "700",
+    fontSize: fs(14),
   },
   statLabel: {
-    color: "#958BA8",
-    fontSize: fs(11),
-    marginTop: ms(4),
+    color: "rgba(150,140,180,0.95)",
+    fontSize: fs(9),
+    marginTop: ms(2),
   },
   badgeCardsRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: ms(14),
-    marginTop: ms(18),
+    gap: ms(6),
+    marginTop: ms(10),
     width: "100%",
     justifyContent: "space-between",
     flexWrap: "nowrap",
-    paddingHorizontal: ms(6),
+    paddingHorizontal: ms(2),
   },
   badgeCardIconWrap: {
-    width: ms(44),
-    height: ms(44),
+    width: ms(28),
+    height: ms(28),
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: ms(4),
+    marginBottom: ms(2),
   },
   badgeCard: {
     flexGrow: 1,
     flexBasis: 0,
-    minHeight: ms(112),
-    minWidth: ms(92),
-    borderRadius: ms(14),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(14),
+    minHeight: ms(76),
+    minWidth: 0,
+    borderRadius: ms(11),
+    paddingHorizontal: ms(6),
+    paddingVertical: ms(8),
     alignItems: "center",
     justifyContent: "flex-start",
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
   badgeCardAmber: {
-    borderColor: "rgba(251,191,36,0.4)",
-    backgroundColor: "rgba(251,191,36,0.08)",
-    gap: ms(6),
+    borderColor: "rgba(200,170,90,0.35)",
+    backgroundColor: "rgba(200,170,90,0.06)",
+    gap: ms(3),
   },
   badgeCardRose: {
-    borderColor: `${brandColors.accent}44`,
-    backgroundColor: "rgba(255,51,102,0.06)",
-    gap: ms(6),
+    borderColor: "rgba(130,110,200,0.4)",
+    backgroundColor: "rgba(102,51,255,0.07)",
+    gap: ms(3),
   },
   badgeCardVip: {
-    borderColor: "rgba(251,191,36,0.45)",
-    backgroundColor: "rgba(251,191,36,0.07)",
-    gap: ms(4),
+    borderColor: "rgba(180,160,100,0.35)",
+    backgroundColor: "rgba(180,160,100,0.06)",
+    gap: ms(3),
   },
   badgeCardVal: {
-    fontSize: fs(17),
-    fontWeight: "900",
-    marginTop: ms(4),
+    fontSize: fs(13),
+    fontWeight: "800",
+    marginTop: ms(2),
   },
   badgeCardVipText: {
-    color: "#FBBF24",
-    fontSize: fs(13),
-    marginTop: ms(6),
-    fontWeight: "800",
+    color: "rgba(230,200,120,0.95)",
+    fontSize: fs(11),
+    marginTop: ms(3),
+    fontWeight: "700",
   },
   badgeCardLbl: {
-    color: "#B8B0D8",
-    fontSize: fs(11),
+    color: "rgba(160,152,190,0.95)",
+    fontSize: fs(9),
     fontWeight: "600",
     textAlign: "center",
   },
   followBtn: {
     width: "100%",
-    backgroundColor: "#EA580C",
-    paddingVertical: ms(13),
-    borderRadius: ms(14),
+    backgroundColor: "rgba(102,51,255,0.35)",
+    paddingVertical: ms(9),
+    borderRadius: ms(11),
     alignItems: "center",
-    marginTop: ms(18),
-    shadowColor: "#EA580C",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+    marginTop: ms(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(140,120,220,0.45)",
   },
   followingBtn: {
-    backgroundColor: "transparent",
-    borderWidth: ms(2),
-    borderColor: `${brandColors.accent}BB`,
-    shadowOpacity: 0,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
   },
   followBtnText: {
-    color: "#FFF",
-    fontWeight: "800",
-    fontSize: fs(16),
-    letterSpacing: 0.3,
+    color: "#F5F3FF",
+    fontWeight: "700",
+    fontSize: fs(13),
+    letterSpacing: 0.2,
   },
   followingBtnText: {
-    color: brandColors.accent,
+    color: "rgba(230,210,255,0.95)",
   },
   viewProfileBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: ms(6),
-    marginTop: ms(12),
-    paddingVertical: ms(8),
+    gap: ms(4),
+    marginTop: ms(6),
+    paddingVertical: ms(4),
   },
   viewProfileText: {
-    color: "#EDEAF8",
-    fontSize: fs(14),
+    color: "rgba(200,192,230,0.95)",
+    fontSize: fs(12),
+    fontWeight: "600",
+  },
+  modSection: {
+    marginTop: ms(10),
+    paddingTop: ms(10),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,255,255,0.07)",
+    width: "100%",
+  },
+  modSectionTitle: {
+    color: "rgba(255,255,255,0.42)",
+    fontSize: fs(10),
     fontWeight: "700",
+    marginBottom: ms(6),
+    letterSpacing: 0.3,
+    textAlign: "right",
+    writingDirection: "rtl",
   },
-  actionsRow: {
+  modGrid: {
     flexDirection: "row",
-    gap: ms(10),
-    paddingTop: ms(16),
-    paddingBottom: ms(10),
-    paddingHorizontal: ms(4),
-    flexGrow: 1,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: ms(6),
+    width: "100%",
   },
-  actionChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(5),
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(8),
-    borderRadius: ms(14),
+  modActionBtn: {
+    width: "48%",
+    minHeight: ms(64),
+    borderRadius: ms(11),
     borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    maxWidth: 180,
-    flexShrink: 0,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    paddingVertical: ms(6),
+    paddingHorizontal: ms(4),
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(3),
   },
-  actionChipText: {
-    fontSize: fs(11),
+  modActionLabel: {
+    fontSize: fs(10),
     fontWeight: "700",
-    flexShrink: 1,
+    textAlign: "center",
+    lineHeight: fs(13),
+    paddingHorizontal: ms(2),
+  },
+  modCellSpacer: {
+    width: "48%",
+    minHeight: 0,
   },
 });
 
