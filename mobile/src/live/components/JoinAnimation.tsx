@@ -7,6 +7,7 @@ import {
   Text,
   View,
   Easing,
+  useWindowDimensions,
   type LayoutChangeEvent,
 } from "react-native";
 import { Audio, Video, ResizeMode, InterruptionModeIOS } from "expo-av";
@@ -30,8 +31,9 @@ type Props = {
   /** millis — admin configured per VIP level (defaults 5000) */
   displayDurationMs?: number;
   joinVideoUrl?: string | null;
+  /** PNG/WebP شفاف يحيط بكارت الانضمام بالكامل (من الإدمن) */
   joinCardFrameImageUrl?: string | null;
-  /** إطار حول الصورة (PNG/Lottie) — يُفضَّل عن بطاقة PNG كاملة؛ يُدمَج من الغرفة مع إطار البروفايل من VIP */
+  /** إطار حول صورة المستخدم فقط (Lottie/PNG من أنماط VIP) */
   avatarFrameUrl?: string | null;
   layoutStyle?: JoinLayoutStyle | null;
   effectPreset?: JoinEffectPreset | null;
@@ -60,6 +62,7 @@ const JoinAnimation = ({
   onDone,
 }: Props) => {
   const insets = useSafeAreaInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-24)).current;
   const translateXTicker = useRef(new Animated.Value(0)).current;
@@ -72,9 +75,10 @@ const JoinAnimation = ({
 
   const isVisible = Boolean(user?._id);
   const profileUri = user?.profileImage || user?.avatar || "";
-  const layout = layoutStyle === "ticker" ? "ticker" : "card";
+  const layout = layoutStyle;
   const effect = effectPreset || "none";
   const dwellMs = clampDur(displayDurationMs);
+  const isFullscreenJoinVideo = layout === "video-fullscreen";
   const joinVideoTrimmed =
     typeof joinVideoUrl === "string" ? joinVideoUrl.trim() : "";
   const showVideo =
@@ -84,18 +88,26 @@ const JoinAnimation = ({
       joinVideoTrimmed.startsWith("file:") ||
       joinVideoTrimmed.startsWith("file://"));
 
-  /** إطار الصورة: خاص بالانضمام أو إطار VIP من الأنماط */
-  const rawFrame =
-    (typeof avatarFrameUrl === "string" && avatarFrameUrl.trim()) ||
-    (typeof joinCardFrameImageUrl === "string" && joinCardFrameImageUrl.trim()) ||
-    "";
+  const rawAvatarFrame =
+    typeof avatarFrameUrl === "string" ? avatarFrameUrl.trim() : "";
   const effectiveAvatarFrame =
-    rawFrame &&
-    (rawFrame.startsWith("http://") ||
-      rawFrame.startsWith("https://") ||
-      rawFrame.startsWith("file:") ||
-      rawFrame.startsWith("file://"))
-      ? rawFrame
+    rawAvatarFrame &&
+    (rawAvatarFrame.startsWith("http://") ||
+      rawAvatarFrame.startsWith("https://") ||
+      rawAvatarFrame.startsWith("file:") ||
+      rawAvatarFrame.startsWith("file://"))
+      ? rawAvatarFrame
+      : "";
+
+  const joinCardFrameTrimmed =
+    typeof joinCardFrameImageUrl === "string" ? joinCardFrameImageUrl.trim() : "";
+  const cardFrameOverlayUri =
+    joinCardFrameTrimmed &&
+    (joinCardFrameTrimmed.startsWith("http://") ||
+      joinCardFrameTrimmed.startsWith("https://") ||
+      joinCardFrameTrimmed.startsWith("file:") ||
+      joinCardFrameTrimmed.startsWith("file://"))
+      ? joinCardFrameTrimmed
       : "";
 
   const resolveActiveBadgeImageUrl = (badge: unknown): string => {
@@ -180,7 +192,9 @@ const JoinAnimation = ({
     }
 
     const soundUrlEffective = joinSoundUrl || user?.joinSoundUrl;
-    if (soundUrlEffective && String(soundUrlEffective).startsWith("http")) {
+    const hasSeparateJoinSound =
+      Boolean(soundUrlEffective && String(soundUrlEffective).startsWith("http"));
+    if (hasSeparateJoinSound) {
       if (Platform.OS === "ios") {
         Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
@@ -253,6 +267,12 @@ const JoinAnimation = ({
     return null;
   }
 
+  const separateJoinSoundPlaying = Boolean(
+    (joinSoundUrl && String(joinSoundUrl).startsWith("http")) ||
+      (user?.joinSoundUrl && String(user.joinSoundUrl).startsWith("http")),
+  );
+  const joinVideoMuted = separateJoinSoundPlaying;
+
   const tint = vipTier?.color || "#6366f1";
   const nameColor = vipTier?.usernameColor || vipTier?.color || "#F9FAFB";
 
@@ -301,7 +321,7 @@ const JoinAnimation = ({
           resizeMode={ResizeMode.COVER}
           shouldPlay
           isLooping
-          isMuted
+          isMuted={joinVideoMuted}
           useNativeControls={false}
         />
       ) : (
@@ -338,74 +358,85 @@ const JoinAnimation = ({
     </View>
   ) : (
     <View style={styles.joinCardRoot}>
-      {/* صف يثبت الصورة على يمين الكارد حتى في وضع RTL للتطبيق */}
-      <View style={styles.avatarHeroRow} pointerEvents="none">
-        <View style={styles.avatarHeroSlot}>
-          {effectiveAvatarFrame ? (
-            <View style={styles.avatarFramedWrap}>
-              <ProfileBadgeFrame
-                profileImage={profileUri || undefined}
-                badgeImage={effectiveAvatarFrame}
-                size={50}
-                showSparks={false}
-              />
-              {user?.isVerified ? (
-                <View style={styles.verifiedDotHero}>
-                  <Ionicons name="checkmark" size={10} color="#fff" />
-                </View>
-              ) : null}
-            </View>
-          ) : (
-            <View style={styles.avatarHeroPlainWrap}>
-              {profileUri ? (
-                <Image source={{ uri: profileUri }} style={styles.avatarHeroImg} />
-              ) : (
-                <View style={[styles.avatarHeroImg, styles.avatarPlaceholder]} />
-              )}
-              {user?.isVerified ? (
-                <View style={styles.verifiedDotHero}>
-                  <Ionicons name="checkmark" size={10} color="#fff" />
-                </View>
-              ) : null}
-            </View>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.cardPanel}>
-        <View style={styles.cardPanelRow}>
-          <View style={styles.textWrap}>
-            <View style={styles.titleRow}>
-              <Text style={[styles.label, { color: nameColor }]} numberOfLines={1}>
-                {joinTitle}
-              </Text>
-              {Number(user?.vipLevel) > 0 ? (
-                <VipBadge
-                  level={Number(user?.vipLevel)}
-                  size="small"
-                  imageUrl={vipBadgeIconUrl || undefined}
+      <View style={styles.joinCardContentWrap}>
+        {/* صف يثبت الصورة على يمين الكارد حتى في وضع RTL للتطبيق */}
+        <View style={styles.avatarHeroRow} pointerEvents="none">
+          <View style={styles.avatarHeroSlot}>
+            {effectiveAvatarFrame ? (
+              <View style={styles.avatarFramedWrap}>
+                <ProfileBadgeFrame
+                  profileImage={profileUri || undefined}
+                  badgeImage={effectiveAvatarFrame}
+                  size={50}
+                  showSparks={false}
                 />
+                {user?.isVerified ? (
+                  <View style={styles.verifiedDotHero}>
+                    <Ionicons name="checkmark" size={10} color="#fff" />
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.avatarHeroPlainWrap}>
+                {profileUri ? (
+                  <Image source={{ uri: profileUri }} style={styles.avatarHeroImg} />
+                ) : (
+                  <View style={[styles.avatarHeroImg, styles.avatarPlaceholder]} />
+                )}
+                {user?.isVerified ? (
+                  <View style={styles.verifiedDotHero}>
+                    <Ionicons name="checkmark" size={10} color="#fff" />
+                  </View>
+                ) : null}
+              </View>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.cardPanel}>
+          <View style={styles.cardPanelRow}>
+            <View style={styles.textWrap}>
+              <View style={styles.titleRow}>
+                <Text style={[styles.label, { color: nameColor }]} numberOfLines={1}>
+                  {joinTitle}
+                </Text>
+                {Number(user?.vipLevel) > 0 ? (
+                  <VipBadge
+                    level={Number(user?.vipLevel)}
+                    size="small"
+                    imageUrl={vipBadgeIconUrl || undefined}
+                  />
+                ) : null}
+              </View>
+              <Text style={styles.subLabel}>انضم للغرفة</Text>
+              {badgeImgUrl ? (
+                <Image source={{ uri: badgeImgUrl }} style={styles.rewardBadgeInline} resizeMode="contain" />
               ) : null}
             </View>
-            <Text style={styles.subLabel}>انضم للغرفة</Text>
-            {badgeImgUrl ? (
-              <Image source={{ uri: badgeImgUrl }} style={styles.rewardBadgeInline} resizeMode="contain" />
+            {showVideo ? (
+              <View style={styles.videoBox} collapsable={false}>
+                <Video
+                  source={{ uri: joinVideoTrimmed }}
+                  style={styles.video}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay
+                  isLooping
+                  isMuted={joinVideoMuted}
+                  useNativeControls={false}
+                />
+              </View>
             ) : null}
           </View>
-          {showVideo ? (
-            <View style={styles.videoBox} collapsable={false}>
-              <Video
-                source={{ uri: joinVideoTrimmed }}
-                style={styles.video}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
-                isLooping
-                isMuted
-                useNativeControls={false}
-              />
-            </View>
-          ) : null}
         </View>
+
+        {cardFrameOverlayUri ? (
+          <Image
+            pointerEvents="none"
+            source={{ uri: cardFrameOverlayUri }}
+            style={styles.joinCardPngFrame}
+            resizeMode="stretch"
+          />
+        ) : null}
       </View>
     </View>
   );
@@ -420,14 +451,36 @@ const JoinAnimation = ({
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.container,
-        layout === "ticker" ? styles.containerTicker : null,
-        containerAnimStyle,
-      ]}
+      style={
+        isFullscreenJoinVideo
+          ? {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: winW,
+              height: winH,
+              zIndex: 65,
+              opacity,
+            }
+          : [
+              styles.container,
+              layout === "ticker" ? styles.containerTicker : null,
+              containerAnimStyle,
+            ]
+      }
       needsOffscreenAlphaCompositing={Platform.OS === "ios"}
     >
-      <View style={styles.shell}>
+      <View
+        style={
+          isFullscreenJoinVideo
+            ? { width: winW, height: winH, position: "relative" }
+            : styles.shell
+        }
+      >
+        {isFullscreenJoinVideo ? (
+          inner
+        ) : (
+          <>
         {effect === "ring" && layout !== "ticker" ? (
           <Animated.View
             pointerEvents="none"
@@ -476,6 +529,8 @@ const JoinAnimation = ({
           >
             {inner}
           </Animated.View>
+        )}
+          </>
         )}
       </View>
     </Animated.View>
@@ -537,6 +592,21 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     /** يمنع انعكاس اتجاه RTL على موضع الصورة */
     direction: "ltr",
+  },
+  /** يضمن أن طبقة إطار PNG تُقاس على مساحة الكارت + جزء البروفايل البارز */
+  joinCardContentWrap: {
+    position: "relative",
+    alignSelf: "stretch",
+    width: "100%",
+  },
+  /** إطار PNG من الإدمن: يُمدَّد ليغطي الكارت والصورة البارزة؛ الوسط يبقى شفافاً في الملف */
+  joinCardPngFrame: {
+    position: "absolute",
+    top: -48,
+    left: -14,
+    right: -14,
+    bottom: -12,
+    zIndex: 24,
   },
   /** صف بعرض الكارد: الصورة دائماً على يمين الحافة (بصرياً) */
   avatarHeroRow: {

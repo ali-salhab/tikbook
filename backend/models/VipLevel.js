@@ -37,10 +37,10 @@ const vipLevelSchema = new mongoose.Schema(
     joinVideoUrl: { type: String, default: "" },
     /** PNG/WebP overlay around the join card (transparent frame) */
     joinCardFrameImageUrl: { type: String, default: "" },
-    /** `card`: default banner · `ticker`: slim marquee-style strip */
+    /** `card`: default banner · `ticker`: slim marquee · `video-fullscreen`: join video fills screen */
     joinLayoutStyle: {
       type: String,
-      enum: ["card", "ticker"],
+      enum: ["card", "ticker", "video-fullscreen"],
       default: "card",
     },
     /** Decorative motion around join card · `none`: border/glow only from theme */

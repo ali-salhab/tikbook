@@ -364,7 +364,12 @@ const VipManagement = ({ onLogout }) => {
       joinDisplayDurationMs: typeof lvl.joinDisplayDurationMs === "number" ? lvl.joinDisplayDurationMs : 5000,
       joinVideoUrl: lvl.joinVideoUrl || "", joinVideoFile: null, joinVideoPreviewUrl: lvl.joinVideoUrl || null,
       joinCardFrameImageUrl: lvl.joinCardFrameImageUrl || "", joinCardFrameImageFile: null,
-      joinLayoutStyle: lvl.joinLayoutStyle === "ticker" ? "ticker" : "card",
+      joinLayoutStyle:
+        lvl.joinLayoutStyle === "ticker"
+          ? "ticker"
+          : lvl.joinLayoutStyle === "video-fullscreen"
+            ? "video-fullscreen"
+            : "card",
       joinEffectPreset: ["none", "glow", "pulse", "aurora", "ring"].includes(String(lvl.joinEffectPreset || "").toLowerCase())
         ? String(lvl.joinEffectPreset).toLowerCase()
         : "none",
@@ -475,7 +480,9 @@ const VipManagement = ({ onLogout }) => {
         ),
         joinVideoUrl: finalJoinVideoUrl || "",
         joinCardFrameImageUrl: finalJoinCardFrameUrl || "",
-        joinLayoutStyle: form.joinLayoutStyle === "ticker" ? "ticker" : "card",
+        joinLayoutStyle: ["ticker", "video-fullscreen"].includes(form.joinLayoutStyle)
+          ? form.joinLayoutStyle
+          : "card",
         joinEffectPreset: ["none", "glow", "pulse", "aurora", "ring"].includes(String(form.joinEffectPreset || "").toLowerCase())
           ? String(form.joinEffectPreset).toLowerCase()
           : "none",
@@ -1041,6 +1048,7 @@ const VipManagement = ({ onLogout }) => {
                     onChange={(e) => setForm({ ...form, joinLayoutStyle: e.target.value })}>
                     <option value="card">بطاقة علوية (Card)</option>
                     <option value="ticker">شريط زمني / ماركيز (Ticker)</option>
+                    <option value="video-fullscreen">فيديو انضمام بملء الشاشة</option>
                   </select>
                 </div>
               </div>
@@ -1127,7 +1135,9 @@ const VipManagement = ({ onLogout }) => {
                   )}
                 </div>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>إطار شفاف حول الكارت (PNG/WebP)</label>
+                  <label style={styles.label}>
+                    إطار PNG/WebP حول كارت الانضمام بالكامل (شفاف في الوسط لإظهار المحتوى)
+                  </label>
                   <input ref={joinCardFrameRef} type="file" accept="image/png,image/webp,.png,.webp" style={{ display: "none" }}
                     onChange={(e) => {
                       const file = e.target.files?.[0]; if (!file) return;
@@ -1154,7 +1164,7 @@ const VipManagement = ({ onLogout }) => {
                     ) : (
                       <div style={{ textAlign: "center", color: "#94a3b8" }}>
                         <div style={{ fontSize: 24, marginBottom: 4 }}>✴️</div>
-                        <div style={{ fontSize: 12 }}>طبقة PNG فوق الكارت</div>
+                        <div style={{ fontSize: 12 }}>يُرسَم فوق الكارت والصورة البارزة</div>
                       </div>
                     )}
                   </div>

@@ -16,6 +16,7 @@ import {
   ScrollView,
   Keyboard,
   PanResponder,
+  AppState,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Audio } from "expo-av";
@@ -470,7 +471,9 @@ const LiveRoomScreen = ({ route, navigation }) => {
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
       const isHost = room?.host?._id === userInfo?._id;
       // Only intercept if the room is still active (not already ended/left via UI)
-      if (!room || room.status !== "live") return;
+      const roomStillLive =
+        room && (room.status === "active" || room.status === "live");
+      if (!roomStillLive) return;
 
       e.preventDefault();
 
@@ -520,6 +523,36 @@ const LiveRoomScreen = ({ route, navigation }) => {
     });
     return unsubscribe;
   }, [navigation, room]);
+
+  // Host: إنهاء الغرفة عند إرسال التطبيق إلى الخلفية أو إغلاقه (أفضل جهد متاح من JS)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "background") return;
+      const hostId = room?.host?._id ?? room?.host;
+      const isHost =
+        hostId != null &&
+        userInfo?._id != null &&
+        String(hostId) === String(userInfo._id);
+      const live =
+        room && (room.status === "active" || room.status === "live");
+      if (!isHost || !live || !roomId || !userToken) return;
+      axios
+        .post(
+          `${BASE_URL}/live-rooms/${roomId}/end`,
+          {},
+          { headers: { Authorization: `Bearer ${userToken}` } },
+        )
+        .catch(() => {});
+      try {
+        socketRef.current?.emit("liveroom:end", { roomId });
+      } catch (_) {}
+      dismissLiveNotification();
+      try {
+        agoraEngineRef.current?.leaveChannel?.();
+      } catch (_) {}
+    });
+    return () => sub.remove();
+  }, [room, roomId, userToken, userInfo?._id]);
 
   // Fixed comment area top — positioned clearly BELOW the header + host + seat grid
   // so animated gifts don't render on top of seats. Header (~ms(60)) + host block
@@ -742,7 +775,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
           if (leLevel.joinCardFrameImageUrl) {
             m.joinCardFrameImageUrl = leLevel.joinCardFrameImageUrl;
           }
-          if (leLevel.joinLayoutStyle === "card" || leLevel.joinLayoutStyle === "ticker") {
+          if (
+            leLevel.joinLayoutStyle === "card" ||
+            leLevel.joinLayoutStyle === "ticker" ||
+            leLevel.joinLayoutStyle === "video-fullscreen"
+          ) {
             m.joinLayoutStyle = leLevel.joinLayoutStyle;
           }
           const fx = String(leLevel.joinEffectPreset || "").toLowerCase();
@@ -3892,17 +3929,28 @@ const LiveRoomScreen = ({ route, navigation }) => {
       {joinAnimationUser && (() => {
           const vipLvl = Number(joinAnimationUser?.vipLevel || 0);
           const lvlData = vipLevelData[vipLvl] || null;
+          const joinLayoutResolved =
+            lvlData?.joinLayoutStyle === "ticker"
+              ? "ticker"
+              : lvlData?.joinLayoutStyle === "video-fullscreen"
+                ? "video-fullscreen"
+                : "card";
+          const joinOverlayFullscreen = joinLayoutResolved === "video-fullscreen";
           return (
             <View
               pointerEvents="none"
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 1200,
-                elevation: 1200,
-              }}
+              style={
+                joinOverlayFullscreen
+                  ? [StyleSheet.absoluteFillObject, { zIndex: 1200, elevation: 1200 }]
+                  : {
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      zIndex: 1200,
+                      elevation: 1200,
+                    }
+              }
             >
               <JoinAnimation
                 user={joinAnimationUser}
@@ -3917,12 +3965,11 @@ const LiveRoomScreen = ({ route, navigation }) => {
                 joinVideoUrl={lvlData?.joinVideoUrl || null}
                 joinCardFrameImageUrl={lvlData?.joinCardFrameImageUrl || null}
                 avatarFrameUrl={
-                  lvlData?.joinCardFrameImageUrl ||
                   vipLevelCommentStyles[vipLvl]?.profileFrameLottieUrl ||
                   vipLevelCommentStyles[vipLvl]?.badgeImageUrl ||
                   null
                 }
-                layoutStyle={lvlData?.joinLayoutStyle === "ticker" ? "ticker" : "card"}
+                layoutStyle={joinLayoutResolved}
                 effectPreset={(lvlData?.joinEffectPreset || "none").toLowerCase()}
                 vipTier={
                   lvlData

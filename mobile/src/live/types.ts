@@ -73,7 +73,7 @@ export interface VipTierConfig {
   joinDisplayDurationMs?: number;
   joinVideoUrl?: string;
   joinCardFrameImageUrl?: string;
-  joinLayoutStyle?: "card" | "ticker";
+  joinLayoutStyle?: "card" | "ticker" | "video-fullscreen";
   joinEffectPreset?: "none" | "glow" | "pulse" | "aurora" | "ring";
   joinConfigPendingReview?: boolean;
 }

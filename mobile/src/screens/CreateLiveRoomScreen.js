@@ -112,6 +112,25 @@ const CreateLiveRoomScreen = ({ navigation }) => {
         navigation.replace("LiveRoom", { roomId: res.data.data.roomId });
       }
     } catch (err) {
+      if (err.response?.status === 409) {
+        const msg =
+          err.response?.data?.message ||
+          "لديك غرفة بث نشطة أو مجدولة بالفعل. أنهِها قبل إنشاء غرفة جديدة.";
+        const existingId = err.response?.data?.existingRoomId;
+        Alert.alert("غرفة موجودة", msg, [
+          { text: "حسناً", style: "cancel" },
+          ...(existingId
+            ? [
+                {
+                  text: "فتح غرفتي",
+                  onPress: () =>
+                    navigation.replace("LiveRoom", { roomId: existingId }),
+                },
+              ]
+            : []),
+        ]);
+        return;
+      }
       Alert.alert("خطأ", err.response?.data?.message || "تعذّر إنشاء الغرفة");
     } finally {
       setLoading(false);

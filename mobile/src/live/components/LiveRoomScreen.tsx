@@ -202,7 +202,18 @@ const LiveRoomScreen = ({
           }
           joinVideoUrl={joinTierForOverlay?.joinVideoUrl}
           joinCardFrameImageUrl={joinTierForOverlay?.joinCardFrameImageUrl}
-          layoutStyle={joinTierForOverlay?.joinLayoutStyle === "ticker" ? "ticker" : "card"}
+          avatarFrameUrl={
+            joinTierForOverlay?.profileFrameLottieUrl ||
+            joinTierForOverlay?.badgeImageUrl ||
+            undefined
+          }
+          layoutStyle={
+            joinTierForOverlay?.joinLayoutStyle === "ticker"
+              ? "ticker"
+              : joinTierForOverlay?.joinLayoutStyle === "video-fullscreen"
+                ? "video-fullscreen"
+                : "card"
+          }
           effectPreset={(joinTierForOverlay?.joinEffectPreset || "none").toLowerCase() as JoinEffectPreset}
           vipBadgeIconUrl={joinTierForOverlay?.badgeImageUrl || undefined}
           vipTier={

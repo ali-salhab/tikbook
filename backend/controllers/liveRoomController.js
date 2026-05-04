@@ -43,6 +43,18 @@ exports.createLiveRoom = async (req, res) => {
       return res.status(400).json({ message: "Title is required" });
     }
 
+    const existingOpen = await LiveRoom.findOne({
+      host: req.user.id,
+      status: { $in: ["active", "scheduled"] },
+    }).select("roomId");
+    if (existingOpen) {
+      return res.status(409).json({
+        message:
+          "لديك غرفة بث نشطة أو مجدولة بالفعل. أنهِ الغرفة الحالية قبل إنشاء غرفة جديدة.",
+        existingRoomId: existingOpen.roomId,
+      });
+    }
+
     const roomId = uuidv4();
 
     const liveRoom = new LiveRoom({
