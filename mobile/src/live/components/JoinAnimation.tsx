@@ -18,7 +18,7 @@ import ProfileBadgeFrame from "../../components/ProfileBadgeFrame";
 import VipBadge from "../../components/VipBadge";
 import type { LiveRoomUser, VipTierConfig } from "../types";
 
-export type JoinLayoutStyle = "card" | "ticker";
+export type JoinLayoutStyle = "card" | "ticker" | "video-fullscreen";
 export type JoinEffectPreset = "none" | "glow" | "pulse" | "aurora" | "ring";
 
 type Props = {
@@ -291,6 +291,50 @@ const JoinAnimation = ({
           </Text>
         </View>
       </Animated.View>
+    </View>
+  ) : layout === "video-fullscreen" ? (
+    <View style={styles.fullscreenVideoContainer}>
+      {showVideo ? (
+        <Video
+          source={{ uri: joinVideoTrimmed }}
+          style={styles.fullscreenVideo}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping
+          isMuted
+          useNativeControls={false}
+        />
+      ) : (
+        <View style={styles.fullscreenVideoPlaceholder}>
+          {profileUri ? (
+            <Image source={{ uri: profileUri }} style={styles.fullscreenAvatar} />
+          ) : (
+            <View style={[styles.fullscreenAvatar, styles.avatarPlaceholder]} />
+          )}
+        </View>
+      )}
+      
+      {/* Overlay content on top of video */}
+      <View style={styles.fullscreenOverlay}>
+        <View style={styles.fullscreenContent}>
+          <View style={styles.fullscreenTitleRow}>
+            <Text style={[styles.fullscreenLabel, { color: nameColor }]}>
+              {joinTitle}
+            </Text>
+            {Number(user?.vipLevel) > 0 ? (
+              <VipBadge
+                level={Number(user?.vipLevel)}
+                size="medium"
+                imageUrl={vipBadgeIconUrl || undefined}
+              />
+            ) : null}
+          </View>
+          <Text style={styles.fullscreenSubLabel}>انضم للغرفة</Text>
+          {badgeImgUrl ? (
+            <Image source={{ uri: badgeImgUrl }} style={styles.fullscreenBadge} resizeMode="contain" />
+          ) : null}
+        </View>
+      </View>
     </View>
   ) : (
     <View style={styles.joinCardRoot}>
@@ -698,6 +742,78 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginLeft: 6,
     fontWeight: "600",
+  },
+  // Full screen video styles
+  fullscreenVideoContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 65,
+  },
+  fullscreenVideo: {
+    width: "100%",
+    height: "100%",
+  },
+  fullscreenVideoPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  fullscreenOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "flex-end",
+    paddingBottom: 80,
+  },
+  fullscreenContent: {
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  fullscreenTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  fullscreenLabel: {
+    color: "#F9FAFB",
+    fontSize: 24,
+    fontWeight: "800",
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    textAlign: "center",
+  },
+  fullscreenSubLabel: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  fullscreenBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
   },
 });
 

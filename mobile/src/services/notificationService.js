@@ -235,6 +235,7 @@ const resolveNavTarget = (raw = {}) => {
     if (userId && (type === "follow" || type === "mention")) {
       return { screen: "UserProfile", params: { userId } };
     }
+    // Navigate to Activity screen to show the notification details
     return { screen: "Activity", params: {} };
   }
 
@@ -243,7 +244,8 @@ const resolveNavTarget = (raw = {}) => {
     return { screen: scr, params: rest };
   }
 
-  return { screen: "Activity", params: {} };
+  // Default fallback: open the Home screen instead of Activity
+  return { screen: "MainTabs", params: { screen: "Home" } };
 };
 
 const NAV_MAX_ATTEMPTS = 110;
@@ -310,12 +312,27 @@ export const handleInitialNotification = async (navigationRef) => {
     const notifId = response?.notification?.request?.identifier;
     const STORAGE_KEY = "@lastHandledNotifId";
     const lastHandled = await AsyncStorage.getItem(STORAGE_KEY);
-    if (notifId && lastHandled === notifId) return;
+
+    // If no notifId, skip to avoid navigating on every cold start
+    if (!notifId) return;
+    if (lastHandled === notifId) return;
+
+    // Only handle notifications that were received recently (within 60 seconds)
+    // to avoid navigating to old notifications on every app open
+    const notifDate = response?.notification?.date;
+    if (notifDate) {
+      const ageMs = Date.now() - (notifDate * 1000 || notifDate);
+      if (ageMs > 60000) {
+        // Mark as handled so we don't check again
+        await AsyncStorage.setItem(STORAGE_KEY, notifId);
+        return;
+      }
+    }
 
     const data = response?.notification?.request?.content?.data || {};
     const target = resolveNavTarget(data);
 
-    if (notifId) await AsyncStorage.setItem(STORAGE_KEY, notifId);
+    await AsyncStorage.setItem(STORAGE_KEY, notifId);
 
     scheduleNavigateToTarget(navigationRef, target);
   } catch (e) {
