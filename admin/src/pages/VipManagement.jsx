@@ -663,22 +663,26 @@ const VipManagement = ({ onLogout }) => {
               return (
                 <div key={lvl.level} style={{
                   ...styles.card,
-                  borderColor: color,
-                  background: `linear-gradient(160deg, #0e0a1e 0%, #161030 60%, #0a0818 100%)`,
-                  boxShadow: `0 8px 32px ${color}30, 0 0 0 1px ${color}44`,
+                  borderColor: `${color}55`,
+                  background: `linear-gradient(165deg, #232228 0%, #2d2a32 45%, #1c1b20 100%)`,
+                  boxShadow: `
+                    0 14px 40px rgba(0,0,0,0.38),
+                    0 0 0 1px ${color}38,
+                    inset 0 1px 0 rgba(255,255,255,0.06)
+                  `,
                 }}>
                   {/* ── Top ribbon with level number ── */}
                   <div style={{
                     ...styles.cardBadge,
-                    background: `linear-gradient(135deg, ${color}, ${color}aa)`,
-                    boxShadow: `0 2px 10px ${color}66`,
+                    background: `linear-gradient(135deg, ${color}ee, ${color}99)`,
+                    boxShadow: `0 2px 14px ${color}44`,
                   }}>
                     ⭐ المستوى {lvl.level}
                   </div>
 
                   {/* ══ SECTION 1: أيقونة المستوى ══ */}
                   <div style={{ width: "100%", marginTop: 6 }}>
-                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textAlign: "center", letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>
+                    <div style={{ fontSize: 10, color: "#a1a1aa", fontWeight: 700, textAlign: "center", letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>
                       أيقونة المستوى
                     </div>
                     {/* Level icon — clean, no frame overlay */}
@@ -755,15 +759,55 @@ const VipManagement = ({ onLogout }) => {
                   </div>
 
                   {/* ══ SECTION 2: إطار التعليق — separate labeled block ══ */}
-                  <div style={{ width: "100%", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10, marginTop: 4 }}>
-                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textAlign: "center", letterSpacing: 0.5, marginBottom: 8 }}>
+                  <div style={{ width: "100%", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 10, marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: "#a1a1aa", fontWeight: 700, textAlign: "center", letterSpacing: 0.5, marginBottom: 8 }}>
                       💬 إطار التعليق
                     </div>
                     {commentFrameUrl && chatIsPng ? (
-                      <div style={{ position: "relative", borderRadius: 8, overflow: "hidden" }}>
-                        <img src={commentFrameUrl} alt="" style={{ width: "100%", maxHeight: 52, objectFit: "contain", display: "block" }} />
-                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700, textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
-                          نص التعليق VIP
+                      <div style={{ width: "100%", borderRadius: 12, overflow: "hidden", background: "rgba(0,0,0,0.2)" }}>
+                        <div
+                          style={{
+                            position: "relative",
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "16px 26px",
+                            minHeight: 52,
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <img
+                            src={commentFrameUrl}
+                            alt=""
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "fill",
+                              pointerEvents: "none",
+                              zIndex: 0,
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: "relative",
+                              zIndex: 1,
+                              color: "#fafafa",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              textAlign: "center",
+                              lineHeight: 1.5,
+                              wordBreak: "break-word",
+                              maxWidth: "100%",
+                              textShadow: "0 1px 4px rgba(0,0,0,0.9)",
+                            }}
+                          >
+                            <span style={{ color, fontWeight: 800 }}>VIP{lvl.level}</span>
+                            {" "}
+                            نص التعليق
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -2089,14 +2133,41 @@ const VipManagement = ({ onLogout }) => {
                             {renderAvatar(32)}
                           </div>
                           {commentFrameUrl && chatIsPng ? (
-                            <div style={{ position: "relative", flex: 1, minHeight: 44 }}>
-                              <img src={commentFrameUrl} alt="" style={{ width: "100%", minHeight: 44, objectFit: "fill", borderRadius: 4 }} />
-                              <div style={{ position: "absolute", inset: "6px 10px", color: "#fff", fontSize: 10, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
-                                <div style={{ fontWeight: 800, color: lvlColor, fontSize: 10, display: "flex", alignItems: "center", gap: 4 }}>
-                                  {assignData.username || "المستخدم"}
-                                  <span style={{ background: lvlColor, color: "#fff", fontSize: 8, fontWeight: 800, borderRadius: 6, padding: "1px 5px" }}>VIP{selLevel.level}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div
+                                style={{
+                                  position: "relative",
+                                  width: "100%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "14px 18px",
+                                  minHeight: 48,
+                                  boxSizing: "border-box",
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <img
+                                  src={commentFrameUrl}
+                                  alt=""
+                                  style={{
+                                    position: "absolute",
+                                    inset: 0,
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "fill",
+                                    pointerEvents: "none",
+                                    zIndex: 0,
+                                  }}
+                                />
+                                <div style={{ position: "relative", zIndex: 1, color: "#fff", fontSize: 10, width: "100%", wordBreak: "break-word" }}>
+                                  <div style={{ fontWeight: 800, color: lvlColor, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+                                    <span>{assignData.username || "المستخدم"}</span>
+                                    <span style={{ background: lvlColor, color: "#fff", fontSize: 8, fontWeight: 800, borderRadius: 6, padding: "2px 6px" }}>VIP{selLevel.level}</span>
+                                  </div>
+                                  <div style={{ fontSize: 10, lineHeight: 1.45, textShadow: "0 1px 3px rgba(0,0,0,0.85)" }}>نص التعليق هنا...</div>
                                 </div>
-                                <div style={{ fontSize: 9 }}>نص التعليق هنا...</div>
                               </div>
                             </div>
                           ) : (
