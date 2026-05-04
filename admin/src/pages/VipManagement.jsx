@@ -52,7 +52,7 @@ const defaultForm = {
   joinSoundUrl: "", joinSoundFile: null,
   specialJoinText: "",
   joinDisplayDurationMs: 5000,
-  joinVideoUrl: "", joinVideoFile: null,
+  joinVideoUrl: "", joinVideoFile: null, joinVideoPreviewUrl: null,
   joinCardFrameImageUrl: "", joinCardFrameImageFile: null,
   joinLayoutStyle: "card",
   joinEffectPreset: "none",
@@ -362,7 +362,7 @@ const VipManagement = ({ onLogout }) => {
       joinSoundUrl: lvl.joinSoundUrl || "", joinSoundFile: null,
       specialJoinText: lvl.specialJoinText || "",
       joinDisplayDurationMs: typeof lvl.joinDisplayDurationMs === "number" ? lvl.joinDisplayDurationMs : 5000,
-      joinVideoUrl: lvl.joinVideoUrl || "", joinVideoFile: null,
+      joinVideoUrl: lvl.joinVideoUrl || "", joinVideoFile: null, joinVideoPreviewUrl: lvl.joinVideoUrl || null,
       joinCardFrameImageUrl: lvl.joinCardFrameImageUrl || "", joinCardFrameImageFile: null,
       joinLayoutStyle: lvl.joinLayoutStyle === "ticker" ? "ticker" : "card",
       joinEffectPreset: ["none", "glow", "pulse", "aurora", "ring"].includes(String(lvl.joinEffectPreset || "").toLowerCase())
@@ -494,6 +494,7 @@ const VipManagement = ({ onLogout }) => {
       delete payload.joinAnimationLottieFile;
       delete payload.joinSoundFile;
       delete payload.joinVideoFile;
+      delete payload.joinVideoPreviewUrl; // Remove preview URL from payload
       delete payload.joinCardFrameImageFile;
       if (editingLevel) {
         await api.put(`/vip/admin/levels/${editingLevel.level}`, payload, authHeader);
@@ -503,6 +504,11 @@ const VipManagement = ({ onLogout }) => {
       await fetchLevels();
       setShowModal(false);
       setEditingLevel(null);
+      // Clean up any object URLs to prevent memory leaks
+      if (form.joinVideoPreviewUrl && form.joinVideoFile) {
+        URL.revokeObjectURL(form.joinVideoPreviewUrl);
+      }
+      
       setForm({ ...defaultForm });
       setImagePreview(null);
       setBadgeLottieName("");
@@ -789,11 +795,23 @@ const VipManagement = ({ onLogout }) => {
 
         {/* Create/Edit Modal */}
         {showModal && (
-          <div style={styles.overlay} onClick={() => setShowModal(false)}>
+          <div style={styles.overlay} onClick={() => {
+            // Clean up any object URLs to prevent memory leaks
+            if (form.joinVideoPreviewUrl && form.joinVideoFile) {
+              URL.revokeObjectURL(form.joinVideoPreviewUrl);
+            }
+            setShowModal(false);
+          }}>
             <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div style={styles.modalHeader}>
                 <h3>{editingLevel ? `تعديل المستوى ${editingLevel.level}` : "إضافة مستوى جديد"}</h3>
-                <button style={styles.closeBtn} onClick={() => setShowModal(false)}><FiX /></button>
+                <button style={styles.closeBtn} onClick={() => {
+                  // Clean up any object URLs to prevent memory leaks
+                  if (form.joinVideoPreviewUrl && form.joinVideoFile) {
+                    URL.revokeObjectURL(form.joinVideoPreviewUrl);
+                  }
+                  setShowModal(false);
+                }}><FiX /></button>
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
 
@@ -1054,6 +1072,12 @@ const VipManagement = ({ onLogout }) => {
                       const file = e.target.files?.[0]; if (!file) return;
                       setForm({ ...form, joinVideoFile: file, joinVideoUrl: "" });
                       setJoinVideoName(file.name);
+                      
+                      // Create a preview URL for the video
+                      if (file) {
+                        const videoPreviewUrl = URL.createObjectURL(file);
+                        setForm(prev => ({ ...prev, joinVideoPreviewUrl: videoPreviewUrl }));
+                      }
                     }} />
                   <div style={styles.uploadZone} onClick={() => joinVideoRef.current?.click()}>
                     {joinVideoName ? (
@@ -1067,7 +1091,12 @@ const VipManagement = ({ onLogout }) => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setJoinVideoName("");
-                            setForm({ ...form, joinVideoFile: null, joinVideoUrl: "" });
+                            setForm({ ...form, joinVideoFile: null, joinVideoUrl: "", joinVideoPreviewUrl: null });
+                            
+                            // Revoke the object URL to avoid memory leaks
+                            if (form.joinVideoPreviewUrl) {
+                              URL.revokeObjectURL(form.joinVideoPreviewUrl);
+                            }
                           }}>
                           <FiX size={12} />
                         </button>
@@ -1079,6 +1108,23 @@ const VipManagement = ({ onLogout }) => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Video Preview */}
+                  {(form.joinVideoPreviewUrl || form.joinVideoUrl) && (
+                    <div style={{ marginTop: 10, borderRadius: 8, overflow: 'hidden', maxWidth: '100%', border: '1px solid #e2e8f0' }}>
+                      <video
+                        src={form.joinVideoPreviewUrl || form.joinVideoUrl}
+                        style={{ width: '100%', maxHeight: 150, objectFit: 'contain' }}
+                        controls
+                        autoPlay={false}
+                        muted
+                        loop
+                      />
+                      <div style={{ padding: 8, background: '#f8fafc', fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+                        معاينة فيديو الانضمام
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>إطار شفاف حول الكارت (PNG/WebP)</label>
@@ -1727,7 +1773,13 @@ const VipManagement = ({ onLogout }) => {
               )}
 
               <div style={styles.modalFooter}>
-                <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>إلغاء</button>
+                <button style={styles.cancelBtn} onClick={() => {
+                  // Clean up any object URLs to prevent memory leaks
+                  if (form.joinVideoPreviewUrl && form.joinVideoFile) {
+                    URL.revokeObjectURL(form.joinVideoPreviewUrl);
+                  }
+                  setShowModal(false);
+                }}>إلغاء</button>
                 <button style={styles.saveBtn} onClick={handleSave} disabled={saving || uploading}>
                   {uploading ? "جاري الرفع..." : saving ? "جاري الحفظ..." : <><FiCheck size={14} /> حفظ</>}
                 </button>
