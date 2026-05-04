@@ -605,14 +605,18 @@ const VipManagement = ({ onLogout }) => {
 
   return (
     <AdminLayout onLogout={onLogout}>
+      <style>{`
+        @keyframes vip-admin-spin { to { transform: rotate(360deg); } }
+      `}</style>
       <div style={styles.container}>
         {/* Header */}
         <div style={styles.header}>
-          <div>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={styles.heroEyebrow}>لوحة التحكم · VIP</div>
             <h2 style={styles.title}>⭐ إدارة المستويات</h2>
             <p style={styles.subtitle}>إدارة مستويات التطبيق وتعيينها للمستخدمين — مع تخصيص كامل لكل مستوى</p>
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={styles.headerActions}>
             <button style={styles.seedBtn} onClick={handleSeedVip} disabled={loading}>
               🌱 بيانات تجريبية
             </button>
@@ -635,14 +639,17 @@ const VipManagement = ({ onLogout }) => {
 
         {/* Levels Grid */}
         {loading ? (
-          <div style={styles.loading}>جاري التحميل...</div>
+          <div style={styles.loading}>
+            <div style={styles.loadingSpinner} aria-hidden />
+            <span>جاري التحميل...</span>
+          </div>
         ) : (
           <div style={styles.grid}>
             {levels.length === 0 && (
-              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 48, color: "#94a3b8" }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>⭐</div>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>لا توجد مستويات بعد</div>
-                <div style={{ fontSize: 13, marginTop: 6 }}>اضغط "بيانات تجريبية" لإضافة مستويات افتراضية</div>
+              <div style={styles.emptyGrid}>
+                <div style={styles.emptyGridIcon}>⭐</div>
+                <div style={styles.emptyGridTitle}>لا توجد مستويات بعد</div>
+                <div style={styles.emptyGridHint}>اضغط &quot;بيانات تجريبية&quot; لإضافة مستويات افتراضية</div>
               </div>
             )}
             {levels.map((lvl) => {
@@ -811,7 +818,7 @@ const VipManagement = ({ onLogout }) => {
           }}>
             <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div style={styles.modalHeader}>
-                <h3>{editingLevel ? `تعديل المستوى ${editingLevel.level}` : "إضافة مستوى جديد"}</h3>
+                <h3 style={styles.modalTitle}>{editingLevel ? `تعديل المستوى ${editingLevel.level}` : "إضافة مستوى جديد"}</h3>
                 <button style={styles.closeBtn} onClick={() => {
                   // Clean up any object URLs to prevent memory leaks
                   if (form.joinVideoPreviewUrl && form.joinVideoFile) {
@@ -823,19 +830,22 @@ const VipManagement = ({ onLogout }) => {
               {error && <div style={styles.errorBox}>{error}</div>}
 
               {/* ── Tab Navigation ── */}
-              <div style={{ display: "flex", borderBottom: "2px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
+              <div style={styles.tabsRow}>
                 {[
                   { id: "basic",      label: "البيانات الأساسية", icon: "📋" },
                   { id: "properties", label: "الخصائص",           icon: "⚙️" },
                   { id: "benefits",   label: "المزايا",            icon: "🎁" },
                   { id: "gifts",      label: "الهدايا",            icon: "🎀" },
-                ].map(tab => (
-                  <button key={tab.id} onClick={() => setActiveModalTab(tab.id)} style={{
-                    flex: "0 0 auto", padding: "10px 18px", border: "none", cursor: "pointer", fontWeight: 700,
-                    fontSize: 13, borderBottom: activeModalTab === tab.id ? "3px solid #6366f1" : "3px solid transparent",
-                    marginBottom: -2, background: activeModalTab === tab.id ? "#f5f3ff" : "transparent",
-                    color: activeModalTab === tab.id ? "#6366f1" : "#64748b", transition: "all .15s", whiteSpace: "nowrap",
-                  }}>
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveModalTab(tab.id)}
+                    style={{
+                      ...styles.tabBtn,
+                      ...(activeModalTab === tab.id ? styles.tabBtnActive : {}),
+                    }}
+                  >
                     {tab.icon} {tab.label}
                   </button>
                 ))}
@@ -1815,7 +1825,7 @@ const VipManagement = ({ onLogout }) => {
           <div style={styles.overlay} onClick={() => setShowAssignModal(false)}>
             <div style={{ ...styles.modal, maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
               <div style={styles.modalHeader}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>تعيين VIP لمستخدم</h3>
+                <h3 style={styles.modalTitle}>تعيين VIP لمستخدم</h3>
                 <button style={styles.closeBtn} onClick={() => setShowAssignModal(false)}><FiX /></button>
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
@@ -1996,20 +2006,21 @@ const VipManagement = ({ onLogout }) => {
 
                 /* ── tiny shared card style ── */
                 const previewCard = {
-                  background: "#0a0818",
-                  border: `1px solid ${lvlColor}28`,
-                  borderRadius: 12,
-                  padding: "10px 12px",
+                  background: "linear-gradient(165deg, #100e1a 0%, #0c0a14 100%)",
+                  border: `1px solid ${lvlColor}38`,
+                  borderRadius: 14,
+                  padding: "12px 14px",
                   display: "flex",
                   flexDirection: "column",
                   gap: 8,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.35)",
                 };
                 const previewTitle = {
                   fontSize: 10,
-                  fontWeight: 700,
-                  color: "#6b7280",
+                  fontWeight: 800,
+                  color: "#94a3b8",
                   textTransform: "uppercase",
-                  letterSpacing: ".6px",
+                  letterSpacing: "0.08em",
                   display: "flex",
                   alignItems: "center",
                   gap: 4,
@@ -2194,72 +2205,413 @@ const VipManagement = ({ onLogout }) => {
   );
 };
 
+const fontStack = 'system-ui, -apple-system, "Segoe UI", Tahoma, "Arial Unicode MS", sans-serif';
+
 const styles = {
-  container: { padding: "24px", direction: "rtl" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 12 },
-  title: { fontSize: 24, fontWeight: 700, margin: 0, color: "#1e293b" },
-  subtitle: { color: "#64748b", marginTop: 4, fontSize: 14 },
-  addBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
-  assignBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#f59e0b", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
-  seedBtn: { display: "flex", alignItems: "center", gap: 6, padding: "10px 18px", backgroundColor: "#10b981", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
-  loading: { textAlign: "center", padding: 60, color: "#64748b", fontSize: 16 },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 20 },
-  card: {
-    borderRadius: 20, padding: "20px 16px 16px", border: "1.5px solid",
-    display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-    position: "relative", transition: "transform .18s, box-shadow .18s",
-    overflow: "visible",
+  container: {
+    padding: "28px 24px 48px",
+    direction: "rtl",
+    maxWidth: 1320,
+    margin: "0 auto",
+    fontFamily: fontStack,
+    minHeight: "100%",
+    boxSizing: "border-box",
+    background: "linear-gradient(165deg, #eef2ff 0%, #f8fafc 28%, #f1f5f9 100%)",
   },
-  cardBadge: { color: "#fff", fontWeight: 700, fontSize: 12, borderRadius: 999, padding: "5px 16px", letterSpacing: 0.3 },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "#6366f1",
+    marginBottom: 8,
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 32,
+    flexWrap: "wrap",
+    gap: 20,
+    padding: "26px 28px",
+    background: "#ffffff",
+    borderRadius: 18,
+    border: "1px solid rgba(15, 23, 42, 0.06)",
+    boxShadow:
+      "0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 40px -16px rgba(15, 23, 42, 0.12)",
+  },
+  headerActions: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
+  title: {
+    fontSize: 26,
+    fontWeight: 800,
+    margin: 0,
+    color: "#0f172a",
+    letterSpacing: "-0.02em",
+    lineHeight: 1.25,
+  },
+  subtitle: {
+    color: "#64748b",
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 1.65,
+    maxWidth: 560,
+    marginBottom: 0,
+  },
+  addBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "11px 20px",
+    backgroundColor: "#4f46e5",
+    color: "#fff",
+    border: "none",
+    borderRadius: 11,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+    boxShadow: "0 1px 2px rgba(79, 70, 229, 0.28), 0 4px 12px -4px rgba(79, 70, 229, 0.45)",
+  },
+  assignBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "11px 20px",
+    backgroundColor: "#ea580c",
+    color: "#fff",
+    border: "none",
+    borderRadius: 11,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+    boxShadow: "0 1px 2px rgba(234, 88, 12, 0.35), 0 4px 14px -6px rgba(234, 88, 12, 0.45)",
+  },
+  seedBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "11px 20px",
+    backgroundColor: "#ecfdf5",
+    color: "#047857",
+    border: "1px solid rgba(16, 185, 129, 0.35)",
+    borderRadius: 11,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+  },
+  loading: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    padding: "52px 24px",
+    background: "#ffffff",
+    borderRadius: 18,
+    border: "1px solid rgba(15, 23, 42, 0.06)",
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.06)",
+    color: "#475569",
+    fontSize: 14,
+    fontWeight: 600,
+  },
+  loadingSpinner: {
+    width: 36,
+    height: 36,
+    borderRadius: "50%",
+    border: "3px solid #e2e8f0",
+    borderTopColor: "#4f46e5",
+    animation: "vip-admin-spin 0.7s linear infinite",
+  },
+  emptyGrid: {
+    gridColumn: "1 / -1",
+    textAlign: "center",
+    padding: "52px 28px",
+    background: "#ffffff",
+    borderRadius: 18,
+    border: "1px dashed rgba(99, 102, 241, 0.28)",
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+  },
+  emptyGridIcon: { fontSize: 42, marginBottom: 12, lineHeight: 1 },
+  emptyGridTitle: { fontSize: 17, fontWeight: 700, color: "#0f172a" },
+  emptyGridHint: { fontSize: 14, marginTop: 8, color: "#64748b", lineHeight: 1.55 },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(232px, 1fr))",
+    gap: 22,
+  },
+  card: {
+    borderRadius: 18,
+    padding: "22px 18px 16px",
+    borderWidth: 1,
+    borderStyle: "solid",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+    position: "relative",
+    overflow: "visible",
+    boxShadow: "0 4px 24px rgba(0, 0, 0, 0.2)",
+  },
+  cardBadge: {
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: 12,
+    borderRadius: 999,
+    padding: "6px 18px",
+    letterSpacing: 0.3,
+  },
   cardImg: { width: 72, height: 72, objectFit: "contain", borderRadius: 12 },
-  cardName: { fontWeight: 700, fontSize: 15, marginTop: 2 },
-  cardNameEn: { fontSize: 12 },
-  cardPrice: { fontSize: 14, fontWeight: 700 },
-  statusBadge: { fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "3px 12px" },
-  featureChip: { fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap" },
+  cardName: { fontWeight: 700, fontSize: 16, marginTop: 4 },
+  cardNameEn: { fontSize: 12, opacity: 0.95 },
+  cardPrice: { fontSize: 15, fontWeight: 800 },
+  statusBadge: { fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "4px 14px" },
+  featureChip: {
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "4px 10px",
+    borderRadius: 999,
+    whiteSpace: "nowrap",
+  },
   cardPreviewWrap: { width: "100%", marginTop: 4, padding: "6px 8px" },
   cardPreviewBubble: {
     backgroundColor: "rgba(8,8,20,0.9)",
     color: "#e2e8f0",
     fontSize: 11,
     textAlign: "center",
-    padding: "6px 10px",
+    padding: "8px 12px",
   },
-  cardActions: { display: "flex", gap: 8, marginTop: 4 },
-  editBtn: { padding: "6px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
-  deleteBtn: { padding: "6px 12px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 },
-  overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", borderRadius: 16, padding: 32, width: "95%", maxWidth: 860, maxHeight: "92vh", overflowY: "auto", direction: "rtl" },
-  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b" },
-  modalFooter: { display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 },
-  formGroup: { marginBottom: 16 },
-  label: { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 },
-  input: { width: "100%", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", background: "#f8fafc" },
-  saveBtn: { padding: "10px 20px", backgroundColor: "#6366f1", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
-  cancelBtn: { padding: "10px 20px", backgroundColor: "#f1f5f9", color: "#374151", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 14 },
-  errorBox: { backgroundColor: "#fee2e2", color: "#ef4444", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 14 },
-  previewWrap: { backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 12 },
+  cardActions: { display: "flex", gap: 10, marginTop: 8, width: "100%", justifyContent: "center" },
+  editBtn: {
+    padding: "8px 14px",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 600,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 44,
+  },
+  deleteBtn: {
+    padding: "8px 14px",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 600,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 44,
+  },
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(15, 23, 42, 0.52)",
+    backdropFilter: "blur(5px)",
+    WebkitBackdropFilter: "blur(5px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    padding: 16,
+    boxSizing: "border-box",
+  },
+  modal: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: "28px 32px 32px",
+    width: "100%",
+    maxWidth: 860,
+    maxHeight: "92vh",
+    overflowY: "auto",
+    direction: "rtl",
+    border: "1px solid rgba(15, 23, 42, 0.06)",
+    boxShadow: "0 25px 50px -12px rgba(15, 23, 42, 0.28)",
+  },
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingBottom: 18,
+    borderBottom: "1px solid #f1f5f9",
+    gap: 12,
+  },
+  modalTitle: { margin: 0, fontSize: 19, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    background: "#f1f5f9",
+    border: "none",
+    cursor: "pointer",
+    fontSize: 18,
+    color: "#475569",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  tabsRow: {
+    display: "flex",
+    gap: 8,
+    marginBottom: 24,
+    padding: 7,
+    background: "#f1f5f9",
+    borderRadius: 14,
+    overflowX: "auto",
+    border: "1px solid #e2e8f0",
+  },
+  tabBtn: {
+    flex: "0 0 auto",
+    padding: "11px 18px",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 13,
+    borderRadius: 11,
+    background: "transparent",
+    color: "#64748b",
+    whiteSpace: "nowrap",
+    fontFamily: fontStack,
+  },
+  tabBtnActive: {
+    background: "#ffffff",
+    color: "#4338ca",
+    boxShadow: "0 1px 4px rgba(15, 23, 42, 0.08)",
+  },
+  modalFooter: {
+    display: "flex",
+    gap: 12,
+    justifyContent: "flex-end",
+    marginTop: 28,
+    paddingTop: 20,
+    borderTop: "1px solid #f1f5f9",
+    flexWrap: "wrap",
+  },
+  formGroup: { marginBottom: 18 },
+  label: { display: "block", fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 8 },
+  input: {
+    width: "100%",
+    padding: "11px 14px",
+    border: "1px solid #e2e8f0",
+    borderRadius: 11,
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontFamily: fontStack,
+  },
+  saveBtn: {
+    padding: "11px 22px",
+    backgroundColor: "#4f46e5",
+    color: "#fff",
+    border: "none",
+    borderRadius: 11,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "0 1px 2px rgba(79, 70, 229, 0.25)",
+    fontFamily: fontStack,
+  },
+  cancelBtn: {
+    padding: "11px 22px",
+    backgroundColor: "#f1f5f9",
+    color: "#334155",
+    border: "none",
+    borderRadius: 11,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+    fontFamily: fontStack,
+  },
+  errorBox: {
+    backgroundColor: "#fef2f2",
+    color: "#b91c1c",
+    padding: "12px 16px",
+    borderRadius: 11,
+    marginBottom: 18,
+    fontSize: 14,
+    border: "1px solid #fecaca",
+  },
+  previewWrap: {
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: 14,
+    padding: 14,
+  },
   previewBubble: { backgroundColor: "rgba(8,8,20,0.86)", padding: "10px 12px", color: "#fff" },
   previewHeader: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 },
   previewUsername: { fontSize: 13, fontWeight: 700 },
   previewChip: { color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 10, padding: "2px 7px", display: "inline-block" },
   previewMessage: { color: "#fff", fontSize: 13, lineHeight: "18px" },
-  uploadZone: { border: "2px dashed #cbd5e1", borderRadius: 10, padding: 20, textAlign: "center", cursor: "pointer", backgroundColor: "#f8fafc", minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
+  uploadZone: {
+    border: "1px dashed #cbd5e1",
+    borderRadius: 14,
+    padding: 22,
+    textAlign: "center",
+    cursor: "pointer",
+    backgroundColor: "#fafbfc",
+    minHeight: 92,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "border-color 0.2s, background 0.2s",
+    boxSizing: "border-box",
+  },
   imagePreview: {
     width: 96,
     height: 96,
     objectFit: "contain",
-    borderRadius: 10,
-    border: "2px solid #e2e8f0",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
     backgroundColor: "#0f172a",
     padding: 4,
   },
-  removeImgBtn: { position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: 11, backgroundColor: "#ef4444", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
-  userList: { border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", marginBottom: 12 },
-  userItem: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #f1f5f9", transition: "background 0.15s" },
-  selectedUser: { backgroundColor: "#f0fdf4", color: "#16a34a", padding: "8px 12px", borderRadius: 8, fontSize: 14, marginBottom: 12 },
-  twoCol: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
+  removeImgBtn: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#ef4444",
+    color: "#fff",
+    border: "none",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 2px 6px rgba(239, 68, 68, 0.35)",
+  },
+  userList: {
+    border: "1px solid #e2e8f0",
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 12,
+    background: "#fff",
+  },
+  userItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "11px 14px",
+    cursor: "pointer",
+    borderBottom: "1px solid #f1f5f9",
+    transition: "background 0.15s",
+  },
+  selectedUser: {
+    backgroundColor: "#f0fdf4",
+    color: "#16a34a",
+    padding: "8px 12px",
+    borderRadius: 8,
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  twoCol: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 },
 };
 
 export default VipManagement;
