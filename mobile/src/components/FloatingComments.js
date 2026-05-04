@@ -279,7 +279,7 @@ const CommentRow = React.memo(
                   <Image
                     source={{ uri: badgeUrl }}
                     style={styles.vipBadgeSmallCover}
-                    resizeMode="contain"
+                    resizeMode="cover"
                   />
                 )}
               </View>
@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   levelChip: {
-    paddingHorizontal: ms(6),
+    paddingHorizontal: ms(2),
     paddingVertical: ms(1),
     borderRadius: ms(5),
     borderWidth: 1,
@@ -1032,16 +1032,16 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   vipChip: {
-    paddingHorizontal: ms(3),
-    paddingVertical: ms(1),
+    paddingHorizontal: ms(1),
+    paddingVertical: ms(0),
     borderRadius: ms(7),
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "transparent",
   },
   vipIcon: {
-    width: ms(15),
-    height: ms(15),
+    width: ms(20),
+    height: ms(20),
     borderRadius: ms(3),
     borderWidth: 1,
   },
@@ -1074,6 +1074,7 @@ const styles = StyleSheet.create({
 
 
   inlineIconClip: {
+    
     width: ms(30),
     height: ms(30),
     borderRadius: ms(6),
@@ -1113,10 +1114,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
+  vipBadgeSmallClipinner:{
+    width: ms(45),
+    height: ms(45),
+    
+    overflow: "hidden",
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   vipBadgeSmallClip: {
-    width: ms(32),
-    height: ms(32),
-    borderRadius: ms(7),
+    width: ms(33),
+    height: ms(33),
+    
     overflow: "hidden",
     backgroundColor: "transparent",
     alignItems: "center",

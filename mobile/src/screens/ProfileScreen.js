@@ -809,7 +809,7 @@ const ProfileScreen = ({ navigation }) => {
               activeOpacity={0.82}
             >
               <LinearGradient
-                colors={["#1E3A8A", "#0B1E4A"]}
+                colors={["#1E0A", "#0B1fff"]}
                 style={styles.actionBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -1197,16 +1197,15 @@ const makeStyles = (theme) =>
       minHeight: ms(28),
     },
     actionBtnIconSmall: {
-      width: ms(18),
-      height: ms(18),
-      borderRadius: ms(9),
+     
+      borderRadius: ms(5),
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
     },
     actionBtnIconImg: {
-      width: ms(18),
-      height: ms(18),
+      width: ms(25),
+      height: ms(25),
     },
     actionBtnLabel: {
       fontSize: fs(11),
