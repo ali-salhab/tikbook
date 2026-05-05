@@ -2008,6 +2008,22 @@ const LiveRoomScreen = ({ route, navigation }) => {
     }
   };
 
+  const getCurrentSenderUser = useCallback(() => {
+    if (freshUser) {
+      return {
+        ...userInfo,
+        vipLevel: freshUser.vipLevel ?? userInfo?.vipLevel ?? 0,
+        profileImage: freshUser.profileImage || userInfo?.profileImage,
+        activeBadge: freshUser.activeBadge || userInfo?.activeBadge || null,
+      };
+    }
+    return {
+      ...userInfo,
+      vipLevel: userInfo?.vipLevel ?? 0,
+      activeBadge: userInfo?.activeBadge || null,
+    };
+  }, [freshUser, userInfo]);
+
   const handleSendMessage = () => {
     const msg = inputText.trim();
     if (!msg) return;
@@ -2017,18 +2033,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
       return;
     }
     SoundService.play("message");
-    const senderUser = freshUser
-      ? {
-          ...userInfo,
-          vipLevel: freshUser.vipLevel ?? userInfo?.vipLevel ?? 0,
-          profileImage: freshUser.profileImage || userInfo?.profileImage,
-          activeBadge: freshUser.activeBadge || userInfo?.activeBadge || null,
-        }
-      : {
-          ...userInfo,
-          vipLevel: userInfo?.vipLevel ?? 0,
-          activeBadge: userInfo?.activeBadge || null,
-        };
+    const senderUser = getCurrentSenderUser();
     const clientMessageId = `msg-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 8)}`;
@@ -2106,18 +2111,19 @@ const LiveRoomScreen = ({ route, navigation }) => {
           Haptics.NotificationFeedbackType.Success,
         ).catch(() => {});
 
+        const senderUser = getCurrentSenderUser();
         // Show the gift animation immediately on the sender's own screen
         const localId = `local_${Date.now()}${Math.random()}`;
         giftsReceivedRef.current += 1;
         setActiveGifts((prev) => [
           ...prev,
-          { id: localId, gift: { ...gift, quantity }, sender: userInfo },
+          { id: localId, gift: { ...gift, quantity }, sender: senderUser },
         ]);
         // Add the gift message to live chat
         appendLiveMessage({
           id: localId,
           clientMessageId: localId,
-          user: userInfo,
+          user: senderUser,
           message: `أرسل هدية ${gift.nameAr || gift.name}!`,
           isSystem: true,
           giftUrl: gift.thumbnailUrl,
@@ -2128,7 +2134,7 @@ const LiveRoomScreen = ({ route, navigation }) => {
         socketRef.current?.emit("liveroom:send_gift", {
           roomId,
           gift: { ...gift, quantity },
-          sender: userInfo,
+          sender: senderUser,
         });
         setShowGiftModal(false);
         setSelectedGiftSeats(new Set());

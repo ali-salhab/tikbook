@@ -79,7 +79,14 @@ const CommentRow = React.memo(
   const imageUri   = item.user?.profileImage || item.user?.avatar;
   const initials   = item.user?.username ? item.user.username.charAt(0).toUpperCase() : "?";
   const messageText = item.message || item.text || item.body || "";
-  const vipLevel   = Number(item.user?.vipLevel || 0);
+  const vipLevelRaw =
+    item.user?.vipLevel ??
+    item.user?.vip_level ??
+    item.user?.vip?.level ??
+    item.vipLevel ??
+    item.vip_level ??
+    0;
+  const vipLevel   = Number(vipLevelRaw || 0);
   const userLevel  = Number(item.user?.level    || 0);
   const isVip      = vipLevel > 0;
 
