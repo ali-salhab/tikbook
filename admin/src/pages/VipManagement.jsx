@@ -206,6 +206,14 @@ const VipManagement = ({ onLogout }) => {
     return undefined;
   }, [form.joinCardFrameImageFile, form.joinCardFrameImageUrl]);
 
+  const hasJoinVideo = Boolean(
+    form.joinVideoFile || form.joinVideoPreviewUrl || form.joinVideoUrl,
+  );
+  // Product rule: when join video exists, it must render fullscreen.
+  const effectiveJoinLayoutStyle = hasJoinVideo
+    ? "video-fullscreen"
+    : form.joinLayoutStyle;
+
   // ── Benefit sub-form helpers ────────────────────────────────────────────────
   const openAddBenefit = () => {
     setEditingBenefitIdx(null);
@@ -505,8 +513,8 @@ const VipManagement = ({ onLogout }) => {
         ),
         joinVideoUrl: finalJoinVideoUrl || "",
         joinCardFrameImageUrl: finalJoinCardFrameUrl || "",
-        joinLayoutStyle: ["ticker", "video-fullscreen"].includes(form.joinLayoutStyle)
-          ? form.joinLayoutStyle
+        joinLayoutStyle: ["ticker", "video-fullscreen"].includes(effectiveJoinLayoutStyle)
+          ? effectiveJoinLayoutStyle
           : "card",
         joinEffectPreset: ["none", "glow", "pulse", "aurora", "ring"].includes(String(form.joinEffectPreset || "").toLowerCase())
           ? String(form.joinEffectPreset).toLowerCase()
@@ -1123,12 +1131,20 @@ const VipManagement = ({ onLogout }) => {
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>شكل الظهور</label>
-                  <select style={styles.input} value={form.joinLayoutStyle}
+                  <select
+                    style={styles.input}
+                    value={effectiveJoinLayoutStyle}
+                    disabled={hasJoinVideo}
                     onChange={(e) => setForm({ ...form, joinLayoutStyle: e.target.value })}>
                     <option value="card">بطاقة علوية (Card)</option>
                     <option value="ticker">شريط زمني / ماركيز (Ticker)</option>
                     <option value="video-fullscreen">فيديو انضمام بملء الشاشة</option>
                   </select>
+                  {hasJoinVideo ? (
+                    <div style={{ marginTop: 6, fontSize: 11, color: "#7c3aed", fontWeight: 700 }}>
+                      تم تثبيت نمط الظهور على "فيديو بملء الشاشة" لأن فيديو الانضمام مضاف.
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div style={styles.twoCol}>
@@ -1153,11 +1169,11 @@ const VipManagement = ({ onLogout }) => {
               </div>
               <div style={styles.twoCol}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>فيديو داخل كارت الانضمام (MP4 · اختياري)</label>
+                  <label style={styles.label}>فيديو الانضمام (Full Screen · اختياري)</label>
                   <input ref={joinVideoRef} type="file" accept="video/*,.mp4,.webm,.mov" style={{ display: "none" }}
                     onChange={(e) => {
                       const file = e.target.files?.[0]; if (!file) return;
-                      setForm({ ...form, joinVideoFile: file, joinVideoUrl: "" });
+                      setForm({ ...form, joinVideoFile: file, joinVideoUrl: "", joinLayoutStyle: "video-fullscreen" });
                       setJoinVideoName(file.name);
                       
                       // Create a preview URL for the video
@@ -1191,7 +1207,7 @@ const VipManagement = ({ onLogout }) => {
                     ) : (
                       <div style={{ textAlign: "center", color: "#94a3b8" }}>
                         <div style={{ fontSize: 24, marginBottom: 4 }}>📹</div>
-                        <div style={{ fontSize: 12 }}>لفيديو قصير بجانب الصورة</div>
+                        <div style={{ fontSize: 12 }}>سيظهر الفيديو بملء الشاشة عند الانضمام</div>
                       </div>
                     )}
                   </div>
@@ -1287,7 +1303,7 @@ const VipManagement = ({ onLogout }) => {
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                       <div style={{ fontSize: 12, color: "#334155" }}>
-                        <strong>نمط الظهور:</strong> {JOIN_LAYOUT_LABELS[form.joinLayoutStyle] || form.joinLayoutStyle}
+                        <strong>نمط الظهور:</strong> {JOIN_LAYOUT_LABELS[effectiveJoinLayoutStyle] || effectiveJoinLayoutStyle}
                       </div>
                       <div style={{ fontSize: 12, color: "#334155" }}>
                         <strong>المؤثر:</strong> {JOIN_EFFECT_LABELS[form.joinEffectPreset] || form.joinEffectPreset}
@@ -1333,29 +1349,6 @@ const VipManagement = ({ onLogout }) => {
                         </div>
                       </div>
 
-                      {(form.joinVideoPreviewUrl || form.joinVideoUrl) ? (
-                        <div
-                          style={{
-                            width: 78,
-                            height: 78,
-                            borderRadius: 10,
-                            overflow: "hidden",
-                            border: "1px solid rgba(255,255,255,0.25)",
-                            background: "rgba(0,0,0,0.35)",
-                            flexShrink: 0,
-                            zIndex: 2,
-                          }}
-                        >
-                          <video
-                            src={form.joinVideoPreviewUrl || form.joinVideoUrl}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            muted
-                            autoPlay
-                            loop
-                          />
-                        </div>
-                      ) : null}
-
                       {joinCardFramePreviewUrl ? (
                         <img
                           src={joinCardFramePreviewUrl}
@@ -1372,6 +1365,30 @@ const VipManagement = ({ onLogout }) => {
                         />
                       ) : null}
                     </div>
+
+                    {(form.joinVideoPreviewUrl || form.joinVideoUrl) ? (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          borderRadius: 12,
+                          overflow: "hidden",
+                          border: "1px solid #cbd5e1",
+                          background: "#020617",
+                        }}
+                      >
+                        <div style={{ padding: "8px 10px", fontSize: 11, color: "#cbd5e1", borderBottom: "1px solid #1e293b" }}>
+                          معاينة فيديو الانضمام (بملء الشاشة — خارج كارد الانضمام)
+                        </div>
+                        <video
+                          src={form.joinVideoPreviewUrl || form.joinVideoUrl}
+                          style={{ width: "100%", height: 190, objectFit: "cover", display: "block" }}
+                          muted
+                          autoPlay
+                          loop
+                          controls
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
