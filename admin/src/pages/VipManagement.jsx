@@ -102,6 +102,20 @@ const getBubbleShapeStyle = (shape) => {
   }
 };
 
+const JOIN_LAYOUT_LABELS = {
+  card: "بطاقة علوية (Card)",
+  ticker: "شريط زمني / ماركيز (Ticker)",
+  "video-fullscreen": "فيديو انضمام بملء الشاشة",
+};
+
+const JOIN_EFFECT_LABELS = {
+  none: "بدون",
+  glow: "توهج",
+  pulse: "نبض",
+  aurora: "أورورا",
+  ring: "حلقة",
+};
+
 const VipManagement = ({ onLogout }) => {
   const navigate = useNavigate();
   const token = localStorage.getItem("adminToken");
@@ -135,6 +149,7 @@ const VipManagement = ({ onLogout }) => {
   const [joinSoundName, setJoinSoundName] = useState("");
   const [joinVideoName, setJoinVideoName] = useState("");
   const [joinCardFrameName, setJoinCardFrameName] = useState("");
+  const [joinCardFramePreviewUrl, setJoinCardFramePreviewUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
   // Benefits sub-form
   const [showBenefitForm, setShowBenefitForm] = useState(false);
@@ -180,6 +195,16 @@ const VipManagement = ({ onLogout }) => {
   const uploadToCloudinary = (file) => uploadFileViaBackend(file, "tikbook/vip");
   const uploadLottieToCloudinary = (file) => uploadFileViaBackend(file, "tikbook/vip/lottie");
   const uploadSoundToCloudinary = (file) => uploadFileViaBackend(file, "tikbook/vip/sounds");
+
+  useEffect(() => {
+    if (form.joinCardFrameImageFile) {
+      const objectUrl = URL.createObjectURL(form.joinCardFrameImageFile);
+      setJoinCardFramePreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+    setJoinCardFramePreviewUrl(form.joinCardFrameImageUrl || null);
+    return undefined;
+  }, [form.joinCardFrameImageFile, form.joinCardFrameImageUrl]);
 
   // ── Benefit sub-form helpers ────────────────────────────────────────────────
   const openAddBenefit = () => {
@@ -1221,6 +1246,132 @@ const VipManagement = ({ onLogout }) => {
                         <div style={{ fontSize: 12 }}>يُرسَم فوق الكارت والصورة البارزة</div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Review: join card frame + selected settings */}
+                  <div
+                    style={{
+                      marginTop: 10,
+                      borderRadius: 12,
+                      border: "1px solid #dbeafe",
+                      background: "#f8fbff",
+                      padding: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, color: "#1e3a8a", fontSize: 13 }}>
+                        🔎 مراجعة كارد الانضمام
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: form.joinConfigPendingReview ? "#b45309" : "#047857",
+                          background: form.joinConfigPendingReview ? "#fef3c7" : "#d1fae5",
+                          border: `1px solid ${form.joinConfigPendingReview ? "#f59e0b" : "#10b981"}`,
+                          borderRadius: 999,
+                          padding: "2px 8px",
+                        }}
+                      >
+                        {form.joinConfigPendingReview ? "قيد المراجعة" : "جاهز للاعتماد"}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: "#334155" }}>
+                        <strong>نمط الظهور:</strong> {JOIN_LAYOUT_LABELS[form.joinLayoutStyle] || form.joinLayoutStyle}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#334155" }}>
+                        <strong>المؤثر:</strong> {JOIN_EFFECT_LABELS[form.joinEffectPreset] || form.joinEffectPreset}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#334155" }}>
+                        <strong>مدة العرض:</strong> {Math.round((Number(form.joinDisplayDurationMs) || 5000) / 1000)} ثانية
+                      </div>
+                      <div style={{ fontSize: 12, color: "#334155" }}>
+                        <strong>فيديو الانضمام:</strong> {form.joinVideoFile || form.joinVideoUrl ? "موجود" : "غير مضاف"}
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: 12, color: "#334155", marginBottom: 8 }}>
+                      <strong>النص الخاص:</strong>{" "}
+                      {form.specialJoinText?.trim() ? form.specialJoinText : "—"}
+                    </div>
+
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "100%",
+                        minHeight: 120,
+                        borderRadius: 12,
+                        border: "1px solid #cbd5e1",
+                        background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9))",
+                        overflow: "hidden",
+                        padding: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ minWidth: 0, zIndex: 2 }}>
+                        <div style={{ color: form.usernameColor || form.color || "#F8FAFC", fontWeight: 800, fontSize: 13, marginBottom: 6 }}>
+                          {form.specialJoinText?.trim() || `انضم VIP${form.level} إلى الغرفة`}
+                        </div>
+                        <div style={{ color: "#cbd5e1", fontSize: 11, marginBottom: 6 }}>
+                          معاينة شاملة لكل إعدادات كارد الانضمام المختارة.
+                        </div>
+                        <div style={{ color: "#93c5fd", fontSize: 11, fontWeight: 700 }}>
+                          {joinCardFramePreviewUrl ? "إطار الكارد ظاهر في المعاينة" : "لا يوجد إطار كارد مضاف"}
+                        </div>
+                      </div>
+
+                      {(form.joinVideoPreviewUrl || form.joinVideoUrl) ? (
+                        <div
+                          style={{
+                            width: 78,
+                            height: 78,
+                            borderRadius: 10,
+                            overflow: "hidden",
+                            border: "1px solid rgba(255,255,255,0.25)",
+                            background: "rgba(0,0,0,0.35)",
+                            flexShrink: 0,
+                            zIndex: 2,
+                          }}
+                        >
+                          <video
+                            src={form.joinVideoPreviewUrl || form.joinVideoUrl}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            muted
+                            autoPlay
+                            loop
+                          />
+                        </div>
+                      ) : null}
+
+                      {joinCardFramePreviewUrl ? (
+                        <img
+                          src={joinCardFramePreviewUrl}
+                          alt="Join card frame preview"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "fill",
+                            pointerEvents: "none",
+                            zIndex: 3,
+                          }}
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
