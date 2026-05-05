@@ -213,6 +213,21 @@ const VipManagement = ({ onLogout }) => {
   const effectiveJoinLayoutStyle = hasJoinVideo
     ? "video-fullscreen"
     : form.joinLayoutStyle;
+  const [joinPreviewPlaying, setJoinPreviewPlaying] = useState(false);
+  const [joinPreviewRunId, setJoinPreviewRunId] = useState(0);
+
+  const triggerJoinPreview = () => {
+    setJoinPreviewRunId((prev) => prev + 1);
+    setJoinPreviewPlaying(true);
+  };
+
+  useEffect(() => {
+    if (!joinPreviewPlaying) return undefined;
+    const timeout = setTimeout(() => {
+      setJoinPreviewPlaying(false);
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [joinPreviewPlaying, joinPreviewRunId]);
 
   // ── Benefit sub-form helpers ────────────────────────────────────────────────
   const openAddBenefit = () => {
@@ -640,6 +655,38 @@ const VipManagement = ({ onLogout }) => {
     <AdminLayout onLogout={onLogout}>
       <style>{`
         @keyframes vip-admin-spin { to { transform: rotate(360deg); } }
+        @keyframes vip-join-card-enter-exit {
+          0% { opacity: 0; transform: translateY(-26px) scale(0.94); }
+          12% { opacity: 1; transform: translateY(0) scale(1); }
+          78% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-10px) scale(0.98); }
+        }
+        @keyframes vip-join-ticker-marquee {
+          0% { transform: translateX(105%); opacity: 0; }
+          8% { opacity: 1; }
+          92% { opacity: 1; }
+          100% { transform: translateX(-110%); opacity: 0; }
+        }
+        @keyframes vip-join-glow {
+          0% { box-shadow: 0 0 0 rgba(59,130,246,0.2); }
+          50% { box-shadow: 0 0 28px rgba(59,130,246,0.5), 0 0 10px rgba(147,197,253,0.45); }
+          100% { box-shadow: 0 0 0 rgba(59,130,246,0.2); }
+        }
+        @keyframes vip-join-pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.03); }
+          100% { transform: scale(1); }
+        }
+        @keyframes vip-join-aurora {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes vip-join-ring {
+          0% { transform: scale(0.92); opacity: 0.65; }
+          70% { transform: scale(1.12); opacity: 0.1; }
+          100% { transform: scale(1.15); opacity: 0; }
+        }
       `}</style>
       <div style={styles.container}>
         {/* Header */}
@@ -1286,19 +1333,37 @@ const VipManagement = ({ onLogout }) => {
                       <div style={{ fontWeight: 800, color: "#1e3a8a", fontSize: 13 }}>
                         🔎 مراجعة كارد الانضمام
                       </div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: form.joinConfigPendingReview ? "#b45309" : "#047857",
-                          background: form.joinConfigPendingReview ? "#fef3c7" : "#d1fae5",
-                          border: `1px solid ${form.joinConfigPendingReview ? "#f59e0b" : "#10b981"}`,
-                          borderRadius: 999,
-                          padding: "2px 8px",
-                        }}
-                      >
-                        {form.joinConfigPendingReview ? "قيد المراجعة" : "جاهز للاعتماد"}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={triggerJoinPreview}
+                          style={{
+                            border: "1px solid #2563eb",
+                            background: joinPreviewPlaying ? "#dbeafe" : "#eff6ff",
+                            color: "#1d4ed8",
+                            borderRadius: 999,
+                            padding: "4px 10px",
+                            fontSize: 11,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {joinPreviewPlaying ? "جاري المعاينة..." : "تشغيل معاينة 5 ثوانٍ"}
+                        </button>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: form.joinConfigPendingReview ? "#b45309" : "#047857",
+                            background: form.joinConfigPendingReview ? "#fef3c7" : "#d1fae5",
+                            border: `1px solid ${form.joinConfigPendingReview ? "#f59e0b" : "#10b981"}`,
+                            borderRadius: 999,
+                            padding: "2px 8px",
+                          }}
+                        >
+                          {form.joinConfigPendingReview ? "قيد المراجعة" : "جاهز للاعتماد"}
+                        </span>
+                      </div>
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
@@ -1322,10 +1387,11 @@ const VipManagement = ({ onLogout }) => {
                     </div>
 
                     <div
+                      key={`join-preview-${joinPreviewRunId}-${effectiveJoinLayoutStyle}-${form.joinEffectPreset}-${joinCardFramePreviewUrl || "none"}`}
                       style={{
                         position: "relative",
                         width: "100%",
-                        minHeight: 120,
+                        minHeight: effectiveJoinLayoutStyle === "video-fullscreen" ? 220 : 170,
                         borderRadius: 12,
                         border: "1px solid #cbd5e1",
                         background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9))",
@@ -1333,20 +1399,124 @@ const VipManagement = ({ onLogout }) => {
                         padding: 12,
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
+                        justifyContent: effectiveJoinLayoutStyle === "ticker" ? "flex-start" : "space-between",
                         gap: 10,
+                        animation: joinPreviewPlaying && effectiveJoinLayoutStyle !== "ticker"
+                          ? "vip-join-card-enter-exit 5s ease forwards"
+                          : "none",
+                        boxShadow: form.joinEffectPreset === "glow" && joinPreviewPlaying
+                          ? "0 0 0 rgba(59,130,246,0.2)"
+                          : undefined,
                       }}
                     >
-                      <div style={{ minWidth: 0, zIndex: 2 }}>
-                        <div style={{ color: form.usernameColor || form.color || "#F8FAFC", fontWeight: 800, fontSize: 13, marginBottom: 6 }}>
-                          {form.specialJoinText?.trim() || `انضم VIP${form.level} إلى الغرفة`}
+                      {(effectiveJoinLayoutStyle === "video-fullscreen" && (form.joinVideoPreviewUrl || form.joinVideoUrl)) ? (
+                        <video
+                          src={form.joinVideoPreviewUrl || form.joinVideoUrl}
+                          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.55, zIndex: 1 }}
+                          muted
+                          autoPlay
+                          loop
+                        />
+                      ) : null}
+
+                      {form.joinEffectPreset === "ring" && joinPreviewPlaying ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 10,
+                            border: `2px solid ${form.color || "#60a5fa"}`,
+                            borderRadius: 14,
+                            animation: "vip-join-ring 1.6s ease-out infinite",
+                            pointerEvents: "none",
+                            zIndex: 1,
+                          }}
+                        />
+                      ) : null}
+
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          zIndex: 1,
+                          ...(form.joinEffectPreset === "aurora" && joinPreviewPlaying
+                            ? {
+                                background: "linear-gradient(120deg, rgba(56,189,248,0.22), rgba(168,85,247,0.18), rgba(34,197,94,0.18))",
+                                backgroundSize: "200% 200%",
+                                animation: "vip-join-aurora 3s ease-in-out infinite",
+                              }
+                            : {}),
+                        }}
+                      />
+
+                      <div
+                        style={{
+                          minWidth: 0,
+                          zIndex: 2,
+                          width: effectiveJoinLayoutStyle === "ticker" ? "max-content" : "100%",
+                          transform: joinPreviewPlaying && effectiveJoinLayoutStyle === "ticker"
+                            ? undefined
+                            : "none",
+                          animation: joinPreviewPlaying && effectiveJoinLayoutStyle === "ticker"
+                            ? "vip-join-ticker-marquee 5s linear forwards"
+                            : "none",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding:
+                            effectiveJoinLayoutStyle === "ticker"
+                              ? "8px 12px"
+                              : (joinCardFramePreviewUrl ? "26px 24px" : "12px 12px"),
+                          borderRadius: effectiveJoinLayoutStyle === "ticker" ? 999 : 12,
+                          border: effectiveJoinLayoutStyle === "ticker" ? "1px solid rgba(148,163,184,0.35)" : "none",
+                          background:
+                            effectiveJoinLayoutStyle === "ticker"
+                              ? "rgba(2,6,23,0.72)"
+                              : "transparent",
+                          boxShadow:
+                            form.joinEffectPreset === "glow" && joinPreviewPlaying
+                              ? "0 0 28px rgba(59,130,246,0.5), 0 0 10px rgba(147,197,253,0.45)"
+                              : undefined,
+                          transformOrigin: "center",
+                          ...(form.joinEffectPreset === "pulse" && joinPreviewPlaying
+                            ? { animation: `${effectiveJoinLayoutStyle === "ticker" ? "vip-join-ticker-marquee 5s linear forwards, " : ""}vip-join-pulse 1.1s ease-in-out infinite` }
+                            : {}),
+                          ...(form.joinEffectPreset === "glow" && joinPreviewPlaying && effectiveJoinLayoutStyle !== "ticker"
+                            ? { animation: "vip-join-glow 1.6s ease-in-out infinite, vip-join-card-enter-exit 5s ease forwards" }
+                            : {}),
+                        }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ color: form.usernameColor || form.color || "#F8FAFC", fontWeight: 800, fontSize: 13, marginBottom: 6 }}>
+                            {form.specialJoinText?.trim() || `انضم VIP${form.level} إلى الغرفة`}
+                          </div>
+                          <div style={{ color: "#cbd5e1", fontSize: 11, marginBottom: 6 }}>
+                            معاينة شاملة لكل إعدادات كارد الانضمام المختارة.
+                          </div>
+                          <div style={{ color: "#93c5fd", fontSize: 11, fontWeight: 700 }}>
+                            {joinCardFramePreviewUrl ? "إطار الكارد ظاهر في المعاينة ويحيط بالمحتوى كاملًا" : "لا يوجد إطار كارد مضاف"}
+                          </div>
                         </div>
-                        <div style={{ color: "#cbd5e1", fontSize: 11, marginBottom: 6 }}>
-                          معاينة شاملة لكل إعدادات كارد الانضمام المختارة.
-                        </div>
-                        <div style={{ color: "#93c5fd", fontSize: 11, fontWeight: 700 }}>
-                          {joinCardFramePreviewUrl ? "إطار الكارد ظاهر في المعاينة" : "لا يوجد إطار كارد مضاف"}
-                        </div>
+                        {effectiveJoinLayoutStyle !== "ticker" ? (
+                          <div
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: "50%",
+                              border: `2px solid ${form.color || "#fbbf24"}`,
+                              background: "rgba(255,255,255,0.08)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#e2e8f0",
+                              fontWeight: 800,
+                              fontSize: 12,
+                              flexShrink: 0,
+                            }}
+                          >
+                            VIP{form.level}
+                          </div>
+                        ) : null}
                       </div>
 
                       {joinCardFramePreviewUrl ? (
@@ -1355,12 +1525,12 @@ const VipManagement = ({ onLogout }) => {
                           alt="Join card frame preview"
                           style={{
                             position: "absolute",
-                            inset: 0,
+                            inset: -2,
                             width: "100%",
                             height: "100%",
-                            objectFit: "fill",
+                            objectFit: "contain",
                             pointerEvents: "none",
-                            zIndex: 3,
+                            zIndex: 4,
                           }}
                         />
                       ) : null}
